@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guimams — Rami</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="rami.css" />
+</head>
+<body>
+  <main class="app rami-app">
+    <p id="rami-toast" class="hint rami-toast hidden"></p>
+    <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
+
+    <section id="rami-screen-home" class="screen">
+      <a href="index.html" class="btn-link">← Tous les jeux</a>
+      <p class="mascot" aria-hidden="true">🎭</p>
+      <h1><span class="suit suit-black">♣</span>Rami<span class="suit suit-red">♦</span></h1>
+      <p class="tagline">Notre variante maison du Rami, à 2 joueurs pour commencer.</p>
+      <button id="rami-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+
+      <div class="nickname-field">
+        <input id="rami-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      </div>
+
+      <button id="rami-btn-create" class="btn btn-primary btn-create">
+        <span class="btn-icon">🎴</span> Créer une partie
+      </button>
+      <div class="divider">ou rejoindre avec un code</div>
+      <form id="rami-form-join">
+        <input id="rami-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" />
+        <button type="submit" class="btn">Rejoindre</button>
+      </form>
+      <p id="rami-home-error" class="error"></p>
+    </section>
+
+    <section id="rami-screen-waiting" class="screen hidden">
+      <button id="rami-btn-leave-waiting" class="btn-link">← Quitter</button>
+
+      <div id="rami-share-block" class="invite-card hidden">
+        <p class="invite-label">Code de la partie</p>
+        <div class="code-badge" id="rami-share-code"></div>
+        <button id="rami-btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
+        <input id="rami-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      </div>
+
+      <div id="rami-lobby-players" class="lobby-players hidden">
+        <p class="invite-label">Joueurs — <span id="rami-lobby-count">1</span>/2</p>
+        <ul id="rami-lobby-list" class="lobby-list"></ul>
+      </div>
+
+      <button id="rami-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
+      <p id="rami-waiting-hint" class="hint"></p>
+    </section>
+
+    <section id="rami-screen-game" class="screen hidden">
+      <div class="rami-game-header">
+        <button id="rami-btn-leave-game" class="btn-link">← Quitter</button>
+        <p id="rami-turn-indicator" class="rami-turn-indicator"></p>
+      </div>
+
+      <div id="rami-draw-popup" class="rami-draw-popup hidden">
+        <div id="rami-draw-popup-card" class="rami-draw-popup-card"></div>
+      </div>
+
+      <div class="rami-opponent">
+        <span class="seat-name" id="rami-opponent-name"></span>
+        <span id="rami-opponent-status" class="rami-opponent-status hidden"></span>
+        <div id="rami-opponent-hand" class="rami-opponent-hand"></div>
+      </div>
+
+      <div class="rami-tapis">
+        <div id="rami-table-opponent" class="rami-table-side rami-table-side--opponent"></div>
+
+        <div class="rami-piles">
+          <div class="rami-pile-block">
+            <button id="rami-draw-pile" type="button" class="pile" aria-label="Piocher"></button>
+            <span class="pile-count" id="rami-draw-count">0</span>
+            <span class="rami-pile-label">Pioche</span>
+          </div>
+          <div class="rami-pile-block rami-pile-block--discard">
+            <div id="rami-discard-row" class="rami-discard-row"></div>
+            <span class="rami-pile-label" title="Clique une carte pour la reprendre (+ celles posées après)">Défausse</span>
+          </div>
+        </div>
+
+        <div id="rami-table-mine" class="rami-table-side rami-table-side--mine"></div>
+      </div>
+
+      <div id="rami-open-staging" class="rami-open-staging hidden">
+        <p class="hint">Combinaisons prêtes pour ton ouverture (30 pts, sans le 2 de cœur) :</p>
+        <div id="rami-staging-list" class="rami-staging-list"></div>
+        <button id="rami-btn-validate-open" class="btn btn-primary" disabled>✅ Valider l'ouverture</button>
+      </div>
+
+      <div id="rami-resolve-banner" class="rami-resolve-banner hidden">
+        <span id="rami-resolve-text"></span>
+        <button id="rami-btn-clear-staging" class="btn btn-small hidden">🔓 Libérer la carte</button>
+        <button id="rami-btn-undo-draw" class="btn btn-small hidden">↩️ Reprendre ma pioche</button>
+      </div>
+
+      <div class="rami-actions">
+        <button id="rami-btn-sort-rank" class="btn">🔢 Trier par hauteur</button>
+        <button id="rami-btn-sort-suit" class="btn">🎨 Trier par couleur</button>
+        <button id="rami-btn-stage-group" class="btn hidden" disabled>➕ Former ce groupe</button>
+        <button id="rami-btn-lay-meld" class="btn hidden" disabled>🀄 Poser cette combinaison</button>
+        <button id="rami-btn-discard" class="btn btn-discard" disabled>🗑️ Défausser</button>
+      </div>
+
+      <div id="rami-hand" class="rami-hand"></div>
+    </section>
+
+    <section id="rami-screen-end" class="screen hidden">
+      <h2 id="rami-end-title"></h2>
+      <p id="rami-end-reveal-popup" class="rami-end-reveal-popup hidden"></p>
+      <table class="rami-score-table">
+        <thead>
+          <tr><th>Joueur</th><th>Combinaisons</th><th>Cartes restantes</th><th>Total</th></tr>
+        </thead>
+        <tbody id="rami-end-body"></tbody>
+      </table>
+      <button id="rami-btn-rematch" class="btn btn-primary">🔄 Revanche</button>
+      <button id="rami-btn-leave-end" class="btn btn-leave-end">Quitter</button>
+    </section>
+  </main>
+
+  <div id="rami-rules-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Règles du Rami Français</h2>
+      <ol>
+        <li>1 jeu de 52 cartes (2 à partir de 3 joueurs). Le 2 de cœur joue le rôle du Joker. 7 cartes par joueur.</li>
+        <li>À ton tour : pioche (pioche, ou n'importe quelle carte de la défausse — tu récupères alors aussi toutes celles posées après elle), pose optionnelle, puis défausse obligatoire pour finir ton tour.</li>
+        <li>Valeurs : 2-10 = valeur nominale, Valet/Dame/Roi = 10, As = 15. Le 2 de cœur vaut le rang qu'il remplace une fois posé.</li>
+        <li><strong>Première pose :</strong> il faut totaliser au moins 30 points en une fois, sans utiliser le 2 de cœur. Il redevient utilisable une fois que tu as ouvert.</li>
+        <li>Brelan/carré = 3-4 cartes de même rang, couleurs différentes. Séquence = 3+ cartes consécutives de même couleur. 1 seul 2 de cœur par combinaison.</li>
+        <li>Chaque combinaison posée (ouverture, nouvelle combinaison, ajout) rapporte immédiatement ses points à ton score. Tu peux aussi compléter les combinaisons de l'adversaire, ou échanger un 2 de cœur sur le tapis contre la vraie carte.</li>
+        <li>Si tu reprends une carte en défausse, elle doit être jouée dans une combinaison ce tour-ci (les autres cartes récupérées avec elle n'ont pas cette obligation).</li>
+        <li>Dès qu'un joueur vide sa main, la partie s'arrête : son score = ses points de combinaisons. Les autres joueurs soustraient la valeur de leurs cartes restantes. Le score le plus haut gagne.</li>
+      </ol>
+      <button id="rami-btn-close-rules" class="btn btn-primary">Compris !</button>
+    </div>
+  </div>
+
+  <div id="rami-join-modal" class="modal hidden">
+    <div class="modal-content join-modal-content">
+      <p class="invite-label">Rejoindre la partie</p>
+      <input id="rami-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <button id="rami-btn-join-modal" class="btn btn-primary">Rejoindre</button>
+      <p id="rami-join-modal-error" class="error"></p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="rami.js"></script>
+</body>
+</html>

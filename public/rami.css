@@ -1,0 +1,1064 @@
+/* --- Base partagée avec la Bataille (dupliquée volontairement pour ne pas
+   toucher à style.css et ne prendre aucun risque sur le jeu existant) --- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%),
+    radial-gradient(circle at 50% 0%, #10b981 0%, transparent 60%),
+    linear-gradient(160deg, #065f46, #022c22);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #fff;
+}
+
+/* Lueur du tapis qui derive lentement, en arriere-plan fixe derriere le
+   contenu (.app passe au premier plan via position+z-index ci-dessous). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #10b98166 0%, transparent 60%);
+  animation: felt-drift 18s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes felt-drift {
+  0%, 100% {
+    transform: translate(-6%, -8%) scale(1);
+  }
+  50% {
+    transform: translate(6%, 6%) scale(1.15);
+  }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+  text-align: center;
+}
+
+.rami-app {
+  max-width: 640px;
+}
+
+/* Nom du jeu : grand titre simple et rond, mais qui ne ressemble pas a un
+   bouton cliquable (pas de pastille/bordure/ombre portee) - juste un texte
+   chaleureux et reconnaissable qui reste discret pour le joueur. */
+h1 {
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 2.6rem;
+  margin: 4px auto 10px;
+  letter-spacing: 0;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #facc15;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.mascot {
+  font-size: 2rem;
+  margin: 0 0 -6px;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45));
+  animation: mascot-idle 3s ease-in-out infinite;
+}
+
+@keyframes mascot-idle {
+  0%, 100% {
+    transform: rotate(-6deg) scale(1);
+  }
+  50% {
+    transform: rotate(6deg) scale(1.05);
+  }
+}
+
+.suit {
+  font-size: 1.5rem;
+  color: #f5f0e6;
+  -webkit-text-fill-color: #f5f0e6;
+  opacity: 0.85;
+}
+
+.suit-red {
+  color: #f0506e;
+  -webkit-text-fill-color: #f0506e;
+}
+
+.tagline {
+  margin: 0 0 14px;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.hint {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.rami-toast {
+  min-height: 1.2em;
+  margin: 0 0 10px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 20px;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  background: #2d7a4c;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+}
+
+.btn:hover {
+  background: #35915b;
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.btn-link {
+  display: block;
+  margin: 0 0 16px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.btn-rules-link {
+  display: inline-block;
+  margin: 0 0 32px;
+  padding: 5px 14px;
+  border: 2px solid #ffffff33;
+  border-radius: 20px;
+  background: #ffffff14;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-rules-link:hover {
+  background: #ffffff28;
+  color: #fff;
+}
+
+.btn-primary {
+  background: #facc15;
+  color: #1a1a1a;
+  border-color: #1a1208;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-primary:hover {
+  background: #fde047;
+}
+
+.btn-primary:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-discard {
+  background: #b91c1c;
+}
+
+.btn-discard:hover {
+  background: #dc2626;
+}
+
+.btn-create {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-icon {
+  font-size: 1.3rem;
+}
+
+.divider {
+  margin: 20px 0;
+  opacity: 0.55;
+  font-size: 0.85rem;
+}
+
+#rami-form-join {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+#rami-input-code {
+  width: 120px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 3px solid #1a1a1a;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.error {
+  color: #fca5a5;
+  min-height: 1.2em;
+  margin-top: 12px;
+}
+
+.nickname-field {
+  max-width: 260px;
+  margin: 0 auto 20px;
+}
+
+.nickname-field input,
+.join-modal-content input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid #ffffff33;
+  background: #ffffff11;
+  color: #fff;
+  font-size: 0.95rem;
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.nickname-field input:focus,
+.join-modal-content input:focus {
+  outline: none;
+  border-color: #facc15;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.invite-card {
+  margin: 24px auto 0;
+  padding: 24px 20px;
+  max-width: 280px;
+  background: #ffffff0d;
+  border: 3px solid #1a1208;
+  border-radius: 18px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.invite-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.7;
+  margin: 0 0 12px;
+}
+
+.invite-card .code-badge {
+  display: block;
+  margin: 0 auto 18px;
+  font-size: 2.1rem;
+}
+
+.code-badge {
+  font-weight: 800;
+  letter-spacing: 5px;
+  border-radius: 12px;
+  border: 3px solid #1a1208;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 10px;
+  background: #facc15;
+  color: #1a1208;
+}
+
+.btn-copy-link {
+  width: 100%;
+}
+
+.lobby-players {
+  margin: 24px auto;
+  max-width: 280px;
+}
+
+.lobby-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lobby-list li {
+  padding: 10px 14px;
+  background: #ffffff11;
+  border: 2px solid #ffffff33;
+  border-radius: 10px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.lobby-list li.lobby-host::after {
+  content: ' 👑';
+}
+
+.join-modal-content {
+  text-align: center;
+}
+
+.join-modal-content input {
+  margin: 14px 0;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: #052e1c;
+  border: 3px solid #1a1208;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 380px;
+  text-align: left;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.modal-content h2,
+#rami-end-title {
+  margin-top: 0;
+  text-align: center;
+}
+
+.modal-content ol {
+  padding-left: 20px;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+.modal-content .btn {
+  display: block;
+  margin: 20px auto 0;
+}
+
+.pile-count {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #facc15;
+}
+
+.pile {
+  width: 48px;
+  height: 68px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 5px, #00000022 5px, #00000022 6px),
+    repeating-linear-gradient(-45deg, transparent, transparent 5px, #00000022 5px, #00000022 6px),
+    #14532d;
+  border: 3px solid #1a1208;
+  box-shadow: -2px -2px 0 0 #0a2e18, -4px -4px 0 0 #1a1208, 3px 3px 0 rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.pile:hover {
+  transform: translateY(-2px);
+}
+
+.pile:disabled {
+  cursor: not-allowed;
+  /* Pas d'opacity ici : elle composite avec le tapis vert derriere le
+     bouton et fait virer le brun-rouge vers un olive incoherent. filter
+     desature/assombrit le bouton lui-meme, independamment du fond. */
+  filter: grayscale(0.6) brightness(0.75);
+  transform: none;
+}
+
+.card-slot {
+  width: 56px;
+  height: 80px;
+  border-radius: 10px;
+  background: #ffffff11;
+  border: 3px dashed #ffffff33;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+/* --- Écran de jeu --- */
+
+.rami-game-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rami-game-header .btn-link {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.rami-game-header .rami-turn-indicator {
+  flex: 1;
+  text-align: right;
+}
+
+.rami-turn-indicator {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #facc15;
+  min-height: 1.3em;
+}
+
+.rami-opponent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* Banniere transitoire pendant une tentative de reconnexion (coupure reseau,
+   swipe accidentel...) - superposee a l'ecran actif, pas un ecran a part. */
+.reconnect-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #facc15;
+  color: #1a1208;
+  border-bottom: 3px solid #1a1208;
+  animation: none;
+}
+
+/* Indique que l'adversaire est dans son delai de grace apres une coupure -
+   pas de grille de sieges ici (a 2 joueurs), donc un simple badge suffit. */
+.rami-opponent-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #facc15;
+  opacity: 0.9;
+}
+
+.rami-opponent-hand {
+  display: flex;
+  justify-content: center;
+}
+
+.rami-back-card {
+  width: 30px;
+  height: 44px;
+  margin-left: -16px;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 4px, #00000022 4px, #00000022 5px),
+    repeating-linear-gradient(-45deg, transparent, transparent 4px, #00000022 4px, #00000022 5px),
+    #14532d;
+  border: 2px solid #1a1208;
+  flex-shrink: 0;
+}
+
+.rami-back-card:first-child {
+  margin-left: 0;
+}
+
+.rami-tapis {
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.05), transparent 70%);
+  border-radius: 24px;
+  padding: 8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+/* Les mêlées posées se rangent du côté de qui les a jouées (adversaire en
+   haut de l'écran, moi en bas) : un léger décalage vertical vers chacun
+   les rapproche de son propriétaire, pioche/défausse restant au milieu. */
+.rami-table-side {
+  position: relative;
+  flex: 0 1 128px;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rami-table-side--opponent {
+  align-self: flex-start;
+  margin-top: -10px;
+}
+
+.rami-table-side--mine {
+  align-self: flex-end;
+  margin-bottom: -10px;
+}
+
+/* --- Popup "+N" a la pose d'une combinaison (meme pattern que la Bataille) --- */
+
+.gain-popup {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  background: #22c55e;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 3px 12px;
+  border-radius: 20px;
+  border: 2.5px solid #1a1208;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  animation: gain-float 0.9s ease forwards;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+@keyframes gain-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1.2);
+  }
+  40% {
+    transform: translate(-50%, -8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -38px) scale(1);
+  }
+}
+
+.rami-piles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.rami-pile-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.rami-pile-block--discard {
+  flex: 1;
+  min-width: 0;
+  max-width: 360px;
+}
+
+.rami-pile-label {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  max-width: 100%;
+  text-align: center;
+}
+
+.rami-discard-row {
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #00000022;
+  border: 2px solid #ffffff44;
+}
+
+.rami-discard-card {
+  position: relative;
+  width: 46px;
+  height: 66px;
+  margin-left: -8px;
+  border-radius: 6px;
+  background: #fff9ec;
+  border: 2px solid #1a1208;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.rami-discard-card:first-child {
+  margin-left: 0;
+}
+
+.rami-discard-card:hover {
+  transform: translateY(-6px);
+  z-index: 2;
+}
+
+.rami-discard-card.card-red {
+  color: #e11d48;
+}
+
+.rami-discard-card.card-black {
+  color: #1a1a1a;
+}
+
+.rami-discard-card--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.rami-meld {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rami-meld:hover {
+  background: #ffffff11;
+}
+
+.rami-mini-card {
+  position: relative;
+  width: 40px;
+  height: 58px;
+  margin-left: -14px;
+  border-radius: 6px;
+  background: #fff9ec;
+  border: 2px solid #1a1208;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.rami-mini-card:first-child {
+  margin-left: 0;
+}
+
+.rami-mini-card.card-red {
+  color: #e11d48;
+}
+
+.rami-mini-card.card-black {
+  color: #1a1a1a;
+}
+
+.rami-mini-card--wild {
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.rami-open-staging {
+  max-width: 400px;
+  margin: 0 auto 6px;
+  padding: 6px 10px;
+  border: 2px dashed #ffffff33;
+  border-radius: 14px;
+}
+
+.rami-staging-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.rami-staging-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff11;
+  border: 2px solid #ffffff33;
+  border-radius: 10px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.rami-staging-group button {
+  border: none;
+  background: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.rami-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rami-actions .btn {
+  padding: 7px 12px;
+  font-size: 0.85rem;
+}
+
+/* --- Main du joueur : véritable éventail avec hover "spring" façon Balatro.
+   Deux niveaux : .rami-card-arc pivote la carte pour dessiner l'éventail
+   (position statique, calculée en JS selon l'index) ; .rami-card gère son
+   propre effet de survol/sélection, indépendant de cette rotation. --- */
+
+.rami-hand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 26px 20px 8px;
+  overflow-x: auto;
+}
+
+.rami-card-arc {
+  transform-origin: bottom center;
+  margin-left: -34px;
+  flex-shrink: 0;
+}
+
+.rami-card-arc:first-child {
+  margin-left: 0;
+}
+
+.rami-card {
+  position: relative;
+  width: 78px;
+  height: 114px;
+  border-radius: 12px;
+  background: #fff9ec;
+  border: 3px solid #1a1208;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.rami-card.card-red {
+  color: #e11d48;
+}
+
+.rami-card.card-black {
+  color: #1a1a1a;
+}
+
+.rami-card:hover {
+  transform: translateY(-18px) scale(1.08);
+  z-index: 2;
+}
+
+.rami-card.rami-selected {
+  transform: translateY(-18px) scale(1.08);
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px #facc1599, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  z-index: 3;
+}
+
+.rami-card.rami-hint {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 2px #4ade8066, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  animation: rami-hint-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes rami-hint-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px #4ade8066, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 4px #4ade80aa, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Carte prise à la défausse, encore à régler ce tour-ci : toujours repérable
+   dans la main, même si elle a un instant été mise en attente d'ouverture. */
+.rami-card.rami-must-resolve {
+  border-color: #fb7185;
+  box-shadow: 0 0 0 3px #fb718599, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  animation: rami-must-resolve-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rami-must-resolve-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px #fb718599, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 5px #fb7185dd, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Carte piochée (pioche ou défausse) affichée en grand un instant : sur
+   mobile la main est petite et en bas, facile à louper au moment où on
+   pioche — ce pop-up rend la carte piochée impossible à manquer. */
+.rami-draw-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.rami-draw-popup-card {
+  position: relative;
+  width: 130px;
+  height: 190px;
+  border-radius: 16px;
+  background: #fff9ec;
+  border: 4px solid #1a1208;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.6rem;
+  font-weight: 900;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45);
+  animation: rami-draw-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rami-draw-popup-card.card-red {
+  color: #e11d48;
+}
+
+.rami-draw-popup-card.card-black {
+  color: #1a1a1a;
+}
+
+/* --- Visage de carte classique (façon Balatro) : index rang+symbole en
+   coin, couleur pleine (un degrade fin texte est illisible en petit) + gros
+   symbole plein au centre. Partage entre .rami-card / .rami-mini-card /
+   .rami-discard-card / .rami-draw-popup-card, qui portent deja .card-red ou
+   .card-black (donc deja une couleur pleine dont ces elements heritent). --- */
+
+.card-corner {
+  position: absolute;
+  top: 4%;
+  left: 7%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.card-corner-rank {
+  font-size: 0.5em;
+  font-weight: 900;
+}
+
+.card-corner-suit {
+  font-size: 0.38em;
+}
+
+.card-emblem {
+  font-size: 2.1em;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes rami-draw-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.rami-resolve-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #fb718522;
+  border: 2px solid #fb718599;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+.rami-score-table {
+  width: 100%;
+  max-width: 360px;
+  margin: 14px auto;
+  border-collapse: collapse;
+}
+
+.rami-score-table th,
+.rami-score-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #ffffff22;
+  text-align: center;
+}
+
+.rami-score-table th {
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- Ecran de fin anime : les scores tombent un par un, comptes en direct --- */
+
+.rami-end-reveal-popup {
+  display: inline-block;
+  margin: 0 auto 6px;
+  padding: 6px 16px;
+  background: #facc15;
+  color: #1a1208;
+  font-weight: 800;
+  border-radius: 20px;
+  border: 2.5px solid #1a1208;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  animation: rami-end-reveal-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes rami-end-reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(6px);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1) translateY(-4px);
+  }
+  50% {
+    transform: scale(1) translateY(0);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.rami-score-row {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.rami-score-row.rami-score-row--in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rami-score-row.rami-score-row--winner td {
+  color: #facc15;
+  font-weight: 800;
+}

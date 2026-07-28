@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guimams — Bataille</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <p id="game-toast" class="hint game-toast hidden"></p>
+    <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
+
+    <section id="screen-home" class="screen">
+      <a href="index.html" class="btn-link">← Tous les jeux</a>
+      <p class="mascot" aria-hidden="true">⚔️</p>
+      <h1><span class="suit suit-black">♠</span>Bataille<span class="suit suit-red">♥</span></h1>
+      <p class="tagline">Le grand classique des cartes, de 2 à 4 joueurs.</p>
+      <button id="btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+
+      <div class="nickname-field">
+        <input id="input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      </div>
+
+      <button id="btn-create" class="btn btn-primary btn-create">
+        <span class="btn-icon">🎴</span> Créer une partie
+      </button>
+      <div class="divider">ou rejoindre avec un code</div>
+      <form id="form-join">
+        <input id="input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" />
+        <button type="submit" class="btn">Rejoindre</button>
+      </form>
+      <p id="home-error" class="error"></p>
+    </section>
+
+    <section id="screen-waiting" class="screen hidden">
+      <button id="btn-leave-waiting" class="btn-link">← Quitter</button>
+
+      <div id="share-block" class="invite-card hidden">
+        <p class="invite-label">Code de la partie</p>
+        <div class="code-badge" id="share-code"></div>
+        <button id="btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
+        <input id="share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      </div>
+
+      <div id="lobby-players" class="lobby-players hidden">
+        <p class="invite-label">Joueurs — <span id="lobby-count">1</span>/4</p>
+        <ul id="lobby-list" class="lobby-list"></ul>
+      </div>
+
+      <button id="btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
+      <p id="waiting-hint" class="hint"></p>
+    </section>
+
+    <section id="screen-game" class="screen hidden">
+      <div class="game-header">
+        <button id="btn-leave-game" class="btn-link">← Quitter</button>
+      </div>
+
+      <div class="table" id="table"></div>
+
+      <p id="battle-banner" class="battle-banner hidden">BATAILLE !</p>
+      <p id="waiting-opponent" class="hint hidden">En attente des autres joueurs…</p>
+    </section>
+
+    <section id="screen-end" class="screen hidden">
+      <h2 id="end-title"></h2>
+      <button id="btn-rematch" class="btn btn-primary">🔄 Revanche</button>
+      <button id="btn-leave-end" class="btn btn-leave-end">Quitter</button>
+    </section>
+  </main>
+
+  <div id="rules-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Règles de la Bataille</h2>
+      <ol>
+        <li>De 2 à 4 joueurs. Le paquet de 52 cartes est réparti à égalité entre tous, face cachée.</li>
+        <li>À chaque tour, tout le monde retourne la carte du dessus de sa pile.</li>
+        <li>La carte la plus forte remporte toutes les cartes retournées.</li>
+        <li><strong>Égalité entre plusieurs joueurs = Bataille !</strong> Seuls les joueurs à égalité posent des cartes cachées puis une carte visible ; les autres attendent. La carte visible la plus forte remporte tout, y compris les cartes cachées.</li>
+        <li>Un joueur qui n'a plus aucune carte est éliminé. La partie se termine quand il ne reste qu'un seul joueur.</li>
+        <li>⏱️ Plus la partie dure, plus les batailles enterrent de cartes (+1 toutes les 3 minutes), pour éviter que ça s'éternise.</li>
+      </ol>
+      <button id="btn-close-rules" class="btn btn-primary">Compris !</button>
+    </div>
+  </div>
+
+  <div id="winner-modal" class="modal hidden">
+    <div class="modal-content winner-modal-content">
+      <p class="winner-trophy">🏆</p>
+      <h2 id="winner-modal-title"></h2>
+      <button id="btn-winner-continue" class="btn btn-primary">Continuer</button>
+    </div>
+  </div>
+
+  <div id="join-modal" class="modal hidden">
+    <div class="modal-content join-modal-content">
+      <p class="invite-label">Rejoindre la partie</p>
+      <input id="join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <button id="btn-join-modal" class="btn btn-primary">Rejoindre</button>
+      <p id="join-modal-error" class="error"></p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
