@@ -86,6 +86,25 @@ function broadcastToRoom(io, room, event, data) {
   for (const p of room.players) io.to(p.id).emit(event, data);
 }
 
+// Regle stricte : tant que la carte precisement ciblee en defausse n'a pas
+// ete jouee dans une combinaison, le joueur ne peut RIEN faire d'autre avec
+// sa main (ni poser une autre combinaison, ni defausser une carte - meme la
+// carte visee elle-meme) - seule issue si elle ne peut vraiment pas servir :
+// tout reprendre via rami-undo-draw. Les autres cartes recuperees avec elle
+// restent donc elles aussi bloquees, ce qui garantit que rami-undo-draw
+// (qui exige que TOUTES les cartes prises soient encore en main) reste
+// toujours disponible tant que rien n'a ete joue.
+function hasUnresolvedDiscardCard(room, player) {
+  return room.drawnFromDiscard && player.hand.some((c) => c.id === room.drawnCardId);
+}
+
+function sendMustResolveError(socket) {
+  sendError(
+    socket,
+    "Tu dois d'abord poser la carte prise à la défausse dans une combinaison, ou reprendre ta pioche."
+  );
+}
+
 function broadcastLobby(io, room) {
   for (const p of room.players) {
     io.to(p.id).emit('rami-lobby-update', {
@@ -248,10 +267,13 @@ function handleExplicitLeave(io, socket) {
   finalizeRamiDisconnect(io, room, socket.id, 'left');
 }
 
-// Coupure automatique (reseau, onglet ferme, swipe accidentel) : en pleine
-// partie, on laisse un delai de grace avant de considerer le joueur parti.
-// En salon d'attente ou une fois la partie terminee (ecran de score), rien a
-// proteger : comportement immediat inchange.
+// Coupure automatique (reseau, onglet ferme, swipe accidentel, telephone qui
+// met l'onglet en veille) : on laisse toujours un delai de grace avant de
+// considerer le joueur parti, quelle que soit la phase - y compris en salon
+// d'attente et sur l'ecran de score. Sans ca, mettre son telephone en veille
+// une seconde pour coller le lien d'invitation dans un SMS detruisait
+// instantanement le salon qu'on venait de creer (bug reel constate : l'hote
+// revient, son propre salon n'existe plus, "cette partie n'existe pas").
 function handleDisconnecting(io, socket) {
   const code = socket.data.ramiRoom;
   if (!code) return;
@@ -261,11 +283,6 @@ function handleDisconnecting(io, socket) {
 
   const player = findPlayer(room, socket.id);
   if (!player) return;
-
-  if (room.phase !== 'playing') {
-    finalizeRamiDisconnect(io, room, socket.id, 'left');
-    return;
-  }
 
   player.connected = false;
   broadcastToRoom(io, room, 'rami-player-disconnected', {
@@ -454,6 +471,11 @@ function registerRamiHandlers(io, socket) {
       return;
     }
 
+    if (hasUnresolvedDiscardCard(room, player) && !allIds.includes(room.drawnCardId)) {
+      sendMustResolveError(socket);
+      return;
+    }
+
     const groups = groupsIds.map((ids) => resolveCardsFromHand(player, ids));
     if (groups.some((g) => !g)) {
       sendError(socket, 'Cartes invalides.');
@@ -499,6 +521,10 @@ function registerRamiHandlers(io, socket) {
       sendError(socket, 'Cartes invalides.');
       return;
     }
+    if (hasUnresolvedDiscardCard(room, player) && !cards.some((c) => c.id === room.drawnCardId)) {
+      sendMustResolveError(socket);
+      return;
+    }
     // Meme regle que pour rami-open : il doit toujours rester au moins une
     // carte a defausser pour terminer le tour.
     if (player.hand.length - cards.length <= 0) {
@@ -534,6 +560,10 @@ function registerRamiHandlers(io, socket) {
     const newCards = resolveCardsFromHand(player, payload && payload.cards);
     if (!newCards) {
       sendError(socket, 'Cartes invalides.');
+      return;
+    }
+    if (hasUnresolvedDiscardCard(room, player) && !newCards.some((c) => c.id === room.drawnCardId)) {
+      sendMustResolveError(socket);
       return;
     }
     // Meme regle que pour rami-open/rami-lay-meld : il doit toujours rester
@@ -588,6 +618,10 @@ function registerRamiHandlers(io, socket) {
       sendError(socket, 'Carte introuvable dans ta main.');
       return;
     }
+    if (hasUnresolvedDiscardCard(room, player) && replacement.id !== room.drawnCardId) {
+      sendMustResolveError(socket);
+      return;
+    }
     const wantsRank = jokerEntry.jokerFor.rank;
     const wantsSuit = jokerEntry.jokerFor.suit;
     const matches = replacement.rank === wantsRank && (!wantsSuit || replacement.suit === wantsSuit);
@@ -616,12 +650,12 @@ function registerRamiHandlers(io, socket) {
 
     const cardId = payload && payload.cardId;
 
-    // La carte visée en défausse doit être "réglée" ce tour-ci : soit jouée
-    // dans une combinaison, soit défaussée telle quelle si elle ne peut
-    // vraiment rien donner — sinon le joueur reste bloqué sans solution.
-    const mustResolveTargeted = room.drawnFromDiscard && player.hand.some((c) => c.id === room.drawnCardId);
-    if (mustResolveTargeted && cardId !== room.drawnCardId) {
-      sendError(socket, 'Tu dois jouer ou défausser la carte prise à la défausse avant de terminer ton tour.');
+    // La carte visée en défausse doit être posée dans une combinaison ce
+    // tour-ci — impossible de la redéfausser directement pour "s'en sortir"
+    // (règle stricte : si elle ne peut vraiment rien donner, il faut tout
+    // reprendre via rami-undo-draw, pas juste la relâcher toute seule).
+    if (hasUnresolvedDiscardCard(room, player)) {
+      sendMustResolveError(socket);
       return;
     }
 

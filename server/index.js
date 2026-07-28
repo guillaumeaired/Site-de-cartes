@@ -273,11 +273,12 @@ function handleExplicitLeave(socket) {
   finalizeDisconnect(room, socket.id);
 }
 
-// Coupure automatique (reseau, onglet ferme, swipe accidentel) : en pleine
-// partie, on laisse un delai de grace avant de considerer le joueur parti,
-// pour que "revenir via le lien / le code / en arriere" ait une chance de
-// retrouver la partie encore en vie. En salon d'attente, rien a proteger :
-// comportement immediat inchange.
+// Coupure automatique (reseau, onglet ferme, swipe accidentel, telephone qui
+// met l'onglet en veille) : on laisse toujours un delai de grace avant de
+// considerer le joueur parti, y compris en salon d'attente - sinon le simple
+// fait de mettre son telephone en veille une seconde pour coller le lien
+// d'invitation dans un SMS detruit instantanement le salon qu'on vient de
+// creer (bug reel constate : l'hote revient, son propre salon n'existe plus).
 function handleDisconnecting(socket) {
   const code = socket.data.room;
   if (!code) return;
@@ -288,11 +289,6 @@ function handleDisconnecting(socket) {
 
   const player = findPlayer(room, socket.id);
   if (!player) return;
-
-  if (room.phase !== 'playing') {
-    finalizeDisconnect(room, socket.id);
-    return;
-  }
 
   player.connected = false;
   broadcastToRoom(room, 'player-disconnected', {

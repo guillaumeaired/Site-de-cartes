@@ -891,6 +891,21 @@ h1 {
   }
 }
 
+/* Cette meme carte, mais deja glissee dans un groupe d'ouverture en attente
+   (non valide) : reste cliquable (il faut pouvoir la reprendre), mais
+   assombrie pour ne pas donner l'impression qu'elle traine encore librement
+   dans la main alors qu'elle est deja "prise" par le groupe. */
+.rami-card.rami-must-resolve--staged {
+  opacity: 0.5;
+}
+
+/* Combinaison du tapis mise en valeur au survol d'une carte "jouable" de la
+   main, pour montrer directement ou elle peut se poser. */
+.rami-meld.rami-meld--target {
+  background: #4ade8033;
+  box-shadow: 0 0 0 3px #4ade80cc;
+}
+
 /* Carte piochée (pioche ou défausse) affichée en grand un instant : sur
    mobile la main est petite et en bas, facile à louper au moment où on
    pioche — ce pop-up rend la carte piochée impossible à manquer. */

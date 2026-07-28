@@ -310,15 +310,35 @@ function hideDrawPopup() {
 
 drawPopup.addEventListener('click', hideDrawPopup);
 
-// N'affiche le pop-up que pour un tirage qui vient vraiment d'arriver (pas
-// pour un état déjà connu re-diffusé, ni pour une resynchronisation après
-// reconnexion en plein milieu du tour de quelqu'un).
-function maybeShowDrawPopup(state) {
-  if (state.isMyTurn && state.drawnCardId && state.drawnCardId !== lastDrawnCardId) {
+// Détecte un tirage qui vient vraiment d'arriver (pas un état déjà connu
+// re-diffusé, ni une resynchronisation après reconnexion en plein milieu du
+// tour de quelqu'un) et prévient le joueur : pop-up plein écran pour son
+// propre tirage (main petite et en bas d'écran, facile à manquer), simple
+// toast pour celui de l'adversaire — sinon la seule trace visible est le
+// compteur de cartes de l'adversaire qui grimpe silencieusement de 1, très
+// facile à ne pas remarquer en pleine partie.
+function handleNewDraw(prevState, state) {
+  const isNewDraw = Boolean(state.drawnCardId) && state.drawnCardId !== lastDrawnCardId;
+  lastDrawnCardId = state.drawnCardId;
+  if (!isNewDraw) return;
+
+  if (state.isMyTurn) {
     const card = currentHand.find((c) => c.id === state.drawnCardId);
     if (card) showDrawPopup(card);
+    return;
   }
-  lastDrawnCardId = state.drawnCardId;
+
+  const opponent = state.players.find((p) => p.id !== myId);
+  const name = opponent ? opponent.nickname : "L'adversaire";
+  if (state.drawnFromDiscard) {
+    // La carte reprise en défausse était déjà publique avant d'être prise :
+    // on peut donc la nommer (elle ne l'est plus dans l'état actuel, qui ne
+    // contient que ce qu'il reste dans la pile après la reprise).
+    const known = prevState && prevState.discardPile.find((c) => c.id === state.drawnCardId);
+    showToast(known ? `🎭 ${name} reprend ${cardLabel(known)} en défausse.` : `🎭 ${name} reprend une carte en défausse.`);
+  } else {
+    showToast(`🎭 ${name} pioche une carte.`);
+  }
 }
 
 // Le 2 de cœur joue le rôle du Joker mais s'affiche comme une carte normale
@@ -367,10 +387,12 @@ function cardCompletesMeld(card, meld) {
   return card.rank === circleStep(firstRank, -1) || card.rank === circleStep(lastRank, 1);
 }
 
-// La carte prise précisément en défausse doit être réglée (jouée ou
-// défaussée) ce tour-ci. Si elle est encore en main, on doit toujours
-// pouvoir la repérer et la libérer même si elle a été mise en attente
-// dans une combinaison d'ouverture non validée — sinon le tour se bloque.
+// La carte prise précisément en défausse doit être jouée dans une
+// combinaison ce tour-ci (règle stricte : impossible de la redéfausser
+// directement). Si elle est encore en main, on doit toujours pouvoir la
+// repérer et la libérer même si elle a été mise en attente dans une
+// combinaison d'ouverture non validée — sinon impossible de la sélectionner
+// pour l'inclure ailleurs ou pour tout reprendre via "Reprendre ma pioche".
 function mustResolveCardId(state) {
   if (!state || !state.drawnFromDiscard || !state.isMyTurn || state.turnPhase !== 'JEU') return null;
   const id = state.drawnCardId;
@@ -385,6 +407,22 @@ function playableHintIds(state) {
     if (state.table.some((meld) => cardCompletesMeld(card, meld))) ids.add(card.id);
   }
   return ids;
+}
+
+// Au survol d'une carte en surbrillance (cartes jouables), met aussi en
+// valeur la/les combinaison(s) du tapis qu'elle pourrait compléter — sinon
+// le joueur voit "cette carte est jouable" sans savoir où la poser.
+function highlightTargetMelds(card) {
+  if (!latestState) return;
+  for (const meld of latestState.table) {
+    if (!cardCompletesMeld(card, meld)) continue;
+    const rowEl = document.querySelector(`.rami-meld[data-meld-id="${meld.id}"]`);
+    if (rowEl) rowEl.classList.add('rami-meld--target');
+  }
+}
+
+function clearTargetMeldHighlight() {
+  document.querySelectorAll('.rami-meld--target').forEach((el) => el.classList.remove('rami-meld--target'));
 }
 
 function sortByRank(cards) {
@@ -441,8 +479,19 @@ function renderHand() {
     el.className = `rami-card ${cardColorClass(card)}`;
     if (selected.has(card.id)) el.classList.add('rami-selected');
     if (hintIds.has(card.id)) el.classList.add('rami-hint');
-    if (card.id === mustResolveId) el.classList.add('rami-must-resolve');
+    if (card.id === mustResolveId) {
+      el.classList.add('rami-must-resolve');
+      // Toujours visible/jouable (voir mustResolveCardId), mais si elle est
+      // déjà dans un groupe d'ouverture en attente, le signaler clairement :
+      // sinon on dirait qu'elle traîne encore librement dans la main alors
+      // qu'elle est déjà "utilisée" côté groupe staged.
+      if (stagedIds.has(card.id)) el.classList.add('rami-must-resolve--staged');
+    }
     el.innerHTML = cardFaceHTML(card);
+    if (hintIds.has(card.id)) {
+      el.addEventListener('mouseenter', () => highlightTargetMelds(card));
+      el.addEventListener('mouseleave', clearTargetMeldHighlight);
+    }
     el.addEventListener('click', () => {
       if (selected.has(card.id)) selected.delete(card.id);
       else selected.add(card.id);
@@ -476,6 +525,7 @@ function renderTable(state) {
   for (const meld of state.table) {
     const row = document.createElement('div');
     row.className = 'rami-meld';
+    row.dataset.meldId = meld.id;
     row.addEventListener('click', () => {
       if (selected.size === 0) return;
       socket.emit('rami-lay-off', { meldId: meld.id, cards: [...selected] });
@@ -549,14 +599,21 @@ function renderResolveBanner() {
   const card = mustResolveId && currentHand.find((c) => c.id === mustResolveId);
   const canUndo = Boolean(latestState && latestState.canUndoDraw);
   resolveBanner.classList.toggle('hidden', !card && !canUndo);
-  if (card) {
-    resolveBannerText.textContent = `Carte prise à la défausse à régler : ${cardLabel(card)} — joue-la, défausse-la, ou reprends ta pioche.`;
+  // La carte a regler reste toujours visible/selectionnable dans la main
+  // meme une fois mise dans un groupe d'ouverture en attente (sinon
+  // impossible de la reprendre) - mais ca peut donner l'impression qu'elle
+  // "n'a servi a rien" : le texte le precise explicitement dans ce cas.
+  const isStaged = mustResolveId && openStaging.some((g) => g.cardIds.includes(mustResolveId));
+  if (card && isStaged) {
+    resolveBannerText.textContent = `${cardLabel(card)} est déjà dans ta combinaison en attente — valide l'ouverture pour la jouer, ou clique 🔓 pour la reprendre et reprendre ta pioche autrement.`;
+  } else if (card) {
+    // Règle stricte : impossible de la redéfausser directement, il faut soit
+    // la jouer dans une combinaison, soit tout reprendre (les autres cartes
+    // prises avec elle restent elles aussi bloquées tant qu'elle ne l'est pas).
+    resolveBannerText.textContent = `Carte prise à la défausse à jouer : ${cardLabel(card)} — pose-la dans une combinaison, ou reprends ta pioche si tu ne peux pas.`;
   } else if (canUndo) {
     resolveBannerText.textContent = 'Tu peux encore reprendre ta pioche pour piocher autrement.';
   }
-  // "Libérer" ne sert que si la carte à régler est actuellement cachée dans
-  // une combinaison d'ouverture non validée (donc pas sélectionnable).
-  const isStaged = mustResolveId && openStaging.some((g) => g.cardIds.includes(mustResolveId));
   btnClearStaging.classList.toggle('hidden', !isStaged);
   btnUndoDraw.classList.toggle('hidden', !canUndo);
 }
@@ -588,12 +645,22 @@ function updateActionButtons() {
   drawPileBtn.disabled = !canDraw;
 
   const canAct = s.isMyTurn && s.turnPhase === 'JEU';
+  // Règle stricte de la carte prise à la défausse : tant qu'elle n'est pas
+  // couverte (sélectionnée maintenant, ou déjà dans un groupe en attente),
+  // aucune autre action (poser, défausser) n'est possible — seule "Reprendre
+  // ma pioche" (bouton séparé, dans la bannière) reste disponible.
+  const mustResolveId = mustResolveCardId(s);
+  const stagedIds = new Set(openStaging.flatMap((g) => g.cardIds));
+  const resolvingCovered = !mustResolveId || selected.has(mustResolveId) || stagedIds.has(mustResolveId);
+
   btnStageGroup.classList.toggle('hidden', s.hasOpened);
   btnLayMeld.classList.toggle('hidden', !s.hasOpened);
-  btnStageGroup.disabled = !canAct || selected.size < 3;
-  btnLayMeld.disabled = !canAct || selected.size < 3;
-  btnDiscard.disabled = !canAct || selected.size !== 1;
-  btnValidateOpen.disabled = !canAct || openStaging.length === 0;
+  btnStageGroup.disabled = !canAct || selected.size < 3 || !resolvingCovered;
+  btnLayMeld.disabled = !canAct || selected.size < 3 || !resolvingCovered;
+  // Défausser est totalement impossible tant que la carte prise à la
+  // défausse n'a pas été jouée (règle stricte, aucune exception côté serveur).
+  btnDiscard.disabled = !canAct || selected.size !== 1 || Boolean(mustResolveId);
+  btnValidateOpen.disabled = !canAct || openStaging.length === 0 || !resolvingCovered;
 }
 
 btnStageGroup.addEventListener('click', () => {
@@ -729,7 +796,7 @@ socket.on('rami-state', (state) => {
   // valides, on les enleve plutot que de laisser des references mortes.
   openStaging = openStaging.filter((g) => g.cardIds.every((id) => currentHand.some((c) => c.id === id)));
   if (state.hasOpened) openStaging = [];
-  maybeShowDrawPopup(state);
+  handleNewDraw(latestState, state);
   latestState = state;
   renderAll();
 });
