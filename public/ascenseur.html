@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guimams — L'Ascenseur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="ascenseur.css" />
+</head>
+<body>
+  <main class="app asc-app">
+    <p id="asc-toast" class="hint asc-toast hidden"></p>
+    <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
+
+    <section id="asc-screen-home" class="screen">
+      <a href="index.html" class="btn-link">← Tous les jeux</a>
+      <p class="mascot" aria-hidden="true">🛗</p>
+      <h1><span class="suit suit-black">♠</span>L'Ascenseur<span class="suit suit-red">♥</span></h1>
+      <p class="tagline">De 3 à 7 joueurs — annonce tes plis, ne te trompe pas.</p>
+      <button id="asc-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+
+      <div class="nickname-field">
+        <input id="asc-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      </div>
+
+      <button id="asc-btn-create" class="btn btn-primary btn-create">
+        <span class="btn-icon">🛗</span> Créer une partie
+      </button>
+      <div class="divider">ou rejoindre avec un code</div>
+      <form id="asc-form-join">
+        <input id="asc-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" />
+        <button type="submit" class="btn">Rejoindre</button>
+      </form>
+      <p id="asc-home-error" class="error"></p>
+    </section>
+
+    <section id="asc-screen-waiting" class="screen hidden">
+      <button id="asc-btn-leave-waiting" class="btn-link">← Quitter</button>
+
+      <div id="asc-share-block" class="invite-card hidden">
+        <p class="invite-label">Code de la partie</p>
+        <div class="code-badge" id="asc-share-code"></div>
+        <button id="asc-btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
+        <input id="asc-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      </div>
+
+      <div id="asc-lobby-players" class="lobby-players hidden">
+        <p class="invite-label">Joueurs — <span id="asc-lobby-count">1</span> (3 à 7)</p>
+        <ul id="asc-lobby-list" class="lobby-list"></ul>
+      </div>
+
+      <button id="asc-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
+      <p id="asc-waiting-hint" class="hint"></p>
+    </section>
+
+    <section id="asc-screen-game" class="screen hidden">
+      <div class="asc-game-header">
+        <button id="asc-btn-leave-game" class="btn-link">← Quitter</button>
+        <p id="asc-round-indicator" class="asc-round-indicator"></p>
+        <button id="asc-btn-end-game" class="btn btn-small hidden">🏁 Terminer</button>
+      </div>
+
+      <div class="asc-play-area">
+        <div id="asc-table" class="asc-table">
+          <div class="asc-trump-block">
+            <div id="asc-trump-card" class="asc-trump-card"></div>
+            <span id="asc-trump-label" class="asc-trump-label"></span>
+          </div>
+          <div class="asc-table-center">
+            <div id="asc-trick-cards" class="asc-trick-cards"></div>
+            <p id="asc-trick-caption" class="asc-trick-caption"></p>
+          </div>
+        </div>
+
+        <aside class="asc-scoreboard">
+          <div class="asc-elevator">
+            <div class="asc-elevator-track">
+              <div id="asc-elevator-fill" class="asc-elevator-fill"></div>
+              <div id="asc-elevator-knob" class="asc-elevator-knob"></div>
+            </div>
+            <p id="asc-elevator-label" class="asc-elevator-label"></p>
+          </div>
+          <div id="asc-scoreboard-rows" class="asc-scoreboard-rows"></div>
+        </aside>
+      </div>
+
+      <p id="asc-turn-indicator" class="asc-turn-indicator"></p>
+      <div id="asc-bid-choices" class="asc-bid-choices"></div>
+      <div id="asc-hand" class="asc-hand"></div>
+    </section>
+
+    <div id="asc-round-popup" class="asc-round-popup hidden">
+      <div class="asc-round-popup-inner">
+        <h3 id="asc-round-popup-title"></h3>
+        <div id="asc-round-popup-rows" class="asc-round-popup-rows"></div>
+        <div class="asc-round-popup-timer"><div id="asc-round-popup-bar" class="asc-round-popup-bar"></div></div>
+        <button id="asc-btn-next-round" class="btn btn-small hidden">⏭️ Manche suivante</button>
+      </div>
+    </div>
+
+    <section id="asc-screen-end" class="screen hidden">
+      <h2 id="asc-end-title"></h2>
+      <table class="asc-score-table">
+        <thead><tr><th>Joueur</th><th>Total</th></tr></thead>
+        <tbody id="asc-end-body"></tbody>
+      </table>
+      <button id="asc-btn-rematch" class="btn btn-primary">🔄 Rejouer</button>
+      <button id="asc-btn-leave-end" class="btn btn-leave-end">Quitter</button>
+    </section>
+  </main>
+
+  <div id="asc-rules-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Règles de L'Ascenseur</h2>
+      <ol>
+        <li>3 à 7 joueurs. Le nombre de cartes distribuées monte de 1 jusqu'au maximum possible, puis redescend jusqu'à 1.</li>
+        <li>Après la donne, la carte suivante est retournée pour définir l'atout (sans atout si le paquet est épuisé pile).</li>
+        <li>Chaque joueur annonce son nombre de plis prévus, dans l'ordre, le donneur en dernier. La somme des annonces ne peut jamais être égale au nombre de plis en jeu.</li>
+        <li>Obligation de fournir la couleur demandée si possible, sinon carte libre (atout ou non).</li>
+        <li>Score — contrat 0 réussi : +5×manche, raté : -5×manche. Contrat ≥1 réussi exactement : +10 par pli. Contrat ≥1 raté : -10 par pli d'écart.</li>
+        <li>La partie peut s'arrêter avant la fin de toutes les manches, à la discrétion de l'hôte : le classement se fait alors sur le score accumulé jusque-là.</li>
+      </ol>
+      <button id="asc-btn-close-rules" class="btn btn-primary">Compris !</button>
+    </div>
+  </div>
+
+  <div id="asc-join-modal" class="modal hidden">
+    <div class="modal-content join-modal-content">
+      <p class="invite-label">Rejoindre la partie</p>
+      <input id="asc-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <button id="asc-btn-join-modal" class="btn btn-primary">Rejoindre</button>
+      <p id="asc-join-modal-error" class="error"></p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="ascenseur.js"></script>
+</body>
+</html>

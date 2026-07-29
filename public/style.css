@@ -294,6 +294,14 @@ h1 {
   color: #d4f3e2;
 }
 
+.game-preview-card--ascenseur {
+  background: linear-gradient(160deg, #0f2a3d, #060f17);
+}
+
+.game-preview-card--ascenseur .game-preview-tagline {
+  color: #cfeaf7;
+}
+
 .btn-icon {
   font-size: 1.3rem;
 }
