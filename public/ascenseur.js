@@ -260,7 +260,6 @@ const btnEndGame = document.getElementById('asc-btn-end-game');
 const tableEl = document.getElementById('asc-table');
 const trumpCardEl = document.getElementById('asc-trump-card');
 const trumpLabelEl = document.getElementById('asc-trump-label');
-const trickCardsEl = document.getElementById('asc-trick-cards');
 const trickCaptionEl = document.getElementById('asc-trick-caption');
 const turnIndicator = document.getElementById('asc-turn-indicator');
 const bidChoices = document.getElementById('asc-bid-choices');
@@ -298,13 +297,28 @@ function nicknameOf(state, id) {
   return p ? p.nickname : '?';
 }
 
-function renderSeats(state) {
+// Position du siège de chaque joueur, partagée par l'affichage des sièges et
+// par celui du pli (qui pose la carte de chacun juste devant lui).
+function seatLayout(state) {
   const ordered = seatOrder(state.players);
   const positions = SEAT_POSITIONS[ordered.length] || SEAT_POSITIONS[4];
+  const map = new Map();
+  ordered.forEach((p, i) => map.set(p.id, positions[i]));
+  return { ordered, map };
+}
+
+// Au-delà de ce nombre, les dos de cartes empiètent sur la table et masquent
+// le jeu (à 7 joueurs × 7 cartes, la table devient illisible) : on plafonne
+// l'empilement affiché et le compte exact passe dans une pastille. Même
+// solution que la pile de bataille côté Bataille.
+const MAX_VISIBLE_BACKS = 4;
+
+function renderSeats(state) {
+  const { ordered, map } = seatLayout(state);
   tableEl.querySelectorAll('.asc-seat').forEach((el) => el.remove());
 
-  ordered.forEach((p, i) => {
-    const [left, top] = positions[i];
+  ordered.forEach((p) => {
+    const [left, top] = map.get(p.id);
     const seat = document.createElement('div');
     seat.className = 'asc-seat' + (p.id === myId ? ' asc-seat--me' : '');
     seat.style.left = left + '%';
@@ -314,15 +328,35 @@ function renderSeats(state) {
     const activeId = state.phase === 'bidding' ? state.bidTurnPlayerId : state.turnPlayerId;
     if (p.id === activeId) seat.classList.add('asc-seat--turn');
 
-    // Dos de cartes seulement pour les autres : ma propre main est déjà
-    // affichée en éventail sous la table.
+    // Cartes des autres joueurs seulement : ma propre main est déjà affichée
+    // en éventail sous la table. Pendant une manche à l'aveugle, leur main
+    // est visible face découverte — c'est tout l'intérêt de la règle.
     if (p.id !== myId) {
       const cards = document.createElement('div');
       cards.className = 'asc-seat-cards';
-      for (let c = 0; c < p.handCount; c++) {
-        const back = document.createElement('div');
-        back.className = 'asc-back-card';
-        cards.appendChild(back);
+
+      if (p.visibleHand && p.visibleHand.length) {
+        cards.classList.add('asc-seat-cards--open');
+        p.visibleHand.forEach((card) => {
+          const el = document.createElement('div');
+          el.className = `asc-seat-card ${cardColorClass(card)}`;
+          el.innerHTML = cardFaceHTML(card);
+          cards.appendChild(el);
+        });
+      } else {
+        const shown = Math.min(p.handCount, MAX_VISIBLE_BACKS);
+        for (let c = 0; c < shown; c++) {
+          const back = document.createElement('div');
+          back.className = 'asc-back-card';
+          cards.appendChild(back);
+        }
+        if (p.handCount > 0) {
+          const count = document.createElement('span');
+          count.className = 'asc-seat-count';
+          count.textContent = p.handCount;
+          count.title = `${p.handCount} carte${p.handCount > 1 ? 's' : ''} en main`;
+          cards.appendChild(count);
+        }
       }
       seat.appendChild(cards);
     }
@@ -365,29 +399,33 @@ function renderTrump(state) {
   }
 }
 
-// Le pli au centre : les cartes se chevauchent comme une vraie levée posée
-// sur la table, et celle qui l'emporte pour l'instant est soulevée et
-// entourée de vert.
+// Chaque carte jouée se pose juste devant son joueur, entre son siège et le
+// centre de la table : le pli forme donc un cercle et on voit d'un coup d'œil
+// à qui appartient la carte qui l'emporte, sans avoir à lire des étiquettes.
+const TRICK_PULL = 0.46; // 0 = collé au siège, 1 = au centre de la table
+
 function renderTrick(state) {
-  trickCardsEl.innerHTML = '';
+  tableEl.querySelectorAll('.asc-trick-card').forEach((el) => el.remove());
   const trick = state.currentTrick || [];
+  const { map } = seatLayout(state);
 
   trick.forEach((t) => {
+    const seatPos = map.get(t.playerId);
+    if (!seatPos) return;
+    const [seatLeft, seatTop] = seatPos;
+
     const slot = document.createElement('div');
-    slot.className = 'asc-trick-slot';
-    if (t.playerId === state.leadingPlayerId) slot.classList.add('asc-trick-slot--leading');
+    slot.className = 'asc-trick-card';
+    slot.style.left = `${seatLeft + (50 - seatLeft) * TRICK_PULL}%`;
+    slot.style.top = `${seatTop + (50 - seatTop) * TRICK_PULL}%`;
+    if (t.playerId === state.leadingPlayerId) slot.classList.add('asc-trick-card--leading');
 
     const cardEl = document.createElement('div');
     cardEl.className = `asc-card ${cardColorClass(t.card)}`;
     cardEl.innerHTML = cardFaceHTML(t.card);
     slot.appendChild(cardEl);
 
-    const name = document.createElement('span');
-    name.className = 'asc-trick-name';
-    name.textContent = nicknameOf(state, t.playerId);
-    slot.appendChild(name);
-
-    trickCardsEl.appendChild(slot);
+    tableEl.appendChild(slot);
   });
 
   if (trick.length === 0) {
@@ -414,17 +452,24 @@ function renderBidChoices(state) {
 }
 
 function renderTurnIndicator(state) {
+  // La règle de la manche à l'aveugle n'est pas devinable en regardant
+  // l'écran (on voit juste un dos de carte) : on la rappelle explicitement.
+  const blindHint = state.blindRound ? '🙈 Manche à l\'aveugle — tu vois les cartes des autres, pas la tienne. ' : '';
+
   if (state.phase === 'bidding') {
-    turnIndicator.textContent = state.isMyBidTurn
-      ? 'Combien de plis vas-tu faire ?'
-      : `${nicknameOf(state, state.bidTurnPlayerId)} annonce…`;
+    turnIndicator.textContent =
+      blindHint +
+      (state.isMyBidTurn
+        ? 'Combien de plis vas-tu faire ?'
+        : `${nicknameOf(state, state.bidTurnPlayerId)} annonce…`);
     return;
   }
   if (state.trickPaused) {
     turnIndicator.textContent = 'Le pli se ramasse…';
     return;
   }
-  turnIndicator.textContent = state.isMyTurn ? 'À toi de jouer !' : `${nicknameOf(state, state.turnPlayerId)} joue…`;
+  turnIndicator.textContent =
+    blindHint + (state.isMyTurn ? 'À toi de jouer !' : `${nicknameOf(state, state.turnPlayerId)} joue…`);
 }
 
 // Main en éventail, même technique qu'au Rami : un wrapper porte la rotation
@@ -449,10 +494,16 @@ function renderHand(state) {
     arc.className = 'asc-card-arc';
     arc.style.transform = `rotate(${angle}deg) translateY(${lift}px)`;
 
-    const illegal = canPlay && hasLeadSuit && card.suit !== state.leadSuit;
+    // Manche à l'aveugle : le serveur n'envoie que l'identifiant de la carte,
+    // on affiche donc un dos. Il reste cliquable (il faut bien pouvoir jouer)
+    // et la contrainte de couleur n'est pas signalée — impossible de la
+    // calculer sans connaître sa carte, et le serveur reste seul juge.
+    const illegal = !card.hidden && canPlay && hasLeadSuit && card.suit !== state.leadSuit;
     const el = document.createElement('div');
-    el.className = `asc-card ${cardColorClass(card)}${illegal ? ' asc-card--disabled' : ''}`;
-    el.innerHTML = cardFaceHTML(card);
+    el.className = card.hidden
+      ? 'asc-card asc-card--hidden'
+      : `asc-card ${cardColorClass(card)}${illegal ? ' asc-card--disabled' : ''}`;
+    if (!card.hidden) el.innerHTML = cardFaceHTML(card);
     if (illegal) el.title = `Tu dois fournir ${SUIT_SYMBOL[state.leadSuit]}`;
     if (canPlay && !illegal) {
       el.addEventListener('click', () => socket.emit('ascenseur-play-card', { cardId: card.id }));
@@ -491,10 +542,55 @@ function renderScoreboard(state) {
   elevatorLabel.textContent = `${state.cardsInRound} carte${state.cardsInRound > 1 ? 's' : ''} par joueur`;
 }
 
+// Petite pile au centre de la table qui distribue une carte à chacun, dans
+// l'ordre des sièges, au tout début de chaque manche — purement décoratif
+// (le serveur a déjà distribué les vraies mains, ceci ne fait qu'illustrer
+// la donne pendant qu'elle arrive). Plafonné à quelques tours de distribution
+// : à 7 joueurs sur la manche 7, animer les 49 cartes une par une traînerait
+// inutilement en longueur.
+let lastDealAnimatedRound = null;
+const DEAL_MAX_WAVES = 5;
+const DEAL_WAVE_MS = 70;
+const DEAL_FLIGHT_MS = 550;
+
+function maybeAnimateDeal(state) {
+  if (state.phase !== 'bidding' || state.roundNumber === lastDealAnimatedRound) return;
+  lastDealAnimatedRound = state.roundNumber;
+
+  const { ordered, map } = seatLayout(state);
+  const waves = Math.min(state.cardsInRound, DEAL_MAX_WAVES);
+
+  const pile = document.createElement('div');
+  pile.className = 'asc-deck-pile';
+  tableEl.appendChild(pile);
+
+  let i = 0;
+  for (let w = 0; w < waves; w++) {
+    ordered.forEach((p) => {
+      const [left, top] = map.get(p.id);
+      const card = document.createElement('div');
+      card.className = 'asc-flying-card';
+      tableEl.appendChild(card);
+      const anim = card.animate(
+        [
+          { left: '50%', top: '50%', transform: 'translate(-50%, -50%) scale(0.8)', opacity: 0 },
+          { left: '50%', top: '50%', transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.15 },
+          { left: `${left}%`, top: `${top}%`, transform: 'translate(-50%, -50%) scale(0.8)', opacity: 1 },
+        ],
+        { duration: DEAL_FLIGHT_MS, delay: i * DEAL_WAVE_MS, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' }
+      );
+      anim.onfinish = () => card.remove();
+      i += 1;
+    });
+  }
+  setTimeout(() => pile.remove(), i * DEAL_WAVE_MS + DEAL_FLIGHT_MS + 150);
+}
+
 function renderGame(state) {
   latestState = state;
   roundIndicator.textContent = `Manche ${state.roundNumber}`;
   btnEndGame.classList.toggle('hidden', !myIsHost);
+  maybeAnimateDeal(state);
   renderSeats(state);
   renderTrump(state);
   renderTrick(state);

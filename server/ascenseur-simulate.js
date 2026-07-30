@@ -39,7 +39,21 @@ check('séquence à 3 joueurs : 1..17..1', buildRoundSequence(3), [
   ...Array.from({ length: 16 }, (_, i) => 16 - i),
 ]);
 check('séquence à 7 joueurs : longueur 13 (montée 1..7 + descente 6..1)', buildRoundSequence(7).length, 13);
-check('séquence : dernière manche = 1 carte', buildRoundSequence(5).slice(-1)[0], 1);
+
+// Les manches à 1 carte se jouent à l'aveugle (chacun voit la main des
+// autres, pas la sienne) : la règle côté serveur ne teste que
+// `cardsInRound === 1`, donc ce sont bien la première ET la dernière manche
+// qui sont concernées, et elles seules.
+for (const players of [3, 4, 5, 6, 7]) {
+  const seq = buildRoundSequence(players);
+  check(`séquence à ${players} joueurs : commence à 1 carte`, seq[0], 1);
+  check(`séquence à ${players} joueurs : finit à 1 carte`, seq[seq.length - 1], 1);
+  check(
+    `séquence à ${players} joueurs : exactement 2 manches à l'aveugle`,
+    seq.filter((n) => n === 1).length,
+    2
+  );
+}
 
 // --- dealRound ---
 const round7 = dealRound(7, 7);

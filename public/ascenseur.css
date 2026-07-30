@@ -31,6 +31,16 @@ body::before {
   z-index: 0;
 }
 
+body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #fbbf2422 0%, transparent 55%);
+  animation: felt-drift 26s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
 @keyframes felt-drift {
   0%, 100% {
     transform: translate(-6%, -8%) scale(1);
@@ -120,17 +130,19 @@ h1 {
   padding: 12px 20px;
   border: 3px solid #1a1a1a;
   border-radius: 12px;
-  background: #1d6f8f;
+  background: linear-gradient(160deg, #2589ad, #145067);
   color: #fff;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
-  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .btn:hover {
-  background: #2589ad;
+  background: linear-gradient(160deg, #33a3cb, #1a6383);
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.4);
 }
 
 .btn:active {
@@ -183,14 +195,16 @@ h1 {
 }
 
 .btn-primary {
-  background: #facc15;
+  background: linear-gradient(160deg, #fde047, #facc15);
   color: #1a1a1a;
   border-color: #1a1208;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
 }
 
 .btn-primary:hover {
-  background: #fde047;
+  background: linear-gradient(160deg, #fef08a, #fde047);
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(250, 204, 21, 0.45);
 }
 
 .btn-primary:active {
@@ -210,6 +224,16 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  animation: create-btn-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes create-btn-breathe {
+  0%, 100% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 21, 0.5);
+  }
 }
 
 .btn-icon {
@@ -509,55 +533,37 @@ h1 {
   gap: 4px;
 }
 
-/* Le pli : une rangee de cartes qui se chevauchent, comme la defausse du
-   Rami, plutot que des cartes isolees les unes a cote des autres. */
-.asc-trick-cards {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  min-height: 92px;
-  padding-left: 14px;
+/* Chaque carte du pli est posee devant son joueur (position calculee en JS
+   entre son siege et le centre) : le pli forme un cercle, on voit donc
+   immediatement a qui appartient la carte gagnante. */
+.asc-trick-card {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  animation: asc-card-drop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.asc-trick-slot {
-  position: relative;
-  margin-left: -14px;
-  transition: transform 0.25s ease;
-}
-
-.asc-trick-slot:first-child {
-  margin-left: 0;
-}
-
-.asc-trick-name {
-  display: block;
-  margin-top: 3px;
-  max-width: 54px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-  font-size: 0.65rem;
-  opacity: 0.75;
+@keyframes asc-card-drop {
+  from {
+    transform: translate(-50%, -20%) scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
 }
 
 /* Carte qui remporte le pli en l'etat : lueur verte, comme la surbrillance
    des cartes jouables au Rami. */
-.asc-trick-slot--leading {
-  transform: translateY(-10px);
-  z-index: 3;
+.asc-trick-card--leading {
+  z-index: 4;
 }
 
-.asc-trick-slot--leading .asc-card {
+.asc-trick-card--leading .asc-card {
   border-color: #4ade80;
   box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 3px 3px 0 rgba(0, 0, 0, 0.35);
   animation: asc-leading-pulse 1.4s ease-in-out infinite;
-}
-
-.asc-trick-slot--leading .asc-trick-name {
-  opacity: 1;
-  color: #4ade80;
-  font-weight: 800;
 }
 
 @keyframes asc-leading-pulse {
@@ -577,24 +583,22 @@ h1 {
   text-align: center;
 }
 
+/* L'atout vit sous le tableau de score, hors de la table : posee sur le
+   tapis elle masquait une partie du jeu. */
 .asc-trump-block {
-  position: absolute;
-  top: 8px;
-  left: 10px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  z-index: 4;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ffffff1f;
 }
 
 .asc-trump-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #facc15;
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 8px;
-  padding: 1px 7px;
 }
 
 /* --- Sieges --- */
@@ -675,15 +679,16 @@ h1 {
 
 .asc-seat-cards {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 3px;
   height: 34px;
-  padding-left: 8px;
 }
 
 .asc-back-card {
   width: 22px;
   height: 32px;
-  margin-left: -8px;
+  margin-left: -14px;
   border-radius: 4px;
   background: repeating-linear-gradient(45deg, #123c52 0px, #123c52 3px, #0d2c3d 3px, #0d2c3d 6px);
   border: 2px solid #061620;
@@ -692,6 +697,67 @@ h1 {
 
 .asc-back-card:first-child {
   margin-left: 0;
+}
+
+/* Pile de distribution au centre de la table, et cartes volantes qui en
+   sortent vers chaque siège en début de manche (voir maybeAnimateDeal). */
+.asc-deck-pile {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 32px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #123c52 0px, #123c52 3px, #0d2c3d 3px, #0d2c3d 6px);
+  border: 2px solid #061620;
+  transform: translate(-50%, -50%);
+  box-shadow: 2px 2px 0 #061620, 4px 4px 0 #04101899;
+  z-index: 5;
+  animation: asc-card-drop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.asc-flying-card {
+  position: absolute;
+  width: 22px;
+  height: 32px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #123c52 0px, #123c52 3px, #0d2c3d 3px, #0d2c3d 6px);
+  border: 2px solid #061620;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* Nombre exact de cartes en main : l'empilement visuel est plafonne, c'est
+   donc cette pastille qui porte l'information juste. */
+.asc-seat-count {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+/* Main d'un adversaire pendant une manche a l'aveugle : face decouverte,
+   en tout petit, juste au-dessus de son badge. */
+.asc-seat-cards--open {
+  gap: 2px;
+}
+
+.asc-seat-card {
+  position: relative;
+  width: 26px;
+  height: 36px;
+  border-radius: 4px;
+  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
+  border: 2px solid #1a1208;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
 /* --- Tableau de score discret + ascenseur de progression --- */
@@ -834,7 +900,7 @@ h1 {
   width: 66px;
   height: 96px;
   border-radius: 10px;
-  background: #fff9ec;
+  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
   border: 3px solid #1a1208;
   display: flex;
   align-items: center;
@@ -865,8 +931,15 @@ h1 {
   transform: none;
 }
 
+/* Ma propre carte pendant une manche a l'aveugle : je ne dois pas la voir,
+   mais elle reste cliquable pour pouvoir la jouer. */
+.asc-card--hidden {
+  background: repeating-linear-gradient(45deg, #123c52 0px, #123c52 5px, #0d2c3d 5px, #0d2c3d 10px);
+  border-color: #061620;
+}
+
 /* Cartes du pli et carte d'atout : plus petites, jamais cliquables. */
-.asc-trick-slot .asc-card,
+.asc-trick-card .asc-card,
 .asc-trump-card {
   width: 54px;
   height: 78px;
@@ -877,7 +950,7 @@ h1 {
 .asc-trump-card {
   position: relative;
   border-radius: 10px;
-  background: #fff9ec;
+  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
   border: 3px solid #1a1208;
   display: flex;
   align-items: center;

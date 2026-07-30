@@ -174,10 +174,22 @@ function scoreboard(room) {
   }));
 }
 
+// Manche à l'aveugle : dès qu'on ne joue qu'une seule carte, chacun voit la
+// main de tous les autres mais pas la sienne (on joue "sur le front", comme
+// au poker indien). C'est ce qui rend l'annonce intéressante alors qu'il n'y
+// a rien à décider. Concerne donc la première manche et la dernière, la
+// séquence montant de 1 puis redescendant jusqu'à 1.
+function isBlindRound(room) {
+  return room.cardsInRound === 1;
+}
+
 function stateFor(room, p) {
+  const blind = isBlindRound(room);
+  const inRound = room.phase === 'bidding' || room.phase === 'playing';
   const base = {
     phase: room.phase,
     myId: p.id,
+    blindRound: blind,
     players: room.players.map((pp) => ({
       id: pp.id,
       nickname: pp.nickname,
@@ -185,6 +197,10 @@ function stateFor(room, p) {
       handCount: pp.hand ? pp.hand.length : 0,
       tricksWon: pp.tricksWon || 0,
       bid: room.bids ? room.bids[pp.id] : undefined,
+      // Main visible des AUTRES joueurs pendant une manche à l'aveugle. La
+      // sienne n'est jamais envoyée ici : c'est justement la seule qu'on ne
+      // doit pas pouvoir lire, y compris en inspectant les données reçues.
+      visibleHand: blind && inRound && pp.id !== p.id ? pp.hand : null,
     })),
     dealerId: room.players[room.dealerIndex] && room.players[room.dealerIndex].id,
     // Renvoyé à chaque état (et pas seulement dans le lobby) pour que l'hôte
@@ -198,8 +214,11 @@ function stateFor(room, p) {
     scoreboard: scoreboard(room),
   };
 
-  if (room.phase === 'bidding' || room.phase === 'playing') {
-    base.hand = p.hand;
+  if (inRound) {
+    // À l'aveugle on n'envoie que les identifiants : impossible de deviner sa
+    // propre carte, même en lisant les messages reçus. Le client affiche des
+    // dos de cartes qui restent cliquables pour pouvoir les jouer.
+    base.hand = blind ? p.hand.map((c) => ({ id: c.id, hidden: true })) : p.hand;
     base.bidTurnPlayerId = room.phase === 'bidding' ? bidderAt(room, room.bidTurnCount).id : null;
     base.isMyBidTurn = room.phase === 'bidding' && bidderAt(room, room.bidTurnCount).id === p.id;
     base.bids = room.bids;
