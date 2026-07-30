@@ -10,29 +10,45 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="app">
+  <main class="app hub-app">
     <section id="screen-hub" class="screen">
       <div class="platform-logo">
         <span class="platform-logo-icon">🃏</span>
         <span class="platform-logo-text">Guimams</span>
       </div>
-      <p class="tagline">Choisis un jeu :</p>
+      <h1 class="hub-title">Guimams</h1>
+      <p class="tagline">4 jeux de cartes à jouer en ligne, entre amis</p>
 
-      <a href="bataille.html" class="game-preview-card game-preview-card--bataille">
-        <span class="game-preview-mascot">⚔️</span>
-        <span class="game-preview-name">Bataille</span>
-        <span class="game-preview-tagline">Le grand classique, de 2 à 4 joueurs</span>
-      </a>
-      <a href="rami.html" class="game-preview-card game-preview-card--rami">
-        <span class="game-preview-mascot">🎭</span>
-        <span class="game-preview-name">Rami</span>
-        <span class="game-preview-tagline">Notre variante maison, à 2 joueurs</span>
-      </a>
-      <a href="ascenseur.html" class="game-preview-card game-preview-card--ascenseur">
-        <span class="game-preview-mascot">🛗</span>
-        <span class="game-preview-name">L'Ascenseur</span>
-        <span class="game-preview-tagline">Annonce tes plis, de 3 à 7 joueurs</span>
-      </a>
+      <div class="game-grid">
+        <a href="bataille.html" class="game-preview-card game-preview-card--bataille" style="--stagger: 0">
+          <span class="game-preview-badge">⚔️</span>
+          <span class="game-preview-name">Bataille</span>
+          <span class="game-preview-tagline">Le grand classique</span>
+          <span class="game-preview-meta">2 à 4 joueurs</span>
+          <span class="game-preview-cta">Jouer <span class="game-preview-cta-arrow">→</span></span>
+        </a>
+        <a href="rami.html" class="game-preview-card game-preview-card--rami" style="--stagger: 1">
+          <span class="game-preview-badge">🎭</span>
+          <span class="game-preview-name">Rami</span>
+          <span class="game-preview-tagline">Notre variante maison</span>
+          <span class="game-preview-meta">2 joueurs</span>
+          <span class="game-preview-cta">Jouer <span class="game-preview-cta-arrow">→</span></span>
+        </a>
+        <a href="ascenseur.html" class="game-preview-card game-preview-card--ascenseur" style="--stagger: 2">
+          <span class="game-preview-badge">🛗</span>
+          <span class="game-preview-name">L'Ascenseur</span>
+          <span class="game-preview-tagline">Annonce tes plis</span>
+          <span class="game-preview-meta">3 à 7 joueurs</span>
+          <span class="game-preview-cta">Jouer <span class="game-preview-cta-arrow">→</span></span>
+        </a>
+        <a href="skullking.html" class="game-preview-card game-preview-card--skullking" style="--stagger: 3">
+          <span class="game-preview-badge">💀</span>
+          <span class="game-preview-name">Skull King</span>
+          <span class="game-preview-tagline">10 manches de pirates</span>
+          <span class="game-preview-meta">2 à 7 joueurs</span>
+          <span class="game-preview-cta">Jouer <span class="game-preview-cta-arrow">→</span></span>
+        </a>
+      </div>
     </section>
   </main>
 </body>

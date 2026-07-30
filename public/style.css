@@ -19,13 +19,25 @@ body {
 }
 
 /* Lueur du tapis qui derive lentement, en arriere-plan fixe derriere le
-   contenu (.app passe au premier plan via position+z-index ci-dessous). */
+   contenu (.app passe au premier plan via position+z-index ci-dessous).
+   Deux calques a des vitesses differentes pour une impression de profondeur
+   (parallaxe légère) plutôt qu'un seul blob plat. */
 body::before {
   content: '';
   position: fixed;
   inset: -20%;
   background: radial-gradient(circle, #b9302066 0%, transparent 60%);
   animation: felt-drift 18s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #fbbf2422 0%, transparent 55%);
+  animation: felt-drift 26s ease-in-out infinite reverse;
   pointer-events: none;
   z-index: 0;
 }
@@ -46,6 +58,12 @@ body::before {
   max-width: 420px;
   padding: 16px;
   text-align: center;
+}
+
+/* Le hub accueille une grille 2 colonnes de jeux : il a besoin de plus de
+   largeur que l'ecran de jeu vertical des tables individuelles. */
+.hub-app {
+  max-width: 640px;
 }
 
 /* Petit logo commun aux deux jeux, affiche sur le hub - identite neutre
@@ -118,6 +136,24 @@ h1 {
   -webkit-text-fill-color: #f0506e;
 }
 
+/* Titre du hub : traitement "pastille" dédié (les h1 des jeux individuels
+   restent simples/plats pour la lisibilité en jeu), pour donner au point
+   d'entrée du site un vrai moment d'accroche. */
+.hub-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px auto 8px;
+  padding: 10px 30px;
+  font-size: 2.4rem;
+  background: linear-gradient(160deg, #fde047, #facc15);
+  color: #1a1208;
+  border: 4px solid #1a1208;
+  border-radius: 999px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), 0 12px 28px rgba(250, 204, 21, 0.22);
+  text-shadow: none;
+}
+
 .tagline {
   margin: 0 0 14px;
   color: #cbd5e1;
@@ -133,17 +169,19 @@ h1 {
   padding: 12px 20px;
   border: 3px solid #1a1a1a;
   border-radius: 12px;
-  background: #2d7a4c;
+  background: linear-gradient(160deg, #35915b, #1f5c39);
   color: #fff;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
-  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .btn:hover {
-  background: #35915b;
+  background: linear-gradient(160deg, #3fa66a, #256a41);
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4), 0 0 16px rgba(74, 222, 128, 0.35);
 }
 
 .btn:active {
@@ -195,14 +233,16 @@ h1 {
 }
 
 .btn-primary {
-  background: #facc15;
+  background: linear-gradient(160deg, #fde047, #facc15);
   color: #1a1a1a;
   border-color: #1a1208;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
 }
 
 .btn-primary:hover {
-  background: #fde047;
+  background: linear-gradient(160deg, #fef08a, #fde047);
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(250, 204, 21, 0.45);
 }
 
 .btn-primary:active {
@@ -223,62 +263,155 @@ h1 {
   justify-content: center;
   gap: 10px;
   text-decoration: none;
+  animation: create-btn-breathe 2.6s ease-in-out infinite;
 }
 
-/* --- Hub : cartes de previsualisation des jeux (au lieu de simples boutons
-   texte), chacune reprenant la palette/typo propre a son jeu. --- */
+@keyframes create-btn-breathe {
+  0%, 100% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 21, 0.5);
+  }
+}
+
+/* --- Hub : grille de cartes de previsualisation des jeux, chacune reprenant
+   la palette propre a son jeu via --accent (badge, meta, lueur au survol). --- */
+
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+@media (min-width: 460px) {
+  .game-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 
 .game-preview-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
-  max-width: 300px;
-  margin: 0 auto;
-  padding: 20px;
-  border-radius: 18px;
+  padding: 22px 14px 18px;
+  border-radius: 20px;
   border: 3px solid #1a1208;
   text-decoration: none;
   text-align: center;
   cursor: pointer;
   font: inherit;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+  animation: card-rise 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation-delay: calc(var(--stagger, 0) * 0.08s);
 }
 
-.game-preview-card + .game-preview-card {
-  margin-top: 14px;
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Reflet qui balaie la carte au survol - discret, purement decoratif. */
+.game-preview-card::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.14) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+.game-preview-card:hover::before {
+  transform: translateX(60%);
 }
 
 .game-preview-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-5px) scale(1.015);
+  border-color: var(--accent);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.5), 0 0 26px var(--accent-soft);
 }
 
 .game-preview-card:active {
-  transform: translate(3px, 3px);
+  transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
 }
 
-.game-preview-mascot {
-  font-size: 2.2rem;
+.game-preview-badge {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  margin-bottom: 6px;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
 }
 
 .game-preview-name {
   font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0;
   color: #fff7d6;
 }
 
 .game-preview-tagline {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   opacity: 0.9;
+  min-height: 1.4em;
+}
+
+.game-preview-meta {
+  margin-top: 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 3px 11px;
+  border-radius: 20px;
+}
+
+.game-preview-cta {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.game-preview-cta-arrow {
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+
+.game-preview-card:hover .game-preview-cta-arrow {
+  transform: translateX(4px);
 }
 
 .game-preview-card--bataille {
+  --accent: #f87171;
+  --accent-soft: rgba(248, 113, 113, 0.4);
   background: linear-gradient(160deg, #6b1414, #2e0a0a);
 }
 
@@ -287,6 +420,8 @@ h1 {
 }
 
 .game-preview-card--rami {
+  --accent: #34d399;
+  --accent-soft: rgba(52, 211, 153, 0.4);
   background: linear-gradient(160deg, #065f46, #022c22);
 }
 
@@ -295,11 +430,23 @@ h1 {
 }
 
 .game-preview-card--ascenseur {
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.4);
   background: linear-gradient(160deg, #0f2a3d, #060f17);
 }
 
 .game-preview-card--ascenseur .game-preview-tagline {
   color: #cfeaf7;
+}
+
+.game-preview-card--skullking {
+  --accent: #fb923c;
+  --accent-soft: rgba(251, 146, 60, 0.4);
+  background: linear-gradient(160deg, #2b0a0a, #0a0303);
+}
+
+.game-preview-card--skullking .game-preview-tagline {
+  color: #f3d4d4;
 }
 
 .btn-icon {
@@ -663,7 +810,7 @@ h1 {
 
 .card-face-front {
   transform: rotateY(180deg);
-  background: #fff9ec;
+  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
 }
 
