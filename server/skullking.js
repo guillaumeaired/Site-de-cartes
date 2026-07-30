@@ -19,7 +19,7 @@ const PIRATE_POWER_BY_NAME = {
   'Harry le Géant': 'harry',
 };
 
-const MIN_PLAYERS = 2;
+const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 7; // le deck (74 cartes) suffit largement pour 7 joueurs à la manche 10 (70 cartes)
 
 function buildRoundSequence() {
@@ -64,6 +64,35 @@ function dealRound(playerCount, cardsPerPlayer) {
 
 function isValidBid(bid, cardsInRound) {
   return Number.isInteger(bid) && bid >= 0 && bid <= cardsInRound;
+}
+
+// Couleur imposée par le pli en cours : celle de la première carte
+// NUMÉROTÉE jouée (une carte spéciale menée en premier n'impose rien tant
+// qu'aucune numérotée n'a suivi - c'est elle qui fixe la couleur le cas
+// échéant). Toutes les cartes spéciales (Pirates, Sirènes, Skull King,
+// Fuite, Tigresse, Butin, Kraken, Baleine) restent toujours jouables quelle
+// que soit la couleur demandée : seules les numérotées y sont soumises.
+function ledSuitOf(trick) {
+  for (const play of trick) {
+    if (play.card.kind === 'number') return play.card.suit;
+  }
+  return null;
+}
+
+// Un joueur est tenu de suivre la couleur demandée s'il a encore au moins
+// une carte numérotée de cette couleur en main.
+function mustFollowSuit(hand, ledSuit) {
+  return ledSuit !== null && hand.some((c) => c.kind === 'number' && c.suit === ledSuit);
+}
+
+// Une carte est jouable compte tenu du pli en cours : toute carte spéciale
+// l'est toujours : une numérotée seulement si elle respecte la couleur
+// imposée, ou si le joueur n'a aucune carte de cette couleur.
+function isCardPlayable(card, hand, trick) {
+  if (card.kind !== 'number') return true;
+  const ledSuit = ledSuitOf(trick);
+  if (ledSuit === null || card.suit === ledSuit) return true;
+  return !mustFollowSuit(hand, ledSuit);
 }
 
 // Kind "effectif" d'une carte telle que jouée dans un pli : une Tigresse
@@ -190,7 +219,11 @@ function trickBonusForWinner(cards, winnerIdx) {
 // joueur, créditée uniquement si son annonce est réussie exactement. Les
 // bonus Butin (+20/+20) et la mise Rascal sont ajoutés séparément côté
 // skullking-room.js, car ils dépendent de l'exactitude d'un AUTRE joueur.
-function computeRoundScore(bid, made, roundNumber, bonus) {
+// Détail du score d'une manche : `base` (le contrat réussi/raté seul) et
+// `bonus` (14 de couleur/noir, capture de Pirate(s)/Skull King, séparés) -
+// exposé pour que le résumé de fin de manche puisse afficher les deux au
+// lieu d'un seul delta agrégé.
+function computeRoundScoreBreakdown(bid, made, roundNumber, bonus) {
   const exact = made === bid;
   let base;
   if (bid === 0) {
@@ -198,7 +231,12 @@ function computeRoundScore(bid, made, roundNumber, bonus) {
   } else {
     base = exact ? 20 * bid : -10 * Math.abs(bid - made);
   }
-  return base + (exact ? bonus : 0);
+  const appliedBonus = exact ? bonus : 0;
+  return { base, bonus: appliedBonus, total: base + appliedBonus };
+}
+
+function computeRoundScore(bid, made, roundNumber, bonus) {
+  return computeRoundScoreBreakdown(bid, made, roundNumber, bonus).total;
 }
 
 module.exports = {
@@ -211,8 +249,12 @@ module.exports = {
   createDeck,
   dealRound,
   isValidBid,
+  ledSuitOf,
+  mustFollowSuit,
+  isCardPlayable,
   effectiveKind,
   resolveTrick,
   trickBonusForWinner,
   computeRoundScore,
+  computeRoundScoreBreakdown,
 };

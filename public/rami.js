@@ -362,6 +362,21 @@ function cardFaceHTML(card) {
   `;
 }
 
+// Une fois posé dans une combinaison, le Joker montre ce qu'il remplace
+// (plutôt que sa fausse identité de "2 de Cœur") pour qu'on ne le confonde
+// jamais avec une carte réelle en trop - notamment dans un brelan/carré où
+// il n'a pas de couleur propre (il représente la couleur manquante).
+function jokerMeldFaceHTML(card, meldType) {
+  const rank = (card.jokerFor && card.jokerFor.rank) || card.rank;
+  const suit = meldType === 'sequence' ? card.jokerFor && card.jokerFor.suit : null;
+  const symbol = suit ? SUIT_SYMBOL[suit] : '★';
+  return `
+    <span class="card-corner"><span class="card-corner-rank">${rank}</span><span class="card-corner-suit">${symbol}</span></span>
+    <span class="card-emblem">${symbol}</span>
+    <span class="rami-joker-badge">🃏</span>
+  `;
+}
+
 // Indice visuel : une carte de la main peut-elle compléter une combinaison
 // déjà posée sur le tapis ? Purement indicatif côté client (le serveur reste
 // seul juge à la validation) — on ignore le 2 de cœur ici, le mettre en
@@ -532,8 +547,12 @@ function renderTable(state) {
     });
     for (const card of meld.cards) {
       const chip = document.createElement('div');
-      chip.className = `rami-mini-card ${cardColorClass(card)}`;
-      chip.innerHTML = cardFaceHTML(card);
+      const jokerSuit = card.isJoker && meld.type === 'sequence' ? card.jokerFor && card.jokerFor.suit : null;
+      const colorClass = card.isJoker
+        ? (jokerSuit ? cardColorClass({ suit: jokerSuit }) : 'rami-mini-card--neutral')
+        : cardColorClass(card);
+      chip.className = `rami-mini-card ${colorClass}`;
+      chip.innerHTML = card.isJoker ? jokerMeldFaceHTML(card, meld.type) : cardFaceHTML(card);
       if (card.isJoker) {
         chip.classList.add('rami-mini-card--wild');
         chip.addEventListener('click', (e) => {

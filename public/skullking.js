@@ -23,7 +23,6 @@ function clearActiveRoom() {
   sessionStorage.removeItem(ACTIVE_ROOM_KEY);
 }
 
-const SUIT_COLOR = { vert: '#22c55e', jaune: '#facc15', violet: '#a855f7', noir: '#f5f0e6' };
 const SPECIAL_INFO = {
   pirate: { emoji: '🏴‍☠️', label: 'Pirate' },
   siren: { emoji: '🧜', label: 'Sirène' },
@@ -45,12 +44,48 @@ const PIRATE_POWER_TEXT = {
   'Harry le Géant': 'Modifie sa propre annonce de ±1 (même sur le dernier pli).',
 };
 
+// Tri d'affichage de la main : par couleur (vert/jaune/violet/noir) puis
+// par hauteur croissante, les cartes spéciales groupées à la fin (dans un
+// ordre fixe) - purement visuel, ne change rien à la logique de jeu.
+const SUIT_DISPLAY_ORDER = ['vert', 'jaune', 'violet', 'noir'];
+const SPECIAL_DISPLAY_ORDER = ['pirate', 'siren', 'skullking', 'tigress', 'loot', 'kraken', 'whale', 'escape'];
+function sortHandForDisplay(hand) {
+  return [...hand].sort((a, b) => {
+    const groupA = a.kind === 'number' ? SUIT_DISPLAY_ORDER.indexOf(a.suit) : 4 + SPECIAL_DISPLAY_ORDER.indexOf(a.kind);
+    const groupB = b.kind === 'number' ? SUIT_DISPLAY_ORDER.indexOf(b.suit) : 4 + SPECIAL_DISPLAY_ORDER.indexOf(b.kind);
+    if (groupA !== groupB) return groupA - groupB;
+    if (a.kind === 'number') return a.value - b.value;
+    return 0;
+  });
+}
+
+// Indice visuel de la couleur imposée (purement indicatif, le serveur reste
+// seul juge à la validation) - même logique que server/skullking.js
+// (ledSuitOf/mustFollowSuit/isCardPlayable), dupliquée par convention.
+function ledSuitOf(trick) {
+  for (const play of trick) {
+    if (play.card.kind === 'number') return play.card.suit;
+  }
+  return null;
+}
+function mustFollowSuit(hand, ledSuit) {
+  return ledSuit !== null && hand.some((c) => c.kind === 'number' && c.suit === ledSuit);
+}
+function isCardPlayable(card, hand, trick) {
+  if (card.kind !== 'number') return true;
+  const ledSuit = ledSuitOf(trick);
+  if (ledSuit === null || card.suit === ledSuit) return true;
+  return !mustFollowSuit(hand, ledSuit);
+}
+
 function cardClass(card) {
-  return card.kind === 'number' ? `sk-card--${card.suit}` : 'sk-card--special';
+  if (card.kind === 'number') return `sk-card--${card.suit}`;
+  if (card.kind === 'pirate') return 'sk-card--pirate';
+  return 'sk-card--special';
 }
 function cardFaceHTML(card) {
   if (card.kind === 'number') {
-    return `<span class="sk-suit-dot" style="background:${SUIT_COLOR[card.suit]}"></span><span class="card-emblem">${card.value}</span>`;
+    return `<span class="card-emblem">${card.value}</span>`;
   }
   const info = SPECIAL_INFO[card.kind];
   const label = card.kind === 'pirate' ? card.name || 'Pirate' : info.label;
@@ -274,6 +309,10 @@ socket.on('skullking-error', (message) => {
   showToast(message);
 });
 
+socket.on('skullking-power-result', ({ message }) => {
+  if (message) showToast(message);
+});
+
 socket.on('skullking-player-left', ({ nickname, reason }) => {
   if (reason) {
     showToast(`${nickname} a quitté la partie — retour au classement actuel.`);
@@ -360,7 +399,11 @@ function renderSeats(state) {
     seat.style.left = left + '%';
     seat.style.top = top + '%';
     if (!p.connected) seat.classList.add('sk-seat--disconnected');
-    if (state.phase === 'playing' && p.id === state.turnPlayerId) seat.classList.add('sk-seat--turn');
+    // Pendant l'annonce (simultanée, pas de "tour" à proprement parler), on
+    // met déjà en avant qui mènera le pli - sinon rien n'indique "qui
+    // commence" avant que la phase de jeu ne soit entamée.
+    const activeId = state.phase === 'playing' ? state.turnPlayerId : state.leaderPlayerId;
+    if (activeId && p.id === activeId) seat.classList.add('sk-seat--turn');
 
     if (p.id !== myId) {
       const cards = document.createElement('div');
@@ -454,11 +497,15 @@ function renderTrick(state) {
 
 function renderBidChoices(state) {
   bidChoices.innerHTML = '';
-  bidChoices.classList.toggle('hidden', state.phase !== 'bidding' || state.myBid !== undefined);
-  if (state.phase !== 'bidding' || state.myBid !== undefined) return;
+  bidChoices.classList.toggle('hidden', state.phase !== 'bidding');
+  if (state.phase !== 'bidding') return;
+  // L'annonce reste modifiable tant que tout le monde n'a pas encore
+  // annoncé (le choix actuel reste affiché en surbrillance, cliquer sur un
+  // autre chiffre la remplace) - une fois tout le monde prêt, la phase
+  // change et ces boutons disparaissent d'eux-mêmes.
   for (let n = 0; n <= state.cardsInRound; n++) {
     const btn = document.createElement('button');
-    btn.className = 'btn';
+    btn.className = 'btn' + (state.myBid === n ? ' btn-primary' : '');
     btn.textContent = n;
     btn.addEventListener('click', () => socket.emit('skullking-bid', { bid: n }));
     bidChoices.appendChild(btn);
@@ -476,7 +523,7 @@ function renderTurnIndicator(state) {
     } else {
       const waiting = state.players.filter((p) => !p.hasBid).map((p) => p.nickname);
       turnIndicator.textContent = waiting.length
-        ? `Annonce envoyée (${state.myBid}) — en attente de : ${waiting.join(', ')}…`
+        ? `Annonce envoyée (${state.myBid}) — tu peux encore changer d'avis tant que tout le monde n'a pas annoncé. En attente de : ${waiting.join(', ')}…`
         : 'Tout le monde a annoncé, révélation…';
     }
     return;
@@ -517,9 +564,10 @@ function updateWillConfirmButton() {
 
 function renderHand(state) {
   handEl.innerHTML = '';
-  const hand = state.hand || [];
+  const hand = sortHandForDisplay(state.hand || []);
   const canPlay = state.phase === 'playing' && state.isMyTurn;
   const willMode = state.phase === 'power' && state.pendingPower && state.pendingPower.kind === 'will' && state.pendingPower.mine;
+  const trick = state.currentTrick || [];
 
   const n = hand.length;
   const maxSpread = Math.min(6 * Math.max(n - 1, 0), 40);
@@ -538,6 +586,11 @@ function renderHand(state) {
     el.className = `sk-card ${cardClass(card)}`;
     el.innerHTML = cardFaceHTML(card);
     el.title = cardPowerText(card);
+    const playable = !canPlay || isCardPlayable(card, hand, trick);
+    if (canPlay && !playable) {
+      el.classList.add('sk-card--unplayable');
+      el.title = 'Tu dois suivre la couleur demandée : cette carte est bloquée tant que tu en as une en main.';
+    }
     if (willMode) {
       if (willDiscardSelection.has(card.id)) el.classList.add('sk-card--selected');
       el.addEventListener('click', () => {
@@ -546,6 +599,8 @@ function renderHand(state) {
         renderHand(state);
         updateWillConfirmButton();
       });
+    } else if (canPlay && !playable) {
+      el.addEventListener('click', () => showToast('🚫 Tu dois suivre la couleur demandée.'));
     } else if (canPlay) {
       el.addEventListener('click', () => {
         if (card.kind === 'tigress') {
@@ -690,12 +745,31 @@ function renderPower(state) {
 // par une traînerait inutilement en longueur.
 let lastDealAnimatedRound = null;
 const DEAL_MAX_WAVES = 5;
-const DEAL_WAVE_MS = 70;
-const DEAL_FLIGHT_MS = 550;
+const DEAL_WAVE_MS = 190;
+const DEAL_FLIGHT_MS = 620;
+
+const roundStartBanner = document.getElementById('sk-round-start-banner');
+const roundStartText = document.getElementById('sk-round-start-text');
+let roundStartTimer = null;
+
+// Bannière éphémère "Manche N", en plus du compteur permanent en haut de
+// l'écran — juste pour marquer le coup au changement de manche.
+function showRoundStartBanner(roundNumber) {
+  clearTimeout(roundStartTimer);
+  roundStartText.textContent = `Manche ${roundNumber}`;
+  roundStartBanner.classList.remove('hidden');
+  // Relance l'animation CSS même si la bannière était déjà affichée.
+  const span = roundStartText;
+  span.style.animation = 'none';
+  void span.offsetWidth;
+  span.style.animation = '';
+  roundStartTimer = setTimeout(() => roundStartBanner.classList.add('hidden'), 1800);
+}
 
 function maybeAnimateDeal(state) {
   if (state.phase !== 'bidding' || state.roundNumber === lastDealAnimatedRound) return;
   lastDealAnimatedRound = state.roundNumber;
+  showRoundStartBanner(state.roundNumber);
 
   const { ordered, map } = seatLayout(state);
   const waves = Math.min(state.cardsInRound, DEAL_MAX_WAVES);
@@ -752,6 +826,20 @@ const btnNextRound = document.getElementById('sk-btn-next-round');
 
 btnNextRound.addEventListener('click', () => socket.emit('skullking-next-round'));
 
+// Détail du calcul (contrat + bonus + mise Rascal + alliance Butin) : sans
+// ça le delta total n'explique rien, surtout quand un bonus de capture
+// (14/Pirates/Skull King) ou un pouvoir a modifié le résultat.
+function signed(n) {
+  return n >= 0 ? `+${n}` : `${n}`;
+}
+function roundBreakdownText(r) {
+  const parts = [`${signed(r.base)} contrat`];
+  if (r.bonus) parts.push(`${signed(r.bonus)} bonus`);
+  if (r.rascalDelta) parts.push(`${signed(r.rascalDelta)} mise Rascal`);
+  if (r.lootBonus) parts.push(`${signed(r.lootBonus)} alliance Butin`);
+  return parts.join(' · ');
+}
+
 function showRoundPopup(state) {
   const summary = state.roundSummary;
   roundPopupTitle.textContent = `Manche ${summary.round} terminée`;
@@ -762,8 +850,9 @@ function showRoundPopup(state) {
     .forEach((r) => {
       const row = document.createElement('div');
       row.className = 'sk-round-popup-row';
-      const left = document.createElement('span');
-      left.innerHTML = `${r.nickname} <span class="sk-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span>`;
+      const left = document.createElement('div');
+      left.className = 'sk-round-popup-row-left';
+      left.innerHTML = `${r.nickname} <span class="sk-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span><span class="sk-round-popup-row-breakdown">${roundBreakdownText(r)}</span>`;
       const delta = document.createElement('span');
       delta.className = `sk-round-popup-row-delta ${r.delta >= 0 ? 'sk-delta--up' : 'sk-delta--down'}`;
       delta.textContent = r.delta >= 0 ? `+${r.delta}` : r.delta;

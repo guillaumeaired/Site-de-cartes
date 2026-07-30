@@ -2,8 +2,9 @@
 // l'Ascenseur (rooms Map, lobby, hôte, jeton/déconnexion avec délai de
 // grâce, pause de révélation de pli, enchaînement auto des manches) mais
 // avec des différences de fond : les annonces sont simultanées et cachées
-// jusqu'à ce que tout le monde ait choisi, aucune obligation de
-// couleur/coupe, et les cartes spéciales (Butin/Kraken/Baleine/pirates
+// jusqu'à ce que tout le monde ait choisi, une obligation de suivre la
+// couleur imposée par la 1ère numérotée jouée (les cartes spéciales restent
+// toujours jouables), et les cartes spéciales (Butin/Kraken/Baleine/pirates
 // nommés) ont des effets propres résolus ici.
 
 const {
@@ -13,9 +14,10 @@ const {
   buildRoundSequence,
   dealRound,
   isValidBid,
+  isCardPlayable,
   resolveTrick,
   trickBonusForWinner,
-  computeRoundScore,
+  computeRoundScoreBreakdown,
 } = require('./skullking');
 
 const DISCONNECT_GRACE_MS = 45_000;
@@ -195,6 +197,10 @@ function stateFor(room, p) {
       bid: room.bids && (!bidding || pp.id === p.id) ? room.bids[pp.id] : undefined,
     })),
     dealerId: room.players[room.dealerIndex] && room.players[room.dealerIndex].id,
+    // Qui mène/mènera le pli en cours (fixé dès la donne, avant même
+    // l'annonce) - permet de savoir "qui commence" dès la phase d'annonce,
+    // pas seulement une fois la phase de jeu entamée.
+    leaderPlayerId: inRound && room.players[room.leaderIndex] ? room.players[room.leaderIndex].id : null,
     roundNumber: roundNumber(room),
     totalRounds: room.roundSequence.length,
     cardsInRound: room.cardsInRound,
@@ -252,8 +258,8 @@ function endRound(io, room) {
     const made = p.tricksWon;
     const exact = made === bid;
     exactness[p.id] = exact;
-    const delta = computeRoundScore(bid, made, num, p.pendingBonus);
-    return { id: p.id, nickname: p.nickname, bid, made, delta };
+    const { base, bonus } = computeRoundScoreBreakdown(bid, made, num, p.pendingBonus);
+    return { id: p.id, nickname: p.nickname, bid, made, base, bonus, rascalDelta: 0, lootBonus: 0, delta: base + bonus };
   });
 
   // Mise secondaire de Rascal le Flambeur : gagnée si SA propre annonce de
@@ -261,7 +267,9 @@ function endRound(io, room) {
   summary.forEach((s) => {
     const player = findPlayer(room, s.id);
     if (player.rascalStake) {
-      s.delta += exactness[s.id] ? player.rascalStake : -player.rascalStake;
+      const rascalDelta = exactness[s.id] ? player.rascalStake : -player.rascalStake;
+      s.rascalDelta = rascalDelta;
+      s.delta += rascalDelta;
     }
   });
 
@@ -271,8 +279,14 @@ function endRound(io, room) {
     if (exactness[lootPlayerId] && exactness[winnerId]) {
       const lootEntry = summary.find((s) => s.id === lootPlayerId);
       const winEntry = summary.find((s) => s.id === winnerId);
-      if (lootEntry) lootEntry.delta += 20;
-      if (winEntry) winEntry.delta += 20;
+      if (lootEntry) {
+        lootEntry.lootBonus += 20;
+        lootEntry.delta += 20;
+      }
+      if (winEntry) {
+        winEntry.lootBonus += 20;
+        winEntry.delta += 20;
+      }
     }
   });
 
@@ -288,7 +302,20 @@ function endRound(io, room) {
     return;
   }
 
-  room.lastRoundSummary = { round: num, results: summary.map(({ id, nickname, bid, made, delta }) => ({ id, nickname, bid, made, delta })) };
+  room.lastRoundSummary = {
+    round: num,
+    results: summary.map(({ id, nickname, bid, made, base, bonus, rascalDelta, lootBonus, delta }) => ({
+      id,
+      nickname,
+      bid,
+      made,
+      base,
+      bonus,
+      rascalDelta,
+      lootBonus,
+      delta,
+    })),
+  };
   room.phase = 'round-end';
   broadcastState(io, room);
 
@@ -342,8 +369,44 @@ function startPiratePower(io, room, powerKey, playerId, leaderId) {
   }
 }
 
+// Résumé en clair de la décision prise avec ce pouvoir, diffusé à toute la
+// table avant de ramasser le pli - sans ça, seul le joueur qui a utilisé le
+// pouvoir sait ce qu'il vient de se passer.
+function powerResultMessage(room) {
+  const pending = room.pendingPower;
+  const player = findPlayer(room, pending.playerId);
+  const name = player ? player.nickname : '?';
+  switch (pending.kind) {
+    case 'rosie': {
+      const leader = findPlayer(room, pending.leaderId);
+      const leaderName = leader ? (leader.id === pending.playerId ? 'elle-même/lui-même' : leader.nickname) : '?';
+      return `🏴‍☠️ Rosie D'Laney (${name}) désigne ${leaderName} pour mener le prochain pli.`;
+    }
+    case 'will':
+      return `🏴‍☠️ Will le Bandit (${name}) a pioché 2 cartes non distribuées et en a défaussé 2.`;
+    case 'rascal': {
+      const stake = player ? player.rascalStake || 0 : 0;
+      return stake > 0
+        ? `🏴‍☠️ Rascal le Flambeur (${name}) mise ${stake} points de plus sur sa propre annonce.`
+        : `🏴‍☠️ Rascal le Flambeur (${name}) ne mise rien de plus cette manche.`;
+    }
+    case 'juanita':
+      return `🏴‍☠️ Juanita Jade (${name}) a consulté les cartes non distribuées.`;
+    case 'harry': {
+      const delta = pending.harryDelta || 0;
+      const newBid = room.bids[pending.playerId];
+      const sign = delta > 0 ? '+1' : delta < 0 ? '-1' : '±0';
+      return `🏴‍☠️ Harry le Géant (${name}) modifie son annonce (${sign}) : nouvelle annonce ${newBid}.`;
+    }
+    default:
+      return null;
+  }
+}
+
 function resolvePowerDone(io, room) {
   const leaderId = room.pendingPower.leaderId;
+  const message = powerResultMessage(room);
+  if (message) broadcastToRoom(io, room, 'skullking-power-result', { message });
   finishTrickCollection(io, room, leaderId);
 }
 
@@ -555,7 +618,10 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-bid', (payload) => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'bidding') return;
-    if (Object.prototype.hasOwnProperty.call(room.bids, socket.id)) return; // déjà annoncé
+    // L'annonce reste modifiable tant que la phase d'annonce n'est pas
+    // terminée (donc tant que tout le monde n'a pas annoncé) - une fois
+    // que tous ont choisi, la phase passe à 'playing' et ce handler ne
+    // fait plus rien de toute façon.
     const bid = Number(payload && payload.bid);
     if (!isValidBid(bid, room.cardsInRound)) {
       sendError(socket, 'Annonce invalide.');
@@ -581,9 +647,13 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, 'Carte introuvable dans ta main.');
       return;
     }
-    // Aucune obligation de couleur/coupe dans Skull King : n'importe quelle
-    // carte en main est toujours jouable. Seule la Tigresse demande un choix
-    // au moment de la pose (jouée comme Pirate ou comme Fuite).
+    if (!isCardPlayable(card, player.hand, room.currentTrick)) {
+      sendError(socket, 'Tu dois suivre la couleur demandée si tu en as encore en main.');
+      return;
+    }
+    // Seule la Tigresse demande un choix au moment de la pose (jouée comme
+    // Pirate ou comme Fuite) - elle reste toujours jouable quelle que soit
+    // la couleur demandée, comme toute carte spéciale.
     if (card.kind === 'tigress') {
       const chosenAs = payload && payload.chosenAs;
       if (chosenAs !== 'pirate' && chosenAs !== 'escape') {
@@ -708,6 +778,7 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
     room.bids[player.id] = newBid;
+    room.pendingPower.harryDelta = delta;
     resolvePowerDone(io, room);
   });
 

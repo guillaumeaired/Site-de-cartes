@@ -6,9 +6,13 @@ const {
   createDeck,
   buildRoundSequence,
   isValidBid,
+  ledSuitOf,
+  mustFollowSuit,
+  isCardPlayable,
   resolveTrick,
   trickBonusForWinner,
   computeRoundScore,
+  computeRoundScoreBreakdown,
 } = require('./skullking');
 
 let passed = 0;
@@ -153,6 +157,62 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   check('baleine puis kraken : le kraken (joué en second) l\'emporte, pli détruit', r.destroyed, true);
 }
 
+// --- Obligation de couleur (ledSuitOf / mustFollowSuit / isCardPlayable) ---
+check('couleur imposée : aucune carte jouée → aucune couleur imposée', ledSuitOf([]), null);
+check(
+  'couleur imposée : 1ère carte spéciale menée → toujours aucune couleur imposée',
+  ledSuitOf([{ card: pirate() }]),
+  null
+);
+check(
+  'couleur imposée : spéciale puis numérotée → couleur de la numérotée',
+  ledSuitOf([{ card: pirate() }, { card: num('jaune', 5) }]),
+  'jaune'
+);
+check(
+  'couleur imposée : 1ère numérotée jouée en tête → sa couleur',
+  ledSuitOf([{ card: num('vert', 3) }, { card: num('jaune', 5) }]),
+  'vert'
+);
+
+check(
+  'doit suivre : a une carte de la couleur imposée en main',
+  mustFollowSuit([num('vert', 5), num('jaune', 2)], 'vert'),
+  true
+);
+check(
+  'doit suivre : aucune carte de la couleur imposée en main',
+  mustFollowSuit([num('jaune', 2), pirate()], 'vert'),
+  false
+);
+check('doit suivre : aucune couleur imposée encore', mustFollowSuit([num('vert', 5)], null), false);
+
+{
+  const trick = [{ card: num('vert', 9) }];
+  const hand = [num('vert', 3), num('jaune', 7)];
+  check(
+    "jouable : carte de la couleur imposée toujours autorisée",
+    isCardPlayable(num('vert', 3), hand, trick),
+    true
+  );
+  check(
+    "jouable : carte hors-couleur refusée si on a la couleur imposée en main",
+    isCardPlayable(num('jaune', 7), hand, trick),
+    false
+  );
+  check('jouable : une carte spéciale reste toujours jouable', isCardPlayable(pirate(), hand, trick), true);
+  check('jouable : la Tigresse reste toujours jouable', isCardPlayable(tigress('escape'), hand, trick), true);
+}
+{
+  const trick = [{ card: num('vert', 9) }];
+  const hand = [num('jaune', 7), pirate()];
+  check(
+    "jouable : carte hors-couleur autorisée si on n'a pas la couleur imposée",
+    isCardPlayable(num('jaune', 7), hand, trick),
+    true
+  );
+}
+
 // --- Bonus ---
 check('bonus : capturer un 14 de couleur', trickBonusForWinner([num('vert', 14), num('jaune', 3)], 1), 10);
 check('bonus : capturer le 14 noir', trickBonusForWinner([num('noir', 14), num('jaune', 3)], 1), 20);
@@ -164,6 +224,11 @@ check('contrat 0 réussi, manche 3', computeRoundScore(0, 0, 3, 0), 30);
 check('contrat 0 raté (1 pli pris), manche 3', computeRoundScore(0, 1, 3, 0), -30);
 check('contrat 3 réussi exactement, avec bonus', computeRoundScore(3, 3, 5, 40), 100);
 check('contrat 2 raté : le bonus accumulé ne compte pas', computeRoundScore(2, 5, 5, 999), -30);
+
+// --- computeRoundScoreBreakdown ---
+check('breakdown : contrat 3 exact avec bonus', computeRoundScoreBreakdown(3, 3, 5, 40), { base: 60, bonus: 40, total: 100 });
+check('breakdown : contrat raté, bonus ignoré', computeRoundScoreBreakdown(2, 5, 5, 999), { base: -30, bonus: 0, total: -30 });
+check('breakdown : contrat 0 réussi', computeRoundScoreBreakdown(0, 0, 4, 0), { base: 40, bonus: 0, total: 40 });
 
 console.log(`\n${passed} test(s) OK, ${failed} échec(s).`);
 process.exit(failed > 0 ? 1 : 0);

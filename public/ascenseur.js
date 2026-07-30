@@ -550,8 +550,8 @@ function renderScoreboard(state) {
 // inutilement en longueur.
 let lastDealAnimatedRound = null;
 const DEAL_MAX_WAVES = 5;
-const DEAL_WAVE_MS = 70;
-const DEAL_FLIGHT_MS = 550;
+const DEAL_WAVE_MS = 190;
+const DEAL_FLIGHT_MS = 620;
 
 function maybeAnimateDeal(state) {
   if (state.phase !== 'bidding' || state.roundNumber === lastDealAnimatedRound) return;

@@ -18,7 +18,7 @@
       <a href="index.html" class="btn-link">← Tous les jeux</a>
       <p class="mascot" aria-hidden="true">💀</p>
       <h1><span class="suit suit-black">🏴‍☠️</span>Skull King<span class="suit suit-red">🧜</span></h1>
-      <p class="tagline">De 2 à 7 joueurs — 10 manches, annonces simultanées.</p>
+      <p class="tagline">De 3 à 7 joueurs — 10 manches, annonces simultanées.</p>
       <button id="sk-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
 
       <div class="nickname-field">
@@ -47,7 +47,7 @@
       </div>
 
       <div id="sk-lobby-players" class="lobby-players hidden">
-        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (2 à 7)</p>
+        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (3 à 7)</p>
         <ul id="sk-lobby-list" class="lobby-list"></ul>
       </div>
 
@@ -56,6 +56,10 @@
     </section>
 
     <section id="sk-screen-game" class="screen hidden">
+      <div id="sk-round-start-banner" class="sk-round-start-banner hidden">
+        <span id="sk-round-start-text"></span>
+      </div>
+
       <div class="sk-game-header">
         <button id="sk-btn-leave-game" class="btn-link">← Quitter</button>
         <p id="sk-round-indicator" class="sk-round-indicator"></p>
@@ -115,7 +119,7 @@
     <div class="modal-content">
       <h2>Règles de Skull King</h2>
       <ol>
-        <li>2 à 7 joueurs, 10 manches. Manche 1 = 1 carte/joueur, ..., manche 10 = 10 cartes/joueur. Le paquet complet est remélangé à chaque manche.</li>
+        <li>3 à 7 joueurs, 10 manches. Manche 1 = 1 carte/joueur, ..., manche 10 = 10 cartes/joueur. Le paquet complet est remélangé à chaque manche.</li>
         <li>Paquet : 4 familles 1-14 (vert, jaune, violet, noir — le noir est atout permanent), 2 Sirènes, 5 Pirates, 1 Skull King, 5 Fuites, 1 Tigresse (jouée comme Pirate ou Fuite, au choix).</li>
         <li>Annonces simultanées et cachées : chacun choisit son nombre de plis en aveugle, tout le monde est révélé d'un coup.</li>
         <li>Aucune obligation de couleur ni de coupe : n'importe quelle carte en main est toujours jouable.</li>

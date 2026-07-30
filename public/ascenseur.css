@@ -377,6 +377,69 @@ h1 {
   content: ' 👑';
 }
 
+/* --- Modernisation des menus créer/rejoindre (2026-07-30) : mêmes ajouts
+   dupliqués dans les 4 fichiers CSS, seule la couleur d'accent change —
+   reprend directement --accent défini pour ce jeu sur la grille du hub
+   (style.css), pour que l'identité visuelle se retrouve du hub jusqu'ici. --- */
+
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.screen:not(.hidden) {
+  animation: menu-pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nickname-field input,
+.join-modal-content input {
+  background: linear-gradient(160deg, #ffffff18, #ffffff0a);
+}
+
+.nickname-field input:focus,
+.join-modal-content input:focus {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
+}
+
+.invite-card {
+  background: linear-gradient(160deg, #ffffff16, #ffffff08);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35), 0 0 24px rgba(56, 189, 248, 0.4);
+  animation: menu-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.invite-card .code-badge {
+  animation: code-badge-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes code-badge-glow {
+  0%, 100% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  }
+  50% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 189, 248, 0.4);
+  }
+}
+
+.lobby-list li {
+  background: linear-gradient(160deg, #ffffff16, #ffffff08);
+  border-left: 4px solid #38bdf8;
+  animation: menu-pop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.lobby-list li:nth-child(1) { animation-delay: 0.03s; }
+.lobby-list li:nth-child(2) { animation-delay: 0.08s; }
+.lobby-list li:nth-child(3) { animation-delay: 0.13s; }
+.lobby-list li:nth-child(4) { animation-delay: 0.18s; }
+.lobby-list li:nth-child(5) { animation-delay: 0.23s; }
+.lobby-list li:nth-child(6) { animation-delay: 0.28s; }
+.lobby-list li:nth-child(7) { animation-delay: 0.33s; }
+
 .join-modal-content {
   text-align: center;
 }
@@ -705,9 +768,9 @@ h1 {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 22px;
-  height: 32px;
-  border-radius: 4px;
+  width: 34px;
+  height: 48px;
+  border-radius: 5px;
   background: repeating-linear-gradient(45deg, #123c52 0px, #123c52 3px, #0d2c3d 3px, #0d2c3d 6px);
   border: 2px solid #061620;
   transform: translate(-50%, -50%);
@@ -718,9 +781,9 @@ h1 {
 
 .asc-flying-card {
   position: absolute;
-  width: 22px;
-  height: 32px;
-  border-radius: 4px;
+  width: 34px;
+  height: 48px;
+  border-radius: 5px;
   background: repeating-linear-gradient(45deg, #123c52 0px, #123c52 3px, #0d2c3d 3px, #0d2c3d 6px);
   border: 2px solid #061620;
   z-index: 6;

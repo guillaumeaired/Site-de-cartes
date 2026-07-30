@@ -50,10 +50,21 @@ function findPlayerByToken(room, token) {
   return room.players.find((p) => p.token === token);
 }
 
-// Seul hostId est indexe par id ici (turnIndex est un index numerique dans
-// le tableau players, jamais affecte par un changement d'id).
-function rekeyHostId(room, oldId, newId) {
+// turnIndex est un index numerique dans le tableau players, jamais affecte
+// par un changement d'id - mais hostId, le proprietaire de chaque melde posee
+// sur le tapis, et l'issue de la derniere partie le sont tous : sans ce
+// rekey, une melde posee avant une coupure se retrouve affichee comme celle
+// de l'adversaire une fois reconnecte (le socket.id change a chaque reconnexion).
+function rekeyPlayerId(room, oldId, newId) {
   if (room.hostId === oldId) room.hostId = newId;
+  for (const meld of room.table) {
+    if (meld.ownerId === oldId) meld.ownerId = newId;
+  }
+  if (room.lastGameEndPayload) {
+    const payload = room.lastGameEndPayload;
+    if (payload.winnerId === oldId) payload.winnerId = newId;
+    if (payload.gameWinnerId === oldId) payload.gameWinnerId = newId;
+  }
 }
 
 function activePlayer(room) {
@@ -716,7 +727,7 @@ function registerRamiHandlers(io, socket) {
     }
     const wasDisconnected = player.connected === false;
     const oldId = player.id;
-    rekeyHostId(room, oldId, socket.id);
+    rekeyPlayerId(room, oldId, socket.id);
     player.id = socket.id;
     player.connected = true;
     socket.data.ramiRoom = code;
