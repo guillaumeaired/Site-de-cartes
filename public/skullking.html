@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guimams — Skull King</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="skullking.css" />
+</head>
+<body>
+  <main class="app sk-app">
+    <p id="sk-toast" class="hint sk-toast hidden"></p>
+    <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
+
+    <section id="sk-screen-home" class="screen">
+      <a href="index.html" class="btn-link">← Tous les jeux</a>
+      <p class="mascot" aria-hidden="true">💀</p>
+      <h1><span class="suit suit-black">🏴‍☠️</span>Skull King<span class="suit suit-red">🧜</span></h1>
+      <p class="tagline">De 2 à 7 joueurs — 10 manches, annonces simultanées.</p>
+      <button id="sk-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+
+      <div class="nickname-field">
+        <input id="sk-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      </div>
+
+      <button id="sk-btn-create" class="btn btn-primary btn-create">
+        <span class="btn-icon">💀</span> Créer une partie
+      </button>
+      <div class="divider">ou rejoindre avec un code</div>
+      <form id="sk-form-join">
+        <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" />
+        <button type="submit" class="btn">Rejoindre</button>
+      </form>
+      <p id="sk-home-error" class="error"></p>
+    </section>
+
+    <section id="sk-screen-waiting" class="screen hidden">
+      <button id="sk-btn-leave-waiting" class="btn-link">← Quitter</button>
+
+      <div id="sk-share-block" class="invite-card hidden">
+        <p class="invite-label">Code de la partie</p>
+        <div class="code-badge" id="sk-share-code"></div>
+        <button id="sk-btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
+        <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      </div>
+
+      <div id="sk-lobby-players" class="lobby-players hidden">
+        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (2 à 7)</p>
+        <ul id="sk-lobby-list" class="lobby-list"></ul>
+      </div>
+
+      <button id="sk-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
+      <p id="sk-waiting-hint" class="hint"></p>
+    </section>
+
+    <section id="sk-screen-game" class="screen hidden">
+      <div class="sk-game-header">
+        <button id="sk-btn-leave-game" class="btn-link">← Quitter</button>
+        <p id="sk-round-indicator" class="sk-round-indicator"></p>
+        <button id="sk-btn-end-game" class="btn btn-small hidden">🏁 Terminer</button>
+      </div>
+
+      <div class="sk-play-area">
+        <div id="sk-table" class="sk-table">
+          <div class="sk-table-center">
+            <p id="sk-trick-caption" class="sk-trick-caption"></p>
+          </div>
+        </div>
+
+        <aside class="sk-scoreboard">
+          <div class="sk-round-track">
+            <div class="sk-round-track-fill" id="sk-round-track-fill"></div>
+            <div class="sk-round-track-knob" id="sk-round-track-knob"></div>
+          </div>
+          <p id="sk-round-track-label" class="sk-round-track-label"></p>
+          <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
+        </aside>
+      </div>
+
+      <p id="sk-power-banner" class="hint hidden"></p>
+      <div id="sk-power-panel" class="sk-power-panel hidden"></div>
+
+      <p id="sk-turn-indicator" class="sk-turn-indicator"></p>
+      <div id="sk-bid-choices" class="sk-bid-choices"></div>
+      <div id="sk-tigress-choice" class="sk-bid-choices hidden">
+        <button id="sk-btn-tigress-pirate" class="btn">🏴‍☠️ Comme Pirate</button>
+        <button id="sk-btn-tigress-escape" class="btn">🏳️ Comme Fuite</button>
+      </div>
+      <div id="sk-hand" class="sk-hand"></div>
+    </section>
+
+    <div id="sk-round-popup" class="sk-round-popup hidden">
+      <div class="sk-round-popup-inner">
+        <h3 id="sk-round-popup-title"></h3>
+        <div id="sk-round-popup-rows" class="sk-round-popup-rows"></div>
+        <div class="sk-round-popup-timer"><div id="sk-round-popup-bar" class="sk-round-popup-bar"></div></div>
+        <button id="sk-btn-next-round" class="btn btn-small hidden">⏭️ Manche suivante</button>
+      </div>
+    </div>
+
+    <section id="sk-screen-end" class="screen hidden">
+      <h2 id="sk-end-title"></h2>
+      <table class="sk-score-table">
+        <thead><tr><th>Joueur</th><th>Total</th></tr></thead>
+        <tbody id="sk-end-body"></tbody>
+      </table>
+      <button id="sk-btn-rematch" class="btn btn-primary">🔄 Rejouer</button>
+      <button id="sk-btn-leave-end" class="btn btn-leave-end">Quitter</button>
+    </section>
+  </main>
+
+  <div id="sk-rules-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Règles de Skull King</h2>
+      <ol>
+        <li>2 à 7 joueurs, 10 manches. Manche 1 = 1 carte/joueur, ..., manche 10 = 10 cartes/joueur. Le paquet complet est remélangé à chaque manche.</li>
+        <li>Paquet : 4 familles 1-14 (vert, jaune, violet, noir — le noir est atout permanent), 2 Sirènes, 5 Pirates, 1 Skull King, 5 Fuites, 1 Tigresse (jouée comme Pirate ou Fuite, au choix).</li>
+        <li>Annonces simultanées et cachées : chacun choisit son nombre de plis en aveugle, tout le monde est révélé d'un coup.</li>
+        <li>Aucune obligation de couleur ni de coupe : n'importe quelle carte en main est toujours jouable.</li>
+        <li>Résolution d'un pli : Fuite ne gagne jamais. Numérotées : la plus haute de la couleur menée gagne, sauf noir présent (atout, gagne quel que soit le chiffre). Pirate bat numérotées et Sirènes (entre pirates, le premier joué gagne). Skull King bat les Pirates. Sirène bat le Skull King mais perd contre un Pirate — sauf si Pirate + Skull King + Sirène sont réunis dans le même pli : la Sirène gagne alors toujours.</li>
+        <li>Score — annonce 0 réussie : +10×manche, ratée : -10×manche. Annonce ≥1 réussie exactement : +20 par pli. Annonce ≥1 ratée : -10 par pli d'écart.</li>
+        <li>Bonus (uniquement si l'annonce de la manche est réussie exactement) : capturer un 14 de couleur +10, le 14 noir +20, un Pirate avec le Skull King +30 chacun, le Skull King avec une Sirène +40.</li>
+        <li><strong>Butin :</strong> agit comme une Fuite. Si un autre joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce.</li>
+        <li><strong>Kraken :</strong> détruit le pli, personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.</li>
+        <li><strong>Baleine blanche :</strong> annule l'effet de toutes les cartes spéciales du pli — seule la valeur numérique compte (le noir perd son atout). Si le pli n'a que des spéciales, il est détruit et c'est le joueur de la Baleine qui mène le suivant.</li>
+        <li><strong>Pouvoirs des 5 pirates</strong> (déclenchés s'ils remportent le pli avec leur propre carte, survole une carte Pirate pour voir son pouvoir) : Rosie D'Laney choisit qui entame le pli suivant, Will le Bandit pioche 2 cartes et en défausse 2, Rascal le Flambeur peut miser 10 ou 20 points de plus sur son annonce, Juanita Jade regarde les cartes non distribuées, Harry le Géant modifie sa propre annonce de ±1 (seul pouvoir utilisable même sur le dernier pli).</li>
+        <li>La partie peut s'arrêter avant la fin des 10 manches, à la discrétion de l'hôte : classement sur le score accumulé jusque-là.</li>
+      </ol>
+      <button id="sk-btn-close-rules" class="btn btn-primary">Compris !</button>
+    </div>
+  </div>
+
+  <div id="sk-join-modal" class="modal hidden">
+    <div class="modal-content join-modal-content">
+      <p class="invite-label">Rejoindre la partie</p>
+      <input id="sk-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <button id="sk-btn-join-modal" class="btn btn-primary">Rejoindre</button>
+      <p id="sk-join-modal-error" class="error"></p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="skullking.js"></script>
+</body>
+</html>

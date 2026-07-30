@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 const { dealHands, shuffle, buryUpToN } = require('./game');
 const { registerRamiHandlers } = require('./rami-room');
 const { registerAscenseurHandlers } = require('./ascenseur-room');
+const { registerSkullKingHandlers } = require('./skullking-room');
 
 // Plus une partie s'eternise, plus une bataille enterre de cartes : le
 // nombre de cartes cachees monte de 1 toutes les 3 minutes ecoulees depuis
@@ -451,6 +452,7 @@ io.on('connection', (socket) => {
 
   registerRamiHandlers(io, socket);
   registerAscenseurHandlers(io, socket);
+  registerSkullKingHandlers(io, socket);
 });
 
 httpServer.listen(PORT, () => {

@@ -1,0 +1,1057 @@
+/* --- Base partagée avec les autres jeux (dupliquée volontairement, voir
+   rami.css pour le raisonnement) --- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%),
+    radial-gradient(circle at 50% 0%, #5c1010 0%, transparent 60%),
+    linear-gradient(160deg, #2b0a0a, #0a0303);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #fff;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #f8717166 0%, transparent 60%);
+  animation: felt-drift 18s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #fbbf2422 0%, transparent 55%);
+  animation: felt-drift 26s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes felt-drift {
+  0%, 100% {
+    transform: translate(-6%, -8%) scale(1);
+  }
+  50% {
+    transform: translate(6%, 6%) scale(1.15);
+  }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+  text-align: center;
+}
+
+.sk-app {
+  max-width: 720px;
+}
+
+h1 {
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 2.6rem;
+  margin: 4px auto 10px;
+  letter-spacing: 0;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #facc15;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.mascot {
+  font-size: 2rem;
+  margin: 0 0 -6px;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45));
+  animation: mascot-idle 3s ease-in-out infinite;
+}
+
+@keyframes mascot-idle {
+  0%, 100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+.suit {
+  font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+.tagline {
+  margin: 0 0 14px;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.hint {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.sk-toast {
+  min-height: 1.2em;
+  margin: 0 0 10px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 20px;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #991b1b, #5c1010);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.btn:hover {
+  background: linear-gradient(160deg, #b91c1c, #7a1414);
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4), 0 0 16px rgba(248, 113, 113, 0.4);
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.btn-link {
+  display: block;
+  margin: 0 0 16px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.btn-rules-link {
+  display: inline-block;
+  margin: 0 0 32px;
+  padding: 5px 14px;
+  border: 2px solid #ffffff33;
+  border-radius: 20px;
+  background: #ffffff14;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-rules-link:hover {
+  background: #ffffff28;
+  color: #fff;
+}
+
+.btn-primary {
+  background: linear-gradient(160deg, #fde047, #facc15);
+  color: #1a1a1a;
+  border-color: #1a1208;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(160deg, #fef08a, #fde047);
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(250, 204, 21, 0.45);
+}
+
+.btn-primary:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-create {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: create-btn-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes create-btn-breathe {
+  0%, 100% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 21, 0.5);
+  }
+}
+
+.btn-icon {
+  font-size: 1.3rem;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.divider {
+  margin: 20px 0;
+  opacity: 0.55;
+  font-size: 0.85rem;
+}
+
+#sk-form-join {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+#sk-input-code {
+  width: 120px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 3px solid #1a1a1a;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.error {
+  color: #fca5a5;
+  min-height: 1.2em;
+  margin-top: 12px;
+}
+
+.nickname-field {
+  max-width: 260px;
+  margin: 0 auto 20px;
+}
+
+.nickname-field input,
+.join-modal-content input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid #ffffff33;
+  background: #ffffff11;
+  color: #fff;
+  font-size: 0.95rem;
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.nickname-field input:focus,
+.join-modal-content input:focus {
+  outline: none;
+  border-color: #facc15;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.invite-card {
+  margin: 24px auto 0;
+  padding: 24px 20px;
+  max-width: 280px;
+  background: #ffffff0d;
+  border: 3px solid #1a1208;
+  border-radius: 18px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.invite-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.7;
+  margin: 0 0 12px;
+}
+
+.invite-card .code-badge {
+  display: block;
+  margin: 0 auto 18px;
+  font-size: 2.1rem;
+}
+
+.code-badge {
+  font-weight: 800;
+  letter-spacing: 5px;
+  border-radius: 12px;
+  border: 3px solid #1a1208;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 10px;
+  background: #facc15;
+  color: #1a1208;
+}
+
+.btn-copy-link {
+  width: 100%;
+}
+
+.lobby-players {
+  margin: 24px auto;
+  max-width: 280px;
+}
+
+.lobby-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lobby-list li {
+  padding: 10px 14px;
+  background: #ffffff11;
+  border: 2px solid #ffffff33;
+  border-radius: 10px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.lobby-list li.lobby-host::after {
+  content: ' 👑';
+}
+
+.join-modal-content {
+  text-align: center;
+}
+
+.join-modal-content input {
+  margin: 14px 0;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: #200606;
+  border: 3px solid #1a1208;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 380px;
+  text-align: left;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.modal-content h2,
+#sk-end-title {
+  margin-top: 0;
+  text-align: center;
+}
+
+.modal-content ol {
+  padding-left: 20px;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+.modal-content .btn {
+  display: block;
+  margin: 20px auto 0;
+}
+
+.reconnect-overlay {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  background: #1a1208;
+  border: 2px solid #facc15;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* --- Écran de jeu : table ovale façon poker --- */
+
+.sk-game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.sk-game-header .btn-link {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.sk-round-indicator {
+  font-weight: 800;
+  color: #facc15;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.sk-play-area {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.sk-table {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, #17323d 0%, #0c1520 70%, #050a10 100%);
+  border: 6px solid #0a0505;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5), 0 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sk-table-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 84%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Chaque carte du pli est posée devant son joueur (position calculée en JS
+   entre son siège et le centre) : le pli forme un cercle, on voit donc
+   immédiatement à qui appartient la carte gagnante. */
+.sk-trick-card {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes sk-card-drop {
+  from {
+    transform: translate(-50%, -20%) scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.sk-trick-card--leading {
+  z-index: 4;
+}
+
+.sk-trick-card--leading .sk-card {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  animation: sk-leading-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes sk-leading-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 5px #4ade80, 0 0 24px #4ade80cc, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+}
+
+.sk-trick-caption {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  min-height: 1.1em;
+  text-align: center;
+}
+
+/* --- Sièges --- */
+
+.sk-seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 96px;
+  z-index: 2;
+}
+
+.sk-seat-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #ffffff26;
+  max-width: 100%;
+}
+
+.sk-seat-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-seat-bid {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #facc15;
+  flex-shrink: 0;
+}
+
+.sk-seat--turn .sk-seat-label {
+  border-color: #facc15;
+  background: #facc15;
+  color: #1a1208;
+  box-shadow: 0 0 14px #facc1599;
+}
+
+.sk-seat--turn .sk-seat-bid {
+  color: #7c5a00;
+}
+
+.sk-seat--disconnected {
+  opacity: 0.45;
+}
+
+.sk-seat-dealer {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f5f0e6;
+  color: #1a1208;
+  font-size: 0.6rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #1a1208;
+}
+
+.sk-seat-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 34px;
+}
+
+.sk-back-card {
+  width: 22px;
+  height: 32px;
+  margin-left: -14px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
+  border: 2px solid #1a0505;
+  flex-shrink: 0;
+}
+
+.sk-back-card:first-child {
+  margin-left: 0;
+}
+
+/* Pile de distribution au centre de la table, et cartes volantes qui en
+   sortent vers chaque siège en début de manche (voir maybeAnimateDeal). */
+.sk-deck-pile {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 32px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
+  border: 2px solid #1a0505;
+  transform: translate(-50%, -50%);
+  box-shadow: 2px 2px 0 #1a0505, 4px 4px 0 #12030399;
+  z-index: 5;
+  animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sk-flying-card {
+  position: absolute;
+  width: 22px;
+  height: 32px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
+  border: 2px solid #1a0505;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.sk-seat-count {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+/* --- Tableau de score discret + piste de progression des manches --- */
+
+.sk-scoreboard {
+  width: 168px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.28);
+  border: 2px solid #ffffff1f;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.sk-round-track {
+  position: relative;
+  height: 7px;
+  border-radius: 4px;
+  background: #ffffff1a;
+  overflow: visible;
+  margin: 0 12px 8px;
+}
+
+.sk-round-track-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f87171, #facc15);
+  transition: width 0.5s ease;
+}
+
+.sk-round-track-knob {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: #facc15;
+  color: #1a1208;
+  border: 2px solid #1a1208;
+  font-size: 0.68rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.5s ease;
+}
+
+.sk-round-track-label {
+  margin: 8px 0 10px;
+  font-size: 0.68rem;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.sk-scoreboard-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sk-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+}
+
+.sk-score-row--me {
+  background: #ffffff14;
+  font-weight: 800;
+}
+
+.sk-score-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-score-row-total {
+  font-weight: 800;
+  color: #facc15;
+  flex-shrink: 0;
+}
+
+/* --- Annonces, indicateur de tour, main en éventail --- */
+
+.sk-turn-indicator {
+  margin: 10px 0 6px;
+  font-weight: 700;
+  min-height: 1.2em;
+}
+
+.sk-bid-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.sk-bid-choices .btn {
+  padding: 8px 15px;
+}
+
+/* Panneau d'action d'un pouvoir de pirate : texte explicatif au-dessus,
+   boutons de choix en dessous. */
+.sk-power-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 10px;
+  background: #ffffff0d;
+  border: 2px solid #ffffff26;
+  border-radius: 12px;
+}
+
+.sk-power-panel .hint {
+  margin: 0;
+}
+
+.sk-power-panel .btn {
+  margin: 2px;
+}
+
+.sk-hand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 22px 20px 4px;
+  min-height: 120px;
+  overflow-x: auto;
+}
+
+.sk-card-arc {
+  transform-origin: bottom center;
+  margin-left: -26px;
+  flex-shrink: 0;
+}
+
+.sk-card-arc:first-child {
+  margin-left: 0;
+}
+
+.sk-card {
+  position: relative;
+  width: 66px;
+  height: 96px;
+  border-radius: 10px;
+  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
+  border: 3px solid #1a1208;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.sk-hand .sk-card {
+  cursor: pointer;
+}
+
+.sk-hand .sk-card:hover {
+  transform: translateY(-18px) scale(1.06);
+  z-index: 3;
+}
+
+/* Carte choisie pour la défausse pendant le pouvoir de Will le Bandit. */
+.sk-card--selected {
+  transform: translateY(-18px) scale(1.06);
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px #facc1599, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  z-index: 3;
+}
+
+/* Cartes numérotées : couleur de fond selon la famille (vert/jaune/violet
+   noir), le noir étant l'atout permanent. */
+.sk-card--vert {
+  color: #14532d;
+}
+.sk-card--jaune {
+  color: #92400e;
+}
+.sk-card--violet {
+  color: #581c87;
+}
+.sk-card--noir {
+  background: #1a1a1a;
+  color: #f5f0e6;
+}
+
+.sk-suit-dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Cartes spéciales : un emoji + un petit nom, fond distinct pour qu'elles
+   sautent aux yeux dans l'éventail. */
+.sk-card--special {
+  background: #f5ede0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
+.sk-special-emoji {
+  font-size: 1.6em;
+  line-height: 1;
+}
+
+.sk-special-label {
+  font-size: 0.32em;
+  font-weight: 800;
+  color: #1a1208;
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* Cartes du pli : plus petites, jamais cliquables. */
+.sk-trick-card .sk-card {
+  width: 54px;
+  height: 78px;
+  font-size: 0.95rem;
+  cursor: default;
+}
+
+/* --- Pop-up de fin de manche --- */
+
+.sk-round-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sk-round-popup-inner {
+  background: #200606;
+  border: 3px solid #1a1208;
+  border-radius: 16px;
+  padding: 20px 22px;
+  max-width: 340px;
+  width: 100%;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4);
+  animation: sk-popup-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes sk-popup-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sk-round-popup-inner h3 {
+  margin: 0 0 12px;
+  text-align: center;
+  color: #facc15;
+}
+
+.sk-round-popup-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sk-round-popup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: #ffffff0f;
+  font-size: 0.85rem;
+}
+
+.sk-round-popup-row-detail {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.sk-round-popup-row-delta {
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.sk-delta--up {
+  color: #4ade80;
+}
+
+.sk-delta--down {
+  color: #fca5a5;
+}
+
+.sk-round-popup-timer {
+  margin-top: 14px;
+  height: 5px;
+  border-radius: 3px;
+  background: #ffffff1a;
+  overflow: hidden;
+}
+
+.sk-round-popup-bar {
+  height: 100%;
+  width: 100%;
+  background: #facc15;
+  transform-origin: left center;
+}
+
+#sk-btn-next-round {
+  display: block;
+  margin: 12px auto 0;
+}
+
+.sk-score-table {
+  width: 100%;
+  max-width: 380px;
+  border-collapse: collapse;
+  margin: 16px auto;
+}
+
+.sk-score-table th,
+.sk-score-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #ffffff22;
+  text-align: center;
+}
+
+.sk-score-table th {
+  color: #facc15;
+}
+
+@media (max-width: 680px) {
+  .sk-play-area {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sk-table {
+    flex: none;
+    width: 100%;
+    height: 260px;
+  }
+  .sk-turn-indicator {
+    margin: 6px 0 4px;
+  }
+  .sk-hand {
+    padding: 16px 10px 0;
+    min-height: 100px;
+  }
+  .sk-scoreboard {
+    width: 100%;
+  }
+  .sk-scoreboard-rows {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .sk-score-row {
+    flex: 1 1 44%;
+  }
+  .sk-seat {
+    width: 78px;
+  }
+  .sk-hand .sk-card {
+    width: 58px;
+    height: 84px;
+  }
+  .sk-card-arc {
+    margin-left: -22px;
+  }
+}
