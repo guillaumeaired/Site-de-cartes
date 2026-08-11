@@ -519,7 +519,7 @@ function renderTurnIndicator(state) {
   }
   if (state.phase === 'bidding') {
     if (state.myBid === undefined) {
-      turnIndicator.textContent = 'Annonce en aveugle : combien de plis vas-tu faire ?';
+      turnIndicator.textContent = 'Annonce secrète : combien de plis vas-tu faire ?';
     } else {
       const waiting = state.players.filter((p) => !p.hasBid).map((p) => p.nickname);
       turnIndicator.textContent = waiting.length
