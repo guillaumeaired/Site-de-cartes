@@ -66,6 +66,37 @@ function showReconnectingOverlay(show) {
   reconnectOverlay.classList.toggle('hidden', !show);
 }
 
+// Bannière persistante (par opposition au toast, qui s'efface tout seul) tant
+// qu'un ou plusieurs AUTRES joueurs sont déconnectés. `ascenseur-state` n'est
+// PAS renvoyé après une déconnexion en pleine partie (seul l'événement dédié
+// ascenseur-player-disconnected part, cf. server/ascenseur-room.js) : on
+// tient donc cette liste nous-mêmes à partir des événements dédiés, et on la
+// resynchronise en plus depuis state.players à chaque état complet reçu
+// (rechargement de page, reprise de partie) pour ne jamais rester désaligné.
+const disconnectBanner = document.getElementById('asc-disconnect-banner');
+const awayPlayers = new Map(); // id -> nickname
+function renderDisconnectBanner() {
+  const away = [...awayPlayers.values()];
+  if (away.length === 0) {
+    disconnectBanner.classList.add('hidden');
+    return;
+  }
+  const names = away.join(', ');
+  const verb = away.length > 1 ? 'ont perdu la connexion' : 'a perdu la connexion';
+  const action = myIsHost
+    ? 'Tu peux attendre son retour ou arrêter la partie avec « Terminer ».'
+    : "En attente — l'hôte peut arrêter la partie à tout moment si besoin.";
+  disconnectBanner.textContent = `🔌 ${names} ${verb}. ${action}`;
+  disconnectBanner.classList.remove('hidden');
+}
+function syncAwayPlayersFromState(state) {
+  awayPlayers.clear();
+  state.players.forEach((p) => {
+    if (!p.connected && p.id !== myId) awayPlayers.set(p.id, p.nickname);
+  });
+  renderDisconnectBanner();
+}
+
 // --- Accueil ---
 
 const inputNickname = document.getElementById('asc-input-nickname');
@@ -323,7 +354,9 @@ function renderSeats(state) {
     seat.className = 'asc-seat' + (p.id === myId ? ' asc-seat--me' : '');
     seat.style.left = left + '%';
     seat.style.top = top + '%';
-    if (!p.connected) seat.classList.add('asc-seat--disconnected');
+    // p.connected peut être périmé juste après une déconnexion (cf. commentaire
+    // sur awayPlayers plus haut) : awayPlayers est la source à jour.
+    if (!p.connected || awayPlayers.has(p.id)) seat.classList.add('asc-seat--disconnected');
 
     const activeId = state.phase === 'bidding' ? state.bidTurnPlayerId : state.turnPlayerId;
     if (p.id === activeId) seat.classList.add('asc-seat--turn');
@@ -442,10 +475,19 @@ function renderTrick(state) {
 function renderBidChoices(state) {
   bidChoices.innerHTML = '';
   if (state.phase !== 'bidding' || !state.isMyBidTurn) return;
+  // Le dernier annonceur ne peut pas choisir la valeur qui ferait que la
+  // somme totale égale le nombre de plis en jeu (interdit côté serveur) :
+  // on désactive ce choix ici pour éviter un clic suivi d'un rejet.
+  const bidsPlaced = state.players.filter((p) => p.bid !== undefined);
+  const isLastBidder = bidsPlaced.length === state.players.length - 1;
+  const priorBidsSum = bidsPlaced.reduce((sum, p) => sum + p.bid, 0);
   for (let n = 0; n <= state.cardsInRound; n++) {
+    const forbidden = isLastBidder && priorBidsSum + n === state.cardsInRound;
     const btn = document.createElement('button');
     btn.className = 'btn';
     btn.textContent = n;
+    btn.disabled = forbidden;
+    if (forbidden) btn.title = 'Interdit : la somme des annonces égalerait le nombre de plis en jeu.';
     btn.addEventListener('click', () => socket.emit('ascenseur-bid', { bid: n }));
     bidChoices.appendChild(btn);
   }
@@ -590,6 +632,7 @@ function renderGame(state) {
   latestState = state;
   roundIndicator.textContent = `Manche ${state.roundNumber}`;
   btnEndGame.classList.toggle('hidden', !myIsHost);
+  syncAwayPlayersFromState(state);
   maybeAnimateDeal(state);
   renderSeats(state);
   renderTrump(state);
@@ -700,12 +743,16 @@ function applyState(state) {
 socket.on('ascenseur-state', applyState);
 socket.on('ascenseur-rejoin-ok', applyState);
 
-socket.on('ascenseur-player-disconnected', ({ nickname, graceMs }) => {
-  showToast(`🔌 ${nickname} a une connexion instable — ${Math.round(graceMs / 1000)}s pour revenir…`);
+socket.on('ascenseur-player-disconnected', ({ id, nickname }) => {
+  showToast(`🔌 ${nickname} a une connexion instable…`);
+  awayPlayers.set(id, nickname);
+  renderDisconnectBanner();
 });
 
-socket.on('ascenseur-player-reconnected', ({ nickname }) => {
+socket.on('ascenseur-player-reconnected', ({ id, nickname }) => {
   showToast(`✅ ${nickname} est de retour !`);
+  awayPlayers.delete(id);
+  renderDisconnectBanner();
 });
 
 socket.on('ascenseur-rejoin-failed', () => {

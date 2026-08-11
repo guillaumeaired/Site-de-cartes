@@ -506,6 +506,23 @@ h1 {
   font-weight: 700;
 }
 
+/* Bannière persistante (pas un toast qui s'efface) tant qu'un autre joueur
+   est déconnecté : contrairement au reconnect-overlay ci-dessus (qui parle
+   de MA propre connexion), celle-ci reste affichée en continu tant que
+   state.players contient un joueur avec connected:false, pour que la table
+   n'ait pas l'air juste figée sans raison. */
+.asc-disconnect-banner {
+  margin: 0 0 10px;
+  padding: 8px 14px;
+  background: #ffffff14;
+  border: 2px solid #facc15;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+}
+
 /* --- Visage de carte classique (façon Balatro), partagé entre .asc-card et
    .asc-trump-card --- */
 
@@ -978,7 +995,8 @@ h1 {
   cursor: pointer;
 }
 
-.asc-hand .asc-card:hover {
+.asc-hand .asc-card:hover,
+.asc-hand .asc-card:active {
   transform: translateY(-18px) scale(1.06);
   z-index: 3;
 }
@@ -990,7 +1008,8 @@ h1 {
   cursor: not-allowed !important;
 }
 
-.asc-hand .asc-card--disabled:hover {
+.asc-hand .asc-card--disabled:hover,
+.asc-hand .asc-card--disabled:active {
   transform: none;
 }
 

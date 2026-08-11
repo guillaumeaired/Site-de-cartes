@@ -30,7 +30,7 @@
       </button>
       <div class="divider">ou rejoindre avec un code</div>
       <form id="asc-form-join">
-        <input id="asc-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" />
+        <input id="asc-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
         <button type="submit" class="btn">Rejoindre</button>
       </form>
       <p id="asc-home-error" class="error"></p>
@@ -61,6 +61,8 @@
         <p id="asc-round-indicator" class="asc-round-indicator"></p>
         <button id="asc-btn-end-game" class="btn btn-small hidden">🏁 Terminer</button>
       </div>
+
+      <p id="asc-disconnect-banner" class="asc-disconnect-banner hidden"></p>
 
       <div class="asc-play-area">
         <div id="asc-table" class="asc-table">
