@@ -455,6 +455,19 @@ io.on('connection', (socket) => {
   registerSkullKingHandlers(io, socket);
 });
 
+// Filet de securite : sans ca, un bug dans un seul jeu (Rami, Ascenseur, Skull
+// King...) fait planter le process entier et coupe TOUTES les parties en
+// cours sur TOUS les jeux. On logue et on continue plutot que de crasher.
+// Contenu du log volontairement minimal pour l'instant (message + stack) -
+// affiner avec le Backend a la prochaine manche pour ne pas noyer les vrais
+// bugs de logique de jeu sous du bruit.
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', new Date().toISOString(), err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', new Date().toISOString(), reason);
+});
+
 httpServer.listen(PORT, () => {
   console.log(`Serveur lancé : http://localhost:${PORT} (réseau local : http://${LAN_IP}:${PORT})`);
 });
