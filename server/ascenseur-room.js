@@ -354,7 +354,6 @@ function clearRoomTimers(room) {
 }
 
 function finishGame(io, room) {
-  console.log('[DEBUG] finishGame called for room', room.code, new Error().stack.split('\n')[2]);
   clearRoomTimers(room);
   const ranking = [...room.players]
     .map((p) => ({ id: p.id, nickname: p.nickname, total: p.totalScore }))
@@ -407,7 +406,6 @@ function finalizeAscenseurDisconnect(io, room, id, reason) {
     return;
   }
 
-  console.log('[DEBUG] finalizeAscenseurDisconnect for', player.nickname, 'reason', reason);
   broadcastToRoom(io, room, 'ascenseur-player-left', { nickname: player.nickname, reason: reason || 'left' });
   finishGame(io, room);
 }
@@ -432,7 +430,6 @@ function handleDisconnecting(io, socket) {
   if (!player) return;
 
   player.connected = false;
-  console.log('[DEBUG] handleDisconnecting for', player.nickname, 'phase', room.phase);
   broadcastToRoom(io, room, 'ascenseur-player-disconnected', {
     id: player.id,
     nickname: player.nickname,
@@ -646,7 +643,6 @@ function registerAscenseurHandlers(io, socket) {
     }
     const wasDisconnected = player.connected === false;
     const oldId = player.id;
-    console.log('[DEBUG] rejoin-room for', player.nickname, 'wasDisconnected', wasDisconnected, 'phase', room.phase);
     rekeyPlayerId(room, oldId, socket.id);
     player.id = socket.id;
     player.connected = true;
