@@ -32,11 +32,11 @@ check('max cartes à 7 joueurs', maxCardsFor(7), 7);
 check('max cartes à 6 joueurs', maxCardsFor(6), 8);
 check('max cartes à 5 joueurs', maxCardsFor(5), 10);
 check('max cartes à 4 joueurs (division exacte)', maxCardsFor(4), 13);
-check('max cartes à 3 joueurs', maxCardsFor(3), 17);
+check('max cartes à 3 joueurs (plafonné à 13, sinon 17)', maxCardsFor(3), 13);
 
-check('séquence à 3 joueurs : 1..17..1', buildRoundSequence(3), [
-  ...Array.from({ length: 17 }, (_, i) => i + 1),
-  ...Array.from({ length: 16 }, (_, i) => 16 - i),
+check('séquence à 3 joueurs : 1..13..1 (plafonnée)', buildRoundSequence(3), [
+  ...Array.from({ length: 13 }, (_, i) => i + 1),
+  ...Array.from({ length: 12 }, (_, i) => 12 - i),
 ]);
 check('séquence à 7 joueurs : longueur 13 (montée 1..7 + descente 6..1)', buildRoundSequence(7).length, 13);
 

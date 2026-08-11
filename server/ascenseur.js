@@ -11,8 +11,11 @@ const SUIT_ORDER = ['coeur', 'carreau', 'trefle', 'pique'];
 // de 52 cartes, une carte étant ensuite retournée pour définir l'atout. Si
 // la division tombe pile (ex: 52/4=13), il ne reste aucune carte à retourner
 // : la manche au sommet de l'ascenseur se joue alors sans atout.
+// Plafonné à 13 (round validé en Manche 2) : sans ça, une partie à 3 joueurs
+// grimpait jusqu'à 17 (33 manches au total), bien plus longue qu'à 7 joueurs
+// (7 manches, 13 au total) — durée très déséquilibrée selon l'effectif.
 function maxCardsFor(playerCount) {
-  return Math.floor(52 / playerCount);
+  return Math.min(Math.floor(52 / playerCount), 13);
 }
 
 // Séquence des manches : 1, 2, ..., max, ..., 2, 1 (montée puis descente).
