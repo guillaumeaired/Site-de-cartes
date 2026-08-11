@@ -481,10 +481,29 @@ h1 {
   text-align: center;
 }
 
+/* Sous-titres de groupe dans les regles restructurees (mise en place /
+   annonces / deroulement du pli / score). */
+.modal-content h3 {
+  margin: 18px 0 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #facc15;
+}
+
+.modal-content h3:first-of-type {
+  margin-top: 0;
+}
+
 .modal-content ol {
   padding-left: 20px;
   line-height: 1.6;
   font-size: 0.9rem;
+}
+
+.modal-content ol + h3 {
+  margin-top: 16px;
 }
 
 .modal-content .btn {

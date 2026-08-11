@@ -1157,10 +1157,30 @@ h1 {
   text-align: center;
 }
 
+/* Sous-titres de groupe dans les regles restructurees (mise en place /
+   deroulement / score / fin de partie) - repere rapide pour quelqu'un qui
+   ne veut pas tout relire, juste retrouver "comment ca finit ?". */
+.modal-content h3 {
+  margin: 18px 0 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #facc15;
+}
+
+.modal-content h3:first-of-type {
+  margin-top: 0;
+}
+
 .modal-content ol {
   padding-left: 20px;
   line-height: 1.6;
   font-size: 0.95rem;
+}
+
+.modal-content ol + h3 {
+  margin-top: 16px;
 }
 
 .modal-content .btn {
