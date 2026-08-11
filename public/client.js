@@ -71,6 +71,23 @@ const gameToast = document.getElementById('game-toast');
 const battleBanner = document.getElementById('battle-banner');
 const reconnectOverlay = document.getElementById('reconnect-overlay');
 
+// Le serveur (hebergement gratuit) peut mettre jusqu'a ~25s a se reveiller au
+// tout premier chargement apres une periode d'inactivite : sans ca, la page
+// semble juste figee/cassee le temps que le socket se connecte. On reutilise
+// la banniere de reconnexion existante avec un texte different, seulement le
+// temps de ce tout premier connect (jamais reaffiche ensuite).
+let hasConnectedOnce = false;
+if (!socket.connected) {
+  reconnectOverlay.textContent = "🌙 Réveil du serveur… (jusqu'à 25s au premier chargement)";
+  reconnectOverlay.classList.remove('hidden');
+}
+socket.on('connect', () => {
+  if (hasConnectedOnce) return;
+  hasConnectedOnce = true;
+  reconnectOverlay.classList.add('hidden');
+  reconnectOverlay.textContent = '🔌 Connexion perdue — reconnexion en cours…';
+});
+
 const endTitle = document.getElementById('end-title');
 const btnRematch = document.getElementById('btn-rematch');
 const btnLeaveEnd = document.getElementById('btn-leave-end');
@@ -733,6 +750,7 @@ socket.on('player-reconnected', ({ id, oldId, nickname }) => {
 // jeton et renvoie un etat complet pour reprendre exactement ou il en etait.
 socket.on('rejoin-ok', (payload) => {
   showReconnectingOverlay(false);
+  joinModal.classList.add('hidden');
   renderResyncedGame(payload);
 });
 
