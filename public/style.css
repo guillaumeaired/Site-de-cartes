@@ -1193,3 +1193,59 @@ h1 {
 .seat--result-lose .pile {
   animation: glow-lose 0.9s ease;
 }
+
+/* --- Ecran de jeu Bataille sur mobile : la table restait petite au milieu
+   d'un ecran vertical bien plus grand qu'elle (le centrage du body laisse
+   beaucoup de vide). On agrandit table/cartes/piles plutot que de changer le
+   centrage global (qui sert bien le hub et les ecrans d'accueil/lobby). --- */
+@media (max-width: 480px) {
+  .table {
+    height: 320px;
+    margin: 16px auto 10px;
+  }
+
+  .seat-name {
+    font-size: 0.9rem;
+  }
+
+  .card-slot {
+    width: 96px;
+    height: 140px;
+  }
+
+  .card-face {
+    font-size: 2rem;
+  }
+
+  .pile {
+    width: 68px;
+    height: 100px;
+  }
+
+  .pile-count {
+    font-size: 1.15rem;
+  }
+
+  .seat--other .pile {
+    width: 52px;
+    height: 76px;
+  }
+
+  .seat--other .card-slot {
+    width: 70px;
+    height: 102px;
+  }
+
+  .seat--other .card-face {
+    font-size: 1.4rem;
+  }
+
+  .seat--other .pile-count {
+    font-size: 1rem;
+  }
+
+  .seat--other .war-card-back {
+    width: 20px;
+    height: 29px;
+  }
+}
