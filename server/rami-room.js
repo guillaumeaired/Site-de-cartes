@@ -21,6 +21,12 @@ const MAX_PLAYERS = 2; // v1 : 2 joueurs seulement, généralisé plus tard
 // avant que la partie ne soit vraiment consideree terminee.
 const DISCONNECT_GRACE_MS = 45_000;
 
+// Garde-fou anti-inactivite (Manche 2) : un joueur toujours connecte mais qui
+// met trop de temps a agir sur son tour declenche un simple signal visible
+// des deux joueurs - aucun saut de tour ni fin de partie automatique, c'est
+// un cas different de la deconnexion (deja geree ci-dessus).
+const INACTIVITY_WARN_MS = 120_000;
+
 const rooms = new Map();
 let meldCounter = 0;
 
@@ -188,6 +194,7 @@ function startGame(io, room) {
       turnPlayerId: activePlayer(room).id,
     });
   }
+  scheduleInactivityCheck(io, room);
 }
 
 // Etat complet du point de vue d'un joueur donne : utilise pour la diffusion
@@ -224,6 +231,24 @@ function broadcastState(io, room) {
   for (const p of room.players) {
     io.to(p.id).emit('rami-state', stateFor(room, p));
   }
+  scheduleInactivityCheck(io, room);
+}
+
+// Reprogrammé à chaque état diffusé : n'importe quelle action du joueur actif
+// remet le compteur à zéro, et un changement de tour retarget automatiquement
+// le bon joueur.
+function scheduleInactivityCheck(io, room) {
+  clearTimeout(room.inactivityTimer);
+  room.inactivityTimer = null;
+  if (room.phase !== 'playing') return;
+  const playerId = activePlayer(room).id;
+  room.inactivityTimer = setTimeout(() => {
+    if (rooms.get(room.code) !== room || room.phase !== 'playing') return;
+    if (activePlayer(room).id !== playerId) return;
+    const player = findPlayer(room, playerId);
+    if (!player || player.connected === false) return; // déjà couvert par le badge de déconnexion
+    broadcastToRoom(io, room, 'rami-inactivity-notice', { id: playerId, nickname: player.nickname });
+  }, INACTIVITY_WARN_MS);
 }
 
 // La partie s'arrête dès qu'un joueur n'a plus de cartes : score final de
@@ -249,6 +274,7 @@ function finalizeRamiDisconnect(io, room, id, reason) {
   const idx = room.players.findIndex((p) => p.id === id);
   if (idx === -1) return;
   const [removed] = room.players.splice(idx, 1);
+  clearTimeout(room.inactivityTimer);
 
   if (room.players.length === 0) {
     rooms.delete(room.code);

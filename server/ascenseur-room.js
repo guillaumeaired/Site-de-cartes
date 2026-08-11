@@ -8,9 +8,21 @@ const { buildRoundSequence, dealRound, isValidBid, resolveTrick, computeRoundSco
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 7;
 
-// Même délai de grâce que les autres jeux (voir rami-room.js pour le
-// contexte du bug qu'il corrige).
+// Salon d'attente uniquement (voir handleDisconnecting) : délai de grâce
+// avant de considérer le joueur vraiment parti.
 const DISCONNECT_GRACE_MS = 45_000;
+
+// Déconnexion en pleine partie : pause indéfinie, plus de délai de grâce fixe
+// qui met fin à la partie tout seul (décision réconciliée Backend/Game
+// Design/UI-UX, Manche 2). La partie attend le retour du joueur sans limite
+// de temps ; seul l'hôte peut choisir d'arrêter la partie plus tôt via
+// ascenseur-end-game (déjà existant, marche à tout moment).
+
+// Au-delà de la déconnexion : un joueur toujours connecté mais qui met trop
+// de temps à agir sur son tour reçoit un simple signal visible de tous (pas
+// de saut de tour ni d'exclusion automatique — l'hôte garde la main pour
+// arrêter la partie s'il le juge nécessaire).
+const INACTIVITY_WARN_MS = 120_000;
 
 // Quand la dernière carte d'un pli tombe, on ne ramasse pas tout de suite :
 // sans cette pause, la carte qui vient d'être jouée (et donc le résultat du
@@ -251,6 +263,33 @@ function broadcastState(io, room) {
   for (const p of room.players) {
     io.to(p.id).emit('ascenseur-state', stateFor(room, p));
   }
+  scheduleInactivityCheck(io, room);
+}
+
+// Qui doit agir maintenant, si quelqu'un doit agir (null pendant la pause de
+// révélation d'un pli, la fin de manche, ou hors partie).
+function currentTurnPlayerId(room) {
+  if (room.phase === 'bidding') return bidderAt(room, room.bidTurnCount).id;
+  if (room.phase === 'playing' && !room.trickPaused) return playerAtTurn(room).id;
+  return null;
+}
+
+// Reprogrammé à chaque état diffusé (via broadcastState) : n'importe quelle
+// action remet le compteur à zéro pour le joueur concerné, et un changement
+// de tour retarget automatiquement le bon joueur. Purement informatif — pas
+// d'auto-saut ni d'exclusion, voir le commentaire sur INACTIVITY_WARN_MS.
+function scheduleInactivityCheck(io, room) {
+  clearTimeout(room.inactivityTimer);
+  room.inactivityTimer = null;
+  const playerId = currentTurnPlayerId(room);
+  if (!playerId) return;
+  room.inactivityTimer = setTimeout(() => {
+    if (rooms.get(room.code) !== room) return;
+    if (currentTurnPlayerId(room) !== playerId) return;
+    const player = findPlayer(room, playerId);
+    if (!player || player.connected === false) return; // déjà couvert par la bannière de déconnexion
+    broadcastToRoom(io, room, 'ascenseur-inactivity-notice', { id: playerId, nickname: player.nickname });
+  }, INACTIVITY_WARN_MS);
 }
 
 function endRound(io, room) {
@@ -308,11 +347,14 @@ function advanceRound(io, room) {
 function clearRoomTimers(room) {
   clearTimeout(room.roundEndTimer);
   clearTimeout(room.trickTimer);
+  clearTimeout(room.inactivityTimer);
   room.roundEndTimer = null;
   room.trickTimer = null;
+  room.inactivityTimer = null;
 }
 
 function finishGame(io, room) {
+  console.log('[DEBUG] finishGame called for room', room.code, new Error().stack.split('\n')[2]);
   clearRoomTimers(room);
   const ranking = [...room.players]
     .map((p) => ({ id: p.id, nickname: p.nickname, total: p.totalScore }))
@@ -365,6 +407,7 @@ function finalizeAscenseurDisconnect(io, room, id, reason) {
     return;
   }
 
+  console.log('[DEBUG] finalizeAscenseurDisconnect for', player.nickname, 'reason', reason);
   broadcastToRoom(io, room, 'ascenseur-player-left', { nickname: player.nickname, reason: reason || 'left' });
   finishGame(io, room);
 }
@@ -389,14 +432,24 @@ function handleDisconnecting(io, socket) {
   if (!player) return;
 
   player.connected = false;
+  console.log('[DEBUG] handleDisconnecting for', player.nickname, 'phase', room.phase);
   broadcastToRoom(io, room, 'ascenseur-player-disconnected', {
     id: player.id,
     nickname: player.nickname,
-    graceMs: DISCONNECT_GRACE_MS,
   });
-  player.disconnectTimer = setTimeout(() => {
-    if (rooms.get(code) === room) finalizeAscenseurDisconnect(io, room, player.id, 'timeout');
-  }, DISCONNECT_GRACE_MS);
+
+  // En salon d'attente, un délai de grâce reste nécessaire : sans lui, mettre
+  // son téléphone en veille une seconde pour coller le lien d'invitation
+  // détruit instantanément le salon qu'on vient de créer (l'hôte revient,
+  // "cette partie n'existe pas"). En pleine partie en revanche : pause
+  // indéfinie, pas de délai qui met fin à la partie tout seul — le joueur
+  // peut revenir à tout moment, sinon seul l'hôte choisit d'arrêter
+  // (ascenseur-end-game, déjà existant) — décision réconciliée Manche 2.
+  if (room.phase === 'lobby') {
+    player.disconnectTimer = setTimeout(() => {
+      if (rooms.get(code) === room) finalizeAscenseurDisconnect(io, room, player.id, 'timeout');
+    }, DISCONNECT_GRACE_MS);
+  }
 }
 
 function registerAscenseurHandlers(io, socket) {
@@ -593,6 +646,7 @@ function registerAscenseurHandlers(io, socket) {
     }
     const wasDisconnected = player.connected === false;
     const oldId = player.id;
+    console.log('[DEBUG] rejoin-room for', player.nickname, 'wasDisconnected', wasDisconnected, 'phase', room.phase);
     rekeyPlayerId(room, oldId, socket.id);
     player.id = socket.id;
     player.connected = true;
