@@ -57,6 +57,24 @@ function showToast(message) {
 }
 
 const reconnectOverlay = document.getElementById('reconnect-overlay');
+
+// Le serveur (hebergement gratuit) peut mettre jusqu'a ~25s a se reveiller au
+// tout premier chargement apres une periode d'inactivite : sans ca, la page
+// semble juste figee/cassee le temps que le socket se connecte. On reutilise
+// la banniere de reconnexion existante avec un texte different, seulement le
+// temps de ce tout premier connect (jamais reaffiche ensuite).
+let hasConnectedOnce = false;
+if (!socket.connected) {
+  reconnectOverlay.textContent = "🌙 Réveil du serveur… (jusqu'à 25s au premier chargement)";
+  reconnectOverlay.classList.remove('hidden');
+}
+socket.on('connect', () => {
+  if (hasConnectedOnce) return;
+  hasConnectedOnce = true;
+  reconnectOverlay.classList.add('hidden');
+  reconnectOverlay.textContent = '🔌 Connexion perdue — reconnexion en cours…';
+});
+
 function showReconnectingOverlay(show) {
   reconnectOverlay.classList.toggle('hidden', !show);
 }
