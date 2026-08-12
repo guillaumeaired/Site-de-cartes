@@ -700,11 +700,18 @@ h1 {
 .game-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 4px;
 }
 
 .game-header .btn-link {
   margin: 0;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.85rem;
 }
 
 .table {

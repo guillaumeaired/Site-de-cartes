@@ -927,9 +927,15 @@ socket.on('rami-rejoin-ok', ({ myId: id, ...state }) => {
   renderAll();
 });
 
-socket.on('rami-rejoin-failed', () => {
+socket.on('rami-rejoin-failed', (payload) => {
   clearActiveRoom();
   showReconnectingOverlay(false);
+  // Distingue "ce salon n'a jamais existe" (code invalide) de "le serveur a
+  // redemarre et a perdu son etat" (hebergement gratuit qui se met en veille) -
+  // sinon un joueur revenant apres une pause pense avoir tape le mauvais code.
+  if (payload && payload.reason === 'server-restarted') {
+    showToast("😴 Le serveur a redémarré entre-temps — cette partie a été perdue, il faut en relancer une.");
+  }
   const fallback = rejoinFallback;
   rejoinFallback = null;
   if (fallback && fallback !== 'link') {

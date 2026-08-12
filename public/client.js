@@ -54,6 +54,7 @@ const shareCode = document.getElementById('share-code');
 const btnCopy = document.getElementById('btn-copy');
 const btnLeaveWaiting = document.getElementById('btn-leave-waiting');
 const btnLeaveGame = document.getElementById('btn-leave-game');
+const btnEndGame = document.getElementById('btn-end-game');
 const waitingHint = document.getElementById('waiting-hint');
 const lobbyPlayers = document.getElementById('lobby-players');
 const lobbyList = document.getElementById('lobby-list');
@@ -388,6 +389,7 @@ formJoin.addEventListener('submit', (e) => {
 
 btnLeaveWaiting.addEventListener('click', goHome);
 btnLeaveGame.addEventListener('click', goHome);
+btnEndGame.addEventListener('click', () => socket.emit('end-game'));
 
 const copyDefaultLabel = btnCopy.innerHTML;
 
@@ -459,6 +461,7 @@ socket.on('lobby-update', ({ code, players, hostId, isHost, canStart }) => {
   });
   lobbyCount.textContent = players.length;
 
+  myIsHost = isHost;
   btnStartGame.classList.toggle('hidden', !isHost);
   btnStartGame.disabled = !canStart;
 
@@ -478,7 +481,14 @@ btnStartGame.addEventListener('click', () => {
 // --- Partie en cours ---
 
 let myId = null;
+let myIsHost = false;
 let seatRefs = new Map();
+// Le bouton "Terminer" n'a d'utilite que s'il y a vraiment quelqu'un a
+// laisser de cote - pas affiche s'il ne ferait rien.
+let disconnectedIds = new Set();
+function updateEndGameButton() {
+  btnEndGame.classList.toggle('hidden', !(myIsHost && disconnectedIds.size > 0));
+}
 // Compte au debut de la confrontation en cours, par id de joueur, pour
 // calculer combien de cartes le gagnant a effectivement remportees.
 let roundStartCounts = {};
@@ -572,6 +582,9 @@ function updateMyPileState(spectating) {
 
 socket.on('game-start', (data) => {
   myId = data.myId;
+  myIsHost = data.hostId === myId;
+  disconnectedIds = new Set();
+  updateEndGameButton();
   const me = data.players.find((p) => p.id === myId);
   const others = data.players.filter((p) => p.id !== myId);
   const seatOrder = [me, ...others];
@@ -601,6 +614,7 @@ function showGameOverScreen(iWon, winnerNickname) {
 // intermediaires suivis, donc pas d'animation ici, juste l'etat final).
 function renderResyncedGame(payload) {
   myId = payload.myId;
+  myIsHost = payload.hostId === myId;
   const me = payload.players.find((p) => p.id === myId);
   const others = payload.players.filter((p) => p.id !== myId);
 
@@ -617,12 +631,15 @@ function renderResyncedGame(payload) {
     const card = payload.revealed[id];
     if (ref && card) renderCard(ref.cardSlot, card);
   }
+  disconnectedIds = new Set();
   for (const p of payload.players) {
     if (p.connected === false) {
       const ref = seatRefs.get(p.id);
       if (ref) ref.seat.classList.add('seat--disconnected');
+      disconnectedIds.add(p.id);
     }
   }
+  updateEndGameButton();
 
   if (payload.gameOver) {
     const winner = payload.players.find((p) => p.count > 0);
@@ -723,13 +740,23 @@ socket.on('player-left', ({ id, nickname }) => {
     ref.seat.remove();
     seatRefs.delete(id);
   }
+  disconnectedIds.delete(id);
+  updateEndGameButton();
   showToast(`${nickname} a quitté la partie — ça continue sans lui.`);
 });
 
 socket.on('player-disconnected', ({ id, nickname, graceMs }) => {
-  showToast(`🔌 ${nickname} a une connexion instable — ${Math.round(graceMs / 1000)}s pour revenir…`);
+  // graceMs est null en pleine partie (pause indefinie, pas de decompte) -
+  // seulement fourni en salon d'attente.
+  showToast(
+    graceMs != null
+      ? `🔌 ${nickname} a une connexion instable — ${Math.round(graceMs / 1000)}s pour revenir…`
+      : `🔌 ${nickname} s'est déconnecté — la partie est en pause en attendant son retour.`
+  );
   const ref = seatRefs.get(id);
   if (ref) ref.seat.classList.add('seat--disconnected');
+  disconnectedIds.add(id);
+  updateEndGameButton();
 });
 
 socket.on('player-reconnected', ({ id, oldId, nickname }) => {
@@ -744,6 +771,9 @@ socket.on('player-reconnected', ({ id, oldId, nickname }) => {
   }
   const ref = seatRefs.get(id);
   if (ref) ref.seat.classList.remove('seat--disconnected');
+  disconnectedIds.delete(oldId);
+  disconnectedIds.delete(id);
+  updateEndGameButton();
 });
 
 // Reconnexion en pleine partie : le serveur a retrouve le joueur via son
@@ -754,9 +784,15 @@ socket.on('rejoin-ok', (payload) => {
   renderResyncedGame(payload);
 });
 
-socket.on('rejoin-failed', () => {
+socket.on('rejoin-failed', (payload) => {
   clearActiveRoom();
   showReconnectingOverlay(false);
+  // Distingue "ce salon n'a jamais existe" (code invalide) de "le serveur a
+  // redemarre et a perdu son etat" (hebergement gratuit qui se met en veille) -
+  // sinon un joueur revenant apres une pause pense avoir tape le mauvais code.
+  if (payload && payload.reason === 'server-restarted') {
+    showToast("😴 Le serveur a redémarré entre-temps — cette partie a été perdue, il faut en relancer une.");
+  }
   const fallback = rejoinFallback;
   rejoinFallback = null;
   if (fallback && fallback !== 'link') {

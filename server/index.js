@@ -4,9 +4,10 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { dealHands, shuffle, buryUpToN } = require('./game');
-const { registerRamiHandlers } = require('./rami-room');
-const { registerAscenseurHandlers } = require('./ascenseur-room');
-const { registerSkullKingHandlers } = require('./skullking-room');
+const { SERVER_STARTED_AT, likelyServerRestart } = require('./server-start');
+const { registerRamiHandlers, getStats: getRamiStats } = require('./rami-room');
+const { registerAscenseurHandlers, getStats: getAscenseurStats } = require('./ascenseur-room');
+const { registerSkullKingHandlers, getStats: getSkullKingStats } = require('./skullking-room');
 
 // Plus une partie s'eternise, plus une bataille enterre de cartes : le
 // nombre de cartes cachees monte de 1 toutes les 3 minutes ecoulees depuis
@@ -28,6 +29,17 @@ function currentBurialSize(room) {
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
+
+// Retire l'en-tete qui annonce la stack technique (Express), et ajoute les
+// protections HTTP standards (aucune n'a de cout fonctionnel ici : pas
+// d'iframe, pas d'upload de fichiers a sniffer).
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+  next();
+});
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -56,6 +68,27 @@ const LAN_IP = getLanIp();
 //   gameOver, startedAt
 // }
 const rooms = new Map();
+
+// Health check applicatif (pas juste TCP) : a declarer comme healthCheckPath
+// cote dashboard Render. Repond tant que la boucle d'evenements tourne.
+app.get('/healthz', (req, res) => {
+  res.json({ status: 'ok', uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000) });
+});
+
+// Observabilite minimale : combien de salons/parties tournent par jeu, sans
+// avoir a depouiller les logs Render. Pas d'auth ici (aucune donnee
+// personnelle exposee, juste des compteurs), a revisiter si le trafic
+// justifie de le proteger.
+app.get('/stats', (req, res) => {
+  const batailleList = [...rooms.values()];
+  res.json({
+    uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
+    bataille: { total: batailleList.length, playing: batailleList.filter((r) => r.phase === 'playing').length },
+    rami: getRamiStats(),
+    ascenseur: getAscenseurStats(),
+    skullking: getSkullKingStats(),
+  });
+});
 
 function makeRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -107,6 +140,7 @@ function buildResyncPayload(room, player) {
   return {
     phase: room.phase,
     myId: player.id,
+    hostId: room.hostId,
     players: room.players.map((pp) => ({
       id: pp.id,
       nickname: pp.nickname,
@@ -151,6 +185,7 @@ function startNewGame(room) {
   for (const p of room.players) {
     io.to(p.id).emit('game-start', {
       myId: p.id,
+      hostId: room.hostId,
       players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, count: pp.hand.length })),
     });
   }
@@ -296,11 +331,23 @@ function handleDisconnecting(socket) {
   broadcastToRoom(room, 'player-disconnected', {
     id: player.id,
     nickname: player.nickname,
-    graceMs: DISCONNECT_GRACE_MS,
+    graceMs: room.phase === 'lobby' ? DISCONNECT_GRACE_MS : null,
   });
-  player.disconnectTimer = setTimeout(() => {
-    if (rooms.get(code) === room) finalizeDisconnect(room, player.id);
-  }, DISCONNECT_GRACE_MS);
+
+  // Salon d'attente : delai de grace toujours necessaire, sinon mettre son
+  // telephone en veille une seconde pour coller le lien d'invitation detruit
+  // instantanement le salon qu'on vient de creer. En pleine partie en
+  // revanche : pause indefinie, comme Ascenseur/Rami/Skull King - le joueur
+  // peut revenir a tout moment, sinon seul l'hote choisit explicitement de
+  // continuer sans lui (bouton "Terminer" ci-dessous, reutilise
+  // finalizeDisconnect a la demande au lieu d'un retrait automatique apres
+  // 45s) - aligne sur les 3 autres jeux (audit Backend, 12 aout 2026 ;
+  // jusque-la Bataille etait le seul a garder l'ancien retrait auto).
+  if (room.phase === 'lobby') {
+    player.disconnectTimer = setTimeout(() => {
+      if (rooms.get(code) === room) finalizeDisconnect(room, player.id);
+    }, DISCONNECT_GRACE_MS);
+  }
 }
 
 io.on('connection', (socket) => {
@@ -405,6 +452,26 @@ io.on('connection', (socket) => {
     tryResolveConfrontation(room);
   });
 
+  // L'hote choisit de continuer sans un joueur reste deconnecte, plutot que
+  // d'attendre indefiniment son retour (voir handleDisconnecting) - reutilise
+  // simplement finalizeDisconnect, comme un retrait qui aurait ete declenche
+  // a la demande au lieu d'un minuteur automatique.
+  socket.on('end-game', () => {
+    const room = rooms.get(socket.data.room);
+    if (!room || room.phase !== 'playing') return;
+    if (socket.id !== room.hostId) return;
+    const disconnectedIds = room.players.filter((p) => p.connected === false).map((p) => p.id);
+    for (const id of disconnectedIds) {
+      const p = findPlayer(room, id);
+      if (!p) continue;
+      if (p.disconnectTimer) {
+        clearTimeout(p.disconnectTimer);
+        p.disconnectTimer = null;
+      }
+      finalizeDisconnect(room, id);
+    }
+  });
+
   // Reconnexion : le client redonne le code de la partie + son jeton
   // persistant (localStorage), qu'il ait clique le lien, retape le code, ou
   // que son socket se soit juste reconnecte tout seul apres une coupure.
@@ -412,12 +479,12 @@ io.on('connection', (socket) => {
     const code = ((payload && payload.code) || '').toUpperCase();
     const room = rooms.get(code);
     if (!room) {
-      socket.emit('rejoin-failed');
+      socket.emit('rejoin-failed', { reason: likelyServerRestart() ? 'server-restarted' : 'not-found' });
       return;
     }
     const player = findPlayerByToken(room, payload && payload.token);
     if (!player) {
-      socket.emit('rejoin-failed');
+      socket.emit('rejoin-failed', { reason: 'not-found' });
       return;
     }
 
@@ -455,18 +522,22 @@ io.on('connection', (socket) => {
   registerSkullKingHandlers(io, socket);
 });
 
-// Filet de securite : sans ca, un bug dans un seul jeu (Rami, Ascenseur, Skull
-// King...) fait planter le process entier et coupe TOUTES les parties en
-// cours sur TOUS les jeux. On logue et on continue plutot que de crasher.
-// Contenu du log volontairement minimal pour l'instant (message + stack) -
-// affiner avec le Backend a la prochaine manche pour ne pas noyer les vrais
-// bugs de logique de jeu sous du bruit.
-process.on('uncaughtException', (err) => {
-  console.error('[uncaughtException]', new Date().toISOString(), err);
-});
-process.on('unhandledRejection', (reason) => {
-  console.error('[unhandledRejection]', new Date().toISOString(), reason);
-});
+// Filet de securite process : l'etat de toutes les parties (4 jeux) ne vit
+// qu'en memoire (pas de BDD). Apres une exception non prevue, cet etat peut
+// etre partiellement mute et incoherent - continuer a servir des requetes
+// dessus risquerait de propager la corruption a d'autres salons plutot que
+// de la contenir. On logue puis on arrete proprement le process pour laisser
+// Render en relancer un neuf, plutot que logguer-et-continuer indefiniment
+// (audit Backend, 12 aout 2026).
+function crashSafely(kind, err) {
+  console.error(`[${kind}]`, new Date().toISOString(), err);
+  httpServer.close(() => process.exit(1));
+  // Filet de secours si close() reste bloque (ex. sockets qui ne se
+  // terminent jamais) : on force la sortie plutot que de rester zombie.
+  setTimeout(() => process.exit(1), 3000).unref();
+}
+process.on('uncaughtException', (err) => crashSafely('uncaughtException', err));
+process.on('unhandledRejection', (reason) => crashSafely('unhandledRejection', reason));
 
 httpServer.listen(PORT, () => {
   console.log(`Serveur lancé : http://localhost:${PORT} (réseau local : http://${LAN_IP}:${PORT})`);

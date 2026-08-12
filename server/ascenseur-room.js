@@ -4,6 +4,7 @@
 // dans l'ordre (donneur en dernier), plis, score cumulé affiché en direct.
 
 const { buildRoundSequence, dealRound, isValidBid, resolveTrick, computeRoundScore } = require('./ascenseur');
+const { likelyServerRestart } = require('./server-start');
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 7;
@@ -36,6 +37,13 @@ const TRICK_REVEAL_MS = 2_600;
 const ROUND_END_MS = 7_000;
 
 const rooms = new Map();
+
+// Compteurs simples pour l'observabilite (route /stats, server/index.js) -
+// pas de dependance a des logs bruts pour savoir combien de parties tournent.
+function getStats() {
+  const list = [...rooms.values()];
+  return { total: list.length, playing: list.filter((r) => r.phase === 'playing').length };
+}
 
 function makeRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -628,12 +636,12 @@ function registerAscenseurHandlers(io, socket) {
     const code = ((payload && payload.code) || '').toUpperCase();
     const room = rooms.get(code);
     if (!room) {
-      socket.emit('ascenseur-rejoin-failed');
+      socket.emit('ascenseur-rejoin-failed', { reason: likelyServerRestart() ? 'server-restarted' : 'not-found' });
       return;
     }
     const player = findPlayerByToken(room, payload && payload.token);
     if (!player) {
-      socket.emit('ascenseur-rejoin-failed');
+      socket.emit('ascenseur-rejoin-failed', { reason: 'not-found' });
       return;
     }
 
@@ -663,4 +671,4 @@ function registerAscenseurHandlers(io, socket) {
   socket.on('disconnecting', () => handleDisconnecting(io, socket));
 }
 
-module.exports = { registerAscenseurHandlers, MIN_PLAYERS, MAX_PLAYERS };
+module.exports = { registerAscenseurHandlers, MIN_PLAYERS, MAX_PLAYERS, getStats };
