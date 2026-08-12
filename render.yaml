@@ -1,0 +1,14 @@
+# Config de service versionnee (Infrastructure as Code) - a rapprocher des
+# reglages reels du dashboard Render (nom de service, region, plan) puis a
+# activer via "Sync" cote Render pour que ce fichier fasse foi. Tant que la
+# synchronisation n'est pas activee, ce fichier documente l'intention mais ne
+# pilote pas encore le service existant.
+services:
+  - type: web
+    name: bataille-en-ligne
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm test
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
