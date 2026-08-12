@@ -23,6 +23,7 @@ const {
   computeRoundScoreBreakdown,
 } = require('./skullking');
 const { likelyServerRestart } = require('./server-start');
+const { recordGameStarted } = require('./play-counts');
 
 // Salon d'attente uniquement (voir handleDisconnecting) : délai de grâce
 // avant de considérer le joueur vraiment parti.
@@ -747,6 +748,7 @@ function registerSkullKingHandlers(io, socket) {
     if (socket.id !== room.hostId) return;
     const maxPlayers = maxPlayersFor(room.extensionEnabled);
     if (room.players.length < MIN_PLAYERS || room.players.length > maxPlayers) return;
+    recordGameStarted('skullking');
     startGame(io, room);
   });
 

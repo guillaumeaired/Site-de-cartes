@@ -5,6 +5,7 @@
 
 const { buildRoundSequence, dealRound, isValidBid, resolveTrick, computeRoundScore } = require('./ascenseur');
 const { likelyServerRestart } = require('./server-start');
+const { recordGameStarted } = require('./play-counts');
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 7;
@@ -529,6 +530,7 @@ function registerAscenseurHandlers(io, socket) {
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
     if (room.players.length < MIN_PLAYERS || room.players.length > MAX_PLAYERS) return;
+    recordGameStarted('ascenseur');
     startGame(io, room);
   });
 

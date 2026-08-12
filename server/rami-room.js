@@ -14,6 +14,7 @@ const {
   canInitialMeld,
 } = require('./rami');
 const { likelyServerRestart } = require('./server-start');
+const { recordGameStarted } = require('./play-counts');
 
 const MAX_PLAYERS = 2; // v1 : 2 joueurs seulement, généralisé plus tard
 
@@ -513,6 +514,7 @@ function registerRamiHandlers(io, socket) {
     room.matchWins = {};
     room.matchCumulative = {};
     room.matchWinnerId = null;
+    recordGameStarted('rami');
     startGame(io, room);
   });
 

@@ -5,6 +5,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { dealHands, shuffle, buryUpToN } = require('./game');
 const { SERVER_STARTED_AT, likelyServerRestart } = require('./server-start');
+const { recordGameStarted, getPlayCounts } = require('./play-counts');
 const { registerRamiHandlers, getStats: getRamiStats } = require('./rami-room');
 const { registerAscenseurHandlers, getStats: getAscenseurStats } = require('./ascenseur-room');
 const { registerSkullKingHandlers, getStats: getSkullKingStats } = require('./skullking-room');
@@ -88,6 +89,13 @@ app.get('/stats', (req, res) => {
     ascenseur: getAscenseurStats(),
     skullking: getSkullKingStats(),
   });
+});
+
+// Nombre de parties lancees par jeu (persiste entre reveils, pas entre
+// redeploiements) - consomme par le hub pour trier les jeux du plus au
+// moins joue.
+app.get('/play-counts', (req, res) => {
+  res.json(getPlayCounts());
 });
 
 function makeRoomCode() {
@@ -414,6 +422,7 @@ io.on('connection', (socket) => {
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
     if (room.players.length < 2) return;
+    recordGameStarted('bataille');
     startNewGame(room);
   });
 
