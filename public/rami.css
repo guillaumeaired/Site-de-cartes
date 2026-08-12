@@ -481,7 +481,7 @@ h1 {
   text-align: left;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35), 0 0 0 2px #F5C24C;
 }
 
 .modal-content h2,
@@ -524,6 +524,7 @@ h1 {
   font-size: 0.95rem;
   font-weight: 800;
   color: #facc15;
+  font-family: 'Inter', sans-serif;
 }
 
 .pile {
