@@ -842,34 +842,39 @@ function mergeHandOrder(newHand) {
 }
 
 // Tirage au sort de qui commence (le serveur choisit au hasard, plus
-// toujours le créateur du salon) : une roue à 2 secteurs tourne sous une
-// flèche fixe et s'arrête sur le joueur tiré au sort, avant de laisser la
-// partie normale prendre le relais (déjà affichée en dessous, l'overlay
-// disparaît tout seul).
+// toujours le créateur du salon) : la roue (un nom de joueur par moitié)
+// reste fixe et lisible, c'est la flèche qui tourne depuis le centre et
+// s'arrête sur le joueur tiré au sort, avant de laisser la partie normale
+// prendre le relais (déjà affichée en dessous, l'overlay disparaît tout seul).
 function playStartReveal(players, turnPlayerId) {
   const overlay = document.getElementById('rami-start-reveal');
-  const wheel = document.getElementById('rami-start-reveal-wheel');
+  const needle = document.getElementById('rami-start-reveal-needle');
+  const labelA = document.getElementById('rami-start-reveal-label-a');
+  const labelB = document.getElementById('rami-start-reveal-label-b');
   const text = document.getElementById('rami-start-reveal-text');
   const starter = players.find((p) => p.id === turnPlayerId);
   const label = starter ? starter.nickname : '???';
   const winnerIndex = players.findIndex((p) => p.id === turnPlayerId);
+
+  labelA.textContent = (players[0] && players[0].nickname) || '';
+  labelB.textContent = (players[1] && players[1].nickname) || '';
 
   text.textContent = '';
   text.classList.remove('rami-visible');
   overlay.classList.remove('hidden');
 
   // Secteurs du conic-gradient (voir rami.css) : joueur 0 centré à 90°
-  // (moitié verte), joueur 1 centré à 270° (moitié dorée). La flèche est
-  // fixe en haut (0°) : plusieurs tours complets, puis on s'arrête pile sur
+  // (moitié verte), joueur 1 centré à 270° (moitié dorée). La flèche part
+  // d'en haut (0°) : plusieurs tours complets, puis elle s'arrête pile sur
   // le centre du secteur du joueur tiré au sort.
   const segmentCenter = winnerIndex === 1 ? 270 : 90;
-  const target = 5 * 360 + (360 - segmentCenter);
+  const target = 5 * 360 + segmentCenter;
 
-  wheel.style.transition = 'none';
-  wheel.style.transform = 'rotate(0deg)';
-  void wheel.offsetWidth;
-  wheel.style.transition = '';
-  wheel.style.transform = `rotate(${target}deg)`;
+  needle.style.transition = 'none';
+  needle.style.transform = 'rotate(0deg)';
+  void needle.offsetWidth;
+  needle.style.transition = '';
+  needle.style.transform = `rotate(${target}deg)`;
 
   setTimeout(() => {
     text.textContent = `🎯 ${label} commence !`;
