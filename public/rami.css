@@ -1127,10 +1127,12 @@ h1 {
 }
 
 /* Roue tirée au sort en tout début de partie pour révéler qui commence (au
-   lieu de toujours faire commencer le créateur du salon) : la roue (2
-   moitiés, un nom de joueur par moitié) reste fixe et lisible, c'est la
-   flèche qui pivote depuis le centre et s'arrête sur le joueur tiré au sort
-   (rotation calculée en JS, voir playStartReveal() dans rami.js). */
+   lieu de toujours faire commencer le créateur du salon) : moitié haute /
+   moitié basse (pas gauche/droite), noms affichés à côté en petites étiquettes
+   plutôt que sur la roue elle-même (même style que .lobby-list li), et une
+   flèche fine, dorée, dans la DA "Quatre Salons" (liseré #F5C24C, voir aussi
+   .modal-content sur Skull King) qui pivote depuis le centre et s'arrête sur
+   le joueur tiré au sort (rotation calculée en JS, voir playStartReveal()). */
 .rami-start-reveal {
   position: fixed;
   inset: 0;
@@ -1139,8 +1141,18 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 14px;
   background: rgba(2, 30, 20, 0.85);
+}
+
+.rami-wheel-tag {
+  padding: 6px 16px;
+  background: #ffffff11;
+  border: 2px solid #ffffff33;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
 }
 
 .rami-wheel-frame {
@@ -1154,52 +1166,34 @@ h1 {
   height: 150px;
   border-radius: 50%;
   border: 5px solid #1a1208;
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(255, 255, 255, 0.08);
-  background: conic-gradient(#10b981 0deg 180deg, #facc15 180deg 360deg);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(255, 255, 255, 0.08), 0 0 0 2px #F5C24C;
+  background: conic-gradient(from -90deg, #10b981 0deg 180deg, #facc15 180deg 360deg);
   position: relative;
 }
 
-.rami-wheel-label {
-  position: absolute;
-  width: 56px;
-  font-weight: 800;
-  font-size: 0.78rem;
-  line-height: 1.05;
-  color: #1a1208;
-  text-align: center;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
-  pointer-events: none;
-}
-
-/* Décalées au-dessus/en-dessous de l'axe horizontal : la flèche, elle,
-   s'arrête toujours pile sur cet axe (90°/270°, secteurs centrés dessus) -
-   les garder à l'écart évite qu'elle recouvre le nom au repos. */
-.rami-wheel-label--a {
-  top: 26%;
-  right: 10px;
-}
-
-.rami-wheel-label--b {
-  bottom: 26%;
-  left: 10px;
-}
-
-/* Pivote au centre de la roue, part vers le haut (0°) et tourne jusqu'à
-   pointer le secteur tiré au sort. */
+/* Pivote au centre de la roue, part vers le haut (0°, secteur du haut) et
+   tourne jusqu'à pointer le secteur tiré au sort. Flèche dorée (#F5C24C,
+   liseré Quatre Salons) épaisse et aux coins arrondis (stroke-linejoin
+   "round" en SVG) - plus ronde/enjouée qu'un simple triangle CSS, dans le
+   même esprit "sticker" que les boutons/cartes du reste du site. */
 .rami-wheel-needle {
   position: absolute;
   left: 50%;
   bottom: 50%;
-  width: 20px;
-  height: 58px;
-  margin-left: -10px;
+  width: 34px;
+  height: 66px;
+  margin-left: -17px;
   transform-origin: 50% 100%;
   transform: rotate(0deg);
   transition: transform 2.2s cubic-bezier(0.12, 0.67, 0.16, 1);
-  clip-path: polygon(50% 0%, 78% 26%, 60% 100%, 40% 100%, 22% 26%);
-  background: linear-gradient(180deg, #2b2013, #1a1208);
   filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.45));
   z-index: 3;
+}
+
+.rami-wheel-needle-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .rami-wheel-hub {
@@ -1207,11 +1201,12 @@ h1 {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #fef3c7;
   border: 3px solid #1a1208;
+  box-shadow: 0 0 0 2px #F5C24C;
   z-index: 4;
 }
 

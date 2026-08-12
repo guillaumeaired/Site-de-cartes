@@ -863,11 +863,11 @@ function playStartReveal(players, turnPlayerId) {
   text.classList.remove('rami-visible');
   overlay.classList.remove('hidden');
 
-  // Secteurs du conic-gradient (voir rami.css) : joueur 0 centré à 90°
-  // (moitié verte), joueur 1 centré à 270° (moitié dorée). La flèche part
-  // d'en haut (0°) : plusieurs tours complets, puis elle s'arrête pile sur
-  // le centre du secteur du joueur tiré au sort.
-  const segmentCenter = winnerIndex === 1 ? 270 : 90;
+  // Secteurs du conic-gradient (voir rami.css, split haut/bas) : joueur 0
+  // centré à 0° (moitié verte, en haut), joueur 1 centré à 180° (moitié
+  // dorée, en bas). La flèche part d'en haut (0°) : plusieurs tours
+  // complets, puis elle s'arrête pile sur le centre du secteur tiré au sort.
+  const segmentCenter = winnerIndex === 1 ? 180 : 0;
   const target = 5 * 360 + segmentCenter;
 
   needle.style.transition = 'none';
