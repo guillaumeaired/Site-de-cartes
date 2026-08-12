@@ -1,12 +1,13 @@
-# Config de service versionnee (Infrastructure as Code) - a rapprocher des
-# reglages reels du dashboard Render (nom de service, region, plan) puis a
-# activer via "Sync" cote Render pour que ce fichier fasse foi. Tant que la
-# synchronisation n'est pas activee, ce fichier documente l'intention mais ne
-# pilote pas encore le service existant.
+# Config de service versionnee (Infrastructure as Code), verifiee contre le
+# dashboard reel via l'API Render (nom, region, plan) le 12 aout 2026 - reste
+# a activer "Sync" cote Render pour que ce fichier fasse foi. buildCommand
+# ajoute `npm test` par rapport au reglage actuel (`npm install` seul) : fait
+# echouer le build - donc le deploiement - si la suite de tests casse.
 services:
   - type: web
-    name: bataille-en-ligne
+    name: guimams
     runtime: node
+    region: oregon
     plan: free
     buildCommand: npm ci && npm test
     startCommand: npm start
