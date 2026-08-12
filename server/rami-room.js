@@ -27,6 +27,18 @@ const DISCONNECT_GRACE_MS = 45_000;
 // un cas different de la deconnexion (deja geree ci-dessus).
 const INACTIVITY_WARN_MS = 120_000;
 
+// Options de fin de partie (Manche 3, spec Game Designer) : par defaut une
+// seule partie ("single", comportement historique inchange) ; sinon un match
+// en plusieurs parties qui s'enchainent automatiquement jusqu'a decision.
+// room.matchFormat est un reglage de salon (comme extensionEnabled sur Skull
+// King), verrouille au lancement, choisi par l'hote via rami-set-match-format.
+const MATCH_WINS_REQUIRED = { bo3: 2, bo5: 3 };
+const RACE_TARGET = 200;
+// Petit ecran de score entre deux parties d'un match, meme principe que la
+// fin de manche de L'Ascenseur (ROUND_END_MS) : la partie suivante demarre
+// toute seule, l'hote peut arreter le match pendant ce laps de temps.
+const MATCH_ROUND_END_MS = 6_000;
+
 const rooms = new Map();
 let meldCounter = 0;
 
@@ -130,6 +142,8 @@ function broadcastLobby(io, room) {
       hostId: room.hostId,
       isHost: p.id === room.hostId,
       canStart: room.players.length === MAX_PLAYERS,
+      // Reglage hote, verrouillable seulement en lobby (voir rami-set-match-format).
+      matchFormat: room.matchFormat || 'single',
     });
   }
 }
@@ -253,17 +267,92 @@ function scheduleInactivityCheck(io, room) {
 
 // La partie s'arrête dès qu'un joueur n'a plus de cartes : score final de
 // chacun = points de combinaisons accumulés en jouant, moins la valeur des
-// cartes qui lui restent en main. Le score le plus haut gagne.
+// cartes qui lui restent en main. Le score le plus haut gagne LA PARTIE
+// (gameWinnerId) - distinct de qui a vide sa main en premier (winnerId),
+// cette distinction existante ne change pas avec les formats de match.
+//
+// Formats de match (Manche 3) : "single" termine ici comme avant. Sinon,
+// une egalite stricte de score entre les 2 joueurs annule la partie (ne
+// compte pour personne, rejouee immediatement) ; sinon BO3/BO5 comptabilise
+// une victoire de partie pour gameWinnerId, "race200" cumule les scores -
+// dans les deux cas le match se termine des qu'un vainqueur est decide,
+// sinon un petit ecran de score s'affiche et la partie suivante s'enchaine
+// automatiquement (meme principe que la fin de manche de L'Ascenseur).
 function endGame(io, room, winnerId) {
   const summary = room.players.map((p) => {
     const handPenalty = p.hand.reduce((sum, c) => sum + handCardValue(c), 0);
     return { id: p.id, nickname: p.nickname, meldScore: p.score, handPenalty, total: p.score - handPenalty };
   });
-  room.phase = 'game-end';
-
   const gameWinnerId = summary.reduce((a, b) => (b.total > a.total ? b : a)).id;
-  room.lastGameEndPayload = { winnerId, summary, gameWinnerId };
-  broadcastToRoom(io, room, 'rami-game-end', room.lastGameEndPayload);
+
+  if (!room.matchFormat || room.matchFormat === 'single') {
+    room.phase = 'game-end';
+    room.lastGameEndPayload = { winnerId, summary, gameWinnerId };
+    broadcastToRoom(io, room, 'rami-game-end', room.lastGameEndPayload);
+    return;
+  }
+
+  const [p0, p1] = summary;
+  if (p0.total === p1.total) {
+    // Egalite stricte sur cette partie : annulee, ne compte pour personne,
+    // le match se termine toujours sur une decision claire.
+    broadcastToRoom(io, room, 'rami-match-tie-replay', { summary, matchWins: room.matchWins, matchCumulative: room.matchCumulative });
+    startGame(io, room);
+    return;
+  }
+
+  let matchOver = false;
+  let matchWinnerId = null;
+
+  if (room.matchFormat === 'bo3' || room.matchFormat === 'bo5') {
+    room.matchWins[gameWinnerId] = (room.matchWins[gameWinnerId] || 0) + 1;
+    if (room.matchWins[gameWinnerId] >= MATCH_WINS_REQUIRED[room.matchFormat]) {
+      matchOver = true;
+      matchWinnerId = gameWinnerId;
+    }
+  } else if (room.matchFormat === 'race200') {
+    summary.forEach((s) => {
+      room.matchCumulative[s.id] = (room.matchCumulative[s.id] || 0) + s.total;
+    });
+    const crossers = summary.filter((s) => room.matchCumulative[s.id] >= RACE_TARGET);
+    if (crossers.length === 1) {
+      matchOver = true;
+      matchWinnerId = crossers[0].id;
+    } else if (crossers.length === 2) {
+      const [c0, c1] = crossers;
+      if (room.matchCumulative[c0.id] !== room.matchCumulative[c1.id]) {
+        matchOver = true;
+        matchWinnerId = room.matchCumulative[c0.id] > room.matchCumulative[c1.id] ? c0.id : c1.id;
+      }
+      // Egalite exacte des deux cumuls en franchissant 200 ensemble : le
+      // match continue, une partie supplementaire tranchera (matchOver
+      // reste false, ni l'un ni l'autre n'a encore gagne).
+    }
+  }
+
+  const basePayload = {
+    winnerId,
+    summary,
+    gameWinnerId,
+    matchFormat: room.matchFormat,
+    matchWins: room.matchWins,
+    matchCumulative: room.matchCumulative,
+  };
+
+  if (matchOver) {
+    room.phase = 'game-end';
+    room.matchWinnerId = matchWinnerId;
+    room.lastGameEndPayload = { ...basePayload, matchOver: true, matchWinnerId };
+    broadcastToRoom(io, room, 'rami-game-end', room.lastGameEndPayload);
+    return;
+  }
+
+  room.phase = 'match-round-end';
+  room.lastGameEndPayload = basePayload;
+  broadcastToRoom(io, room, 'rami-match-round-end', room.lastGameEndPayload);
+  room.matchRoundEndTimer = setTimeout(() => {
+    if (rooms.get(room.code) === room && room.phase === 'match-round-end') startGame(io, room);
+  }, MATCH_ROUND_END_MS);
 }
 
 // Depart definitif (quitte explicitement, ou delai de grace expire sans
@@ -275,6 +364,7 @@ function finalizeRamiDisconnect(io, room, id, reason) {
   if (idx === -1) return;
   const [removed] = room.players.splice(idx, 1);
   clearTimeout(room.inactivityTimer);
+  clearTimeout(room.matchRoundEndTimer);
 
   if (room.players.length === 0) {
     rooms.delete(room.code);
@@ -363,6 +453,7 @@ function registerRamiHandlers(io, socket) {
       turnPhase: 'PIOCHE',
       drawnCardId: null,
       drawnFromDiscard: false,
+      matchFormat: 'single',
     };
     rooms.set(code, room);
     socket.data.ramiRoom = code;
@@ -409,7 +500,61 @@ function registerRamiHandlers(io, socket) {
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
     if (room.players.length !== MAX_PLAYERS) return;
+    // Compteurs de match repartis a zero au tout premier lancement (pas aux
+    // parties suivantes du meme match, enchainees directement depuis endGame).
+    room.matchWins = {};
+    room.matchCumulative = {};
+    room.matchWinnerId = null;
     startGame(io, room);
+  });
+
+  // Reglage hote, uniquement en lobby (verrouille des le lancement, comme
+  // extensionEnabled sur Skull King).
+  socket.on('rami-set-match-format', (payload) => {
+    const room = rooms.get(socket.data.ramiRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    const format = payload && payload.format;
+    if (!['single', 'bo3', 'bo5', 'race200'].includes(format)) return;
+    room.matchFormat = format;
+    broadcastLobby(io, room);
+  });
+
+  // Arret anticipe d'un match en plusieurs parties : possible a tout moment
+  // une fois le match lance (pendant une partie ou entre deux). Egalite de
+  // victoires/points a l'arret -> aucun vainqueur de match declare.
+  socket.on('rami-end-match', () => {
+    const room = rooms.get(socket.data.ramiRoom);
+    if (!room || !room.matchFormat || room.matchFormat === 'single') return;
+    if (!['playing', 'match-round-end'].includes(room.phase)) return;
+    if (socket.id !== room.hostId) return;
+    clearTimeout(room.matchRoundEndTimer);
+    room.matchRoundEndTimer = null;
+
+    const [a, b] = room.players;
+    let matchWinnerId = null;
+    if (room.matchFormat === 'bo3' || room.matchFormat === 'bo5') {
+      const wa = room.matchWins[a.id] || 0;
+      const wb = room.matchWins[b.id] || 0;
+      if (wa !== wb) matchWinnerId = wa > wb ? a.id : b.id;
+    } else if (room.matchFormat === 'race200') {
+      const ca = room.matchCumulative[a.id] || 0;
+      const cb = room.matchCumulative[b.id] || 0;
+      if (ca !== cb) matchWinnerId = ca > cb ? a.id : b.id;
+    }
+
+    room.phase = 'game-end';
+    room.matchWinnerId = matchWinnerId;
+    room.lastGameEndPayload = {
+      matchStoppedEarly: true,
+      matchOver: true,
+      matchWinnerId,
+      matchFormat: room.matchFormat,
+      matchWins: room.matchWins,
+      matchCumulative: room.matchCumulative,
+      summary: room.lastGameEndPayload ? room.lastGameEndPayload.summary : null,
+    };
+    broadcastToRoom(io, room, 'rami-game-end', room.lastGameEndPayload);
   });
 
   socket.on('rami-draw-stock', () => {
@@ -723,6 +868,11 @@ function registerRamiHandlers(io, socket) {
     if (!room || room.phase !== 'game-end') return;
     room.phase = 'lobby';
     room.lastGameEndPayload = null;
+    // Compteurs de match remis a zero (le format choisi par l'hote reste
+    // celui d'avant, par confort, mais reste modifiable via rami-set-match-format).
+    room.matchWins = {};
+    room.matchCumulative = {};
+    room.matchWinnerId = null;
     for (const p of room.players) {
       p.score = 0;
       p.hasOpened = false;
@@ -765,6 +915,11 @@ function registerRamiHandlers(io, socket) {
 
     if (room.phase === 'game-end') {
       socket.emit('rami-game-end', { ...room.lastGameEndPayload, myId: player.id });
+      return;
+    }
+
+    if (room.phase === 'match-round-end') {
+      socket.emit('rami-match-round-end', { ...room.lastGameEndPayload, myId: player.id });
       return;
     }
 
