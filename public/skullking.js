@@ -32,6 +32,12 @@ const SPECIAL_INFO = {
   loot: { emoji: '💰', label: 'Butin' },
   kraken: { emoji: '🐙', label: 'Kraken' },
   whale: { emoji: '🐋', label: 'Baleine' },
+  // Extension
+  firstmate: { emoji: '⚔️', label: 'Mat le Forban' },
+  stingray: { emoji: '🦈', label: 'Raie Tachetée' },
+  lastvolley: { emoji: '💣', label: 'Dernière Salve' },
+  plank: { emoji: '🪵', label: 'Marcher sur la Planche' },
+  davyjones: { emoji: '⚰️', label: 'Coffre de Davy Jones' },
 };
 // Ce que déclenche chaque pirate nommé s'IL remporte le pli avec sa propre
 // carte — affiché en infobulle sur la carte, pour savoir à quoi s'attendre
@@ -48,13 +54,32 @@ const PIRATE_POWER_TEXT = {
 // par hauteur croissante, les cartes spéciales groupées à la fin (dans un
 // ordre fixe) - purement visuel, ne change rien à la logique de jeu.
 const SUIT_DISPLAY_ORDER = ['vert', 'jaune', 'violet', 'noir'];
-const SPECIAL_DISPLAY_ORDER = ['pirate', 'siren', 'skullking', 'tigress', 'loot', 'kraken', 'whale', 'escape'];
+const SPECIAL_DISPLAY_ORDER = [
+  'pirate',
+  'firstmate',
+  'siren',
+  'skullking',
+  'tigress',
+  'loot',
+  'kraken',
+  'whale',
+  'stingray',
+  'lastvolley',
+  'plank',
+  'davyjones',
+  'wild15',
+  'escape',
+];
+// Le 0/14 garde une vraie couleur dès la donne (kind:'number', value:null
+// tant qu'il n'est pas déclaré) : il se trie donc avec sa famille de
+// couleur comme n'importe quelle numérotée, positionné en fin de groupe
+// (juste après le 14) tant que sa valeur n'est pas encore choisie.
 function sortHandForDisplay(hand) {
   return [...hand].sort((a, b) => {
     const groupA = a.kind === 'number' ? SUIT_DISPLAY_ORDER.indexOf(a.suit) : 4 + SPECIAL_DISPLAY_ORDER.indexOf(a.kind);
     const groupB = b.kind === 'number' ? SUIT_DISPLAY_ORDER.indexOf(b.suit) : 4 + SPECIAL_DISPLAY_ORDER.indexOf(b.kind);
     if (groupA !== groupB) return groupA - groupB;
-    if (a.kind === 'number') return a.value - b.value;
+    if (a.kind === 'number') return (a.value ?? 14.5) - (b.value ?? 14.5);
     return 0;
   });
 }
@@ -79,12 +104,23 @@ function isCardPlayable(card, hand, trick) {
 }
 
 function cardClass(card) {
-  if (card.kind === 'number') return `sk-card--${card.suit}`;
-  if (card.kind === 'pirate') return 'sk-card--pirate';
+  if (card.kind === 'wild15' || card.wild15) return 'sk-card--wild15';
+  if (card.kind === 'number') {
+    if (card.wild14 && card.value == null) return 'sk-card--wild14';
+    return `sk-card--${card.suit}`;
+  }
+  if (card.kind === 'pirate' || card.kind === 'firstmate') return 'sk-card--pirate';
   return 'sk-card--special';
 }
 function cardFaceHTML(card) {
+  if (card.kind === 'wild15') {
+    // Pas encore joué : sa couleur/valeur ne sont pas encore fixées.
+    return `<span class="sk-special-emoji">🃏</span><span class="sk-special-label">Joker</span>`;
+  }
   if (card.kind === 'number') {
+    if (card.wild14 && card.value == null) {
+      return `<span class="sk-special-emoji">0/14</span>`;
+    }
     return `<span class="card-emblem">${card.value}</span>`;
   }
   const info = SPECIAL_INFO[card.kind];
@@ -95,9 +131,21 @@ function cardFaceHTML(card) {
 // Texte d'infobulle (survol) : ce qui se passe SI le joueur qui pose cette
 // carte remporte le pli avec elle.
 function cardPowerText(card) {
+  if (card.kind === 'wild15') {
+    return "Joker/Wild 15 : prend la couleur déjà imposée (vert/jaune/violet) si elle existe, sinon tu choisis (jamais noir) ; si le noir est imposé, il perd quand même face à l'atout noir.";
+  }
+  if (card.wild15) {
+    return `Joker joué en ${card.suit} (valeur 15) : bat toute cette couleur, perd face à l'atout noir.`;
+  }
+  if (card.kind === 'number' && card.wild14 && card.value == null) {
+    return 'Tu choisiras 0 (perd toujours) ou 14 (carte forte de sa couleur) au moment de la jouer.';
+  }
   switch (card.kind) {
     case 'number':
-      return card.suit === 'noir' ? 'Atout permanent : bat toutes les couleurs, quel que soit le chiffre.' : '';
+      if (card.suit === 'noir') return 'Atout permanent : bat toutes les couleurs, quel que soit le chiffre.';
+      if (card.ext && card.value === 8) return "Carte d'extension : +5 points de bonus pour qui la capture.";
+      if (card.ext && card.value === 7) return "Carte d'extension : -5 points de bonus pour qui la capture.";
+      return '';
     case 'escape':
       return 'Ne gagne jamais le pli.';
     case 'tigress':
@@ -114,6 +162,16 @@ function cardPowerText(card) {
       return 'Détruit le pli : personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.';
     case 'whale':
       return "Annule l'effet de toutes les cartes spéciales du pli : seule la valeur numérique compte (le noir perd son statut d'atout).";
+    case 'firstmate':
+      return "Bat tous les Pirates classiques (Mary Thorne incluse), mais perd contre le Skull King et contre une Sirène (même seule, sans Skull King). S'il remporte le pli, hérite du/des pouvoir(s) du/des Pirate(s) capturé(s) — sans le bonus de capture normal. Capturé par le Skull King ou une Sirène : +30 points pour qui le capture.";
+    case 'stingray':
+      return 'Comme la Baleine blanche, mais la carte la PLUS BASSE remporte le pli.';
+    case 'lastvolley':
+      return 'Ne gagne jamais le pli. Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).';
+    case 'plank':
+      return 'Ne gagne jamais le pli. Retire un Pirate présent dans le pli en cours (au choix s\'il y en a plusieurs).';
+    case 'davyjones':
+      return "Ne gagne jamais le pli. Détruit tous les Monstres Marins présents (Kraken/Baleine/Raie), peu importe l'ordre : +20 points par Monstre détruit.";
     default:
       return '';
   }
@@ -141,6 +199,24 @@ function showToast(message) {
 }
 
 const reconnectOverlay = document.getElementById('reconnect-overlay');
+
+// Le serveur (hebergement gratuit) peut mettre jusqu'a ~25s a se reveiller au
+// tout premier chargement apres une periode d'inactivite : sans ca, la page
+// semble juste figee/cassee le temps que le socket se connecte. On reutilise
+// la banniere de reconnexion existante avec un texte different, seulement le
+// temps de ce tout premier connect (jamais reaffiche ensuite).
+let hasConnectedOnce = false;
+if (!socket.connected) {
+  reconnectOverlay.textContent = "🌙 Réveil du serveur… (jusqu'à 25s au premier chargement)";
+  reconnectOverlay.classList.remove('hidden');
+}
+socket.on('connect', () => {
+  if (hasConnectedOnce) return;
+  hasConnectedOnce = true;
+  reconnectOverlay.classList.add('hidden');
+  reconnectOverlay.textContent = '🔌 Connexion perdue — reconnexion en cours…';
+});
+
 function showReconnectingOverlay(show) {
   reconnectOverlay.classList.toggle('hidden', !show);
 }
@@ -223,8 +299,11 @@ const btnLeaveWaiting = document.getElementById('sk-btn-leave-waiting');
 const lobbyPlayers = document.getElementById('sk-lobby-players');
 const lobbyList = document.getElementById('sk-lobby-list');
 const lobbyCount = document.getElementById('sk-lobby-count');
+const lobbyRange = document.getElementById('sk-lobby-range');
 const btnStartGame = document.getElementById('sk-btn-start-game');
 const waitingHint = document.getElementById('sk-waiting-hint');
+const btnExtension = document.getElementById('sk-btn-extension');
+const extensionHint = document.getElementById('sk-extension-hint');
 
 const joinModal = document.getElementById('sk-join-modal');
 const joinModalNickname = document.getElementById('sk-join-modal-nickname');
@@ -268,7 +347,7 @@ socket.on('skullking-room-created', ({ code }) => {
   shareBlock.classList.remove('hidden');
 });
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers }) => {
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled }) => {
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
@@ -283,16 +362,35 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     lobbyList.appendChild(li);
   });
   lobbyCount.textContent = players.length;
+  lobbyRange.textContent = `${minPlayers} à ${maxPlayers}`;
+
+  // Switch d'extension : cliquable par l'hôte uniquement (imposé aussi côté
+  // serveur), lecture seule pour les autres - tout le monde voit le même
+  // état en temps réel via ce même événement de lobby.
+  btnExtension.classList.toggle('sk-extension-toggle--on', extensionEnabled);
+  btnExtension.setAttribute('aria-pressed', String(extensionEnabled));
+  btnExtension.disabled = !isHost;
+  btnExtension.classList.toggle('sk-extension-toggle--readonly', !isHost);
+  extensionHint.textContent = extensionEnabled
+    ? "12 numérotées, un Joker, 6 nouvelles cartes spéciales — jusqu'à 9 joueurs."
+    : isHost
+      ? "Active l'extension officielle pour plus de cartes et jusqu'à 9 joueurs."
+      : '';
 
   btnStartGame.classList.toggle('hidden', !isHost);
   btnStartGame.disabled = !canStart;
   if (isHost) {
     waitingHint.textContent = canStart
       ? 'Prêt ! Lance la partie quand tu veux.'
-      : `Il faut au moins ${minPlayers} joueurs pour commencer…`;
+      : `Il faut entre ${minPlayers} et ${maxPlayers} joueurs pour commencer…`;
   } else {
     waitingHint.textContent = "En attente que l'hôte lance la partie…";
   }
+});
+
+btnExtension.addEventListener('click', () => {
+  if (!myIsHost) return;
+  socket.emit('skullking-toggle-extension');
 });
 
 socket.on('skullking-error', (message) => {
@@ -532,22 +630,57 @@ function renderTurnIndicator(state) {
     turnIndicator.textContent = 'Le pli se ramasse…';
     return;
   }
+  if (state.sittingOutThisTrick) {
+    turnIndicator.textContent = '💣 Tu as joué la Dernière Salve : tu passes ton tour sur ce pli.';
+    return;
+  }
   turnIndicator.textContent = state.isMyTurn ? 'À toi de jouer !' : `${nicknameOf(state, state.turnPlayerId)} joue…`;
 }
 
-function playCard(cardId, chosenAs) {
-  const payload = { cardId };
-  if (chosenAs) payload.chosenAs = chosenAs;
+function hideAllChoicePanels() {
+  tigressChoiceEl.classList.add('hidden');
+  jokerChoiceEl.classList.add('hidden');
+  declareChoiceEl.classList.add('hidden');
+  plankChoiceEl.classList.add('hidden');
+}
+
+function playCard(cardId, extra) {
+  const payload = { cardId, ...(extra || {}) };
   socket.emit('skullking-play-card', payload);
   pendingTigressCardId = null;
-  tigressChoiceEl.classList.add('hidden');
+  pendingJokerCardId = null;
+  pendingDeclareCardId = null;
+  pendingPlankCardId = null;
+  hideAllChoicePanels();
 }
 
 btnTigressPirate.addEventListener('click', () => {
-  if (pendingTigressCardId) playCard(pendingTigressCardId, 'pirate');
+  if (pendingTigressCardId) playCard(pendingTigressCardId, { chosenAs: 'pirate' });
 });
 btnTigressEscape.addEventListener('click', () => {
-  if (pendingTigressCardId) playCard(pendingTigressCardId, 'escape');
+  if (pendingTigressCardId) playCard(pendingTigressCardId, { chosenAs: 'escape' });
+});
+
+// --- Extension : choix au moment de la pose (Joker, 0/14, Marcher sur la Planche) ---
+
+const jokerChoiceEl = document.getElementById('sk-joker-choice');
+const declareChoiceEl = document.getElementById('sk-declare-choice');
+const plankChoiceEl = document.getElementById('sk-plank-choice');
+const plankOptionsEl = document.getElementById('sk-plank-options');
+let pendingJokerCardId = null;
+let pendingDeclareCardId = null;
+let pendingPlankCardId = null;
+
+document.querySelectorAll('.sk-btn-joker-color').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (pendingJokerCardId) playCard(pendingJokerCardId, { chosenSuit: btn.dataset.suit });
+  });
+});
+document.getElementById('sk-btn-declare-0').addEventListener('click', () => {
+  if (pendingDeclareCardId) playCard(pendingDeclareCardId, { declaredValue: 0 });
+});
+document.getElementById('sk-btn-declare-14').addEventListener('click', () => {
+  if (pendingDeclareCardId) playCard(pendingDeclareCardId, { declaredValue: 14 });
 });
 
 // Mode spécial du pouvoir de Will le Bandit : au lieu de jouer une carte, on
@@ -586,10 +719,14 @@ function renderHand(state) {
     el.className = `sk-card ${cardClass(card)}`;
     el.innerHTML = cardFaceHTML(card);
     el.title = cardPowerText(card);
-    const playable = !canPlay || isCardPlayable(card, hand, trick);
+    // Pouvoir de Mary Thorne : une seule carte précise reste jouable, peu
+    // importe la couleur imposée ou tout autre effet.
+    const playable = !canPlay || (state.forcedCardId ? card.id === state.forcedCardId : isCardPlayable(card, hand, trick));
     if (canPlay && !playable) {
       el.classList.add('sk-card--unplayable');
-      el.title = 'Tu dois suivre la couleur demandée : cette carte est bloquée tant que tu en as une en main.';
+      el.title = state.forcedCardId
+        ? 'Le pouvoir de Mary Thorne t\'oblige à jouer une autre carte précise ce pli-ci.'
+        : 'Tu dois suivre la couleur demandée : cette carte est bloquée tant que tu en as une en main.';
     }
     if (willMode) {
       if (willDiscardSelection.has(card.id)) el.classList.add('sk-card--selected');
@@ -600,16 +737,66 @@ function renderHand(state) {
         updateWillConfirmButton();
       });
     } else if (canPlay && !playable) {
-      el.addEventListener('click', () => showToast('🚫 Tu dois suivre la couleur demandée.'));
+      el.addEventListener('click', () =>
+        showToast(state.forcedCardId ? '🚫 Mary Thorne t\'oblige à jouer une autre carte.' : '🚫 Tu dois suivre la couleur demandée.')
+      );
     } else if (canPlay) {
       el.addEventListener('click', () => {
         if (card.kind === 'tigress') {
           pendingTigressCardId = card.id;
+          hideAllChoicePanels();
           tigressChoiceEl.classList.remove('hidden');
           bidChoices.classList.add('hidden');
-        } else {
-          playCard(card.id);
+          return;
         }
+        // 0/14 : la valeur n'est jamais fixée avant la pose.
+        if (card.kind === 'number' && card.wild14 && card.value == null) {
+          pendingDeclareCardId = card.id;
+          hideAllChoicePanels();
+          declareChoiceEl.classList.remove('hidden');
+          bidChoices.classList.add('hidden');
+          return;
+        }
+        // Joker : choix de couleur seulement si rien n'est encore imposé
+        // (sinon le serveur prend directement la couleur déjà imposée, ou
+        // le laisse sans couleur si c'est le noir).
+        if (card.kind === 'wild15') {
+          const led = ledSuitOf(trick);
+          if (led === null) {
+            pendingJokerCardId = card.id;
+            hideAllChoicePanels();
+            jokerChoiceEl.classList.remove('hidden');
+            bidChoices.classList.add('hidden');
+            return;
+          }
+          playCard(card.id);
+          return;
+        }
+        // Marcher sur la Planche : choix du Pirate à retirer seulement s'il
+        // y en a plusieurs dans le pli en cours.
+        if (card.kind === 'plank') {
+          const piratesInTrick = trick.filter((t) => t.card.kind === 'pirate');
+          if (piratesInTrick.length > 1) {
+            pendingPlankCardId = card.id;
+            hideAllChoicePanels();
+            plankOptionsEl.innerHTML = '';
+            piratesInTrick.forEach((t) => {
+              const btn = document.createElement('button');
+              btn.className = 'btn';
+              btn.textContent = t.card.name || 'Pirate';
+              btn.addEventListener('click', () => {
+                if (pendingPlankCardId) playCard(pendingPlankCardId, { removesId: t.card.id });
+              });
+              plankOptionsEl.appendChild(btn);
+            });
+            plankChoiceEl.classList.remove('hidden');
+            bidChoices.classList.add('hidden');
+            return;
+          }
+          playCard(card.id);
+          return;
+        }
+        playCard(card.id);
       });
     }
 
@@ -653,6 +840,7 @@ const POWER_LABEL = {
   rascal: 'Rascal le Flambeur',
   juanita: 'Juanita Jade',
   harry: 'Harry le Géant',
+  marythorne: 'Mary Thorne',
 };
 
 function renderPower(state) {
@@ -687,6 +875,16 @@ function renderPower(state) {
       btn.className = 'btn';
       btn.textContent = o.id === myId ? `${o.nickname} (toi)` : o.nickname;
       btn.addEventListener('click', () => socket.emit('skullking-power-rosie', { leaderId: o.id }));
+      powerPanel.appendChild(btn);
+    });
+  } else if (pending.kind === 'marythorne') {
+    hint.textContent = "Dans la main de qui tirer une carte au hasard (à jouer obligatoirement au pli suivant) ?";
+    pending.options.forEach((o) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.disabled = o.handCount === 0;
+      btn.textContent = `${o.id === myId ? `${o.nickname} (toi)` : o.nickname} — ${o.handCount} carte${o.handCount > 1 ? 's' : ''}`;
+      btn.addEventListener('click', () => socket.emit('skullking-power-marythorne', { targetId: o.id }));
       powerPanel.appendChild(btn);
     });
   } else if (pending.kind === 'rascal') {
@@ -898,8 +1096,11 @@ function applyState(state) {
   myIsHost = state.isHost;
   showReconnectingOverlay(false);
   joinModal.classList.add('hidden');
-  tigressChoiceEl.classList.add('hidden');
+  hideAllChoicePanels();
   pendingTigressCardId = null;
+  pendingJokerCardId = null;
+  pendingDeclareCardId = null;
+  pendingPlankCardId = null;
 
   if (state.phase === 'bidding' || state.phase === 'playing' || state.phase === 'power') {
     hideRoundPopup();
@@ -922,8 +1123,8 @@ function applyState(state) {
 socket.on('skullking-state', applyState);
 socket.on('skullking-rejoin-ok', applyState);
 
-socket.on('skullking-player-disconnected', ({ nickname, graceMs }) => {
-  showToast(`🔌 ${nickname} a une connexion instable — ${Math.round(graceMs / 1000)}s pour revenir…`);
+socket.on('skullking-player-disconnected', ({ nickname }) => {
+  showToast(`🔌 ${nickname} a une connexion instable…`);
 });
 
 socket.on('skullking-player-reconnected', ({ nickname }) => {

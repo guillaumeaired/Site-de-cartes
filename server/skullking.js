@@ -1,34 +1,50 @@
 // Logique pure de Skull King (règles complètes : jeu de base + Butin,
-// Kraken, Baleine blanche) : deck, résolution de pli (hiérarchie
-// non-transitive), bonus, score. Aucune dépendance à Socket.io, testable
-// seule via skullking-simulate.js avant de brancher les vrais sockets.
+// Kraken, Baleine blanche + extension officielle optionnelle) : deck,
+// résolution de pli (hiérarchie non-transitive), bonus, score. Aucune
+// dépendance à Socket.io, testable seule via skullking-simulate.js avant de
+// brancher les vrais sockets.
 
 const { shuffle } = require('./game');
 
 const SUITS = ['vert', 'jaune', 'violet', 'noir'];
 const PIRATE_NAMES = ["Rosie D'Laney", 'Will le Bandit', 'Rascal le Flambeur', 'Juanita Jade', 'Harry le Géant'];
+const EXTENSION_PIRATE_NAME = 'Mary Thorne';
 
 // Clé courte du pouvoir associé à chaque pirate nommé, utilisée côté
 // serveur (skullking-room.js) pour savoir quelle phase de pouvoir déclencher
-// quand ce pirate remporte un pli.
+// quand ce pirate remporte un pli avec sa propre carte. Mat le Forban n'a
+// pas d'entrée ici : son "pouvoir" n'est pas le sien, il hérite de ceux des
+// pirates classiques capturés dans le même pli - mécanique à part, gérée
+// dans skullking-room.js via une file de pouvoirs plutôt qu'un seul pouvoir
+// direct.
 const PIRATE_POWER_BY_NAME = {
   "Rosie D'Laney": 'rosie',
   'Will le Bandit': 'will',
   'Rascal le Flambeur': 'rascal',
   'Juanita Jade': 'juanita',
   'Harry le Géant': 'harry',
+  [EXTENSION_PIRATE_NAME]: 'marythorne',
 };
 
 const MIN_PLAYERS = 3;
-const MAX_PLAYERS = 7; // le deck (74 cartes) suffit largement pour 7 joueurs à la manche 10 (70 cartes)
+const MAX_PLAYERS = 7; // le deck de base (74 cartes) suffit pour 7 joueurs à la manche 10 (70 cartes)
+const MAX_PLAYERS_EXTENDED = 9; // deck étendu (93 cartes) : 9 joueurs à la manche 10 = 90 cartes
+
+function maxPlayersFor(extensionEnabled) {
+  return extensionEnabled ? MAX_PLAYERS_EXTENDED : MAX_PLAYERS;
+}
 
 function buildRoundSequence() {
   return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 }
 
-// 4x14 numérotées + 2 Sirènes + 5 Pirates nommés + 1 Skull King + 5 Fuites +
-// 1 Tigresse + 2 Butins + 1 Kraken + 1 Baleine blanche = 74 cartes.
-function createDeck() {
+// 4x14 numérotées + 2 Sirènes + 5 (ou 6) Pirates nommés + 1 Skull King + 5
+// Fuites + 1 Tigresse + 2 Butins + 1 Kraken + 1 Baleine blanche = 74 cartes
+// de base. Avec l'extension : +12 numérotées (7/8/0-14 par couleur), +1
+// Joker/Wild 15, +1 Mary Thorne (comptée dans la boucle des pirates
+// ci-dessus), +1 Mat le Forban, +1 Raie Tachetée, +1 Dernière Salve, +1
+// Marcher sur la Planche, +1 Coffre de Davy Jones = +19 cartes (93 total).
+function createDeck(extensionEnabled) {
   const deck = [];
   let uid = 0;
   for (const suit of SUITS) {
@@ -37,13 +53,35 @@ function createDeck() {
     }
   }
   for (let i = 0; i < 2; i++) deck.push({ id: `s${uid++}`, kind: 'siren' });
-  for (const name of PIRATE_NAMES) deck.push({ id: `s${uid++}`, kind: 'pirate', name });
+  const pirateNames = extensionEnabled ? [...PIRATE_NAMES, EXTENSION_PIRATE_NAME] : PIRATE_NAMES;
+  for (const name of pirateNames) deck.push({ id: `s${uid++}`, kind: 'pirate', name });
   deck.push({ id: `s${uid++}`, kind: 'skullking' });
   for (let i = 0; i < 5; i++) deck.push({ id: `s${uid++}`, kind: 'escape' });
   deck.push({ id: `s${uid++}`, kind: 'tigress' });
   for (let i = 0; i < 2; i++) deck.push({ id: `s${uid++}`, kind: 'loot' });
   deck.push({ id: `s${uid++}`, kind: 'kraken' });
   deck.push({ id: `s${uid++}`, kind: 'whale' });
+
+  if (extensionEnabled) {
+    for (const suit of SUITS) {
+      deck.push({ id: `s${uid++}`, kind: 'number', suit, value: 7, ext: true });
+      deck.push({ id: `s${uid++}`, kind: 'number', suit, value: 8, ext: true });
+      // Le 0/14 : valeur non fixée à la donne, déclarée par le joueur au
+      // moment où il la joue (voir skullking-room.js). Reste kind:'number'
+      // dès la main pour respecter l'obligation de couleur comme n'importe
+      // quelle numérotée (ledSuitOf/mustFollowSuit/isCardPlayable ne lisent
+      // jamais .value, seulement .kind et .suit).
+      deck.push({ id: `s${uid++}`, kind: 'number', suit, value: null, ext: true, wild14: true });
+    }
+    // Joker/Wild 15 : reste toujours jouable en main (kind !== 'number'),
+    // sa couleur/valeur définitive est fixée au moment de la pose.
+    deck.push({ id: `s${uid++}`, kind: 'wild15' });
+    deck.push({ id: `s${uid++}`, kind: 'firstmate' }); // Mat le Forban
+    deck.push({ id: `s${uid++}`, kind: 'stingray' }); // Raie Tachetée
+    deck.push({ id: `s${uid++}`, kind: 'lastvolley' }); // Dernière Salve
+    deck.push({ id: `s${uid++}`, kind: 'plank' }); // Marcher sur la Planche
+    deck.push({ id: `s${uid++}`, kind: 'davyjones' }); // Coffre de Davy Jones
+  }
   return deck;
 }
 
@@ -52,8 +90,8 @@ function createDeck() {
 // pouvoirs de Juanita Jade et Will le Bandit — elles disparaissent ensuite,
 // sans incidence sur les manches suivantes puisque le deck est entièrement
 // recréé à chaque fois.
-function dealRound(playerCount, cardsPerPlayer) {
-  const deck = shuffle(createDeck());
+function dealRound(playerCount, cardsPerPlayer, extensionEnabled) {
+  const deck = shuffle(createDeck(extensionEnabled));
   const hands = Array.from({ length: playerCount }, () => []);
   for (let i = 0; i < cardsPerPlayer * playerCount; i++) {
     hands[i % playerCount].push(deck[i]);
@@ -69,9 +107,11 @@ function isValidBid(bid, cardsInRound) {
 // Couleur imposée par le pli en cours : celle de la première carte
 // NUMÉROTÉE jouée (une carte spéciale menée en premier n'impose rien tant
 // qu'aucune numérotée n'a suivi - c'est elle qui fixe la couleur le cas
-// échéant). Toutes les cartes spéciales (Pirates, Sirènes, Skull King,
-// Fuite, Tigresse, Butin, Kraken, Baleine) restent toujours jouables quelle
-// que soit la couleur demandée : seules les numérotées y sont soumises.
+// échéant). Toutes les cartes spéciales restent toujours jouables quelle
+// que soit la couleur demandée : seules les numérotées y sont soumises. Le
+// Joker/Wild 15 et le 0/14 sont mutés en kind:'number' au moment de leur
+// pose (voir skullking-room.js) : une fois dans le pli, ils imposent leur
+// couleur exactement comme une numérotée normale, sans code spécifique ici.
 function ledSuitOf(trick) {
   for (const play of trick) {
     if (play.card.kind === 'number') return play.card.suit;
@@ -102,127 +142,214 @@ function effectiveKind(card) {
   return card.kind === 'tigress' ? card.chosenAs : card.kind;
 }
 
-// Hiérarchie du jeu de base (Fuite/Butin, Pirates, Sirènes, Skull King,
-// numérotées), sans Kraken ni Baleine blanche — utilisée à la fois pour le
-// cas normal et pour calculer le gagnant "virtuel" que le Kraken détruit.
+// Cartes qui ne remportent jamais un pli et n'imposent jamais la couleur
+// d'entame (en plus de la Fuite déjà gérée par ledSuitOf : kind !=='number'
+// suffit pour ça). "neutralized" est un marqueur interne (jamais posé sur
+// une vraie carte) utilisé pour désamorcer un Monstre Marin détruit par le
+// Coffre de Davy Jones ou un Pirate retiré par Marcher sur la Planche, sans
+// les faire compter comme des Fuites dans la règle "que des Fuites → la
+// première gagne" (elles n'ont rien d'une Fuite, elles doivent juste être
+// hors-course).
+const NEVER_WINS = new Set(['escape', 'lastvolley', 'plank', 'davyjones', 'neutralized']);
+const MONSTER_KINDS = ['kraken', 'whale', 'stingray'];
+
+// Hiérarchie "normale" (aucun effet de Monstre Marin actif à ce stade,
+// resolveTrick s'en est déjà chargé) : Fuite/Butin, Pirates/Mat le Forban,
+// Sirènes, Skull King, numérotées.
 function resolveHierarchy(cards, kinds) {
-  // Fuites et Butin ne gagnent jamais, SAUF si le pli n'est composé que de
-  // ça : dans ce cas précis, le Butin l'emporte exceptionnellement (le
-  // premier joué s'il y en a deux) ; à défaut, la 1ère Fuite jouée "gagne"
-  // par convention (aucune règle officielle ne couvre ce cas).
-  if (kinds.every((k) => k === 'escape' || k === 'loot')) {
+  // Un 0/14 déclaré à 0 ne remporte jamais le pli, exactement comme une
+  // Fuite (mais il garde kind:'number' pour l'obligation de couleur) - donc
+  // pris en compte ici aussi pour repérer "que des cartes qui ne gagnent
+  // jamais".
+  const neverWinning = (i) => NEVER_WINS.has(kinds[i]) || (kinds[i] === 'number' && cards[i].value === 0);
+
+  // Butin exceptionnel : si le pli n'est composé que de cartes qui ne
+  // gagnent jamais autrement (Fuite et assimilées, 0/14 déclaré à 0) +
+  // éventuellement du Butin, le Butin l'emporte (le premier joué s'il y en
+  // a deux) ; sinon, s'il n'y a QUE des Fuites, la première gagne (règle
+  // inchangée) ; sinon (mélange avec au moins une carte "ne gagne jamais"
+  // de l'extension ou un Monstre Marin neutralisé), personne ne gagne, le
+  // pli est défaussé.
+  if (kinds.every((k, i) => neverWinning(i) || k === 'loot')) {
     const lootIdx = kinds.indexOf('loot');
-    return lootIdx !== -1 ? lootIdx : 0;
+    if (lootIdx !== -1) return { winnerIdx: lootIdx };
+    if (kinds.every((k) => k === 'escape')) return { winnerIdx: 0 };
+    return { winnerIdx: null, allNeverWin: true };
   }
 
   const pirateIdx = [];
   const sirenIdx = [];
   let skIdx = -1;
+  let firstMateIdx = -1;
   kinds.forEach((k, i) => {
     if (k === 'pirate') pirateIdx.push(i);
     else if (k === 'siren') sirenIdx.push(i);
     else if (k === 'skullking') skIdx = i;
+    else if (k === 'firstmate') firstMateIdx = i;
   });
 
-  if (pirateIdx.length && skIdx !== -1 && sirenIdx.length) return sirenIdx[0];
-  if (pirateIdx.length && skIdx !== -1) return skIdx;
-  if (skIdx !== -1 && sirenIdx.length) return sirenIdx[0];
-  if (pirateIdx.length) return pirateIdx[0];
-  if (skIdx !== -1) return skIdx;
-  if (sirenIdx.length) return sirenIdx[0];
+  // Sirène + Skull King présents ensemble : la Sirène ferme toujours la
+  // boucle, qu'il y ait des Pirates/Mat le Forban ou non.
+  if (skIdx !== -1 && sirenIdx.length) return { winnerIdx: sirenIdx[0] };
+  // Skull King bat tout Pirate-tier (vrai Pirate OU Mat le Forban) quand il
+  // est seul face à eux (pas de Sirène pour retourner la situation).
+  if ((pirateIdx.length || firstMateIdx !== -1) && skIdx !== -1) return { winnerIdx: skIdx };
+  // Mat le Forban perd aussi face à une Sirène SEULE (sans Skull King) -
+  // contrairement aux vrais Pirates, qui battent une Sirène isolée.
+  if (firstMateIdx !== -1 && sirenIdx.length) return { winnerIdx: sirenIdx[0] };
+  if (pirateIdx.length || firstMateIdx !== -1) return { winnerIdx: firstMateIdx !== -1 ? firstMateIdx : pirateIdx[0] };
+  if (skIdx !== -1) return { winnerIdx: skIdx };
+  if (sirenIdx.length) return { winnerIdx: sirenIdx[0] };
 
   const numberIdx = [];
-  kinds.forEach((k, i) => { if (k === 'number') numberIdx.push(i); });
+  kinds.forEach((k, i) => { if (k === 'number' && cards[i].value !== 0) numberIdx.push(i); });
+  if (numberIdx.length === 0) return { winnerIdx: null, allNeverWin: true };
   const blackIdx = numberIdx.filter((i) => cards[i].suit === 'noir');
   const pool = blackIdx.length ? blackIdx : numberIdx.filter((i) => cards[i].suit === cards[numberIdx[0]].suit);
-  return pool.reduce((best, i) => (cards[i].value > cards[best].value ? i : best));
+  return { winnerIdx: pool.reduce((best, i) => (cards[i].value > cards[best].value ? i : best)) };
 }
 
-// Résout un pli complet. Retourne { winnerIdx, leaderIdx, destroyed } :
+// Résout un pli complet. `cards` est le tableau des cartes dans l'ordre de
+// pose (index = ordre de jeu, stable, réutilisé par skullking-room.js pour
+// retrouver quel joueur a posé quoi). Retourne :
 // - winnerIdx : index de la carte qui remporte le pli (null si détruit).
-// - leaderIdx : index dont le joueur entame le pli suivant (toujours défini).
-// - destroyed : true si personne ne ramasse ce pli (Kraken, ou Baleine sans
-//   aucune carte numérotée pour départager).
+// - leaderIdx : index dont le joueur entame le pli suivant (toujours
+//   défini ; c'est l'entameur d'origine - index 0 - dans tous les cas où
+//   personne ne peut gagner, y compris pour les Monstres Marins désormais,
+//   sauf le Kraken qui garde son "gagnant virtuel").
+// - destroyed : true si personne ne ramasse ce pli.
+// - monstersDestroyed : nombre de Monstres Marins détruits par le Coffre de
+//   Davy Jones ce pli-ci (0 sinon) — sert au bonus +20/monstre.
+// - excludedIdx : Set des index à ignorer pour le calcul des bonus et pour
+//   la liste des Pirates "capturés" (Monstres+Davy Jones détruits, Pirate
+//   retiré par Marcher sur la Planche) - ces cartes restent dans le pli
+//   affiché mais ne comptent plus pour rien après coup.
 function resolveTrick(cards) {
   const rawKinds = cards.map(effectiveKind);
-  let krakenIdx = rawKinds.indexOf('kraken');
-  let whaleIdx = rawKinds.indexOf('whale');
   const kinds = [...rawKinds];
+  const excludedIdx = new Set();
 
-  // Kraken + Baleine dans le même pli : celle jouée en second l'emporte et
-  // applique son effet ; l'autre devient une simple Fuite pour le reste de
-  // la résolution.
-  if (krakenIdx !== -1 && whaleIdx !== -1) {
-    if (krakenIdx < whaleIdx) {
-      kinds[krakenIdx] = 'escape';
-      krakenIdx = -1;
-    } else {
-      kinds[whaleIdx] = 'escape';
-      whaleIdx = -1;
+  // Marcher sur la Planche : retire un Pirate précis du pli (ciblé au
+  // moment de la pose, voir card.removesId côté skullking-room.js). La
+  // carte retirée n'existe plus pour la suite (gagnant, bonus, pouvoir de
+  // Mat le Forban) ; la Planche elle-même reste dans le pli sans jamais le
+  // gagner.
+  cards.forEach((c, i) => {
+    if (effectiveKind(c) === 'plank' && c.removesId) {
+      const targetIdx = cards.findIndex((cc) => cc.id === c.removesId);
+      if (targetIdx !== -1) {
+        excludedIdx.add(targetIdx);
+        kinds[targetIdx] = 'neutralized';
+      }
     }
+  });
+
+  // Coffre de Davy Jones : détruit TOUS les Monstres Marins présents (peu
+  // importe leur nombre ou l'ordre de pose), lui-même y compris - priorité
+  // absolue sur la règle "dernier Monstre joué décide" ci-dessous.
+  let monstersDestroyed = 0;
+  const davyIdx = kinds.indexOf('davyjones');
+  if (davyIdx !== -1) {
+    excludedIdx.add(davyIdx);
+    kinds[davyIdx] = 'neutralized';
+    kinds.forEach((k, i) => {
+      if (!excludedIdx.has(i) && MONSTER_KINDS.includes(k)) {
+        excludedIdx.add(i);
+        monstersDestroyed += 1;
+        kinds[i] = 'neutralized';
+      }
+    });
+  } else {
+    // Entre plusieurs Monstres Marins (Kraken/Baleine/Raie), le dernier
+    // joué décide de l'effet appliqué ; les autres deviennent neutres.
+    const monsterIdx = [];
+    kinds.forEach((k, i) => { if (MONSTER_KINDS.includes(k)) monsterIdx.push(i); });
+    for (let j = 0; j < monsterIdx.length - 1; j++) kinds[monsterIdx[j]] = 'escape';
   }
 
-  if (krakenIdx !== -1) {
+  const activeKraken = kinds.indexOf('kraken');
+  const activeWhale = kinds.indexOf('whale');
+  const activeStingray = kinds.indexOf('stingray');
+
+  if (activeKraken !== -1) {
     // Le pli est détruit ; le pli suivant est mené par qui aurait gagné en
-    // ignorant le Kraken (calculé sur les autres cartes, hiérarchie normale,
-    // Kraken traité comme une Fuite).
+    // ignorant le Kraken (hiérarchie normale sur le reste, Kraken traité
+    // comme une Fuite pour ce calcul).
     const virtualKinds = [...kinds];
-    virtualKinds[krakenIdx] = 'escape';
-    const leaderIdx = resolveHierarchy(cards, virtualKinds);
-    return { winnerIdx: null, leaderIdx, destroyed: true };
+    virtualKinds[activeKraken] = 'escape';
+    const { winnerIdx: virtualWinner, allNeverWin } = resolveHierarchy(cards, virtualKinds);
+    const leaderIdx = allNeverWin ? 0 : virtualWinner;
+    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx };
   }
 
-  if (whaleIdx !== -1) {
-    // Neutralise toutes les cartes spéciales (dont un Kraken déjà neutralisé
-    // ci-dessus) : seule la valeur numérique des numérotées compte, sans
-    // distinction de couleur ni statut d'atout pour le noir.
+  if (activeWhale !== -1 || activeStingray !== -1) {
+    // Neutralise toutes les cartes spéciales : seule la valeur numérique
+    // des numérotées compte, sans distinction de couleur ni statut d'atout
+    // pour le noir. La Baleine fait gagner la plus haute valeur, la Raie
+    // Tachetée la plus basse (jamais un 0/14 déclaré à 0).
+    const monsterI = activeWhale !== -1 ? activeWhale : activeStingray;
+    const pickLowest = activeWhale === -1;
     const numberIdx = [];
-    kinds.forEach((k, i) => { if (k === 'number' && i !== whaleIdx) numberIdx.push(i); });
+    kinds.forEach((k, i) => {
+      if (k === 'number' && i !== monsterI && cards[i].value !== 0) numberIdx.push(i);
+    });
     if (numberIdx.length === 0) {
-      // Que des spéciales en plus de la Baleine : pli détruit, mené par le
-      // joueur de la Baleine (pas de gagnant "virtuel" ici, contrairement
-      // au Kraken — la Baleine n'a pas cette règle).
-      return { winnerIdx: null, leaderIdx: whaleIdx, destroyed: true };
+      return { winnerIdx: null, leaderIdx: 0, destroyed: true, monstersDestroyed, excludedIdx };
     }
-    // Égalité de valeur entre deux couleurs différentes (possible ici,
-    // puisque la couleur ne compte plus) : la première jouée l'emporte, par
-    // cohérence avec toutes les autres égalités de ce jeu.
-    const winnerIdx = numberIdx.reduce((best, i) => (cards[i].value > cards[best].value ? i : best));
-    return { winnerIdx, leaderIdx: winnerIdx, destroyed: false };
+    const winnerIdx = numberIdx.reduce((best, i) => {
+      const better = pickLowest ? cards[i].value < cards[best].value : cards[i].value > cards[best].value;
+      return better ? i : best;
+    });
+    return { winnerIdx, leaderIdx: winnerIdx, destroyed: false, monstersDestroyed, excludedIdx };
   }
 
-  const winnerIdx = resolveHierarchy(cards, kinds);
-  return { winnerIdx, leaderIdx: winnerIdx, destroyed: false };
+  const { winnerIdx, allNeverWin } = resolveHierarchy(cards, kinds);
+  if (winnerIdx === null) {
+    return { winnerIdx: null, leaderIdx: 0, destroyed: true, monstersDestroyed, excludedIdx };
+  }
+  return { winnerIdx, leaderIdx: winnerIdx, destroyed: false, monstersDestroyed, excludedIdx };
 }
 
 // Points bonus gagnés par le vainqueur d'UN pli (créditables seulement si
 // son annonce de manche est réussie exactement — décidé au moment du score
-// de fin de manche, pas ici). Inchangé par la Baleine : les 14 comptent pour
-// la carte physiquement capturée, indépendamment de pourquoi le pli a été
-// gagné.
-function trickBonusForWinner(cards, winnerIdx) {
+// de fin de manche, pas ici). `excludedIdx` (Monstres/Davy Jones détruits,
+// Pirate retiré par la Planche) ne compte pour rien ici, ni dans le calcul
+// des 14/7/8 d'extension, ni dans la capture de Pirate(s)/Mat le Forban.
+function trickBonusForWinner(cards, winnerIdx, excludedIdx = new Set()) {
   let bonus = 0;
-  for (const c of cards) {
-    if (c.kind === 'number' && c.value === 14) bonus += c.suit === 'noir' ? 20 : 10;
-  }
+  cards.forEach((c, i) => {
+    if (excludedIdx.has(i)) return;
+    if (c.kind !== 'number') return;
+    if (c.value === 14) bonus += c.suit === 'noir' ? 20 : 10;
+    if (c.ext && c.value === 8) bonus += 5;
+    if (c.ext && c.value === 7) bonus -= 5;
+  });
   const winnerKind = effectiveKind(cards[winnerIdx]);
+  const activeCards = cards.filter((c, i) => !excludedIdx.has(i));
+  const pirateCount = activeCards.filter((c) => effectiveKind(c) === 'pirate').length;
+  // Mat le Forban compte "comme un pirate normal" pour le bonus de capture,
+  // qu'il soit capturé par le Skull King (comme un vrai Pirate) OU par une
+  // Sirène (élargissement propre à Mat, les vrais Pirates ne donnent ce
+  // bonus que capturés par le Skull King).
+  const firstMatePresent = activeCards.some((c) => effectiveKind(c) === 'firstmate');
   if (winnerKind === 'skullking') {
-    bonus += cards.filter((c) => effectiveKind(c) === 'pirate').length * 30;
+    bonus += pirateCount * 30;
+    if (firstMatePresent) bonus += 30;
   }
-  if (winnerKind === 'siren' && cards.some((c) => effectiveKind(c) === 'skullking')) {
-    bonus += 40;
+  if (winnerKind === 'siren') {
+    if (activeCards.some((c) => effectiveKind(c) === 'skullking')) bonus += 40;
+    if (firstMatePresent) bonus += 30;
   }
   return bonus;
 }
 
 // bonus = somme des trickBonusForWinner accumulés pendant la manche par ce
-// joueur, créditée uniquement si son annonce est réussie exactement. Les
-// bonus Butin (+20/+20) et la mise Rascal sont ajoutés séparément côté
-// skullking-room.js, car ils dépendent de l'exactitude d'un AUTRE joueur.
-// Détail du score d'une manche : `base` (le contrat réussi/raté seul) et
-// `bonus` (14 de couleur/noir, capture de Pirate(s)/Skull King, séparés) -
-// exposé pour que le résumé de fin de manche puisse afficher les deux au
-// lieu d'un seul delta agrégé.
+// joueur (Davy Jones inclus : +20/Monstre détruit ajouté séparément côté
+// skullking-room.js au même titre que trickBonusForWinner, car il dépend
+// du nombre détruit CE pli-ci), créditée uniquement si son annonce est
+// réussie exactement. Les bonus Butin (+20/+20) et la mise Rascal sont
+// ajoutés séparément côté skullking-room.js, car ils dépendent de
+// l'exactitude d'un AUTRE joueur.
 function computeRoundScoreBreakdown(bid, made, roundNumber, bonus) {
   const exact = made === bid;
   let base;
@@ -242,9 +369,12 @@ function computeRoundScore(bid, made, roundNumber, bonus) {
 module.exports = {
   SUITS,
   PIRATE_NAMES,
+  EXTENSION_PIRATE_NAME,
   PIRATE_POWER_BY_NAME,
   MIN_PLAYERS,
   MAX_PLAYERS,
+  MAX_PLAYERS_EXTENDED,
+  maxPlayersFor,
   buildRoundSequence,
   createDeck,
   dealRound,

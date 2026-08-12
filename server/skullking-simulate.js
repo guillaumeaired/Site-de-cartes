@@ -13,6 +13,7 @@ const {
   trickBonusForWinner,
   computeRoundScore,
   computeRoundScoreBreakdown,
+  maxPlayersFor,
 } = require('./skullking');
 
 let passed = 0;
@@ -53,6 +54,31 @@ function kraken() {
 }
 function whale() {
   return { kind: 'whale' };
+}
+// --- Extension ---
+function firstmate() {
+  return { kind: 'firstmate' }; // Mat le Forban
+}
+function stingray() {
+  return { kind: 'stingray' }; // Raie Tachetée
+}
+function lastvolley() {
+  return { kind: 'lastvolley' }; // Dernière Salve
+}
+function plank(removesId) {
+  return { kind: 'plank', removesId }; // Marcher sur la Planche
+}
+function davyjones() {
+  return { kind: 'davyjones' }; // Coffre de Davy Jones
+}
+// Joker/Wild 15 et 0/14 : représentés déjà "résolus" (comme le fait
+// skullking-room.js au moment de la pose), resolveTrick ne connaît que des
+// cartes kind:'number' une fois jouées, sans logique dédiée.
+function wild15(suit) {
+  return { kind: 'number', suit, value: 15, wild15: true };
+}
+function declared014(suit, value) {
+  return { kind: 'number', suit, value, ext: true, wild14: true };
 }
 
 function winnerIdx(cards) {
@@ -135,7 +161,9 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   const cards = [pirate(), whale(), sk()];
   const r = resolveTrick(cards);
   check('baleine : que des spéciales → pli détruit', r.destroyed, true);
-  check('baleine : que des spéciales → menée par le joueur de la baleine', r.leaderIdx, 1);
+  // Unifié avec la règle d'extension (2026-07-31) : dorénavant toujours
+  // l'entameur d'origine, plus le joueur de la Baleine spécifiquement.
+  check('baleine : que des spéciales → mené par l\'entameur d\'origine', r.leaderIdx, 0);
 }
 {
   // Deux couleurs différentes à égalité de valeur : la 1ère jouée gagne.
@@ -229,6 +257,146 @@ check('contrat 2 raté : le bonus accumulé ne compte pas', computeRoundScore(2,
 check('breakdown : contrat 3 exact avec bonus', computeRoundScoreBreakdown(3, 3, 5, 40), { base: 60, bonus: 40, total: 100 });
 check('breakdown : contrat raté, bonus ignoré', computeRoundScoreBreakdown(2, 5, 5, 999), { base: -30, bonus: 0, total: -30 });
 check('breakdown : contrat 0 réussi', computeRoundScoreBreakdown(0, 0, 4, 0), { base: 40, bonus: 0, total: 40 });
+
+// ============================================================
+// --- Extension officielle (2026-07-31) ---
+// ============================================================
+
+// --- Deck étendu ---
+{
+  const extDeck = createDeck(true);
+  check('extension : deck de 93 cartes', extDeck.length, 93);
+  check('extension : deck de base inchangé sans le flag', createDeck().length, 74);
+  check('extension : 4 sept supplémentaires', extDeck.filter((c) => c.kind === 'number' && c.ext && c.value === 7).length, 4);
+  check('extension : 4 huit supplémentaires', extDeck.filter((c) => c.kind === 'number' && c.ext && c.value === 8).length, 4);
+  check('extension : 4 cartes 0/14 (valeur non fixée à la donne)', extDeck.filter((c) => c.wild14).length, 4);
+  check('extension : 1 Joker/Wild 15', extDeck.filter((c) => c.kind === 'wild15').length, 1);
+  check('extension : 6 pirates nommés (Mary Thorne incluse)', extDeck.filter((c) => c.kind === 'pirate').length, 6);
+  check('extension : 1 Mat le Forban', extDeck.filter((c) => c.kind === 'firstmate').length, 1);
+  check('extension : 1 Raie Tachetée', extDeck.filter((c) => c.kind === 'stingray').length, 1);
+  check('extension : 1 Dernière Salve', extDeck.filter((c) => c.kind === 'lastvolley').length, 1);
+  check('extension : 1 Marcher sur la Planche', extDeck.filter((c) => c.kind === 'plank').length, 1);
+  check('extension : 1 Coffre de Davy Jones', extDeck.filter((c) => c.kind === 'davyjones').length, 1);
+}
+
+// --- Plafond de joueurs ---
+check('extension : plafond 7 joueurs sans extension', maxPlayersFor(false), 7);
+check('extension : plafond 9 joueurs avec extension', maxPlayersFor(true), 9);
+
+// --- Mat le Forban (First Mate Con) ---
+check('Mat le Forban bat un Pirate classique', winnerIdx([pirate(), firstmate()]), 1);
+check('Mat le Forban bat plusieurs Pirates classiques', winnerIdx([pirate(), firstmate(), pirate()]), 1);
+check('Mat le Forban perd contre le Skull King', winnerIdx([firstmate(), sk()]), 1);
+check('Mat le Forban perd contre une Sirène', winnerIdx([firstmate(), siren()]), 1);
+check('Mat le Forban bat une numérotée (aucun Pirate/SK/Sirène)', winnerIdx([num('vert', 14), firstmate()]), 1);
+check(
+  'Mat le Forban + Pirate + Skull King + Sirène : la Sirène ferme toujours la boucle',
+  winnerIdx([pirate(), firstmate(), sk(), siren()]),
+  3
+);
+{
+  // Capturé par le Skull King : bonus de capture "comme un pirate normal",
+  // en plus du décompte des vrais Pirates du même pli.
+  const cards = [pirate(), firstmate(), sk()];
+  const r = resolveTrick(cards);
+  check('Mat le Forban capturé par le Skull King : le SK gagne', r.winnerIdx, 2);
+  check(
+    'Mat le Forban capturé par le Skull King : bonus = 30 (pirate) + 30 (Mat)',
+    trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx),
+    60
+  );
+}
+{
+  // Capturé par une Sirène (élargissement propre à Mat : les vrais Pirates
+  // ne donnent ce bonus que capturés par le Skull King, pas par une Sirène).
+  const cards = [firstmate(), siren()];
+  const r = resolveTrick(cards);
+  check('Mat le Forban capturé par une Sirène : bonus = 30', trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx), 30);
+}
+check(
+  'Un Pirate classique capturé par une Sirène (sans Mat) ne donne toujours aucun bonus',
+  trickBonusForWinner([pirate(), siren()], 1, resolveTrick([pirate(), siren()]).excludedIdx),
+  0
+);
+
+// --- Raie Tachetée (Spotted Stingray) : miroir de la Baleine, la plus basse gagne ---
+check('Raie Tachetée : la plus basse valeur gagne (vert 3 < vert 9)', winnerIdx([num('vert', 9), stingray(), num('vert', 3)]), 2);
+check('Raie Tachetée : neutralise le statut d\'atout du noir', winnerIdx([num('vert', 2), stingray(), num('noir', 9)]), 0);
+{
+  const cards = [pirate(), stingray(), sk()];
+  const r = resolveTrick(cards);
+  check('Raie Tachetée : que des spéciales → pli détruit', r.destroyed, true);
+  check('Raie Tachetée : que des spéciales → mené par l\'entameur d\'origine', r.leaderIdx, 0);
+}
+
+// --- Interaction à 3 Monstres Marins : le dernier joué décide ---
+check('Kraken, Baleine puis Raie : la Raie (dernière) décide, la plus basse gagne', winnerIdx([kraken(), whale(), stingray(), num('vert', 9), num('jaune', 3)]), 4);
+check('Raie puis Baleine : la Baleine (dernière) décide, la plus haute gagne', winnerIdx([stingray(), whale(), num('vert', 3), num('jaune', 9)]), 3);
+check('Baleine puis Kraken puis Raie : la Raie (dernière) décide', destroyed([whale(), kraken(), stingray(), num('vert', 9), num('jaune', 3)]), false);
+
+// --- Coffre de Davy Jones : priorité absolue sur les Monstres Marins ---
+{
+  const cards = [num('vert', 5), kraken(), whale(), stingray(), davyjones(), num('jaune', 9)];
+  const r = resolveTrick(cards);
+  check('Davy Jones détruit les 3 Monstres Marins peu importe l\'ordre', r.monstersDestroyed, 3);
+  // jaune 9 n'a pas suivi la couleur imposée par le vert 5 (1ère numérotée
+  // jouée) : comme toute carte hors-couleur, elle ne peut jamais gagner,
+  // peu importe sa valeur — vert 5 l'emporte donc, seule carte éligible.
+  check('Davy Jones : seule la carte de la couleur imposée reste éligible (vert 5)', r.winnerIdx, 0);
+  check('Davy Jones : lui-même + les 3 Monstres exclus du bonus', [...r.excludedIdx].sort(), [1, 2, 3, 4]);
+}
+{
+  // Davy Jones seul avec des Monstres, rien d'autre : plus rien à gagner.
+  const cards = [davyjones(), kraken(), whale()];
+  const r = resolveTrick(cards);
+  check('Davy Jones + Monstres seuls : pli détruit', r.destroyed, true);
+  check('Davy Jones + Monstres seuls : mené par l\'entameur d\'origine (pas Davy Jones lui-même)', r.leaderIdx, 0);
+}
+{
+  // Bonus : +20 par Monstre détruit, calculé côté skullking-room.js à
+  // partir de result.monstersDestroyed (pas dans trickBonusForWinner).
+  const cards = [num('vert', 5), kraken(), davyjones(), num('jaune', 9)];
+  const r = resolveTrick(cards);
+  check('Davy Jones détruit 1 Monstre (Kraken) parmi une numérotée', r.monstersDestroyed, 1);
+  check('Davy Jones : le Kraken détruit ne détruit plus le pli', r.destroyed, false);
+}
+
+// --- Marcher sur la Planche : retire un Pirate ciblé ---
+{
+  const target = { kind: 'pirate', id: 'target-pirate' };
+  const cards = [target, sk(), { kind: 'plank', removesId: 'target-pirate' }];
+  const r = resolveTrick(cards);
+  check('Planche retire le Pirate ciblé : plus de Pirate face au Skull King, mais la Planche ne gagne jamais', r.winnerIdx, 1);
+  check('Planche : le Pirate retiré est exclu du bonus de capture du Skull King', trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx), 0);
+}
+{
+  const cards = [pirate(), plank(undefined)];
+  const r = resolveTrick(cards);
+  check('Planche jamais gagnante elle-même', r.winnerIdx, 0);
+}
+
+// --- Dernière Salve : ne gagne jamais ---
+check('Dernière Salve ne gagne jamais face à une numérotée', winnerIdx([lastvolley(), num('vert', 2)]), 1);
+
+// --- Mélange de cartes "ne gagnent jamais" sans numérotée : défaussé, mené par l'entameur ---
+{
+  const cards = [esc(), lastvolley(), plank(undefined)];
+  const r = resolveTrick(cards);
+  check('Fuite + Dernière Salve + Planche (aucune numérotée) : pli défaussé', r.destroyed, true);
+  check('Fuite + Dernière Salve + Planche : mené par l\'entameur d\'origine', r.leaderIdx, 0);
+}
+check('Mais "que des Fuites" (sans les nouvelles cartes) reste gagné par la première', winnerIdx([esc(), esc()]), 0);
+check('Butin reste exceptionnel même mélangé aux nouvelles cartes non-gagnantes', winnerIdx([lastvolley(), loot(), plank(undefined)]), 1);
+
+// --- Joker/Wild 15 et 0/14 (déjà "résolus" au moment où ils entrent dans le pli) ---
+check('Joker (couleur prise = vert) bat une autre numérotée vert', winnerIdx([num('vert', 14), wild15('vert')]), 1);
+check('Joker perd face à l\'atout noir', winnerIdx([num('noir', 5), wild15('vert')]), 0);
+check('0/14 déclaré à 14 se comporte comme un vrai 14 (bonus couleur)', trickBonusForWinner([declared014('vert', 14), num('jaune', 3)], 0), 10);
+check('0/14 déclaré à 0 ne gagne jamais, même seule carte numérotée en lice', winnerIdx([esc(), declared014('vert', 0)]), null);
+check('0/14 déclaré à 0 + Butin (rien d\'autre) : le Butin gagne quand même exceptionnellement', winnerIdx([declared014('vert', 0), loot()]), 1);
+check('7 d\'extension capturé : bonus -5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 7, ext: true }, num('jaune', 3)], 0), -5);
+check('8 d\'extension capturé : bonus +5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 8, ext: true }, num('jaune', 3)], 0), 5);
+check('un 7 de base (non-extension) ne donne aucun bonus', trickBonusForWinner([num('vert', 7), num('jaune', 3)], 0), 0);
 
 console.log(`\n${passed} test(s) OK, ${failed} échec(s).`);
 process.exit(failed > 0 ? 1 : 0);

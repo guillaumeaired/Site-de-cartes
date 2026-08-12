@@ -11,19 +11,36 @@ const {
   MIN_PLAYERS,
   MAX_PLAYERS,
   PIRATE_POWER_BY_NAME,
+  maxPlayersFor,
   buildRoundSequence,
   dealRound,
   isValidBid,
   isCardPlayable,
+  ledSuitOf,
   resolveTrick,
   trickBonusForWinner,
   computeRoundScoreBreakdown,
 } = require('./skullking');
 
+// Salon d'attente uniquement (voir handleDisconnecting) : délai de grâce
+// avant de considérer le joueur vraiment parti.
 const DISCONNECT_GRACE_MS = 45_000;
 const TRICK_REVEAL_MS = 2_600;
 const POWER_REVEAL_MS = 3_500; // temps laissé à Juanita pour lire les cartes non distribuées
 const ROUND_END_MS = 7_000;
+
+// Déconnexion en pleine partie : pause indéfinie, plus de délai de grâce fixe
+// qui met fin à la partie tout seul (décision réconciliée Backend/Game
+// Design/UI-UX, Manche 2 — voir ascenseur-room.js pour le contexte détaillé).
+// Seul l'hôte peut choisir d'arrêter la partie plus tôt (skullking-end-game,
+// déjà existant).
+
+// Garde-fou anti-inactivité (Manche 2) : un joueur toujours connecté mais qui
+// met trop de temps à agir sur son tour (phase 'playing' uniquement — les
+// annonces de la phase 'bidding' sont simultanées, pas de "tour" à surveiller
+// là) reçoit un simple signal visible de tous, sans saut de tour ni
+// exclusion automatique.
+const INACTIVITY_WARN_MS = 120_000;
 
 const rooms = new Map();
 
@@ -87,6 +104,15 @@ function rekeyPlayerId(room, oldId, newId) {
       if (r.id === oldId) r.id = newId;
     });
   }
+  // Extension : cible du pouvoir de Mary Thorne (carte forcée au pli
+  // suivant), joueur qui passe son tour après une Dernière Salve, joueur
+  // qui doit encore jouer sa carte supplémentaire.
+  if (room.forcedPlays && Object.prototype.hasOwnProperty.call(room.forcedPlays, oldId)) {
+    room.forcedPlays[newId] = room.forcedPlays[oldId];
+    delete room.forcedPlays[oldId];
+  }
+  if (room.sittingOutId === oldId) room.sittingOutId = newId;
+  if (room.extraCardOwedBy === oldId) room.extraCardOwedBy = newId;
   rekeyHostId(room, oldId, newId);
 }
 
@@ -103,22 +129,30 @@ function broadcastToRoom(io, room, event, data) {
 }
 
 function broadcastLobby(io, room) {
+  const maxPlayers = maxPlayersFor(room.extensionEnabled);
   for (const p of room.players) {
     io.to(p.id).emit('skullking-lobby-update', {
       code: room.code,
       players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname })),
       hostId: room.hostId,
       isHost: p.id === room.hostId,
-      canStart: room.players.length >= MIN_PLAYERS && room.players.length <= MAX_PLAYERS,
+      canStart: room.players.length >= MIN_PLAYERS && room.players.length <= maxPlayers,
       minPlayers: MIN_PLAYERS,
-      maxPlayers: MAX_PLAYERS,
+      maxPlayers,
+      // Le switch est cliquable seulement par l'hôte (imposé aussi côté
+      // serveur dans le handler dédié) ; tous les autres le voient en
+      // lecture seule via ce même champ.
+      extensionEnabled: Boolean(room.extensionEnabled),
     });
   }
 }
 
 function playerAtTurn(room) {
-  const n = room.players.length;
-  return room.players[(room.leaderIndex + room.turnCount) % n];
+  const order = activeOrderThisTrick(room);
+  if (room.turnCount < order.length) return order[room.turnCount];
+  // Carte supplémentaire de Dernière Salve : jouée après tout le monde,
+  // toujours par le même joueur qui l'a posée ce pli-ci.
+  return findPlayer(room, room.extraCardOwedBy);
 }
 
 // Aperçu du pli en cours (même incomplet) : qui le mènerait à l'instant, et
@@ -137,7 +171,7 @@ function allBidsIn(room) {
 
 function startRound(io, room) {
   const cardsInRound = room.roundSequence[room.roundIndex];
-  const { hands, residualPile } = dealRound(room.players.length, cardsInRound);
+  const { hands, residualPile } = dealRound(room.players.length, cardsInRound, room.extensionEnabled);
   room.players.forEach((p, i) => {
     p.hand = hands[i];
     p.tricksWon = 0;
@@ -154,10 +188,34 @@ function startRound(io, room) {
   room.trickNumber = 1;
   room.trickPaused = false;
   room.pendingPower = null;
+  room.pendingPowerQueue = null;
   room.lastTrickResult = null;
   room.lastWinningCard = null;
+  room.forcedPlays = {};
+  room.sittingOutId = null;
+  room.extraCardOwedBy = null;
   room.phase = 'bidding';
   broadcastState(io, room);
+}
+
+// Ordre de jeu du pli en cours, en partant du meneur : identique à
+// room.players tant que personne ne "passe son tour" (effet de Dernière
+// Salve sur le pli suivant sa pose) - dans ce cas, le joueur concerné est
+// simplement absent de la rotation pour CE pli-ci uniquement. Si c'est lui
+// qui aurait dû mener, le joueur suivant dans l'ordre prend sa place
+// naturellement (aucun cas particulier à gérer).
+function activeOrderThisTrick(room) {
+  const n = room.players.length;
+  const rotated = Array.from({ length: n }, (_, i) => room.players[(room.leaderIndex + i) % n]);
+  return room.sittingOutId ? rotated.filter((p) => p.id !== room.sittingOutId) : rotated;
+}
+
+// Nombre total de cartes attendues pour boucler le pli en cours : un joueur
+// qui passe son tour en retire une, et Dernière Salve (si jouée ce pli-ci,
+// hors tout dernier pli de la manche) en ajoute une - la carte
+// supplémentaire du joueur qui l'a posée, jouée après tout le monde.
+function trickTotalCards(room) {
+  return activeOrderThisTrick(room).length + (room.extraCardOwedBy ? 1 : 0);
 }
 
 function roundNumber(room) {
@@ -205,6 +263,7 @@ function stateFor(room, p) {
     totalRounds: room.roundSequence.length,
     cardsInRound: room.cardsInRound,
     scoreboard: scoreboard(room),
+    extensionEnabled: Boolean(room.extensionEnabled),
   };
 
   if (inRound) {
@@ -213,14 +272,23 @@ function stateFor(room, p) {
   }
   if (room.phase === 'playing' || room.phase === 'power') {
     base.currentTrick = room.currentTrick;
-    base.turnPlayerId = playerAtTurn(room).id;
-    base.isMyTurn = room.phase === 'playing' && !room.trickPaused && playerAtTurn(room).id === p.id;
+    const turnPlayer = playerAtTurn(room);
+    base.turnPlayerId = turnPlayer ? turnPlayer.id : null;
+    base.isMyTurn = room.phase === 'playing' && !room.trickPaused && turnPlayer && turnPlayer.id === p.id;
     base.trickNumber = room.trickNumber;
     const preview = currentTrickPreview(room);
     base.leadingPlayerId = preview.leaderId;
     base.trickWillBeDestroyed = preview.destroyed;
     base.trickPaused = Boolean(room.trickPaused);
     base.lastTrickResult = room.trickPaused ? room.lastTrickResult : null;
+    // Dernière Salve : ce joueur n'a tout simplement pas de carte à jouer
+    // ce pli-ci (autre chose qu'"attendre son tour normalement" - le client
+    // affiche un message dédié plutôt qu'une attente silencieuse).
+    base.sittingOutThisTrick = room.sittingOutId === p.id;
+    // Pouvoir de Mary Thorne : une carte précise de SA main a été tirée au
+    // sort pour lui - toute autre carte devient injouable tant que ce
+    // n'est pas fait, peu importe la couleur imposée.
+    base.forcedCardId = room.forcedPlays ? room.forcedPlays[p.id] : undefined;
   }
   if (room.phase === 'power' && room.pendingPower) {
     const pending = room.pendingPower;
@@ -230,7 +298,10 @@ function stateFor(room, p) {
       playerId: pending.playerId,
       mine,
       revealCards: mine ? pending.revealCards : undefined,
-      options: mine && pending.kind === 'rosie' ? room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname })) : undefined,
+      options:
+        mine && (pending.kind === 'rosie' || pending.kind === 'marythorne')
+          ? room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, handCount: pp.hand.length }))
+          : undefined,
       currentBid: mine && pending.kind === 'harry' ? room.bids[pending.playerId] : undefined,
     };
   }
@@ -248,6 +319,24 @@ function broadcastState(io, room) {
   for (const p of room.players) {
     io.to(p.id).emit('skullking-state', stateFor(room, p));
   }
+  scheduleInactivityCheck(io, room);
+}
+
+// Voir la constante INACTIVITY_WARN_MS : seule la phase 'playing', hors
+// pause de révélation de pli, a un joueur unique dont c'est vraiment le tour.
+function scheduleInactivityCheck(io, room) {
+  clearTimeout(room.inactivityTimer);
+  room.inactivityTimer = null;
+  if (room.phase !== 'playing' || room.trickPaused) return;
+  const playerId = playerAtTurn(room).id;
+  room.inactivityTimer = setTimeout(() => {
+    if (rooms.get(room.code) !== room) return;
+    if (room.phase !== 'playing' || room.trickPaused) return;
+    if (playerAtTurn(room).id !== playerId) return;
+    const player = findPlayer(room, playerId);
+    if (!player || player.connected === false) return; // déjà couvert par la bannière de déconnexion
+    broadcastToRoom(io, room, 'skullking-inactivity-notice', { id: playerId, nickname: player.nickname });
+  }, INACTIVITY_WARN_MS);
 }
 
 function endRound(io, room) {
@@ -331,11 +420,16 @@ function finishTrickCollection(io, room, leaderId) {
   room.currentTrick = [];
   room.trickPaused = false;
   room.pendingPower = null;
+  room.pendingPowerQueue = null;
   room.lastTrickResult = null;
   room.lastWinningCard = null;
   room.leaderIndex = room.players.findIndex((p) => p.id === leaderId);
   room.turnCount = 0;
   room.trickNumber += 1;
+  // Dernière Salve : le joueur qui l'a posée passe son tour sur le pli qui
+  // vient de s'ouvrir (celui-ci uniquement), puis redevient actif normal.
+  room.sittingOutId = room.extraCardOwedBy;
+  room.extraCardOwedBy = null;
 
   if (room.trickNumber > room.cardsInRound) {
     endRound(io, room);
@@ -398,6 +492,11 @@ function powerResultMessage(room) {
       const sign = delta > 0 ? '+1' : delta < 0 ? '-1' : '±0';
       return `🏴‍☠️ Harry le Géant (${name}) modifie son annonce (${sign}) : nouvelle annonce ${newBid}.`;
     }
+    case 'marythorne': {
+      const target = findPlayer(room, pending.marythorneTargetId);
+      const targetName = target ? (target.id === pending.playerId ? 'elle-même/lui-même' : target.nickname) : '?';
+      return `🏴‍☠️ Mary Thorne (${name}) tire une carte au hasard dans la main de ${targetName}, à jouer obligatoirement au pli suivant.`;
+    }
     default:
       return null;
   }
@@ -405,8 +504,19 @@ function powerResultMessage(room) {
 
 function resolvePowerDone(io, room) {
   const leaderId = room.pendingPower.leaderId;
+  const playerId = room.pendingPower.playerId;
   const message = powerResultMessage(room);
   if (message) broadcastToRoom(io, room, 'skullking-power-result', { message });
+  // Mat le Forban : plusieurs pouvoirs de Pirates capturés à résoudre à la
+  // suite (file constituée à la résolution du pli, voir plus bas) - on
+  // enchaîne sur le suivant avant de ramasser le pli pour de bon, en
+  // conservant le meneur déjà éventuellement changé par un pouvoir
+  // précédent de la même file (ex: Rosie D'Laney).
+  if (room.pendingPowerQueue && room.pendingPowerQueue.length) {
+    const nextKey = room.pendingPowerQueue.shift();
+    startPiratePower(io, room, nextKey, playerId, leaderId);
+    return;
+  }
   finishTrickCollection(io, room, leaderId);
 }
 
@@ -420,9 +530,11 @@ function clearRoomTimers(room) {
   clearTimeout(room.roundEndTimer);
   clearTimeout(room.trickTimer);
   clearTimeout(room.powerTimer);
+  clearTimeout(room.inactivityTimer);
   room.roundEndTimer = null;
   room.trickTimer = null;
   room.powerTimer = null;
+  room.inactivityTimer = null;
 }
 
 function finishGame(io, room) {
@@ -502,11 +614,17 @@ function handleDisconnecting(io, socket) {
   broadcastToRoom(io, room, 'skullking-player-disconnected', {
     id: player.id,
     nickname: player.nickname,
-    graceMs: DISCONNECT_GRACE_MS,
   });
-  player.disconnectTimer = setTimeout(() => {
-    if (rooms.get(code) === room) finalizeSkullKingDisconnect(io, room, player.id, 'timeout');
-  }, DISCONNECT_GRACE_MS);
+
+  // En salon d'attente, un délai de grâce reste nécessaire (voir
+  // ascenseur-room.js pour le contexte du bug qu'il corrige). En pleine
+  // partie : pause indéfinie, décision réconciliée Manche 2 — seul l'hôte
+  // peut choisir d'arrêter (skullking-end-game, déjà existant).
+  if (room.phase === 'lobby') {
+    player.disconnectTimer = setTimeout(() => {
+      if (rooms.get(code) === room) finalizeSkullKingDisconnect(io, room, player.id, 'timeout');
+    }, DISCONNECT_GRACE_MS);
+  }
 }
 
 // Garde commune à tous les handlers de pouvoir : bonne phase, bon pouvoir en
@@ -529,6 +647,7 @@ function registerSkullKingHandlers(io, socket) {
       code,
       phase: 'lobby',
       hostId: socket.id,
+      extensionEnabled: false,
       players: [
         {
           id: socket.id,
@@ -563,8 +682,9 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, 'Cette partie a déjà commencé.');
       return;
     }
-    if (room.players.length >= MAX_PLAYERS) {
-      sendError(socket, `Cette partie est complète (${MAX_PLAYERS} joueurs max).`);
+    const maxPlayers = maxPlayersFor(room.extensionEnabled);
+    if (room.players.length >= maxPlayers) {
+      sendError(socket, `Cette partie est complète (${maxPlayers} joueurs max).`);
       return;
     }
     if (!nickname) {
@@ -588,11 +708,28 @@ function registerSkullKingHandlers(io, socket) {
     broadcastLobby(io, room);
   });
 
+  // Le switch d'extension : seul l'hôte peut le basculer, uniquement en
+  // lobby (verrouillé dès que la partie démarre, room.extensionEnabled
+  // n'est plus modifié nulle part ailleurs). Diffusé à tous via
+  // broadcastLobby comme le reste de l'état du salon, pas de système de
+  // sync dédié.
+  socket.on('skullking-toggle-extension', () => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    room.extensionEnabled = !room.extensionEnabled;
+    // Si l'extension vient d'être désactivée et que la salle dépassait déjà
+    // le plafond de base, on laisse l'hôte constater l'incompatibilité via
+    // canStart plutôt que d'expulser qui que ce soit.
+    broadcastLobby(io, room);
+  });
+
   socket.on('skullking-start-game', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
-    if (room.players.length < MIN_PLAYERS || room.players.length > MAX_PLAYERS) return;
+    const maxPlayers = maxPlayersFor(room.extensionEnabled);
+    if (room.players.length < MIN_PLAYERS || room.players.length > maxPlayers) return;
     startGame(io, room);
   });
 
@@ -647,7 +784,15 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, 'Carte introuvable dans ta main.');
       return;
     }
-    if (!isCardPlayable(card, player.hand, room.currentTrick)) {
+    // Pouvoir de Mary Thorne : une carte précise de sa main a été tirée au
+    // sort pour ce joueur - elle prime sur toute autre règle de jouabilité
+    // ("peu importe la couleur d'entame ou tout autre effet de carte").
+    const forcedCardId = room.forcedPlays && room.forcedPlays[player.id];
+    if (forcedCardId && cardId !== forcedCardId) {
+      sendError(socket, 'Le pouvoir de Mary Thorne t\'oblige à jouer une carte précise ce pli-ci.');
+      return;
+    }
+    if (!forcedCardId && !isCardPlayable(card, player.hand, room.currentTrick)) {
       sendError(socket, 'Tu dois suivre la couleur demandée si tu en as encore en main.');
       return;
     }
@@ -662,12 +807,68 @@ function registerSkullKingHandlers(io, socket) {
       }
       card.chosenAs = chosenAs;
     }
+    // 0/14 : la valeur n'est fixée qu'au moment de la pose.
+    if (card.wild14 && card.value == null) {
+      const declaredValue = Number(payload && payload.declaredValue);
+      if (declaredValue !== 0 && declaredValue !== 14) {
+        sendError(socket, 'Choisis si cette carte vaut 0 ou 14.');
+        return;
+      }
+      card.value = declaredValue;
+    }
+    // Joker/Wild 15 : prend la couleur déjà imposée par le pli si elle est
+    // vert/jaune/violet ; sinon (rien d'imposé encore) le joueur choisit ;
+    // sinon (le noir est déjà imposé) il reste sans couleur, ce qui suffit
+    // à le faire perdre face à l'atout noir (voir resolveTrick/resolveHierarchy,
+    // aucun cas particulier n'y est nécessaire).
+    if (card.kind === 'wild15') {
+      const ledSuit = ledSuitOf(room.currentTrick);
+      let chosenSuit;
+      if (ledSuit === 'vert' || ledSuit === 'jaune' || ledSuit === 'violet') {
+        chosenSuit = ledSuit;
+      } else if (ledSuit === null) {
+        const requested = payload && payload.chosenSuit;
+        if (!['vert', 'jaune', 'violet'].includes(requested)) {
+          sendError(socket, 'Choisis la couleur prise par le Joker (vert, jaune ou violet).');
+          return;
+        }
+        chosenSuit = requested;
+      }
+      card.kind = 'number';
+      card.suit = chosenSuit;
+      card.value = 15;
+      card.wild15 = true; // marqueur explicite pour l'affichage client, sans incidence sur la résolution
+    }
+    // Marcher sur la Planche : retire un Pirate présent dans le pli en
+    // cours (pas Mat le Forban, qui n'est pas un "vrai" Pirate) - aucun
+    // choix nécessaire s'il n'y en a qu'un seul ou aucun.
+    if (card.kind === 'plank') {
+      const piratesInTrick = room.currentTrick.filter((t) => t.card.kind === 'pirate');
+      if (piratesInTrick.length > 1) {
+        const requested = payload && payload.removesId;
+        if (!piratesInTrick.some((t) => t.card.id === requested)) {
+          sendError(socket, 'Choisis quel Pirate retirer du pli.');
+          return;
+        }
+        card.removesId = requested;
+      } else if (piratesInTrick.length === 1) {
+        card.removesId = piratesInTrick[0].card.id;
+      }
+    }
 
     player.hand = player.hand.filter((c) => c.id !== cardId);
+    if (forcedCardId) delete room.forcedPlays[player.id];
     room.currentTrick.push({ playerId: player.id, card });
     room.turnCount += 1;
 
-    if (room.currentTrick.length !== room.players.length) {
+    // Dernière Salve : sauf sur le tout dernier pli de la manche, le joueur
+    // qui la pose devra encore jouer une carte après tout le monde ce
+    // pli-ci, puis passera son tour au pli suivant (voir finishTrickCollection).
+    if (card.kind === 'lastvolley' && room.trickNumber !== room.cardsInRound) {
+      room.extraCardOwedBy = player.id;
+    }
+
+    if (room.currentTrick.length !== trickTotalCards(room)) {
       broadcastState(io, room);
       return;
     }
@@ -681,7 +882,8 @@ function registerSkullKingHandlers(io, socket) {
       winnerId = room.currentTrick[result.winnerIdx].playerId;
       const winner = findPlayer(room, winnerId);
       winner.tricksWon += 1;
-      winner.pendingBonus += trickBonusForWinner(cards, result.winnerIdx);
+      winner.pendingBonus += trickBonusForWinner(cards, result.winnerIdx, result.excludedIdx);
+      winner.pendingBonus += result.monstersDestroyed * 20;
       // Alliance Butin : chaque Butin posé par un AUTRE joueur que le
       // vainqueur forme une alliance avec lui (sauf s'il a gagné lui-même
       // via le cas exceptionnel "tout-Fuites + Butin", déjà exclu ici
@@ -711,6 +913,24 @@ function registerSkullKingHandlers(io, socket) {
           return;
         }
       }
+      // Mat le Forban : hérite du/des pouvoir(s) de tout(s) Pirate(s)
+      // classique(s) capturé(s) dans le même pli (retiré par la Planche
+      // exclu, voir result.excludedIdx), à résoudre à la suite les uns des
+      // autres - sans toucher au bonus de capture normal, géré séparément
+      // dans trickBonusForWinner.
+      if (winningCard && winningCard.kind === 'firstmate') {
+        const capturedNames = room.currentTrick
+          .filter((t, i) => !result.excludedIdx.has(i) && t.card.kind === 'pirate')
+          .map((t) => t.card.name);
+        const powerKeys = capturedNames
+          .map((name) => PIRATE_POWER_BY_NAME[name])
+          .filter((k) => k && (k === 'harry' || !isLastTrick));
+        if (powerKeys.length) {
+          room.pendingPowerQueue = powerKeys.slice(1);
+          startPiratePower(io, room, powerKeys[0], winnerId, leaderId);
+          return;
+        }
+      }
       finishTrickCollection(io, room, leaderId);
     }, TRICK_REVEAL_MS);
   });
@@ -720,8 +940,38 @@ function registerSkullKingHandlers(io, socket) {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!guardPower(room, socket, 'rosie')) return;
     const targetId = payload && payload.leaderId;
-    if (!findPlayer(room, targetId)) return;
+    // Corrigé Manche 2 : une cible invalide restait sans aucun retour, le
+    // pouvoir semblait juste ne rien faire côté client.
+    if (!findPlayer(room, targetId)) {
+      sendError(socket, 'Cible invalide pour Rosie D\'Laney.');
+      return;
+    }
     room.pendingPower.leaderId = targetId;
+    resolvePowerDone(io, room);
+  });
+
+  // Mary Thorne : choisit un joueur (elle-même incluse) - une carte au
+  // hasard de sa main lui sera imposée au pli suivant, peu importe la
+  // couleur d'entame ou tout autre effet de carte à ce moment-là (voir le
+  // contrôle forcedCardId dans skullking-play-card). Sans effet si la
+  // cible n'a plus de carte en main (fin de manche).
+  socket.on('skullking-power-marythorne', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!guardPower(room, socket, 'marythorne')) return;
+    const targetId = payload && payload.targetId;
+    const target = findPlayer(room, targetId);
+    // Même bug que Rosie D'Laney (corrigé Manche 2) : une cible invalide ne
+    // renvoyait rien.
+    if (!target) {
+      sendError(socket, 'Cible invalide pour Mary Thorne.');
+      return;
+    }
+    room.pendingPower.marythorneTargetId = target.id;
+    if (target.hand.length > 0) {
+      const picked = target.hand[Math.floor(Math.random() * target.hand.length)];
+      room.forcedPlays = room.forcedPlays || {};
+      room.forcedPlays[target.id] = picked.id;
+    }
     resolvePowerDone(io, room);
   });
 

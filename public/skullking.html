@@ -30,7 +30,7 @@
       </button>
       <div class="divider">ou rejoindre avec un code</div>
       <form id="sk-form-join">
-        <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" />
+        <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
         <button type="submit" class="btn">Rejoindre</button>
       </form>
       <p id="sk-home-error" class="error"></p>
@@ -46,8 +46,14 @@
         <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
       </div>
 
+      <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
+        <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+        <span class="sk-extension-toggle-label">🏆 Jouer avec l'extension</span>
+      </button>
+      <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
+
       <div id="sk-lobby-players" class="lobby-players hidden">
-        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (3 à 7)</p>
+        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (<span id="sk-lobby-range">3 à 7</span>)</p>
         <ul id="sk-lobby-list" class="lobby-list"></ul>
       </div>
 
@@ -92,6 +98,21 @@
         <button id="sk-btn-tigress-pirate" class="btn">🏴‍☠️ Comme Pirate</button>
         <button id="sk-btn-tigress-escape" class="btn">🏳️ Comme Fuite</button>
       </div>
+      <div id="sk-joker-choice" class="sk-bid-choices hidden">
+        <p class="hint">🃏 Le Joker prend quelle couleur ?</p>
+        <button class="btn sk-btn-joker-color" data-suit="vert">🟢 Vert</button>
+        <button class="btn sk-btn-joker-color" data-suit="jaune">🟡 Jaune</button>
+        <button class="btn sk-btn-joker-color" data-suit="violet">🟣 Violet</button>
+      </div>
+      <div id="sk-declare-choice" class="sk-bid-choices hidden">
+        <p class="hint">Cette carte vaut-elle 0 ou 14 ?</p>
+        <button id="sk-btn-declare-0" class="btn">0 (perd toujours)</button>
+        <button id="sk-btn-declare-14" class="btn">14 (carte forte)</button>
+      </div>
+      <div id="sk-plank-choice" class="sk-bid-choices hidden">
+        <p class="hint">🪵 Quel Pirate retirer du pli ?</p>
+        <div id="sk-plank-options"></div>
+      </div>
       <div id="sk-hand" class="sk-hand"></div>
     </section>
 
@@ -128,8 +149,9 @@
         <li>Bonus (uniquement si l'annonce de la manche est réussie exactement) : capturer un 14 de couleur +10, le 14 noir +20, un Pirate avec le Skull King +30 chacun, le Skull King avec une Sirène +40.</li>
         <li><strong>Butin :</strong> agit comme une Fuite. Si un autre joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce.</li>
         <li><strong>Kraken :</strong> détruit le pli, personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.</li>
-        <li><strong>Baleine blanche :</strong> annule l'effet de toutes les cartes spéciales du pli — seule la valeur numérique compte (le noir perd son atout). Si le pli n'a que des spéciales, il est détruit et c'est le joueur de la Baleine qui mène le suivant.</li>
+        <li><strong>Baleine blanche :</strong> annule l'effet de toutes les cartes spéciales du pli — seule la valeur numérique compte (le noir perd son atout). Si le pli n'a que des spéciales, il est détruit et c'est le joueur qui a entamé le pli qui mène le suivant.</li>
         <li><strong>Pouvoirs des 5 pirates</strong> (déclenchés s'ils remportent le pli avec leur propre carte, survole une carte Pirate pour voir son pouvoir) : Rosie D'Laney choisit qui entame le pli suivant, Will le Bandit pioche 2 cartes et en défausse 2, Rascal le Flambeur peut miser 10 ou 20 points de plus sur son annonce, Juanita Jade regarde les cartes non distribuées, Harry le Géant modifie sa propre annonce de ±1. Sur le tout dernier pli d'une manche, seul le pouvoir de Harry se déclenche encore ; les 4 autres sont désactivés.</li>
+        <li><strong>Extension officielle (facultative, activable par l'hôte dans le salon d'attente) :</strong> 12 numérotées de plus (7/8/0-14 par couleur), un Joker/Wild 15, et 6 nouvelles cartes spéciales (Mary Thorne, Mat le Forban, Raie Tachetée, Dernière Salve, Marcher sur la Planche, Coffre de Davy Jones) — survole chaque carte en jeu pour voir son effet en détail. Jusqu'à 9 joueurs avec l'extension activée (au lieu de 7).</li>
         <li>La partie peut s'arrêter avant la fin des 10 manches, à la discrétion de l'hôte : classement sur le score accumulé jusque-là.</li>
       </ol>
       <button id="sk-btn-close-rules" class="btn btn-primary">Compris !</button>
