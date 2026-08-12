@@ -6,7 +6,7 @@
   <title>Guimams — Skull King</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="skullking.css" />
 </head>
 <body>
@@ -18,10 +18,11 @@
       <a href="index.html" class="btn-link">← Tous les jeux</a>
       <p class="mascot" aria-hidden="true">💀</p>
       <h1><span class="suit suit-black">🏴‍☠️</span>Skull King<span class="suit suit-red">🧜</span></h1>
-      <p class="tagline">De 3 à 7 joueurs — 10 manches, annonces simultanées.</p>
+      <p class="tagline">De 3 à 7 joueurs (jusqu'à 9 avec l'extension officielle) — 10 manches, annonces simultanées.</p>
       <button id="sk-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
 
       <div class="nickname-field">
+        <label for="sk-input-nickname" class="visually-hidden">Ton pseudo</label>
         <input id="sk-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
       </div>
 
@@ -30,6 +31,7 @@
       </button>
       <div class="divider">ou rejoindre avec un code</div>
       <form id="sk-form-join">
+        <label for="sk-input-code" class="visually-hidden">Code de la partie</label>
         <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
         <button type="submit" class="btn">Rejoindre</button>
       </form>
@@ -161,6 +163,7 @@
   <div id="sk-join-modal" class="modal hidden">
     <div class="modal-content join-modal-content">
       <p class="invite-label">Rejoindre la partie</p>
+      <label for="sk-join-modal-nickname" class="visually-hidden">Ton pseudo</label>
       <input id="sk-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
       <button id="sk-btn-join-modal" class="btn btn-primary">Rejoindre</button>
       <p id="sk-join-modal-error" class="error"></p>

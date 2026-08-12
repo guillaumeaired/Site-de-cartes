@@ -17,10 +17,12 @@ const {
   isValidBid,
   isCardPlayable,
   ledSuitOf,
+  effectiveKind,
   resolveTrick,
   trickBonusForWinner,
   computeRoundScoreBreakdown,
 } = require('./skullking');
+const { likelyServerRestart } = require('./server-start');
 
 // Salon d'attente uniquement (voir handleDisconnecting) : délai de grâce
 // avant de considérer le joueur vraiment parti.
@@ -42,7 +44,22 @@ const ROUND_END_MS = 7_000;
 // exclusion automatique.
 const INACTIVITY_WARN_MS = 120_000;
 
+// Pirates ciblables par "Marcher sur la Planche" dans un pli en cours :
+// identité choisie (effectiveKind, gère la Tigresse-Pirate), pas le type
+// brut de la carte - sinon une Tigresse jouée comme Pirate n'est jamais
+// proposée au ciblage (bug corrigé, cf. audit Game Designer 2026-08-12).
+function eligiblePlankTargets(trick) {
+  return trick.filter((t) => effectiveKind(t.card) === 'pirate');
+}
+
 const rooms = new Map();
+
+// Compteurs simples pour l'observabilite (route /stats, server/index.js) -
+// pas de dependance a des logs bruts pour savoir combien de parties tournent.
+function getStats() {
+  const list = [...rooms.values()];
+  return { total: list.length, playing: list.filter((r) => r.phase === 'playing').length };
+}
 
 function makeRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -843,7 +860,7 @@ function registerSkullKingHandlers(io, socket) {
     // cours (pas Mat le Forban, qui n'est pas un "vrai" Pirate) - aucun
     // choix nécessaire s'il n'y en a qu'un seul ou aucun.
     if (card.kind === 'plank') {
-      const piratesInTrick = room.currentTrick.filter((t) => t.card.kind === 'pirate');
+      const piratesInTrick = eligiblePlankTargets(room.currentTrick);
       if (piratesInTrick.length > 1) {
         const requested = payload && payload.removesId;
         if (!piratesInTrick.some((t) => t.card.id === requested)) {
@@ -1051,12 +1068,12 @@ function registerSkullKingHandlers(io, socket) {
     const code = ((payload && payload.code) || '').toUpperCase();
     const room = rooms.get(code);
     if (!room) {
-      socket.emit('skullking-rejoin-failed');
+      socket.emit('skullking-rejoin-failed', { reason: likelyServerRestart() ? 'server-restarted' : 'not-found' });
       return;
     }
     const player = findPlayerByToken(room, payload && payload.token);
     if (!player) {
-      socket.emit('skullking-rejoin-failed');
+      socket.emit('skullking-rejoin-failed', { reason: 'not-found' });
       return;
     }
 
@@ -1086,4 +1103,4 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('disconnecting', () => handleDisconnecting(io, socket));
 }
 
-module.exports = { registerSkullKingHandlers, MIN_PLAYERS, MAX_PLAYERS };
+module.exports = { registerSkullKingHandlers, MIN_PLAYERS, MAX_PLAYERS, eligiblePlankTargets, getStats };

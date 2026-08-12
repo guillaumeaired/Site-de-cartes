@@ -48,6 +48,7 @@ const PIRATE_POWER_TEXT = {
   'Rascal le Flambeur': "Peut miser 10 ou 20 points de plus sur sa propre annonce (pas sur le dernier pli).",
   'Juanita Jade': 'Regarde les cartes non distribuées ce tour-ci (pas sur le dernier pli).',
   'Harry le Géant': 'Modifie sa propre annonce de ±1 (même sur le dernier pli).',
+  'Mary Thorne': 'Force un joueur choisi à jouer une carte aléatoire de sa main au pli suivant (pas sur le dernier pli).',
 };
 
 // Tri d'affichage de la main : par couleur (vert/jaune/violet/noir) puis
@@ -1131,9 +1132,15 @@ socket.on('skullking-player-reconnected', ({ nickname }) => {
   showToast(`✅ ${nickname} est de retour !`);
 });
 
-socket.on('skullking-rejoin-failed', () => {
+socket.on('skullking-rejoin-failed', (payload) => {
   clearActiveRoom();
   showReconnectingOverlay(false);
+  // Distingue "ce salon n'a jamais existe" (code invalide) de "le serveur a
+  // redemarre et a perdu son etat" (hebergement gratuit qui se met en veille) -
+  // sinon un joueur revenant apres une pause pense avoir tape le mauvais code.
+  if (payload && payload.reason === 'server-restarted') {
+    showToast("😴 Le serveur a redémarré entre-temps — cette partie a été perdue, il faut en relancer une.");
+  }
   const fallback = rejoinFallback;
   rejoinFallback = null;
   if (fallback && fallback !== 'link') {
