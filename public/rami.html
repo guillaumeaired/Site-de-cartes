@@ -22,6 +22,7 @@
       <button id="rami-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
 
       <div class="nickname-field">
+        <label for="rami-input-nickname" class="visually-hidden">Ton pseudo</label>
         <input id="rami-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
       </div>
 
@@ -30,6 +31,7 @@
       </button>
       <div class="divider">ou rejoindre avec un code</div>
       <form id="rami-form-join">
+        <label for="rami-input-code" class="visually-hidden">Code de la partie</label>
         <input id="rami-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
         <button type="submit" class="btn">Rejoindre</button>
       </form>
@@ -161,6 +163,7 @@
   <div id="rami-join-modal" class="modal hidden">
     <div class="modal-content join-modal-content">
       <p class="invite-label">Rejoindre la partie</p>
+      <label for="rami-join-modal-nickname" class="visually-hidden">Ton pseudo</label>
       <input id="rami-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
       <button id="rami-btn-join-modal" class="btn btn-primary">Rejoindre</button>
       <p id="rami-join-modal-error" class="error"></p>
