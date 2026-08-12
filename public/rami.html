@@ -67,6 +67,11 @@
         <div id="rami-draw-popup-card" class="rami-draw-popup-card"></div>
       </div>
 
+      <div id="rami-start-reveal" class="rami-start-reveal hidden">
+        <div id="rami-start-reveal-coin" class="rami-coin">🎭</div>
+        <p id="rami-start-reveal-text" class="rami-start-reveal-text"></p>
+      </div>
+
       <div class="rami-opponent">
         <span class="seat-name" id="rami-opponent-name"></span>
         <span id="rami-opponent-status" class="rami-opponent-status hidden"></span>
@@ -92,7 +97,7 @@
       </div>
 
       <div id="rami-open-staging" class="rami-open-staging hidden">
-        <p class="hint">Combinaisons prêtes pour ton ouverture (30 pts, sans le 2 de cœur) :</p>
+        <p class="hint">Combinaisons prêtes pour ton ouverture (30 pts) :</p>
         <div id="rami-staging-list" class="rami-staging-list"></div>
         <button id="rami-btn-validate-open" class="btn btn-primary" disabled>✅ Valider l'ouverture</button>
       </div>
@@ -125,6 +130,7 @@
       </table>
       <button id="rami-btn-rematch" class="btn btn-primary">🔄 Revanche</button>
       <button id="rami-btn-leave-end" class="btn btn-leave-end">Quitter</button>
+      <p id="rami-rematch-status" class="hint hidden"></p>
     </section>
   </main>
 
@@ -146,7 +152,7 @@
       <h3>Combinaisons & score</h3>
       <ol>
         <li>Valeurs : 2-10 = valeur nominale, Valet/Dame/Roi = 10, As = 15. Le 2 de cœur vaut le rang qu'il remplace une fois posé.</li>
-        <li><strong>Première pose :</strong> il faut totaliser au moins 30 points en une fois, sans utiliser le 2 de cœur. Il redevient utilisable une fois que tu as ouvert.</li>
+        <li><strong>Première pose :</strong> il faut totaliser au moins 30 points en une fois (le 2 de cœur peut y participer).</li>
         <li>Brelan/carré = 3-4 cartes de même rang, couleurs différentes. Séquence = 3+ cartes consécutives de même couleur ; l'As peut se jouer en haut (Dame-Roi-As) ou en bas (Roi-As-2, As-2-3), les rangs bouclent. 1 seul 2 de cœur par combinaison.</li>
         <li>Chaque combinaison posée (ouverture, nouvelle combinaison, ajout) rapporte immédiatement ses points à ton score. Tu peux aussi compléter les combinaisons de l'adversaire, ou échanger un 2 de cœur sur le tapis contre la vraie carte.</li>
       </ol>
@@ -157,6 +163,16 @@
       </ol>
 
       <button id="rami-btn-close-rules" class="btn btn-primary">Compris !</button>
+    </div>
+  </div>
+
+  <div id="rami-joker-side-modal" class="modal hidden">
+    <div class="modal-content join-modal-content">
+      <p class="invite-label">De quel côté placer le 2 de cœur ?</p>
+      <div class="rami-joker-side-choices">
+        <button id="rami-joker-side-low" type="button" class="btn"></button>
+        <button id="rami-joker-side-high" type="button" class="btn"></button>
+      </div>
     </div>
   </div>
 

@@ -80,24 +80,24 @@ check('valeur en main : Roi = 10', handCardValue(c('R', 'coeur')), 10);
 check('valeur en main : 7 = 7', handCardValue(c('7', 'coeur')), 7);
 check('valeur en main : Joker (2 de cœur) = 25', handCardValue(j()), 25);
 
-// --- canInitialMeld (contrat des 30 points, sans Joker) ---
+// --- canInitialMeld (contrat des 30 points, Joker autorisé dès l'ouverture) ---
 check(
   'contrat refusé sous 30 pts',
   canInitialMeld([[c('7', 'coeur'), c('7', 'carreau'), c('7', 'pique')]]),
   false
 );
 check(
-  'contrat accepté (>=30 pts, sans Joker)',
+  'contrat accepté (>=30 pts)',
   canInitialMeld([[c('8', 'pique'), c('9', 'pique'), c('10', 'pique'), c('V', 'pique'), c('D', 'pique')]]),
   true
 );
 check(
-  'contrat refusé si une combinaison contient le Joker',
+  'contrat accepté avec le Joker dans une combinaison (5-Jk-7 = 18 + brelan de Rois = 30)',
   canInitialMeld([
     [c('5', 'trefle'), j(), c('7', 'trefle')],
     [c('R', 'coeur'), c('R', 'carreau'), c('R', 'pique')],
   ]),
-  false
+  true
 );
 check(
   'contrat invalide si une combinaison est mal formée',
@@ -106,6 +106,29 @@ check(
     [c('7', 'trefle'), c('8', 'pique'), c('9', 'carreau')],
   ]),
   false
+);
+
+// --- Extension ambiguë du Joker (cartes réelles déjà contiguës : 5-6-Jk
+// peut faire 4-5-6 ou 5-6-7 selon le côté choisi - voir resolveSequence) ---
+check(
+  'extension ambiguë sans hint : basse par défaut (4-5-6 = 15)',
+  meldPoints([c('5', 'trefle'), c('6', 'trefle'), j()], 'sequence'),
+  15
+);
+check(
+  'extension ambiguë avec hint "low" (4-5-6 = 15)',
+  meldPoints([c('5', 'trefle'), c('6', 'trefle'), j()], 'sequence', 'low'),
+  15
+);
+check(
+  'extension ambiguë avec hint "high" (5-6-7 = 18)',
+  meldPoints([c('5', 'trefle'), c('6', 'trefle'), j()], 'sequence', 'high'),
+  18
+);
+check(
+  'trou interne (5-Jk-7) : placement imposé, hint sans effet (6 -> 18)',
+  meldPoints([c('5', 'trefle'), j(), c('7', 'trefle')], 'sequence', 'high'),
+  18
 );
 
 console.log(`\n${passed} test(s) OK, ${failed} échec(s).`);

@@ -125,7 +125,14 @@ function resolveWithOrder(reals, jokers, order) {
 // Séquence : au moins 3 cartes consécutives de même couleur, au plus 1
 // Joker. Retourne les cases résolues (avec valeur par carte) ou null si
 // invalide.
-function resolveSequence(cards) {
+//
+// Quand les cartes réelles forment déjà une suite sans trou et qu'il reste
+// un Joker "en trop" (ni comblant un trou interne), il peut étendre la suite
+// d'un côté OU de l'autre : les deux placements sont valides et changent le
+// rang (donc la valeur) que représente le Joker. extendHint ('low' | 'high')
+// permet de choisir explicitement ; sans hint, on garde le comportement
+// historique = le premier trouvé (extension basse en priorité).
+function resolveSequence(cards, extendHint) {
   if (cards.length < 3) return null;
   const jokers = cards.filter((c) => c.isJoker);
   const reals = cards.filter((c) => !c.isJoker);
@@ -134,11 +141,24 @@ function resolveSequence(cards) {
   const suit = reals[0].suit;
   if (!reals.every((c) => c.suit === suit)) return null;
 
+  const distinct = new Map();
   for (let start = 0; start < RANK_CIRCLE.length; start++) {
     const result = resolveWithOrder(reals, jokers, rotate(RANK_CIRCLE, start));
-    if (result) return result;
+    if (!result) continue;
+    const key = result.map((s) => s.rank).join('-');
+    if (!distinct.has(key)) distinct.set(key, result);
   }
-  return null;
+  if (distinct.size === 0) return null;
+
+  const options = [...distinct.values()];
+  if (options.length === 1 || !extendHint) return options[0];
+
+  for (const option of options) {
+    const jokerIdx = option.findIndex((s) => s.isJokerSlot);
+    const isLowEnd = jokerIdx === 0;
+    if ((extendHint === 'low') === isLowEnd) return option;
+  }
+  return options[0];
 }
 
 function isValidSequence(cards) {
@@ -152,14 +172,16 @@ function classifyMeld(cards) {
   return null;
 }
 
-// Valeur totale d'une combinaison déjà validée (type connu).
-function meldPoints(cards, type) {
+// Valeur totale d'une combinaison déjà validée (type connu). extendHint est
+// transmis tel quel à resolveSequence (voir son commentaire) pour rester
+// cohérent avec le placement du Joker réellement choisi à la pose.
+function meldPoints(cards, type, extendHint) {
   if (type === 'set') {
     const reals = cards.filter((c) => !c.isJoker);
     return cardFaceValue(reals[0].rank) * cards.length;
   }
   if (type === 'sequence') {
-    const slots = resolveSequence(cards);
+    const slots = resolveSequence(cards, extendHint);
     return slots ? slots.reduce((sum, s) => sum + s.value, 0) : 0;
   }
   return 0;
@@ -174,15 +196,16 @@ function handCardValue(card) {
 }
 
 // Contrat des 30 points pour la première pose : la somme de toutes les
-// combinaisons proposées doit atteindre 30, et aucune d'elles ne doit
-// contenir le 2 de cœur (joker) — il redevient utilisable une fois ouvert.
-function canInitialMeld(melds) {
+// combinaisons proposées doit atteindre 30 (le 2 de cœur peut y participer).
+// extendHints (parallèle à melds) est transmis à meldPoints pour rester
+// cohérent avec le placement du Joker réellement choisi à la pose.
+function canInitialMeld(melds, extendHints = []) {
   let total = 0;
-  for (const cards of melds) {
+  for (let i = 0; i < melds.length; i++) {
+    const cards = melds[i];
     const type = classifyMeld(cards);
     if (!type) return false;
-    if (cards.some((c) => c.isJoker)) return false;
-    total += meldPoints(cards, type);
+    total += meldPoints(cards, type, extendHints[i]);
   }
   return total >= 30;
 }

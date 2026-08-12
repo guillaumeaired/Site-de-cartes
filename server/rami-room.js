@@ -160,13 +160,16 @@ function broadcastLobby(io, room) {
 // Construit une combinaison à partir de cartes prises en main : détermine le
 // type (brelan/séquence), ordonne les cartes et note ce que représente un
 // Joker éventuel (utile pour valider un échange de Joker plus tard).
-function buildMeld(cards, ownerId) {
+// extendHint ('low' | 'high', optionnel) tranche le côté d'extension du 2 de
+// cœur quand la suite de cartes réelles est déjà contiguë et qu'il pourrait
+// l'étendre des deux côtés (voir resolveSequence côté rami.js).
+function buildMeld(cards, ownerId, extendHint) {
   const type = classifyMeld(cards);
   if (!type) return null;
 
   let ordered = cards;
   if (type === 'sequence') {
-    const slots = resolveSequence(cards);
+    const slots = resolveSequence(cards, extendHint);
     const suit = cards.find((c) => !c.isJoker).suit;
     ordered = slots.map((s) =>
       s.isJokerSlot ? { ...s.card, isJoker: true, jokerFor: { rank: s.rank, suit } } : s.card
@@ -201,7 +204,9 @@ function startGame(io, room) {
   room.drawPile = drawPile;
   room.discardPile = [];
   room.table = [];
-  room.turnIndex = 0;
+  // Tirage au sort de qui commence (pas toujours le créateur du salon) - le
+  // client anime ce résultat (pièce) à la réception de rami-game-start.
+  room.turnIndex = Math.floor(Math.random() * room.players.length);
   room.turnPhase = 'PIOCHE';
   room.drawnCardId = null;
   room.drawnFromDiscard = false;
@@ -296,6 +301,7 @@ function endGame(io, room, winnerId) {
 
   if (!room.matchFormat || room.matchFormat === 'single') {
     room.phase = 'game-end';
+    for (const p of room.players) p.wantsRematch = false;
     room.lastGameEndPayload = { winnerId, summary, gameWinnerId };
     broadcastToRoom(io, room, 'rami-game-end', room.lastGameEndPayload);
     return;
@@ -350,6 +356,7 @@ function endGame(io, room, winnerId) {
 
   if (matchOver) {
     room.phase = 'game-end';
+    for (const p of room.players) p.wantsRematch = false;
     room.matchWinnerId = matchWinnerId;
     room.lastGameEndPayload = { ...basePayload, matchOver: true, matchWinnerId };
     broadcastToRoom(io, room, 'rami-game-end', room.lastGameEndPayload);
@@ -450,6 +457,7 @@ function registerRamiHandlers(io, socket) {
           hand: [],
           score: 0,
           hasOpened: false,
+          wantsRematch: false,
           token: payload && payload.token,
           connected: true,
           disconnectTimer: null,
@@ -496,6 +504,7 @@ function registerRamiHandlers(io, socket) {
       hand: [],
       score: 0,
       hasOpened: false,
+      wantsRematch: false,
       token: payload && payload.token,
       connected: true,
       disconnectTimer: null,
@@ -554,6 +563,7 @@ function registerRamiHandlers(io, socket) {
     }
 
     room.phase = 'game-end';
+    for (const p of room.players) p.wantsRematch = false;
     room.matchWinnerId = matchWinnerId;
     room.lastGameEndPayload = {
       matchStoppedEarly: true,
@@ -656,6 +666,9 @@ function registerRamiHandlers(io, socket) {
 
     const groupsIds = Array.isArray(payload && payload.melds) ? payload.melds : null;
     if (!groupsIds || groupsIds.length === 0) return;
+    // Parallèle à groupsIds : choix gauche/droite du 2 de cœur pour le
+    // groupe du même index, si son placement était ambigu côté client.
+    const extendHints = Array.isArray(payload && payload.extendHints) ? payload.extendHints : [];
 
     const allIds = groupsIds.flat();
     if (new Set(allIds).size !== allIds.length) {
@@ -683,16 +696,17 @@ function registerRamiHandlers(io, socket) {
       return;
     }
 
-    if (!canInitialMeld(groups)) {
-      sendError(socket, "Il faut au moins 30 points, sans le 2 de cœur, pour ta première pose.");
+    if (!canInitialMeld(groups, extendHints)) {
+      sendError(socket, 'Il faut au moins 30 points pour ta première pose.');
       return;
     }
 
-    for (const group of groups) {
-      const meld = buildMeld(group, player.id);
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i];
+      const meld = buildMeld(group, player.id, extendHints[i]);
       removeCardsFromHand(player, group);
       room.table.push(meld);
-      player.score += meldPoints(group, meld.type);
+      player.score += meldPoints(group, meld.type, extendHints[i]);
     }
     player.hasOpened = true;
     broadcastState(io, room);
@@ -723,14 +737,15 @@ function registerRamiHandlers(io, socket) {
       sendError(socket, 'Garde au moins une carte : ton tour doit se terminer par une défausse.');
       return;
     }
-    const meld = buildMeld(cards, player.id);
+    const extendHint = payload && payload.extendHint;
+    const meld = buildMeld(cards, player.id, extendHint);
     if (!meld) {
       sendError(socket, "Ce n'est pas une combinaison valide.");
       return;
     }
     removeCardsFromHand(player, cards);
     room.table.push(meld);
-    player.score += meldPoints(cards, meld.type);
+    player.score += meldPoints(cards, meld.type, extendHint);
     broadcastState(io, room);
   });
 
@@ -766,7 +781,7 @@ function registerRamiHandlers(io, socket) {
     }
 
     const combined = [...meld.cards, ...newCards];
-    const rebuilt = buildMeld(combined);
+    const rebuilt = buildMeld(combined, undefined, payload && payload.extendHint);
     if (!rebuilt || rebuilt.type !== meld.type) {
       sendError(socket, "Cet ajout ne forme pas une combinaison valide.");
       return;
@@ -873,9 +888,25 @@ function registerRamiHandlers(io, socket) {
     broadcastState(io, room);
   });
 
+  // Accord mutuel : un clic ne renvoie plus tout de suite les deux joueurs
+  // au lobby - il note juste l'envie de ce joueur et prévient l'autre (un
+  // message sous l'écran de fin, pas un bouton "accepter" séparé : l'autre
+  // joueur utilise le même bouton Revanche pour donner son propre accord).
+  // Le lobby ne s'affiche qu'une fois les deux joueurs d'accord.
   socket.on('rami-rematch', () => {
     const room = rooms.get(socket.data.ramiRoom);
     if (!room || room.phase !== 'game-end') return;
+    const player = findPlayer(room, socket.id);
+    if (!player || player.wantsRematch) return;
+    player.wantsRematch = true;
+
+    if (!room.players.every((p) => p.wantsRematch)) {
+      broadcastToRoom(io, room, 'rami-rematch-status', {
+        requested: room.players.filter((p) => p.wantsRematch).map((p) => p.id),
+      });
+      return;
+    }
+
     room.phase = 'lobby';
     room.lastGameEndPayload = null;
     // Compteurs de match remis a zero (le format choisi par l'hote reste
@@ -887,6 +918,7 @@ function registerRamiHandlers(io, socket) {
       p.score = 0;
       p.hasOpened = false;
       p.hand = [];
+      p.wantsRematch = false;
     }
     broadcastLobby(io, room);
   });
@@ -924,7 +956,11 @@ function registerRamiHandlers(io, socket) {
     }
 
     if (room.phase === 'game-end') {
-      socket.emit('rami-game-end', { ...room.lastGameEndPayload, myId: player.id });
+      socket.emit('rami-game-end', {
+        ...room.lastGameEndPayload,
+        myId: player.id,
+        rematchRequested: room.players.filter((p) => p.wantsRematch).map((p) => p.id),
+      });
       return;
     }
 

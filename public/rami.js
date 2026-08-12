@@ -41,10 +41,12 @@ const screens = {
   end: document.getElementById('rami-screen-end'),
 };
 
+const ramiAppEl = document.querySelector('.rami-app');
 function showScreen(name) {
   for (const key of Object.keys(screens)) {
     screens[key].classList.toggle('hidden', key !== name);
   }
+  ramiAppEl.classList.toggle('rami-app--game', name === 'game');
 }
 
 const toastEl = document.getElementById('rami-toast');
@@ -183,6 +185,8 @@ function goHome() {
   currentHand = [];
   selected.clear();
   openStaging = [];
+  endSummary = null;
+  rematchRequestedIds = [];
   joinModal.classList.add('hidden');
   inputNickname.value = '';
   showScreen('home');
@@ -216,6 +220,8 @@ socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart }) => 
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
+  endSummary = null;
+  rematchRequestedIds = [];
   showScreen('waiting');
   joinModal.classList.add('hidden');
   lobbyPlayers.classList.remove('hidden');
@@ -405,6 +411,61 @@ function circleStep(rank, delta) {
   return DISPLAY_RANK_ORDER[idx];
 }
 
+// Le 2 de cœur peut étendre une suite des deux côtés uniquement quand les
+// cartes réelles sélectionnées sont déjà contiguës (aucun trou interne à
+// combler) : dans ce cas précis, null sinon (placement imposé, rien à
+// demander). Miroir du même calcul côté serveur (server/rami.js).
+function sequenceJokerChoice(cards) {
+  const joker = cards.find((c) => c.isJoker);
+  const reals = cards.filter((c) => !c.isJoker);
+  if (!joker || reals.length < 2) return null;
+  const suit = reals[0].suit;
+  if (!reals.every((c) => c.suit === suit)) return null;
+  const idxs = reals.map((c) => DISPLAY_RANK_ORDER.indexOf(c.rank)).sort((a, b) => a - b);
+  if (new Set(idxs).size !== idxs.length) return null;
+  const span = idxs[idxs.length - 1] - idxs[0] + 1;
+  if (span !== idxs.length) return null; // trou interne : placement imposé
+  return {
+    suit,
+    lowRank: circleStep(DISPLAY_RANK_ORDER[idxs[0]], -1),
+    highRank: circleStep(DISPLAY_RANK_ORDER[idxs[idxs.length - 1]], 1),
+  };
+}
+
+const jokerSideModal = document.getElementById('rami-joker-side-modal');
+const jokerSideLowBtn = document.getElementById('rami-joker-side-low');
+const jokerSideHighBtn = document.getElementById('rami-joker-side-high');
+
+function askJokerSide(choice) {
+  return new Promise((resolve) => {
+    jokerSideLowBtn.textContent = `◀ ${choice.lowRank}${SUIT_SYMBOL[choice.suit]}`;
+    jokerSideHighBtn.textContent = `${choice.highRank}${SUIT_SYMBOL[choice.suit]} ▶`;
+    jokerSideModal.classList.remove('hidden');
+    function cleanup(result) {
+      jokerSideModal.classList.add('hidden');
+      jokerSideLowBtn.removeEventListener('click', onLow);
+      jokerSideHighBtn.removeEventListener('click', onHigh);
+      resolve(result);
+    }
+    function onLow() {
+      cleanup('low');
+    }
+    function onHigh() {
+      cleanup('high');
+    }
+    jokerSideLowBtn.addEventListener('click', onLow);
+    jokerSideHighBtn.addEventListener('click', onHigh);
+  });
+}
+
+// Ne demande gauche/droite que si c'est réellement ambigu (voir
+// sequenceJokerChoice) - sinon résout tout de suite sans rien montrer.
+async function resolveExtendHint(cards) {
+  const choice = sequenceJokerChoice(cards);
+  if (!choice) return undefined;
+  return askJokerSide(choice);
+}
+
 function cardCompletesMeld(card, meld) {
   if (meld.type === 'set') {
     const rank = meld.cards.find((c) => !c.isJoker)?.rank;
@@ -499,6 +560,18 @@ function renderHand() {
   const maxSpread = Math.min(6 * Math.max(n - 1, 0), 42);
   const step = n > 1 ? maxSpread / (n - 1) : 0;
 
+  // L'éventail ne doit jamais nécessiter de défilement horizontal (main
+  // "intégrée à la page") : on réduit cartes + chevauchement à la volée
+  // selon la largeur dispo plutôt que de garder une taille fixe.
+  const BASE_CARD_WIDTH = 78;
+  const BASE_OVERLAP = 34;
+  const available = (handEl.clientWidth || window.innerWidth - 40) - 4;
+  const naturalWidth = n > 0 ? BASE_CARD_WIDTH + (n - 1) * (BASE_CARD_WIDTH - BASE_OVERLAP) : 0;
+  const scale = n > 1 && naturalWidth > available ? Math.max(0.5, available / naturalWidth) : 1;
+  const cardWidth = BASE_CARD_WIDTH * scale;
+  const cardHeight = cardWidth * (114 / 78);
+  const overlap = BASE_OVERLAP * scale;
+
   visible.forEach((card, i) => {
     const angle = n > 1 ? -maxSpread / 2 + i * step : 0;
     const normalized = n > 1 ? Math.abs(i - (n - 1) / 2) / ((n - 1) / 2) : 0;
@@ -506,10 +579,14 @@ function renderHand() {
 
     const arc = document.createElement('div');
     arc.className = 'rami-card-arc';
+    arc.style.marginLeft = i === 0 ? '0' : `${-overlap}px`;
     arc.style.transform = `rotate(${angle}deg) translateY(${lift}px)`;
 
     const el = document.createElement('div');
     el.className = `rami-card ${cardColorClass(card)}`;
+    el.style.width = `${cardWidth}px`;
+    el.style.height = `${cardHeight}px`;
+    el.style.fontSize = `${1.4 * scale}rem`;
     if (selected.has(card.id)) el.classList.add('rami-selected');
     if (hintIds.has(card.id)) el.classList.add('rami-hint');
     if (card.id === mustResolveId) {
@@ -559,9 +636,13 @@ function renderTable(state) {
     const row = document.createElement('div');
     row.className = 'rami-meld';
     row.dataset.meldId = meld.id;
-    row.addEventListener('click', () => {
+    row.addEventListener('click', async () => {
       if (selected.size === 0) return;
-      socket.emit('rami-lay-off', { meldId: meld.id, cards: [...selected] });
+      const newIds = [...selected];
+      const newCards = newIds.map((id) => currentHand.find((c) => c.id === id)).filter(Boolean);
+      const extendHint =
+        meld.type === 'sequence' ? await resolveExtendHint([...meld.cards, ...newCards]) : undefined;
+      socket.emit('rami-lay-off', { meldId: meld.id, cards: newIds, extendHint });
     });
     for (const card of meld.cards) {
       const chip = document.createElement('div');
@@ -700,9 +781,12 @@ function updateActionButtons() {
   btnValidateOpen.disabled = !canAct || openStaging.length === 0 || !resolvingCovered;
 }
 
-btnStageGroup.addEventListener('click', () => {
+btnStageGroup.addEventListener('click', async () => {
   if (selected.size < 3) return;
-  openStaging.push({ cardIds: [...selected] });
+  const cardIds = [...selected];
+  const cards = cardIds.map((id) => currentHand.find((c) => c.id === id)).filter(Boolean);
+  const extendHint = await resolveExtendHint(cards);
+  openStaging.push({ cardIds, extendHint });
   selected.clear();
   renderHand();
   renderStaging();
@@ -711,12 +795,18 @@ btnStageGroup.addEventListener('click', () => {
 
 btnValidateOpen.addEventListener('click', () => {
   if (openStaging.length === 0) return;
-  socket.emit('rami-open', { melds: openStaging.map((g) => g.cardIds) });
+  socket.emit('rami-open', {
+    melds: openStaging.map((g) => g.cardIds),
+    extendHints: openStaging.map((g) => g.extendHint),
+  });
 });
 
-btnLayMeld.addEventListener('click', () => {
+btnLayMeld.addEventListener('click', async () => {
   if (selected.size < 3) return;
-  socket.emit('rami-lay-meld', { cards: [...selected] });
+  const cardIds = [...selected];
+  const cards = cardIds.map((id) => currentHand.find((c) => c.id === id)).filter(Boolean);
+  const extendHint = await resolveExtendHint(cards);
+  socket.emit('rami-lay-meld', { cards: cardIds, extendHint });
 });
 
 btnDiscard.addEventListener('click', () => {
@@ -751,6 +841,31 @@ function mergeHandOrder(newHand) {
   return [...kept, ...added];
 }
 
+// Tirage au sort de qui commence (le serveur choisit au hasard, plus
+// toujours le créateur du salon) : une pièce tourne un instant puis révèle
+// le nom du joueur qui commence, avant de laisser la partie normale prendre
+// le relais (déjà affichée en dessous, l'overlay disparaît tout seul).
+function playStartReveal(players, turnPlayerId) {
+  const overlay = document.getElementById('rami-start-reveal');
+  const coin = document.getElementById('rami-start-reveal-coin');
+  const text = document.getElementById('rami-start-reveal-text');
+  const starter = players.find((p) => p.id === turnPlayerId);
+  const label = starter ? starter.nickname : '???';
+
+  text.textContent = '';
+  text.classList.remove('rami-visible');
+  overlay.classList.remove('hidden');
+  coin.style.animation = 'none';
+  void coin.offsetWidth;
+  coin.style.animation = '';
+
+  setTimeout(() => {
+    text.textContent = `🪙 ${label} commence !`;
+    text.classList.add('rami-visible');
+  }, 1450);
+  setTimeout(() => overlay.classList.add('hidden'), 2700);
+}
+
 socket.on('rami-game-start', ({ myId: id, hand, players, drawPileCount, turnPlayerId }) => {
   myId = id;
   currentHand = hand;
@@ -772,6 +887,7 @@ socket.on('rami-game-start', ({ myId: id, hand, players, drawPileCount, turnPlay
   lastDrawnCardId = null;
   showScreen('game');
   renderAll();
+  playStartReveal(players, turnPlayerId);
 });
 
 // Petit carillon montant a la pose d'une combinaison (ouverture, nouvelle
@@ -962,18 +1078,56 @@ socket.on('connect', () => {
   attemptAutoRejoin(roomFromUrl ? 'link' : null);
 });
 
-socket.on('rami-game-end', ({ summary, gameWinnerId, myId: id }) => {
+// Accord mutuel pour la revanche : pas de bouton "accepter" séparé, chaque
+// joueur clique le même bouton Revanche. Tant que les deux n'ont pas
+// cliqué, un message sous l'écran de fin annonce l'envie de l'autre au lieu
+// de renvoyer directement au lobby.
+let endSummary = null;
+let rematchRequestedIds = [];
+const rematchStatusEl = document.getElementById('rami-rematch-status');
+const btnRematch = document.getElementById('rami-btn-rematch');
+
+function renderRematchStatus() {
+  if (!endSummary) {
+    rematchStatusEl.classList.add('hidden');
+    return;
+  }
+  const iWant = rematchRequestedIds.includes(myId);
+  const opponentEntry = endSummary.find((s) => s.id !== myId);
+  const opponentWants = Boolean(opponentEntry && rematchRequestedIds.includes(opponentEntry.id));
+  btnRematch.disabled = iWant;
+  if (iWant && !opponentWants) {
+    rematchStatusEl.textContent = "⏳ En attente de la réponse de l'adversaire…";
+    rematchStatusEl.classList.remove('hidden');
+  } else if (opponentWants && !iWant) {
+    rematchStatusEl.textContent = `🔄 ${opponentEntry.nickname} souhaite une revanche !`;
+    rematchStatusEl.classList.remove('hidden');
+  } else {
+    rematchStatusEl.classList.add('hidden');
+  }
+}
+
+socket.on('rami-game-end', ({ summary, gameWinnerId, myId: id, rematchRequested }) => {
   if (id) myId = id;
   showReconnectingOverlay(false);
   joinModal.classList.add('hidden');
   const gameWinner = summary.find((s) => s.id === gameWinnerId);
   document.getElementById('rami-end-title').textContent =
     gameWinnerId === myId ? 'Tu remportes la partie ! 🏆' : `${gameWinner ? gameWinner.nickname : 'Un joueur'} remporte la partie !`;
+  endSummary = summary;
+  rematchRequestedIds = rematchRequested || [];
+  btnRematch.disabled = false;
+  renderRematchStatus();
   showScreen('end');
   revealScoresSequentially([...summary].sort((a, b) => b.total - a.total));
 });
 
-document.getElementById('rami-btn-rematch').addEventListener('click', () => socket.emit('rami-rematch'));
+socket.on('rami-rematch-status', ({ requested }) => {
+  rematchRequestedIds = requested || [];
+  renderRematchStatus();
+});
+
+btnRematch.addEventListener('click', () => socket.emit('rami-rematch'));
 
 // --- Choix accueil / rejoindre via lien ---
 
