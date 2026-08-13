@@ -57,6 +57,19 @@ function eligiblePlankTargets(trick) {
   return trick.filter((t) => effectiveKind(t.card) === 'pirate');
 }
 
+// Pouvoirs hérités par Mat le Forban ET le Skull King quand ils remportent un
+// pli : chaque Pirate classique capturé (retiré par la Planche exclu, voir
+// excludedIdx) transmet le sien, à résoudre à la suite les uns des autres.
+// Sur le tout dernier pli d'une manche, seul celui d'Harry le Géant survit.
+function capturedPirateKeys(trick, excludedIdx, isLastTrick) {
+  const capturedNames = trick
+    .filter((t, i) => !excludedIdx.has(i) && t.card.kind === 'pirate')
+    .map((t) => t.card.name);
+  return capturedNames
+    .map((name) => PIRATE_POWER_BY_NAME[name])
+    .filter((k) => k && (k === 'harry' || !isLastTrick));
+}
+
 const rooms = new Map();
 
 // Compteurs simples pour l'observabilite (route /stats, server/index.js) -
@@ -965,18 +978,16 @@ function registerSkullKingHandlers(io, socket) {
           return;
         }
       }
-      // Mat le Forban : hérite du/des pouvoir(s) de tout(s) Pirate(s)
-      // classique(s) capturé(s) dans le même pli (retiré par la Planche
-      // exclu, voir result.excludedIdx), à résoudre à la suite les uns des
-      // autres - sans toucher au bonus de capture normal, géré séparément
-      // dans trickBonusForWinner.
-      if (winningCard && winningCard.kind === 'firstmate') {
-        const capturedNames = room.currentTrick
-          .filter((t, i) => !result.excludedIdx.has(i) && t.card.kind === 'pirate')
-          .map((t) => t.card.name);
-        const powerKeys = capturedNames
-          .map((name) => PIRATE_POWER_BY_NAME[name])
-          .filter((k) => k && (k === 'harry' || !isLastTrick));
+      // Mat le Forban ET le Skull King : héritent du/des pouvoir(s) de
+      // tout(s) Pirate(s) classique(s) capturé(s) dans le même pli (retiré
+      // par la Planche exclu, voir result.excludedIdx), à résoudre à la
+      // suite les uns des autres - sans toucher au bonus de capture normal,
+      // géré séparément dans trickBonusForWinner. Pour le Skull King c'est
+      // nouveau (jusqu'ici seul le Pirate qui remportait lui-même le pli
+      // déclenchait son propre pouvoir - le manger avec le Skull King ne
+      // donnait jamais rien).
+      if (winningCard && (winningCard.kind === 'firstmate' || winningCard.kind === 'skullking')) {
+        const powerKeys = capturedPirateKeys(room.currentTrick, result.excludedIdx, isLastTrick);
         if (powerKeys.length) {
           room.pendingPowerQueue = powerKeys.slice(1);
           startPiratePower(io, room, powerKeys[0], winnerId, leaderId);
@@ -1150,4 +1161,12 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('disconnecting', () => handleDisconnecting(io, socket));
 }
 
-module.exports = { registerSkullKingHandlers, MIN_PLAYERS, MAX_PLAYERS, eligiblePlankTargets, stateFor, getStats };
+module.exports = {
+  registerSkullKingHandlers,
+  MIN_PLAYERS,
+  MAX_PLAYERS,
+  eligiblePlankTargets,
+  capturedPirateKeys,
+  stateFor,
+  getStats,
+};

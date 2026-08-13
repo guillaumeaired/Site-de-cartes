@@ -156,7 +156,7 @@ function cardPowerText(card) {
     case 'siren':
       return 'Bat le Skull King, perd contre un Pirate — sauf Pirate + Skull King + Sirène réunis : la Sirène gagne alors toujours.';
     case 'skullking':
-      return 'Bat les Pirates. Face à une Sirène seule, la Sirène gagne quand même.';
+      return "Bat les Pirates. Face à une Sirène seule, la Sirène gagne quand même. S'il remporte le pli, hérite du/des pouvoir(s) du/des Pirate(s) capturé(s) — sans le bonus de capture normal.";
     case 'loot':
       return "Agit comme une Fuite. Si un autre joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce de la manche.";
     case 'kraken':

@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, capturedPirateKeys, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -51,6 +51,69 @@ check(
     { playerId: 'p4', card: firstMateCard },
   ]).map((t) => t.card.id),
   ['c1', 'c2']
+);
+
+// --- Skull King (et Mat le Forban) mangent des Pirates : héritage des
+// pouvoirs, quel que soit qui a effectivement remporté le pli.
+const rosieCard = { id: 'p1', kind: 'pirate', name: "Rosie D'Laney" };
+const willCard = { id: 'p2', kind: 'pirate', name: 'Will le Bandit' };
+const noPowerPirate = { id: 'p3', kind: 'pirate', name: 'Personne Connue' };
+
+check(
+  'un seul Pirate capturé : son pouvoir, seul',
+  capturedPirateKeys([{ playerId: 'x', card: rosieCard }], new Set(), false),
+  ['rosie']
+);
+
+check(
+  'plusieurs Pirates capturés : tous les pouvoirs, dans l\'ordre du pli',
+  capturedPirateKeys(
+    [
+      { playerId: 'x', card: rosieCard },
+      { playerId: 'y', card: willCard },
+    ],
+    new Set(),
+    false
+  ),
+  ['rosie', 'will']
+);
+
+check(
+  'un Pirate retiré par la Planche (excludedIdx) ne transmet pas son pouvoir',
+  capturedPirateKeys(
+    [
+      { playerId: 'x', card: rosieCard },
+      { playerId: 'y', card: willCard },
+    ],
+    new Set([0]),
+    false
+  ),
+  ['will']
+);
+
+check(
+  "sur le dernier pli de la manche, seul Harry le Géant survit",
+  capturedPirateKeys(
+    [
+      { playerId: 'x', card: rosieCard },
+      { playerId: 'y', card: { id: 'p4', kind: 'pirate', name: 'Harry le Géant' } },
+    ],
+    new Set(),
+    true
+  ),
+  ['harry']
+);
+
+check(
+  'un Pirate sans pouvoir connu (nom absent de PIRATE_POWER_BY_NAME) ne transmet rien',
+  capturedPirateKeys([{ playerId: 'x', card: noPowerPirate }], new Set(), false),
+  []
+);
+
+check(
+  'une Tigresse jouée comme Pirate ne transmet pas de pouvoir (pas de nom)',
+  capturedPirateKeys([{ playerId: 'x', card: tigressAsPirate }], new Set(), false),
+  []
 );
 
 // --- Secret de la Tigresse : chosenAs ne doit jamais fuiter aux autres
