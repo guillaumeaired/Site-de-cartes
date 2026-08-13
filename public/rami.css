@@ -393,6 +393,53 @@ h1 {
   content: ' 👑';
 }
 
+/* --- Format de match (choisi par l'hôte, verrouillé au lancement) --- */
+
+.rami-match-format {
+  max-width: 320px;
+  margin: 0 auto 20px;
+}
+
+.rami-format-choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.rami-format-btn {
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  border-radius: 10px;
+  border: 2px solid #ffffff33;
+  background: #ffffff11;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rami-format-btn:hover {
+  background: #ffffff22;
+}
+
+.rami-format-btn.rami-format-btn--active {
+  background: #facc15;
+  border-color: #1a1208;
+  color: #1a1208;
+}
+
+.rami-race-target-choices {
+  margin-top: 2px;
+}
+
+.rami-format-btn--small {
+  padding: 5px 10px;
+  font-size: 0.75rem;
+}
+
 /* --- Modernisation des menus créer/rejoindre (2026-07-30) : mêmes ajouts
    dupliqués dans les 4 fichiers CSS, seule la couleur d'accent change —
    reprend directement --accent défini pour ce jeu sur la grille du hub
@@ -771,6 +818,19 @@ h1 {
   text-align: center;
 }
 
+.rami-pile-label--btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.rami-pile-label--btn:hover {
+  opacity: 1;
+}
+
 .rami-discard-row {
   display: flex;
   align-items: center;
@@ -798,7 +858,7 @@ h1 {
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, margin-left 0.2s ease;
 }
 
 .rami-discard-card:first-child {
@@ -808,6 +868,19 @@ h1 {
 .rami-discard-card:hover {
   transform: translateY(-6px);
   z-index: 2;
+}
+
+/* Écarte les cartes (au survol sur desktop, ou via le bouton "↔️ Défausse"
+   sur tactile) pour que celles couvertes par des cartes plus récentes
+   redeviennent individuellement bien visibles/cliquables. */
+.rami-discard-row:hover .rami-discard-card,
+.rami-discard-row.rami-discard-row--spread .rami-discard-card {
+  margin-left: 6px;
+}
+
+.rami-discard-row:hover .rami-discard-card:first-child,
+.rami-discard-row.rami-discard-row--spread .rami-discard-card:first-child {
+  margin-left: 0;
 }
 
 .rami-discard-card.card-red {

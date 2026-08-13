@@ -53,6 +53,23 @@
         <ul id="rami-lobby-list" class="lobby-list"></ul>
       </div>
 
+      <div id="rami-match-format" class="rami-match-format hidden">
+        <p class="invite-label">Format de la partie</p>
+        <div id="rami-format-choices" class="rami-format-choices hidden">
+          <button type="button" class="rami-format-btn" data-format="single">Partie simple</button>
+          <button type="button" class="rami-format-btn" data-format="bo3">BO3</button>
+          <button type="button" class="rami-format-btn" data-format="bo5">BO5</button>
+          <button type="button" class="rami-format-btn" data-format="race">Cumul de points</button>
+        </div>
+        <div id="rami-race-target-choices" class="rami-format-choices rami-race-target-choices hidden">
+          <button type="button" class="rami-format-btn rami-format-btn--small" data-race-target="100">100 pts</button>
+          <button type="button" class="rami-format-btn rami-format-btn--small" data-race-target="150">150 pts</button>
+          <button type="button" class="rami-format-btn rami-format-btn--small" data-race-target="200">200 pts</button>
+          <button type="button" class="rami-format-btn rami-format-btn--small" data-race-target="300">300 pts</button>
+        </div>
+        <p id="rami-format-summary" class="hint"></p>
+      </div>
+
       <button id="rami-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
       <p id="rami-waiting-hint" class="hint"></p>
     </section>
@@ -106,7 +123,14 @@
           </div>
           <div class="rami-pile-block rami-pile-block--discard">
             <div id="rami-discard-row" class="rami-discard-row"></div>
-            <span class="rami-pile-label" title="Clique une carte pour la reprendre (+ celles posées après)">Défausse</span>
+            <button
+              type="button"
+              id="rami-discard-toggle"
+              class="rami-pile-label rami-pile-label--btn"
+              title="Touche pour écarter les cartes et voir celles cachées derrière"
+            >
+              ↔️ Défausse
+            </button>
           </div>
         </div>
 

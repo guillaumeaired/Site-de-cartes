@@ -35,7 +35,10 @@ const INACTIVITY_WARN_MS = 120_000;
 // room.matchFormat est un reglage de salon (comme extensionEnabled sur Skull
 // King), verrouille au lancement, choisi par l'hote via rami-set-match-format.
 const MATCH_WINS_REQUIRED = { bo3: 2, bo5: 3 };
-const RACE_TARGET = 200;
+// "race" (cumul de points) : seuil reglable par l'hote (room.raceTarget),
+// parmi ces valeurs seulement ; 200 reste la valeur par defaut/historique.
+const RACE_TARGET_OPTIONS = [100, 150, 200, 300];
+const DEFAULT_RACE_TARGET = 200;
 // Petit ecran de score entre deux parties d'un match, meme principe que la
 // fin de manche de L'Ascenseur (ROUND_END_MS) : la partie suivante demarre
 // toute seule, l'hote peut arreter le match pendant ce laps de temps.
@@ -153,6 +156,7 @@ function broadcastLobby(io, room) {
       canStart: room.players.length === MAX_PLAYERS,
       // Reglage hote, verrouillable seulement en lobby (voir rami-set-match-format).
       matchFormat: room.matchFormat || 'single',
+      raceTarget: room.raceTarget || DEFAULT_RACE_TARGET,
     });
   }
 }
@@ -288,7 +292,8 @@ function scheduleInactivityCheck(io, room) {
 // Formats de match (Manche 3) : "single" termine ici comme avant. Sinon,
 // une egalite stricte de score entre les 2 joueurs annule la partie (ne
 // compte pour personne, rejouee immediatement) ; sinon BO3/BO5 comptabilise
-// une victoire de partie pour gameWinnerId, "race200" cumule les scores -
+// une victoire de partie pour gameWinnerId, "race" cumule les scores jusqu'a
+// room.raceTarget -
 // dans les deux cas le match se termine des qu'un vainqueur est decide,
 // sinon un petit ecran de score s'affiche et la partie suivante s'enchaine
 // automatiquement (meme principe que la fin de manche de L'Ascenseur).
@@ -325,11 +330,12 @@ function endGame(io, room, winnerId) {
       matchOver = true;
       matchWinnerId = gameWinnerId;
     }
-  } else if (room.matchFormat === 'race200') {
+  } else if (room.matchFormat === 'race') {
+    const raceTarget = room.raceTarget || DEFAULT_RACE_TARGET;
     summary.forEach((s) => {
       room.matchCumulative[s.id] = (room.matchCumulative[s.id] || 0) + s.total;
     });
-    const crossers = summary.filter((s) => room.matchCumulative[s.id] >= RACE_TARGET);
+    const crossers = summary.filter((s) => room.matchCumulative[s.id] >= raceTarget);
     if (crossers.length === 1) {
       matchOver = true;
       matchWinnerId = crossers[0].id;
@@ -471,6 +477,7 @@ function registerRamiHandlers(io, socket) {
       drawnCardId: null,
       drawnFromDiscard: false,
       matchFormat: 'single',
+      raceTarget: DEFAULT_RACE_TARGET,
     };
     rooms.set(code, room);
     socket.data.ramiRoom = code;
@@ -528,14 +535,20 @@ function registerRamiHandlers(io, socket) {
   });
 
   // Reglage hote, uniquement en lobby (verrouille des le lancement, comme
-  // extensionEnabled sur Skull King).
+  // extensionEnabled sur Skull King). Pour "race", raceTarget est optionnel
+  // dans le payload (sinon la valeur precedente/par defaut est gardee) - un
+  // seul evenement suffit donc pour choisir a la fois le format et le seuil.
   socket.on('rami-set-match-format', (payload) => {
     const room = rooms.get(socket.data.ramiRoom);
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
     const format = payload && payload.format;
-    if (!['single', 'bo3', 'bo5', 'race200'].includes(format)) return;
+    if (!['single', 'bo3', 'bo5', 'race'].includes(format)) return;
     room.matchFormat = format;
+    if (format === 'race' && payload && payload.raceTarget !== undefined) {
+      const target = Number(payload.raceTarget);
+      room.raceTarget = RACE_TARGET_OPTIONS.includes(target) ? target : DEFAULT_RACE_TARGET;
+    }
     broadcastLobby(io, room);
   });
 
@@ -556,7 +569,7 @@ function registerRamiHandlers(io, socket) {
       const wa = room.matchWins[a.id] || 0;
       const wb = room.matchWins[b.id] || 0;
       if (wa !== wb) matchWinnerId = wa > wb ? a.id : b.id;
-    } else if (room.matchFormat === 'race200') {
+    } else if (room.matchFormat === 'race') {
       const ca = room.matchCumulative[a.id] || 0;
       const cb = room.matchCumulative[b.id] || 0;
       if (ca !== cb) matchWinnerId = ca > cb ? a.id : b.id;
@@ -907,20 +920,20 @@ function registerRamiHandlers(io, socket) {
       return;
     }
 
-    room.phase = 'lobby';
+    // Les deux joueurs sont d'accord : on relance directement la partie,
+    // sans repasser par le lobby (plus besoin que l'hôte reclique "Lancer
+    // la partie") - startGame() se charge déjà de redistribuer les mains et
+    // de remettre score/hasOpened à zéro pour chaque joueur ; il ne reste
+    // qu'à remettre à zéro les compteurs de MATCH (le format choisi par
+    // l'hôte reste celui d'avant, par confort - seule une nouvelle partie
+    // créée depuis zéro permet d'en changer).
     room.lastGameEndPayload = null;
-    // Compteurs de match remis a zero (le format choisi par l'hote reste
-    // celui d'avant, par confort, mais reste modifiable via rami-set-match-format).
     room.matchWins = {};
     room.matchCumulative = {};
     room.matchWinnerId = null;
-    for (const p of room.players) {
-      p.score = 0;
-      p.hasOpened = false;
-      p.hand = [];
-      p.wantsRematch = false;
-    }
-    broadcastLobby(io, room);
+    for (const p of room.players) p.wantsRematch = false;
+    recordGameStarted('rami');
+    startGame(io, room);
   });
 
   // Reconnexion : le client redonne le code de la partie + son jeton

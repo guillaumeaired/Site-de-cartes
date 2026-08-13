@@ -167,6 +167,10 @@ const lobbyList = document.getElementById('rami-lobby-list');
 const lobbyCount = document.getElementById('rami-lobby-count');
 const btnStartGame = document.getElementById('rami-btn-start-game');
 const waitingHint = document.getElementById('rami-waiting-hint');
+const matchFormatBlock = document.getElementById('rami-match-format');
+const formatChoices = document.getElementById('rami-format-choices');
+const raceTargetChoices = document.getElementById('rami-race-target-choices');
+const formatSummary = document.getElementById('rami-format-summary');
 
 const joinModal = document.getElementById('rami-join-modal');
 const joinModalNickname = document.getElementById('rami-join-modal-nickname');
@@ -216,7 +220,7 @@ socket.on('rami-room-created', ({ code }) => {
   shareBlock.classList.remove('hidden');
 });
 
-socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart }) => {
+socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart, matchFormat, raceTarget }) => {
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
@@ -241,6 +245,52 @@ socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart }) => 
   } else {
     waitingHint.textContent = "En attente que l'hôte lance la partie…";
   }
+
+  renderMatchFormat(matchFormat, raceTarget, isHost);
+});
+
+// --- Format de match (choisi par l'hôte, en lobby uniquement) ---
+
+const FORMAT_LABELS = {
+  single: 'Partie simple — une seule partie, le score le plus haut gagne.',
+  bo3: 'BO3 — le premier à remporter 2 parties gagne le match.',
+  bo5: 'BO5 — le premier à remporter 3 parties gagne le match.',
+};
+
+function formatSummaryText(format, raceTarget) {
+  if (format === 'race') return `Cumul de points — premier à atteindre ${raceTarget} points cumulés gagne.`;
+  return FORMAT_LABELS[format] || FORMAT_LABELS.single;
+}
+
+function renderMatchFormat(matchFormat, raceTarget, isHost) {
+  const format = matchFormat || 'single';
+  const target = raceTarget || 200;
+
+  matchFormatBlock.classList.remove('hidden');
+  formatChoices.classList.toggle('hidden', !isHost);
+  raceTargetChoices.classList.toggle('hidden', !isHost || format !== 'race');
+  formatSummary.textContent = isHost ? formatSummaryText(format, target) : `Format choisi par l'hôte : ${formatSummaryText(format, target)}`;
+
+  formatChoices.querySelectorAll('.rami-format-btn').forEach((btn) => {
+    btn.classList.toggle('rami-format-btn--active', btn.dataset.format === format);
+  });
+  raceTargetChoices.querySelectorAll('.rami-format-btn').forEach((btn) => {
+    btn.classList.toggle('rami-format-btn--active', Number(btn.dataset.raceTarget) === target);
+  });
+}
+
+formatChoices.querySelectorAll('.rami-format-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (!myIsHost) return;
+    socket.emit('rami-set-match-format', { format: btn.dataset.format });
+  });
+});
+
+raceTargetChoices.querySelectorAll('.rami-format-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (!myIsHost) return;
+    socket.emit('rami-set-match-format', { format: 'race', raceTarget: Number(btn.dataset.raceTarget) });
+  });
 });
 
 socket.on('rami-error', (message) => {
@@ -290,6 +340,7 @@ const opponentHandEl = document.getElementById('rami-opponent-hand');
 const drawPileBtn = document.getElementById('rami-draw-pile');
 const drawCountEl = document.getElementById('rami-draw-count');
 const discardRowEl = document.getElementById('rami-discard-row');
+const discardToggleBtn = document.getElementById('rami-discard-toggle');
 const tableOpponentEl = document.getElementById('rami-table-opponent');
 const tableMineEl = document.getElementById('rami-table-mine');
 const handEl = document.getElementById('rami-hand');
@@ -667,6 +718,14 @@ function renderTable(state) {
   }
 }
 
+// Sur desktop, le survol de la rangée écarte déjà les cartes (CSS). Sur
+// tactile (pas de survol), ce bouton fait la même chose à la demande : les
+// cartes plus anciennes, couvertes par celles posées après, redeviennent
+// individuellement cliquables.
+discardToggleBtn.addEventListener('click', () => {
+  discardRowEl.classList.toggle('rami-discard-row--spread');
+});
+
 // Défausse "en ligne" : toutes les cartes restent visibles et cliquables.
 // Prendre une carte récupère aussi tout ce qui a été défaussé après elle.
 function renderDiscardRow(state) {
@@ -872,9 +931,22 @@ function playStartReveal(players, turnPlayerId) {
 
   needle.style.transition = 'none';
   needle.style.transform = 'rotate(0deg)';
-  void needle.offsetWidth;
-  needle.style.transition = '';
-  needle.style.transform = `rotate(${target}deg)`;
+
+  // Double rAF (au lieu d'un simple "void offsetWidth") : garantit que l'état
+  // de repos (0°) est réellement peint au moins une fois avant de lancer la
+  // transition vers la cible. Sans ça, sur un tout premier chargement (page
+  // encore occupée à parser/exécuter d'autres scripts, socket qui se
+  // connecte...), le navigateur peut "sauter" directement vers un état
+  // intermédiaire ou final sans jamais afficher le tour complet - bug remonté
+  // en vrai : la roue semblait déjà finie, ou pointer sur le mauvais joueur
+  // (coupée en plein vol par le minuteur ci-dessous, qui se déclenche
+  // toujours 3400ms après CET appel, peu importe où en est l'animation).
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      needle.style.transition = '';
+      needle.style.transform = `rotate(${target}deg)`;
+    });
+  });
 
   setTimeout(() => {
     text.textContent = `🎯 ${label} commence !`;
@@ -888,6 +960,11 @@ socket.on('rami-game-start', ({ myId: id, hand, players, drawPileCount, turnPlay
   currentHand = hand;
   selected = new Set();
   openStaging = [];
+  // Une revanche mutuelle relance directement la partie sans repasser par
+  // rami-lobby-update (qui faisait ce reset avant) - à faire ici aussi pour
+  // ne pas laisser trainer l'état de l'écran de fin précédent.
+  endSummary = null;
+  rematchRequestedIds = [];
   latestState = {
     hand,
     players,
