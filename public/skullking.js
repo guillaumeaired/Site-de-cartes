@@ -422,6 +422,9 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   } else {
     waitingHint.textContent = "En attente que l'hôte lance la partie…";
   }
+  // On repasse par le salon avant chaque nouvelle partie (y compris une
+  // revanche) : c'est le point sûr pour réarmer la roue de tirage au sort.
+  startRevealPlayed = false;
 });
 
 btnExtension.addEventListener('click', () => {
@@ -491,6 +494,7 @@ const sideRound = document.getElementById('sk-side-round');
 const roundSegments = document.getElementById('sk-round-segments');
 
 let latestState = null;
+let startRevealPlayed = false;
 let pendingTigressCardId = null;
 
 // Même principe que la table de l'Ascenseur : moi toujours en bas, les
@@ -1197,6 +1201,30 @@ function showRoundStartBanner(roundNumber) {
   roundStartTimer = setTimeout(() => roundStartBanner.classList.add('hidden'), 1800);
 }
 
+// --- Révélation des annonces ---
+// La phase serveur passe de 'bidding' à 'playing' en un seul saut dès la
+// dernière annonce reçue (voir skullking-room.js) : sans ce petit temps fort
+// après coup, les chiffres apparaissaient tous en même temps dans le tableau
+// des scores, sans qu'on ait eu le temps de les lire.
+const bidRevealEl = document.getElementById('sk-bid-reveal');
+const bidRevealRows = document.getElementById('sk-bid-reveal-rows');
+let bidRevealTimer = null;
+let lastPhase = null;
+
+function showBidReveal(state) {
+  clearTimeout(bidRevealTimer);
+  bidRevealRows.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const row = document.createElement('span');
+    row.className = 'sk-bid-reveal-row';
+    row.style.setProperty('--sk-bid-delay', `${i * 0.12}s`);
+    row.innerHTML = `${p.id === myId ? 'Toi' : p.nickname} <b>${p.bid}</b>`;
+    bidRevealRows.appendChild(row);
+  });
+  bidRevealEl.classList.remove('hidden');
+  bidRevealTimer = setTimeout(() => bidRevealEl.classList.add('hidden'), 1900 + state.players.length * 120);
+}
+
 function maybeAnimateDeal(state) {
   if (state.phase !== 'bidding' || state.roundNumber === lastDealAnimatedRound) return;
   lastDealAnimatedRound = state.roundNumber;
@@ -1281,6 +1309,51 @@ function roundBreakdownText(r) {
   return parts.join(' · ');
 }
 
+const LOOT_LINK_COLORS = ['#facc15', '#4ade80', '#38bdf8'];
+
+// Trace un lien entre les deux lignes d'une alliance Butin, même si d'autres
+// joueurs s'intercalent entre elles dans le classement - un simple badge de
+// couleur assorti sur chaque ligne ne suffirait pas à dire QUI est lié à qui.
+function drawLootLinks(links) {
+  if (!links || !links.length) return;
+  const container = roundPopupRows;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'sk-loot-links');
+  const containerRect = container.getBoundingClientRect();
+
+  links.forEach((link, i) => {
+    const rowA = container.querySelector(`[data-player-id="${link.a}"]`);
+    const rowB = container.querySelector(`[data-player-id="${link.b}"]`);
+    if (!rowA || !rowB) return;
+    const color = LOOT_LINK_COLORS[i % LOOT_LINK_COLORS.length];
+    rowA.classList.add('sk-round-popup-row--loot');
+    rowB.classList.add('sk-round-popup-row--loot');
+    rowA.style.setProperty('--sk-loot-color', color);
+    rowB.style.setProperty('--sk-loot-color', color);
+
+    const rectA = rowA.getBoundingClientRect();
+    const rectB = rowB.getBoundingClientRect();
+    const yA = rectA.top - containerRect.top + rectA.height / 2;
+    const yB = rectB.top - containerRect.top + rectB.height / 2;
+    const x = -4 - i * 6; // décale les liens successifs pour ne jamais se superposer
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('class', 'sk-loot-link-path');
+    path.setAttribute('stroke', color);
+    path.setAttribute('d', `M -1 ${yA} C ${x} ${yA}, ${x} ${yB}, -1 ${yB}`);
+    svg.appendChild(path);
+
+    const coin = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    coin.setAttribute('class', 'sk-loot-link-coin');
+    coin.setAttribute('x', x - 2);
+    coin.setAttribute('y', (yA + yB) / 2 + 3);
+    coin.setAttribute('text-anchor', 'middle');
+    coin.textContent = '💰';
+    svg.appendChild(coin);
+  });
+
+  container.prepend(svg);
+}
+
 function showRoundPopup(state) {
   const summary = state.roundSummary;
   roundPopupTitle.textContent = `Manche ${summary.round} terminée`;
@@ -1291,6 +1364,7 @@ function showRoundPopup(state) {
     .forEach((r) => {
       const row = document.createElement('div');
       row.className = 'sk-round-popup-row';
+      row.dataset.playerId = r.id;
       const left = document.createElement('div');
       left.className = 'sk-round-popup-row-left';
       left.innerHTML = `${r.nickname} <span class="sk-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span><span class="sk-round-popup-row-breakdown">${roundBreakdownText(r)}</span>`;
@@ -1304,6 +1378,10 @@ function showRoundPopup(state) {
 
   btnNextRound.classList.toggle('hidden', !myIsHost);
   roundPopup.classList.remove('hidden');
+  // Doit passer APRES l'affichage de la popup : tant qu'elle est display:none,
+  // les lignes du tableau n'ont pas de vraie position (getBoundingClientRect
+  // ne renverrait que des zéros).
+  drawLootLinks(summary.lootLinks);
 
   const ms = state.roundEndMs || 7000;
   roundPopupBar.style.transition = 'none';
@@ -1332,9 +1410,85 @@ function renderGameEnd(state) {
 
 document.getElementById('sk-btn-rematch').addEventListener('click', () => socket.emit('skullking-rematch'));
 
+// --- Roue de tirage au sort : qui mène le tout premier pli ---
+// Même principe que le Rami (les secteurs sont fixes, seule la flèche
+// tourne), généralisé à N joueurs : un secteur par joueur, étiquette posée à
+// l'extérieur de la roue. Ne joue qu'une fois par partie, sur la toute
+// première annonce de la manche 1 (voir applyState) - startRevealPlayed est
+// réarmé à chaque retour au salon (nouvelle partie ou revanche).
+const START_WHEEL_COLORS = [
+  '#4ade80', '#facc15', '#c084fc', '#38bdf8', '#f87171', '#fb923c', '#a3e635', '#f472b6', '#94a3b8',
+];
+
+function playStartReveal(players, starterId) {
+  const overlay = document.getElementById('sk-start-reveal');
+  const wheel = document.getElementById('sk-wheel');
+  const needle = document.getElementById('sk-wheel-needle');
+  const labelsEl = document.getElementById('sk-wheel-labels');
+  const text = document.getElementById('sk-start-reveal-text');
+  if (!overlay || !players.length) return;
+
+  const n = players.length;
+  const step = 360 / n;
+  const winnerIndex = Math.max(0, players.findIndex((p) => p.id === starterId));
+  const starter = players[winnerIndex];
+
+  const stops = players
+    .map((_, i) => `${START_WHEEL_COLORS[i % START_WHEEL_COLORS.length]} ${(i * step).toFixed(2)}deg ${((i + 1) * step).toFixed(2)}deg`)
+    .join(', ');
+  wheel.style.background = `conic-gradient(${stops})`;
+
+  // Étiquettes à l'extérieur de la roue, à l'angle du centre de leur secteur
+  // (0° = en haut, sens horaire) - même convention que la rotation de la
+  // flèche ci-dessous, pour que l'aiguille s'arrête pile devant le bon nom.
+  labelsEl.innerHTML = '';
+  const cx = 130;
+  const cy = 130;
+  const R = 108;
+  players.forEach((p, i) => {
+    const center = (i + 0.5) * step;
+    const rad = (center * Math.PI) / 180;
+    const tag = document.createElement('span');
+    tag.className = 'sk-wheel-tag';
+    tag.textContent = p.nickname;
+    tag.style.left = `${cx + R * Math.sin(rad)}px`;
+    tag.style.top = `${cy - R * Math.cos(rad)}px`;
+    labelsEl.appendChild(tag);
+  });
+
+  text.textContent = '';
+  text.classList.remove('sk-visible');
+  overlay.classList.remove('hidden');
+
+  const target = 5 * 360 + (winnerIndex + 0.5) * step;
+
+  needle.style.transition = 'none';
+  needle.style.transform = 'rotate(0deg)';
+
+  // Double rAF : garantit que l'état de repos (0°) est bien peint avant de
+  // lancer la transition, sinon le tout premier chargement peut "sauter"
+  // directement à l'état final (bug déjà rencontré sur la roue du Rami).
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      needle.style.transition = '';
+      needle.style.transform = `rotate(${target}deg)`;
+    });
+  });
+
+  setTimeout(() => {
+    const tags = labelsEl.querySelectorAll('.sk-wheel-tag');
+    if (tags[winnerIndex]) tags[winnerIndex].classList.add('sk-wheel-tag--winner');
+    text.textContent = `🎯 ${starter ? starter.nickname : '???'} mène le premier pli !`;
+    text.classList.add('sk-visible');
+  }, 2150);
+  setTimeout(() => overlay.classList.add('hidden'), 3400);
+}
+
 // --- Dispatch d'état ---
 
 function applyState(state) {
+  const previousPhase = lastPhase;
+  lastPhase = state.phase;
   myId = state.myId;
   myIsHost = state.isHost;
   showReconnectingOverlay(false);
@@ -1349,6 +1503,16 @@ function applyState(state) {
     hideRoundPopup();
     showScreen('game');
     renderGame(state);
+    if (state.roundNumber === 1 && !startRevealPlayed) {
+      startRevealPlayed = true;
+      playStartReveal(state.players, state.leaderPlayerId);
+    }
+    // La toute première annonce venant de tomber (transition bidding → tout
+    // le reste) : c'est le seul instant où toutes les annonces sont neuves
+    // pour tout le monde en même temps.
+    if (state.phase !== 'bidding' && previousPhase === 'bidding') {
+      showBidReveal(state);
+    }
     return;
   }
   if (state.phase === 'round-end') {

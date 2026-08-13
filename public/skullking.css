@@ -1141,6 +1141,198 @@ h1 {
   }
 }
 
+/* --- Révélation des annonces : la phase passe d'un coup de "bidding" à
+   "playing" côté serveur dès la dernière annonce reçue, sans palier - sans
+   ça les chiffres apparaissaient d'un coup dans le tableau des scores.
+   Chaque annonce apparaît l'une après l'autre plutôt que toutes en même
+   temps, façon boule à facettes. --- */
+
+.sk-bid-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.sk-bid-reveal-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 4, 4, 0.88);
+  border: 3px solid #facc15;
+  border-radius: 16px;
+  padding: 18px 28px;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4), 0 0 24px rgba(250, 204, 21, 0.3);
+}
+
+.sk-bid-reveal-title {
+  margin: 0;
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: 1.3rem;
+  color: #facc15;
+  letter-spacing: 0.03em;
+}
+
+.sk-bid-reveal-rows {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.sk-bid-reveal-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #ffffff14;
+  border: 2px solid #ffffff2e;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.5);
+  animation: sk-bid-reveal-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: var(--sk-bid-delay, 0s);
+}
+
+.sk-bid-reveal-row b {
+  color: #facc15;
+  font-size: 1rem;
+}
+
+@keyframes sk-bid-reveal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Roue de tirage au sort (qui mène le premier pli), même DA que celle
+   du Rami : secteurs fixes, seule la flèche tourne. Généralisée à N joueurs
+   (3 à 9) au lieu du split à deux du Rami - un secteur par joueur, étiquette
+   posée à l'extérieur de la roue plutôt que dessus. Ne joue qu'une fois, au
+   tout début de la partie (voir playStartReveal côté JS). --- */
+
+.sk-start-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(15, 4, 4, 0.88);
+}
+
+.sk-wheel-frame {
+  position: relative;
+  width: 260px;
+  height: 260px;
+}
+
+.sk-wheel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 5px solid #1a1208;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(255, 255, 255, 0.08), 0 0 0 2px #facc15;
+}
+
+.sk-wheel-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 66px;
+  margin-left: -17px;
+  margin-top: -66px;
+  transform-origin: 50% 100%;
+  transform: rotate(0deg);
+  transition: transform 2.2s cubic-bezier(0.12, 0.67, 0.16, 1);
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.45));
+  z-index: 3;
+}
+
+.sk-wheel-needle-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sk-wheel-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fef3c7;
+  border: 3px solid #1a1208;
+  box-shadow: 0 0 0 2px #facc15;
+  z-index: 4;
+}
+
+.sk-wheel-labels {
+  position: absolute;
+  inset: 0;
+}
+
+.sk-wheel-tag {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 5px 12px;
+  background: #ffffff11;
+  border: 2px solid #ffffff33;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #fff;
+  white-space: nowrap;
+  transition: all 0.25s;
+}
+
+.sk-wheel-tag--winner {
+  background: #facc15;
+  border-color: #1a1208;
+  color: #1a1208;
+}
+
+.sk-start-reveal-text {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #facc15;
+  text-align: center;
+  max-width: 280px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sk-start-reveal-text.sk-visible {
+  opacity: 1;
+}
+
 /* --- Pop-up de fin de manche --- */
 
 .sk-round-popup {
@@ -1183,12 +1375,16 @@ h1 {
 }
 
 .sk-round-popup-rows {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  padding-left: 10px;
 }
 
 .sk-round-popup-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1197,6 +1393,56 @@ h1 {
   border-radius: 9px;
   background: #ffffff0f;
   font-size: 0.85rem;
+}
+
+/* --- Lien entre alliés du Butin : ligne tracée derrière les lignes du
+   tableau, entre les deux (ou trois, si un joueur cumule deux alliances)
+   joueurs concernés - même si d'autres lignes s'intercalent entre eux. --- */
+.sk-round-popup-row--loot {
+  border-left: 3px solid var(--sk-loot-color, #facc15);
+  padding-left: 7px;
+}
+
+.sk-loot-links {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sk-loot-link-path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: sk-loot-link-draw 0.7s ease forwards;
+  animation-delay: 0.3s;
+}
+
+.sk-loot-link-coin {
+  font-size: 0.7rem;
+  opacity: 0;
+  animation: sk-loot-link-coin-pop 0.4s ease forwards;
+  animation-delay: 0.9s;
+}
+
+@keyframes sk-loot-link-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes sk-loot-link-coin-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .sk-round-popup-row-left {

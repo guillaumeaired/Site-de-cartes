@@ -116,6 +116,12 @@ function rekeyPlayerId(room, oldId, newId) {
     room.lastRoundSummary.results.forEach((r) => {
       if (r.id === oldId) r.id = newId;
     });
+    if (Array.isArray(room.lastRoundSummary.lootLinks)) {
+      room.lastRoundSummary.lootLinks.forEach((link) => {
+        if (link.a === oldId) link.a = newId;
+        if (link.b === oldId) link.b = newId;
+      });
+    }
   }
   if (Array.isArray(room.finalRanking)) {
     room.finalRanking.forEach((r) => {
@@ -381,7 +387,11 @@ function endRound(io, room) {
   });
 
   // Bonus Butin : +20 chacun si le poseur ET le gagnant du pli réussissent
-  // TOUS LES DEUX leur annonce de manche exactement.
+  // TOUS LES DEUX leur annonce de manche exactement. On garde aussi la paire
+  // (dédupliquée : plusieurs Butins dans la manche peuvent lier deux fois les
+  // mêmes deux joueurs) pour l'animation de lien côté client.
+  const lootLinks = [];
+  const seenLootPairs = new Set();
   room.lootAlliances.forEach(({ lootPlayerId, winnerId }) => {
     if (exactness[lootPlayerId] && exactness[winnerId]) {
       const lootEntry = summary.find((s) => s.id === lootPlayerId);
@@ -393,6 +403,11 @@ function endRound(io, room) {
       if (winEntry) {
         winEntry.lootBonus += 20;
         winEntry.delta += 20;
+      }
+      const pairKey = [lootPlayerId, winnerId].sort().join('|');
+      if (!seenLootPairs.has(pairKey)) {
+        seenLootPairs.add(pairKey);
+        lootLinks.push({ a: lootPlayerId, b: winnerId });
       }
     }
   });
@@ -422,6 +437,7 @@ function endRound(io, room) {
       lootBonus,
       delta,
     })),
+    lootLinks,
   };
   room.phase = 'round-end';
   broadcastState(io, room);
