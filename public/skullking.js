@@ -105,6 +105,7 @@ function isCardPlayable(card, hand, trick) {
 }
 
 function cardClass(card) {
+  if (card.kind === 'hidden') return 'sk-card--hidden';
   if (card.kind === 'wild15' || card.wild15) return 'sk-card--wild15';
   if (card.kind === 'number') {
     if (card.wild14 && card.value == null) return 'sk-card--wild14';
@@ -114,6 +115,10 @@ function cardClass(card) {
   return 'sk-card--special';
 }
 function cardFaceHTML(card) {
+  // Ta propre carte pendant l'annonce de la manche 1 : dos de carte, aucune
+  // information (voir stateFor côté serveur - le contenu n'est même pas
+  // envoyé, seul l'id l'accompagne).
+  if (card.kind === 'hidden') return '';
   if (card.kind === 'wild15') {
     // Pas encore joué : sa couleur/valeur ne sont pas encore fixées.
     return `<span class="sk-special-emoji">🃏</span><span class="sk-special-label">Joker</span>`;
@@ -634,17 +639,27 @@ function renderSeats(state) {
     if (p.id !== myId) {
       const cards = document.createElement('div');
       cards.className = 'sk-seat-cards';
-      const shown = Math.min(p.handCount, MAX_VISIBLE_BACKS);
-      for (let c = 0; c < shown; c++) {
-        const back = document.createElement('div');
-        back.className = 'sk-back-card';
-        cards.appendChild(back);
-      }
-      if (p.handCount > 0) {
-        const count = document.createElement('span');
-        count.className = 'sk-seat-count';
-        count.textContent = p.handCount;
-        cards.appendChild(count);
+      if (p.revealedCard) {
+        // Manche 1 : on voit la carte de chacun sauf la sienne (l'inverse
+        // du dos de carte habituel) - l'annonce se base là-dessus.
+        const el = document.createElement('div');
+        el.className = `sk-card sk-seat-reveal-card ${cardClass(p.revealedCard)}`;
+        el.innerHTML = cardFaceHTML(p.revealedCard);
+        attachPowerTooltip(el, p.revealedCard);
+        cards.appendChild(el);
+      } else {
+        const shown = Math.min(p.handCount, MAX_VISIBLE_BACKS);
+        for (let c = 0; c < shown; c++) {
+          const back = document.createElement('div');
+          back.className = 'sk-back-card';
+          cards.appendChild(back);
+        }
+        if (p.handCount > 0) {
+          const count = document.createElement('span');
+          count.className = 'sk-seat-count';
+          count.textContent = p.handCount;
+          cards.appendChild(count);
+        }
       }
       seat.appendChild(cards);
     }
@@ -809,7 +824,10 @@ function renderTurnIndicator(state) {
   }
   if (state.phase === 'bidding') {
     if (state.myBid === undefined) {
-      turnIndicator.textContent = '🎯 Combien de plis vas-tu remporter cette manche ?';
+      turnIndicator.textContent =
+        state.roundNumber === 1
+          ? '🎯 Ta carte reste cachée — base ton annonce sur celles que tu vois des autres.'
+          : '🎯 Combien de plis vas-tu remporter cette manche ?';
     } else {
       const waiting = state.players.filter((p) => !p.hasBid).map((p) => p.nickname);
       turnIndicator.textContent = waiting.length

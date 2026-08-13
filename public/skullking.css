@@ -773,6 +773,30 @@ h1 {
   margin-left: 0;
 }
 
+/* Carte adverse révélée pendant l'annonce de la manche 1 : même gabarit que
+   le dos de carte qu'elle remplace, pour ne pas bousculer la mise en page
+   du siège. Sélecteur composé pour primer sur la taille par défaut de
+   .sk-card, déclarée plus loin dans la feuille. */
+.sk-card.sk-seat-reveal-card {
+  width: 30px;
+  height: 42px;
+  font-size: 0.6rem;
+  border-width: 2px;
+  cursor: default;
+}
+
+.sk-seat-reveal-card .card-emblem {
+  font-size: 0.85rem;
+}
+
+.sk-seat-reveal-card .sk-special-emoji {
+  font-size: 0.85rem;
+}
+
+.sk-seat-reveal-card .sk-special-label {
+  display: none;
+}
+
 /* Pile de distribution au centre de la table, et cartes volantes qui en
    sortent vers chaque siège en début de manche (voir maybeAnimateDeal). */
 .sk-deck-pile {
@@ -1133,6 +1157,13 @@ h1 {
 
 .sk-card--special {
   background: #f5ede0;
+}
+
+/* Ta propre carte pendant l'annonce de la manche 1 : dos de carte, même
+   motif que les piles/dos de sièges - aucune information ne doit filtrer. */
+.sk-card--hidden {
+  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
+  border-color: #1a0505;
 }
 
 .sk-card--pirate {

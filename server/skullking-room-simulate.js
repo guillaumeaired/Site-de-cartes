@@ -163,4 +163,46 @@ const otherView = seenByOther.currentTrick.find((t) => t.card.id === 'c1').card;
 check('chosenAs est absent pour un autre joueur', Object.prototype.hasOwnProperty.call(otherView, 'chosenAs'), false);
 check('le reste de la carte Tigresse reste intact pour un autre joueur', otherView.kind, 'tigress');
 
+// --- Manche 1 : chacun voit les cartes des autres, jamais la sienne, tant
+// qu'on est en phase d'annonce.
+function makeBiddingRoom() {
+  const p1 = { ...makePlayer('p1', 'Alice'), hand: [{ id: 'h1', kind: 'number', suit: 'vert', value: 9 }] };
+  const p2 = { ...makePlayer('p2', 'Bob'), hand: [{ id: 'h2', kind: 'pirate', name: "Rosie D'Laney" }] };
+  const p3 = { ...makePlayer('p3', 'Chloé'), hand: [{ id: 'h3', kind: 'skullking' }] };
+  return {
+    phase: 'bidding',
+    hostId: 'p1',
+    players: [p1, p2, p3],
+    bids: {},
+    dealerIndex: 0,
+    leaderIndex: 1,
+    roundSequence: [1, 2, 3],
+    roundIndex: 0,
+    cardsInRound: 1,
+    extensionEnabled: false,
+    currentTrick: [],
+  };
+}
+
+const round1View = stateFor(makeBiddingRoom(), { id: 'p1', hand: [{ id: 'h1', kind: 'number', suit: 'vert', value: 9 }] });
+check('manche 1 : ma propre carte est cachée (kind hidden, même id)', round1View.hand, [{ id: 'h1', kind: 'hidden' }]);
+check(
+  'manche 1 : je vois la carte des autres joueurs',
+  round1View.players.map((p) => [p.id, p.revealedCard && p.revealedCard.kind, p.revealedCard && p.revealedCard.name]),
+  [
+    ['p1', undefined, undefined],
+    ['p2', 'pirate', "Rosie D'Laney"],
+    ['p3', 'skullking', undefined],
+  ]
+);
+
+const round1PlayingRoom = { ...makeBiddingRoom(), phase: 'playing', bids: { p1: 0, p2: 0, p3: 0 }, turnCount: 0 };
+const playingView = stateFor(round1PlayingRoom, { id: 'p1', hand: [{ id: 'h1', kind: 'number', suit: 'vert', value: 9 }] });
+check('une fois la phase de jeu entamée, ma carte redevient visible pour moi', playingView.hand[0].kind, 'number');
+check(
+  'et je ne vois plus les cartes des autres via revealedCard (redevenu normal)',
+  playingView.players.every((p) => p.revealedCard === undefined),
+  true
+);
+
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

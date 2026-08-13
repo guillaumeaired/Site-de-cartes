@@ -278,6 +278,12 @@ function scoreboard(room) {
 function stateFor(room, p) {
   const inRound = room.phase === 'bidding' || room.phase === 'playing' || room.phase === 'power';
   const bidding = room.phase === 'bidding';
+  // Manche 1 (1 carte chacun) : l'annonce n'est pas un pari complètement à
+  // l'aveugle, elle se base sur ce qu'on voit des AUTRES - jamais sur sa
+  // propre carte, cachée jusqu'à ce qu'on la joue. Ne s'applique qu'à
+  // l'annonce : une fois la phase de jeu entamée, chacun pose sa carte à
+  // son tour et elle devient visible normalement pour tout le monde.
+  const blindRound1 = bidding && roundNumber(room) === 1;
   const base = {
     phase: room.phase,
     myId: p.id,
@@ -294,6 +300,7 @@ function stateFor(room, p) {
       // phase d'annonce ; une fois révélées (phase 'playing' et après),
       // elles sont toutes visibles d'un coup, jamais avant.
       bid: room.bids && (!bidding || pp.id === p.id) ? room.bids[pp.id] : undefined,
+      revealedCard: blindRound1 && pp.id !== p.id && pp.hand && pp.hand[0] ? pp.hand[0] : undefined,
     })),
     dealerId: room.players[room.dealerIndex] && room.players[room.dealerIndex].id,
     // Qui mène/mènera le pli en cours (fixé dès la donne, avant même
@@ -308,7 +315,10 @@ function stateFor(room, p) {
   };
 
   if (inRound) {
-    base.hand = p.hand;
+    // Sa propre carte reste cachée pendant l'annonce de la manche 1 : un
+    // repère de dos de carte (même id, aucune autre info) plutôt que
+    // simplement l'omettre, pour que la main ne paraisse pas vide.
+    base.hand = blindRound1 ? p.hand.map((c) => ({ id: c.id, kind: 'hidden' })) : p.hand;
     base.myBid = room.bids ? room.bids[p.id] : undefined;
   }
   if (room.phase === 'playing' || room.phase === 'power') {
