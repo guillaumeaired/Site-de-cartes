@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maquette — Rami horizontal (V3)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* =========================================================
+       MAQUETTE V3 — Rami en paysage (ordinateur).
+       Changements demandés depuis la V2 :
+         · plus de glisser-déposer → tout se fait au CLIC
+           (on sélectionne des cartes, puis on clique la cible)
+         · vraies faces de cartes à jouer classiques (pips)
+       Autonome : aucune dépendance à rami.css / rami.js,
+       fausses données, aucun socket. Le jeu réel ne risque rien.
+       ========================================================= */
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #fff;
+      background:
+        repeating-linear-gradient(45deg, rgba(255,255,255,.015) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgba(255,255,255,.015) 0 1px, transparent 1px 4px),
+        radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,.6) 100%),
+        radial-gradient(circle at 50% 18%, #10b981 0%, transparent 60%),
+        linear-gradient(160deg, #065f46, #01201a);
+    }
+
+    .v2-app { height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; }
+
+    /* ================= BARRE DU HAUT ================= */
+    .v2-topbar {
+      display: flex; align-items: center; gap: 16px; padding: 7px 18px;
+      background: rgba(0,0,0,.3); border-bottom: 2px solid rgba(255,255,255,.07);
+    }
+    .v2-quit {
+      background: none; border: none; cursor: pointer; color: #fff; opacity: .7;
+      font: inherit; font-size: .85rem; padding: 4px 8px; border-radius: 8px;
+    }
+    .v2-quit:hover { opacity: 1; background: #ffffff14; }
+    .v2-brand {
+      font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 1.15rem;
+      color: #facc15; display: flex; align-items: center; gap: 6px;
+      text-shadow: 0 2px 0 rgba(0,0,0,.4);
+    }
+    .v2-brand .s-red { color: #f87171; }
+    .v2-scores { display: flex; gap: 8px; margin-left: auto; }
+    .v2-score {
+      display: flex; align-items: baseline; gap: 6px; padding: 4px 13px; border-radius: 999px;
+      background: #ffffff10; border: 2px solid #ffffff20; font-size: .76rem; font-weight: 600;
+    }
+    .v2-score b { font-size: .95rem; font-weight: 800; color: #facc15; }
+    .v2-score--me { background: #facc1520; border-color: #facc1560; }
+    .v2-turn {
+      font-weight: 800; font-size: .85rem; padding: 5px 14px; border-radius: 999px;
+      white-space: nowrap; color: #052e1b; background: #4ade80; border: 2px solid #1a1208;
+    }
+
+    /* ================= TAPIS ================= */
+    .v2-table-wrap {
+      display: flex; align-items: stretch; justify-content: center;
+      padding: 12px 22px 6px; min-height: 0;
+    }
+    .v2-table {
+      flex: 1; max-width: 1500px; min-height: 0;
+      display: grid; grid-template-rows: auto auto minmax(0,1fr) auto;
+      gap: 6px; padding: 10px 26px 14px; border-radius: 130px / 52px;
+      background:
+        radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.075), transparent 66%),
+        linear-gradient(175deg, rgba(6,95,70,.6), rgba(2,44,34,.6));
+      border: 3px solid rgba(0,0,0,.45);
+      box-shadow:
+        inset 0 0 70px rgba(0,0,0,.4), inset 0 0 0 3px rgba(74,222,128,.5),
+        0 0 40px rgba(74,222,128,.18), 0 8px 26px rgba(0,0,0,.35);
+    }
+
+    .v2-seat { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .v2-avatar {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+      background: radial-gradient(circle at 35% 30%, #34d399, #065f46);
+      border: 2.5px solid #1a1208; box-shadow: 0 3px 0 rgba(0,0,0,.4);
+    }
+    .v2-seat-info { display: flex; flex-direction: column; gap: 1px; }
+    .v2-seat-name { font-weight: 800; font-size: .88rem; }
+    .v2-seat-sub { font-size: .68rem; opacity: .6; }
+    .v2-backs { display: flex; align-items: flex-start; padding-left: 10px; }
+    .v2-back {
+      width: 28px; height: 40px; margin-left: -15px; border-radius: 5px;
+      border: 2px solid #1a1208; transform-origin: bottom center;
+      background:
+        repeating-linear-gradient(45deg, transparent 0 4px, #00000026 4px 5px),
+        repeating-linear-gradient(-45deg, transparent 0 4px, #00000026 4px 5px),
+        #14532d;
+      box-shadow: 1px 2px 0 rgba(0,0,0,.3);
+    }
+
+    /* ---- Zones de combinaisons ---- */
+    .v2-zone {
+      position: relative; min-height: 96px; display: flex; flex-direction: column;
+      border-radius: 14px; background: rgba(0,0,0,.16); border: 1px solid rgba(255,255,255,.06);
+    }
+    .v2-zone-label {
+      position: absolute; top: 5px; left: 14px; font-size: .56rem; text-transform: uppercase;
+      letter-spacing: 1.4px; opacity: .38; font-weight: 800; pointer-events: none;
+    }
+    .v2-melds {
+      flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap;
+      justify-content: center; align-content: center; gap: 10px; padding: 16px 10px 8px;
+    }
+    .v2-melds-empty { font-size: .76rem; opacity: .28; font-style: italic; }
+
+    .v2-meld {
+      display: flex; padding: 5px 7px; border-radius: 11px;
+      background: #00000030; border: 2px solid transparent; transition: all .15s;
+    }
+    /* Cible cliquable : n'apparaît QUE si la sélection courante peut y aller */
+    .v2-meld.is-target {
+      cursor: pointer; border-color: #4ade80; background: #4ade8022;
+      animation: targetPulse 1.5s ease-in-out infinite;
+    }
+    .v2-meld.is-target:hover { background: #4ade8038; transform: translateY(-3px); }
+    @keyframes targetPulse {
+      0%,100% { box-shadow: 0 0 0 0 #4ade8000; }
+      50%     { box-shadow: 0 0 0 6px #4ade8026; }
+    }
+
+    /* ---- Centre ---- */
+    .v2-center { display: flex; align-items: center; gap: 16px; padding: 2px 0; }
+    .v2-pile-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .v2-pile-block--discard { flex: 1; min-width: 0; }
+    .v2-pile-label { font-size: .6rem; text-transform: uppercase; letter-spacing: 1.2px; opacity: .55; text-align: center; }
+    .v2-deck {
+      width: 78px; height: 112px; border-radius: 10px; cursor: pointer; border: 3px solid #1a1208;
+      background:
+        repeating-linear-gradient(45deg, transparent 0 5px, #00000026 5px 6px),
+        repeating-linear-gradient(-45deg, transparent 0 5px, #00000026 5px 6px),
+        #14532d;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.42);
+      display: flex; align-items: flex-end; justify-content: center; padding-bottom: 7px;
+      font-weight: 800; color: #facc15; font-size: .92rem; transition: transform .15s;
+    }
+    .v2-deck:hover { transform: translateY(-4px); }
+    .v2-deck.is-active { animation: deckPulse 1.7s ease-in-out infinite; }
+    @keyframes deckPulse {
+      0%,100% { box-shadow: 3px 3px 0 rgba(0,0,0,.42), 0 0 0 0 #facc1500; }
+      50%     { box-shadow: 3px 3px 0 rgba(0,0,0,.42), 0 0 0 8px #facc1530; }
+    }
+
+    .v2-discard {
+      display: flex; align-items: center; width: 100%; overflow-x: auto;
+      min-height: 118px; padding: 8px 14px; border-radius: 14px;
+      background: #00000030; border: 2px solid #ffffff2e; transition: all .15s;
+    }
+    .v2-discard.is-target {
+      cursor: pointer; border-color: #f87171; background: #f8717120;
+      animation: discardPulse 1.5s ease-in-out infinite;
+    }
+    .v2-discard.is-target:hover { background: #f8717133; }
+    @keyframes discardPulse {
+      0%,100% { box-shadow: 0 0 0 0 #f8717100; }
+      50%     { box-shadow: 0 0 0 6px #f8717126; }
+    }
+
+    .v2-dropzone {
+      display: flex; align-items: center; justify-content: center; text-align: center;
+      min-width: 200px; padding: 16px 20px; border-radius: 14px;
+      border: 2px dashed #ffffff30; color: #ffffff70; font-size: .76rem; font-weight: 600;
+      transition: all .15s;
+    }
+    .v2-dropzone.is-target {
+      cursor: pointer; border-color: #4ade80; color: #4ade80; background: #4ade801a;
+      animation: targetPulse 1.5s ease-in-out infinite;
+    }
+    .v2-dropzone.is-target:hover { background: #4ade8030; transform: scale(1.03); }
+
+    /* =========================================================
+       CARTES À JOUER CLASSIQUES
+       Index en coin (haut-gauche + bas-droite pivoté à 180°),
+       pips disposés selon les arrangements traditionnels,
+       As orné, figures V/D/R dans un cadre.
+       ========================================================= */
+    .card {
+      position: relative; border-radius: 9px; flex-shrink: 0;
+      background: linear-gradient(160deg, #fffefb 0%, #fdf6e3 100%);
+      border: 2px solid #1a1208; box-shadow: 2px 2px 0 rgba(0,0,0,.32);
+      overflow: hidden;
+    }
+    /* Fin liseré intérieur : détail typique des vraies cartes */
+    .card::after {
+      content: ''; position: absolute; inset: 3px; border-radius: 5px;
+      border: 1px solid currentColor; opacity: .16; pointer-events: none;
+    }
+    .card.red { color: #d40f2e; }
+    .card.black { color: #14110d; }
+
+    .idx {
+      position: absolute; display: flex; flex-direction: column; align-items: center;
+      line-height: .88; font-weight: 800; z-index: 2;
+    }
+    .idx--tl { top: 4.5%; left: 6%; }
+    .idx--br { bottom: 4.5%; right: 6%; transform: rotate(180deg); }
+    .idx-r { font-size: var(--idx); letter-spacing: -.04em; }
+    .idx-s { font-size: calc(var(--idx) * .86); margin-top: .04em; }
+
+    /* Champ central où sont placés les pips */
+    .pips { position: absolute; inset: 15% 26%; }
+    .pip {
+      position: absolute; transform: translate(-50%,-50%);
+      font-size: var(--pip); line-height: 1;
+    }
+    .pip.dn { transform: translate(-50%,-50%) rotate(180deg); }
+
+    /* As : un seul grand pip central, comme sur une vraie carte */
+    .ace {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .ace span { font-size: calc(var(--pip) * 2.9); line-height: 1; }
+
+    /* Figures : cadre + lettre encadrée de deux pips miroir, dans l'esprit
+       des cartes françaises (la carte se lit dans les deux sens). */
+    .court {
+      position: absolute; inset: 13% 20%; border-radius: 4px;
+      border: 1.5px solid currentColor;
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      padding: .18em 0; background: rgba(212,15,46,.04);
+    }
+    .card.black .court { background: rgba(20,17,13,.04); }
+    .court-l { font-size: calc(var(--pip) * 1.75); font-weight: 800; line-height: 1; letter-spacing: -.05em; }
+    .court-s { font-size: calc(var(--pip) * .95); line-height: 1; }
+    .court-s.dn { transform: rotate(180deg); }
+
+    /* --- Tailles selon le contexte (pip ≈ 16 % de la hauteur de carte) --- */
+    .card--hand    { width: 94px; height: 136px; --idx: 15px; --pip: 22px; }
+    .card--discard { width: 68px; height: 98px;  --idx: 11px; --pip: 16px; }
+    .card--meld    { width: 52px; height: 75px;  --idx: 9px;  --pip: 12px; }
+
+    /* ================= BAS ================= */
+    .v2-bottom { padding: 0 22px 8px; }
+    .v2-readout {
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+      min-height: 34px; margin-bottom: 4px;
+    }
+    .v2-combo {
+      display: flex; align-items: center; gap: 9px; padding: 5px 15px; border-radius: 999px;
+      font-size: .8rem; font-weight: 700; border: 2px solid transparent; transition: all .2s;
+    }
+    .v2-combo--ok { background: #4ade8020; border-color: #4ade8070; color: #86efac; }
+    .v2-combo--ko { background: #f8717118; border-color: #f8717155; color: #fca5a5; }
+    .v2-combo--idle { opacity: .45; font-weight: 600; }
+    .v2-combo b { font-size: .9rem; color: #facc15; }
+    .v2-opening { display: flex; align-items: center; gap: 9px; font-size: .74rem; font-weight: 700; }
+    .v2-bar { width: 128px; height: 9px; border-radius: 999px; overflow: hidden; background: #00000055; border: 2px solid #ffffff26; }
+    .v2-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg,#facc15,#4ade80); transition: width .35s cubic-bezier(.34,1.56,.64,1); }
+    .v2-opening.is-done { color: #86efac; }
+
+    .v2-actionbar {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: fit-content; margin: 0 auto; padding: 7px 12px; border-radius: 999px;
+      background: rgba(3,32,22,.85); border: 2px solid #1a1208;
+      box-shadow: 0 5px 0 rgba(0,0,0,.38), 0 0 0 2px #F5C24C4d; position: relative; z-index: 5;
+    }
+    .v2-btn {
+      font: inherit; font-size: .79rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+      padding: 7px 14px; border-radius: 999px; border: 2px solid #ffffff28;
+      background: #ffffff12; color: #fff; transition: all .15s;
+    }
+    .v2-btn:hover:not(:disabled) { background: #ffffff26; transform: translateY(-1px); }
+    .v2-btn:disabled { opacity: .32; cursor: not-allowed; }
+    .v2-btn--go { background: #facc15; border-color: #1a1208; color: #1a1208; }
+    .v2-btn--go:hover:not(:disabled) { background: #fde047; }
+    .v2-btn--danger { background: #ef444438; border-color: #ef44448c; }
+    .v2-sep { width: 2px; height: 20px; background: #ffffff1c; border-radius: 2px; }
+    .v2-hint { font-size: .7rem; opacity: .55; padding-left: 4px; }
+
+    .v2-hand { display: flex; align-items: flex-end; justify-content: center; padding-top: 12px; min-height: 150px; }
+    .v2-arc { transform-origin: bottom center; margin-left: -32px; flex-shrink: 0; }
+    .v2-arc:first-child { margin-left: 0; }
+    .card--hand { cursor: pointer; transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .2s; }
+    .card--hand:hover { transform: translateY(-20px) scale(1.06); z-index: 4; }
+    .card--hand.is-selected {
+      transform: translateY(-24px) scale(1.06);
+      box-shadow: 0 0 0 3px #facc15, 2px 2px 0 rgba(0,0,0,.32); z-index: 5;
+    }
+    .card--hand.is-playable::before {
+      content: '↑'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+      width: 20px; height: 20px; border-radius: 50%; background: #4ade80; color: #052e1b;
+      font-size: .72rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+      border: 2px solid #1a1208; z-index: 6;
+    }
+
+    .v2-flag {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 99;
+      padding: 3px 14px; font-size: .64rem; font-weight: 800; letter-spacing: 1px;
+      text-transform: uppercase; background: #facc15; color: #1a1208; border-radius: 0 0 10px 10px;
+    }
+    .v2-toosmall { display: none; }
+    @media (max-width: 900px) {
+      .v2-app { display: none; }
+      .v2-toosmall {
+        display: flex; height: 100dvh; align-items: center; justify-content: center;
+        padding: 32px; text-align: center; font-weight: 600; line-height: 1.6;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="v2-flag">Maquette V3 — non branchée</div>
+  <div class="v2-toosmall">
+    Cette maquette paysage est prévue pour un écran d'ordinateur.<br />
+    Sur téléphone, le jeu gardera sa mise en page verticale actuelle.
+  </div>
+
+  <div class="v2-app">
+    <header class="v2-topbar">
+      <button class="v2-quit">← Quitter</button>
+      <div class="v2-brand"><span>♣</span>Rami<span class="s-red">♦</span></div>
+      <div class="v2-scores">
+        <span class="v2-score v2-score--me">Moi <b id="sc-me">0</b></span>
+        <span class="v2-score">Mams <b>12</b></span>
+      </div>
+      <div class="v2-turn" id="turn">🟢 À toi de jouer</div>
+    </header>
+
+    <div class="v2-table-wrap">
+      <main class="v2-table">
+        <div class="v2-seat">
+          <div class="v2-avatar">🎭</div>
+          <div class="v2-seat-info">
+            <span class="v2-seat-name">Mams</span>
+            <span class="v2-seat-sub">7 cartes en main</span>
+          </div>
+          <div class="v2-backs" id="backs"></div>
+        </div>
+
+        <section class="v2-zone">
+          <span class="v2-zone-label">Combinaisons de Mams</span>
+          <div class="v2-melds" id="melds-opp"></div>
+        </section>
+
+        <div class="v2-center">
+          <div class="v2-pile-block">
+            <div class="v2-deck" id="deck">32</div>
+            <span class="v2-pile-label">Pioche</span>
+          </div>
+          <div class="v2-pile-block v2-pile-block--discard">
+            <div class="v2-discard" id="discard"></div>
+            <span class="v2-pile-label" id="discard-label">Défausse</span>
+          </div>
+        </div>
+
+        <section class="v2-zone">
+          <span class="v2-zone-label">Mes combinaisons</span>
+          <div class="v2-melds" id="melds-mine"></div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="v2-bottom">
+      <div class="v2-readout">
+        <div class="v2-combo v2-combo--idle" id="combo">Clique des cartes pour voir ce qu'elles valent</div>
+        <div class="v2-opening" id="opening">
+          <span id="opening-txt">Ouverture 0/30</span>
+          <div class="v2-bar"><span id="opening-bar" style="width:0%"></span></div>
+        </div>
+      </div>
+      <div class="v2-actionbar" id="actionbar"></div>
+      <div class="v2-hand" id="hand"></div>
+    </footer>
+  </div>
+
+  <script>
+    /* ================= Données de démonstration ================= */
+    const SYM = { coeur:'♥', carreau:'♦', trefle:'♣', pique:'♠' };
+    const RED = new Set(['coeur','carreau']);
+    const ORDER = ['A','2','3','4','5','6','7','8','9','10','V','D','R'];
+
+    let hand = [
+      { id:'h1', rank:'8',  suit:'coeur' },
+      { id:'h2', rank:'9',  suit:'coeur' },
+      { id:'h3', rank:'10', suit:'coeur' },
+      { id:'h4', rank:'R',  suit:'pique' },
+      { id:'h5', rank:'R',  suit:'trefle' },
+      { id:'h6', rank:'R',  suit:'carreau' },
+      { id:'h7', rank:'A',  suit:'trefle' },
+      { id:'h8', rank:'5',  suit:'carreau' },
+    ];
+    let discard = [
+      { id:'d1', rank:'D', suit:'carreau' }, { id:'d2', rank:'7', suit:'trefle' },
+      { id:'d3', rank:'6', suit:'carreau' }, { id:'d4', rank:'2', suit:'coeur' },
+      { id:'d5', rank:'10',suit:'pique' },   { id:'d6', rank:'4', suit:'pique' },
+    ];
+    const meldsOpp  = [[{rank:'4',suit:'pique'},{rank:'5',suit:'pique'},{rank:'6',suit:'pique'}]];
+    const meldsMine = [];
+
+    let selected = new Set();
+    let phase = 'JEU';
+    let hasOpened = false;
+    let myScore = 0;
+
+    /* ================= Règles (simplifiées, pour la démo) ================= */
+    const val = (r) => (r === 'A' ? 15 : ['V','D','R'].includes(r) ? 10 : Number(r));
+
+    function evaluate(cards) {
+      if (cards.length < 3) return { valid:false, msg:'Il faut au moins 3 cartes' };
+      const ranks = new Set(cards.map(c => c.rank));
+      const suits = new Set(cards.map(c => c.suit));
+      if (ranks.size === 1) {
+        if (suits.size !== cards.length) return { valid:false, msg:'Deux fois la même couleur' };
+        if (cards.length > 4) return { valid:false, msg:'4 cartes maximum' };
+        return { valid:true, type:'Brelan', pts: val(cards[0].rank) * cards.length };
+      }
+      if (suits.size === 1) {
+        const idx = cards.map(c => ORDER.indexOf(c.rank)).sort((a,b) => a-b);
+        for (let i = 1; i < idx.length; i++) if (idx[i] !== idx[i-1] + 1) return { valid:false, msg:'Suite non consécutive' };
+        return { valid:true, type:'Suite', pts: cards.reduce((s,c) => s + val(c.rank), 0) };
+      }
+      return { valid:false, msg:'Ni brelan ni suite' };
+    }
+
+    function extendsMeld(card, meld) {
+      const ranks = new Set(meld.map(c => c.rank));
+      const suits = new Set(meld.map(c => c.suit));
+      if (ranks.size === 1) return card.rank === meld[0].rank && !suits.has(card.suit) && meld.length < 4;
+      if (suits.size === 1 && card.suit === meld[0].suit) {
+        const idx = meld.map(c => ORDER.indexOf(c.rank)).sort((a,b)=>a-b);
+        const ci = ORDER.indexOf(card.rank);
+        return ci === idx[0]-1 || ci === idx[idx.length-1]+1;
+      }
+      return false;
+    }
+    const allMelds  = () => [...meldsOpp, ...meldsMine];
+    const isPlayable = (c) => hasOpened && allMelds().some(m => extendsMeld(c, m));
+    const sel = () => hand.filter(c => selected.has(c.id));
+
+    /* ================= Dessin des cartes classiques ================= */
+    /* Dispositions traditionnelles des pips : [x%, y%] dans le champ
+       central. Tout pip situé sous la moitié est pivoté à 180°, comme
+       sur une vraie carte. */
+    const PIPS = {
+      '2':  [[50,0],[50,100]],
+      '3':  [[50,0],[50,50],[50,100]],
+      '4':  [[0,0],[100,0],[0,100],[100,100]],
+      '5':  [[0,0],[100,0],[50,50],[0,100],[100,100]],
+      '6':  [[0,0],[100,0],[0,50],[100,50],[0,100],[100,100]],
+      '7':  [[0,0],[100,0],[50,25],[0,50],[100,50],[0,100],[100,100]],
+      '8':  [[0,0],[100,0],[50,25],[0,50],[100,50],[50,75],[0,100],[100,100]],
+      '9':  [[0,0],[100,0],[0,33],[100,33],[50,50],[0,67],[100,67],[0,100],[100,100]],
+      '10': [[0,0],[100,0],[0,33],[100,33],[50,17],[50,83],[0,67],[100,67],[0,100],[100,100]],
+    };
+
+    function cardHTML(c, variant) {
+      const s = SYM[c.suit];
+      const cls = RED.has(c.suit) ? 'red' : 'black';
+      let middle;
+      if (c.rank === 'A') {
+        middle = `<div class="ace"><span>${s}</span></div>`;
+      } else if (['V','D','R'].includes(c.rank)) {
+        middle = `<div class="court">
+            <span class="court-s">${s}</span>
+            <span class="court-l">${c.rank}</span>
+            <span class="court-s dn">${s}</span>
+          </div>`;
+      } else {
+        middle = `<div class="pips">${(PIPS[c.rank] || [])
+          .map(([x,y]) => `<span class="pip${y > 50 ? ' dn' : ''}" style="left:${x}%;top:${y}%">${s}</span>`)
+          .join('')}</div>`;
+      }
+      return `
+        <div class="card card--${variant} ${cls}">
+          <span class="idx idx--tl"><span class="idx-r">${c.rank}</span><span class="idx-s">${s}</span></span>
+          ${middle}
+          <span class="idx idx--br"><span class="idx-r">${c.rank}</span><span class="idx-s">${s}</span></span>
+        </div>`;
+    }
+
+    /* ================= Rendu ================= */
+    function renderBacks() {
+      const el = document.getElementById('backs');
+      el.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const b = document.createElement('div');
+        b.className = 'v2-back';
+        b.style.transform = `rotate(${-9 + i * 3}deg)`;
+        el.appendChild(b);
+      }
+    }
+
+    function renderMelds(el, melds, mine) {
+      el.innerHTML = '';
+      const picked = sel();
+      if (!melds.length && !mine) el.innerHTML = '<span class="v2-melds-empty">Aucune combinaison posée</span>';
+
+      melds.forEach((cards) => {
+        const m = document.createElement('div');
+        m.className = 'v2-meld';
+        m.innerHTML = cards.map(c => cardHTML(c, 'meld')).join('');
+        // CIBLE AU CLIC : seulement si la sélection peut réellement y aller
+        const can = hasOpened && picked.length === 1 && extendsMeld(picked[0], cards);
+        if (can) {
+          m.classList.add('is-target');
+          m.title = 'Cliquer pour compléter cette combinaison';
+          m.onclick = () => {
+            cards.push({ rank:picked[0].rank, suit:picked[0].suit });
+            myScore += val(picked[0].rank);
+            hand = hand.filter(x => x.id !== picked[0].id);
+            selected.clear();
+            renderAll();
+          };
+        }
+        el.appendChild(m);
+      });
+
+      if (mine) {
+        const r = picked.length ? evaluate(picked) : { valid:false };
+        const can = r.valid && (hasOpened || r.pts >= 30);
+        const dz = document.createElement('div');
+        dz.className = 'v2-dropzone' + (can ? ' is-target' : '');
+        dz.innerHTML = hasOpened
+          ? (can ? '🀄 Cliquer pour poser cette combinaison' : 'Sélectionne une combinaison valide')
+          : (can ? '🔓 Cliquer pour ouvrir' : '＋ Ouverture à 30 points minimum');
+        if (can) dz.onclick = layMeld;
+        el.appendChild(dz);
+      }
+    }
+
+    function renderDiscard() {
+      const el = document.getElementById('discard');
+      el.innerHTML = discard.map(c => cardHTML(c, 'discard')).join('');
+      const picked = sel();
+      const can = phase === 'JEU' && picked.length === 1;
+      el.classList.toggle('is-target', can);
+      el.onclick = can ? () => doDiscard(picked[0]) : null;
+      document.getElementById('discard-label').textContent = can
+        ? '↑ Cliquer la défausse pour y jeter la carte sélectionnée'
+        : 'Défausse';
+      el.scrollLeft = el.scrollWidth;
+    }
+
+    function renderHand() {
+      const el = document.getElementById('hand');
+      el.innerHTML = '';
+      const n = hand.length;
+      const spread = Math.min(5 * Math.max(n - 1, 0), 34);
+      const step = n > 1 ? spread / (n - 1) : 0;
+
+      hand.forEach((c, i) => {
+        const angle = n > 1 ? -spread/2 + i*step : 0;
+        const norm = n > 1 ? Math.abs(i - (n-1)/2) / ((n-1)/2) : 0;
+        const arc = document.createElement('div');
+        arc.className = 'v2-arc';
+        arc.style.transform = `rotate(${angle}deg) translateY(${norm*norm*14}px)`;
+        arc.innerHTML = cardHTML(c, 'hand');
+
+        const card = arc.firstElementChild;
+        if (selected.has(c.id)) card.classList.add('is-selected');
+        if (isPlayable(c)) card.classList.add('is-playable');
+        card.onclick = () => {
+          selected.has(c.id) ? selected.delete(c.id) : selected.add(c.id);
+          renderAll();
+        };
+        el.appendChild(arc);
+      });
+    }
+
+    function renderReadout() {
+      const box = document.getElementById('combo');
+      const picked = sel();
+      let pts = 0;
+      if (!picked.length) {
+        box.className = 'v2-combo v2-combo--idle';
+        box.textContent = 'Clique des cartes pour voir ce qu\'elles valent';
+      } else {
+        const r = evaluate(picked);
+        if (r.valid) {
+          pts = r.pts;
+          box.className = 'v2-combo v2-combo--ok';
+          box.innerHTML = `✓ ${r.type} de ${picked.length} cartes — <b>${r.pts} pts</b>`;
+        } else {
+          box.className = 'v2-combo v2-combo--ko';
+          box.textContent = `✕ ${r.msg}`;
+        }
+      }
+      const op = document.getElementById('opening');
+      if (hasOpened) {
+        op.classList.add('is-done');
+        document.getElementById('opening-txt').textContent = '✓ Ouvert';
+        document.getElementById('opening-bar').style.width = '100%';
+      } else {
+        op.classList.toggle('is-done', pts >= 30);
+        document.getElementById('opening-txt').textContent = `Ouverture ${pts}/30`;
+        document.getElementById('opening-bar').style.width = Math.min(100, pts/30*100) + '%';
+      }
+      document.getElementById('sc-me').textContent = myScore;
+    }
+
+    function renderActionBar() {
+      const bar = document.getElementById('actionbar');
+      const deck = document.getElementById('deck');
+      const turn = document.getElementById('turn');
+
+      if (phase === 'PIOCHE') {
+        deck.classList.add('is-active');
+        turn.textContent = '🟡 À toi de piocher';
+        bar.innerHTML = '<span class="v2-hint">Clique la pioche pour tirer une carte</span>';
+        return;
+      }
+      deck.classList.remove('is-active');
+      turn.textContent = '🟢 À toi de jouer';
+
+      const picked = sel();
+      const r = picked.length ? evaluate(picked) : { valid:false };
+      const canLay = r.valid && (hasOpened || r.pts >= 30);
+      bar.innerHTML = `
+        <button class="v2-btn" id="b-rank">🔢 Hauteur</button>
+        <button class="v2-btn" id="b-suit">🎨 Couleur</button>
+        <div class="v2-sep"></div>
+        <button class="v2-btn v2-btn--go" id="b-lay" ${canLay ? '' : 'disabled'}>
+          ${hasOpened ? '🀄 Poser' : '🔓 Ouvrir'}${picked.length ? ` (${picked.length})` : ''}
+        </button>
+        <button class="v2-btn v2-btn--danger" id="b-discard" ${picked.length === 1 ? '' : 'disabled'}>🗑️ Défausser</button>
+        ${picked.length ? '<button class="v2-btn" id="b-clear">✕</button>' : ''}
+        <span class="v2-hint">ou clique directement la cible sur le tapis</span>`;
+
+      document.getElementById('b-rank').onclick = () => { hand.sort((a,b)=>ORDER.indexOf(a.rank)-ORDER.indexOf(b.rank)); renderAll(); };
+      document.getElementById('b-suit').onclick = () => { hand.sort((a,b)=>a.suit.localeCompare(b.suit)||ORDER.indexOf(a.rank)-ORDER.indexOf(b.rank)); renderAll(); };
+      document.getElementById('b-lay').onclick = layMeld;
+      document.getElementById('b-discard').onclick = () => doDiscard(sel()[0]);
+      const clr = document.getElementById('b-clear');
+      if (clr) clr.onclick = () => { selected.clear(); renderAll(); };
+    }
+
+    /* ================= Actions ================= */
+    function layMeld() {
+      const picked = sel();
+      const r = evaluate(picked);
+      if (!r.valid || (!hasOpened && r.pts < 30)) return;
+      meldsMine.push(picked.map(c => ({ rank:c.rank, suit:c.suit })));
+      myScore += r.pts;
+      hand = hand.filter(c => !selected.has(c.id));
+      selected.clear();
+      hasOpened = true;
+      renderAll();
+    }
+
+    function doDiscard(card) {
+      if (!card) return;
+      discard.push({ id:'x'+Date.now(), rank:card.rank, suit:card.suit });
+      hand = hand.filter(c => c.id !== card.id);
+      selected.clear();
+      phase = 'PIOCHE';
+      renderAll();
+    }
+
+    document.getElementById('deck').onclick = () => {
+      if (phase !== 'PIOCHE') return;
+      const pool = [{rank:'V',suit:'coeur'},{rank:'7',suit:'coeur'},{rank:'3',suit:'pique'},{rank:'R',suit:'coeur'}];
+      hand.push({ id:'n'+Date.now(), ...pool[Math.floor(Math.random()*pool.length)] });
+      phase = 'JEU';
+      renderAll();
+    };
+
+    function renderAll() {
+      renderBacks();
+      renderMelds(document.getElementById('melds-opp'), meldsOpp, false);
+      renderMelds(document.getElementById('melds-mine'), meldsMine, true);
+      renderDiscard();
+      renderHand();
+      renderReadout();
+      renderActionBar();
+    }
+    renderAll();
+  </script>
+</body>
+</html>
