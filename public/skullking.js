@@ -464,7 +464,40 @@ const SEAT_POSITIONS = {
   5: [[50, 90], [7, 60], [24, 16], [76, 16], [93, 60]],
   6: [[50, 90], [6, 64], [16, 25], [50, 9], [84, 25], [94, 64]],
   7: [[50, 90], [6, 66], [13, 32], [34, 11], [66, 11], [87, 32], [94, 66]],
+  // 8 et 9 joueurs : configurations légitimes dès que l'extension officielle
+  // est activée (MAX_PLAYERS_EXTENDED = 9 côté serveur). Valeurs issues de
+  // computeSeatPositions() ci-dessous, figées ici pour rester lisibles.
+  8: [[50, 90], [10, 66], [7, 40], [23, 19], [50, 10], [77, 19], [93, 40], [90, 66]],
+  9: [[50, 90], [10, 66], [7, 44], [17, 24], [38, 12], [62, 12], [83, 24], [93, 44], [90, 66]],
 };
+
+// Répartition sur une ellipse (centre 50/50, rayons 44/40 en % de la table) :
+// moi toujours en bas au centre [50, 90], les autres étalés symétriquement de
+// part et d'autre en laissant un large écart en bas pour ma propre main.
+// Sert de calcul de repli : renvoie toujours exactement `count` positions,
+// donc aucun siège ne peut se retrouver sans position, quel que soit l'effectif.
+const SEAT_ELLIPSE = { cx: 50, cy: 50, rx: 44, ry: 40, startDeg: 66 };
+
+function computeSeatPositions(count) {
+  const { cx, cy, rx, ry, startDeg } = SEAT_ELLIPSE;
+  const n = Math.max(1, count);
+  const positions = [[cx, cy + ry]]; // moi, en bas au centre
+  const others = n - 1;
+  if (others > 0) {
+    // On balaie l'arc startDeg → (360 - startDeg) dans le sens anti-horaire
+    // (donc le voisin suivant apparaît à ma gauche, comme dans les tables ci-dessus).
+    const span = 360 - 2 * startDeg;
+    const step = others > 1 ? span / (others - 1) : 0;
+    for (let i = 0; i < others; i++) {
+      const angle = ((others > 1 ? startDeg + i * step : 180) * Math.PI) / 180;
+      positions.push([
+        Math.round(cx - rx * Math.sin(angle)),
+        Math.round(cy + ry * Math.cos(angle)),
+      ]);
+    }
+  }
+  return positions;
+}
 
 function seatOrder(players) {
   const myIndex = players.findIndex((p) => p.id === myId);
@@ -479,7 +512,11 @@ function nicknameOf(state, id) {
 
 function seatLayout(state) {
   const ordered = seatOrder(state.players);
-  const positions = SEAT_POSITIONS[ordered.length] || SEAT_POSITIONS[4];
+  const tuned = SEAT_POSITIONS[ordered.length];
+  // On ne garde la table figée que si elle couvre vraiment tout le monde ;
+  // sinon on calcule, jamais de repli partiel (source du TypeError à 8/9 joueurs).
+  const positions =
+    tuned && tuned.length === ordered.length ? tuned : computeSeatPositions(ordered.length);
   const map = new Map();
   ordered.forEach((p, i) => map.set(p.id, positions[i]));
   return { ordered, map };
