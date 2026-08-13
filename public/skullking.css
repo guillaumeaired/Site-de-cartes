@@ -1298,3 +1298,78 @@ h1 {
     margin-left: -26px;
   }
 }
+
+/* =========================================================
+   MISE EN PAGE PAYSAGE — écran de jeu uniquement, ≥1000px.
+   Reprend l'architecture validée sur la maquette skullking-v2.html :
+   barre du haut fine, table pleine hauteur + panneau de scores à
+   droite, barre d'actions + main groupées en bas, zéro défilement
+   de page (seules les zones trop remplies défilent dans leur cadre).
+   Scopé via :has() à .sk-app quand l'écran de jeu est affiché : les
+   autres écrans (accueil, salon, fin) gardent leur colonne étroite
+   habituelle. En dessous de 1000px, ou sur un navigateur sans :has(),
+   rien ne change : la mise en page verticale actuelle reste la
+   référence mobile, aucun risque de régression. */
+@media (min-width: 1000px) {
+  .app.sk-app:has(#sk-screen-game:not(.hidden)) {
+    max-width: 1500px;
+    width: 100%;
+    height: 100dvh;
+    padding: 10px 26px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #sk-screen-game {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 6px;
+  }
+
+  .sk-game-header {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sk-play-area {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .sk-table {
+    height: auto;
+  }
+
+  .sk-scoreboard {
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .sk-scoreboard-rows {
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .sk-hand {
+    flex-shrink: 0;
+    min-height: 158px;
+  }
+
+  .sk-hand .sk-card {
+    width: 92px;
+    height: 134px;
+    font-size: 1.55rem;
+  }
+
+  .sk-seat {
+    width: 104px;
+  }
+}
