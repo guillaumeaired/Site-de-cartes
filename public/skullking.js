@@ -894,6 +894,15 @@ document.getElementById('sk-btn-declare-14').addEventListener('click', () => {
 let willDiscardSelection = new Set();
 let willConfirmBtn = null;
 
+// Pouvoir de Juanita Jade : les cartes sont retournées une à une par le
+// joueur (survol ou tap), pas révélées d'un coup avec un minuteur fixe -
+// sans ça il n'y avait pas le temps de toutes les lire. juanitaSessionKey
+// identifie l'instance en cours (les ids de cartes changent à chaque
+// déclenchement, jamais réutilisés) pour repartir de zéro à chaque fois.
+let juanitaSessionKey = null;
+let juanitaFlipped = new Set();
+let juanitaDoneTimer = null;
+
 function updateWillConfirmButton() {
   if (!willConfirmBtn) return;
   willConfirmBtn.textContent = `Défausser (${willDiscardSelection.size}/2 choisies)`;
@@ -905,6 +914,7 @@ function renderHand(state) {
   const hand = sortHandForDisplay(state.hand || []);
   const canPlay = state.phase === 'playing' && state.isMyTurn;
   const willMode = state.phase === 'power' && state.pendingPower && state.pendingPower.kind === 'will' && state.pendingPower.mine;
+  const willDrawnIds = willMode ? new Set(state.pendingPower.drawnCardIds || []) : null;
   const trick = state.currentTrick || [];
 
   const n = hand.length;
@@ -934,6 +944,9 @@ function renderHand(state) {
         : 'Tu dois suivre la couleur demandée : cette carte est bloquée tant que tu en as une en main.';
     }
     if (willMode) {
+      // Repère les deux cartes tout juste piochées au milieu du reste de la
+      // main - sans ça, rien ne les distingue une fois mêlées à l'éventail.
+      if (willDrawnIds.has(card.id)) el.classList.add('sk-card--will-drawn');
       if (willDiscardSelection.has(card.id)) el.classList.add('sk-card--selected');
       el.addEventListener('click', () => {
         if (willDiscardSelection.has(card.id)) willDiscardSelection.delete(card.id);
@@ -1089,7 +1102,15 @@ function renderPower(state) {
   const pending = state.pendingPower;
   if (state.phase !== 'power' || !pending) {
     willDiscardSelection.clear();
+    juanitaSessionKey = null;
+    juanitaFlipped.clear();
+    clearTimeout(juanitaDoneTimer);
     return;
+  }
+  if (pending.kind !== 'juanita') {
+    juanitaSessionKey = null;
+    juanitaFlipped.clear();
+    clearTimeout(juanitaDoneTimer);
   }
 
   powerBanner.textContent = `🏴‍☠️ ${nicknameOf(state, pending.playerId)} déclenche le pouvoir de ${POWER_LABEL[pending.kind]} !`;
@@ -1145,19 +1166,62 @@ function renderPower(state) {
       powerPanel.appendChild(btn);
     });
   } else if (pending.kind === 'juanita') {
-    hint.textContent = 'Cartes non distribuées ce tour-ci :';
+    const cards = pending.revealCards || [];
+    const key = cards.map((c) => c.id).join(',');
+    if (juanitaSessionKey !== key) {
+      juanitaSessionKey = key;
+      juanitaFlipped.clear();
+      clearTimeout(juanitaDoneTimer);
+    }
+    hint.textContent = `Cartes non distribuées ce tour-ci — survole (ou touche) chacune pour la retourner (${juanitaFlipped.size}/${cards.length}).`;
     const row = document.createElement('div');
-    row.className = 'sk-hand';
-    (pending.revealCards || []).forEach((card) => {
-      const el = document.createElement('div');
-      el.className = `sk-card ${cardClass(card)}`;
-      el.innerHTML = cardFaceHTML(card);
-      attachPowerTooltip(el, card);
-      row.appendChild(el);
+    row.className = 'sk-hand sk-juanita-row';
+    cards.forEach((card) => {
+      const flip = document.createElement('div');
+      flip.className = 'sk-flip-card' + (juanitaFlipped.has(card.id) ? ' sk-flip-card--flipped' : '');
+      const inner = document.createElement('div');
+      inner.className = 'sk-flip-card-inner';
+      const back = document.createElement('div');
+      back.className = 'sk-flip-card-face sk-flip-card-back';
+      const front = document.createElement('div');
+      front.className = `sk-flip-card-face sk-card ${cardClass(card)}`;
+      front.innerHTML = cardFaceHTML(card);
+      attachPowerTooltip(front, card);
+      inner.appendChild(back);
+      inner.appendChild(front);
+      flip.appendChild(inner);
+      const reveal = () => {
+        if (juanitaFlipped.has(card.id)) return;
+        juanitaFlipped.add(card.id);
+        flip.classList.add('sk-flip-card--flipped');
+        hint.textContent = `Cartes non distribuées ce tour-ci — survole (ou touche) chacune pour la retourner (${juanitaFlipped.size}/${cards.length}).`;
+        if (juanitaFlipped.size === cards.length) {
+          hint.textContent = 'Toutes retournées — la partie reprend dans un instant…';
+          clearTimeout(juanitaDoneTimer);
+          juanitaDoneTimer = setTimeout(() => socket.emit('skullking-power-juanita-done'), 2000);
+        }
+      };
+      flip.addEventListener('mouseenter', reveal);
+      flip.addEventListener('click', reveal);
+      row.appendChild(flip);
     });
     powerPanel.appendChild(row);
   } else if (pending.kind === 'will') {
-    hint.textContent = 'Les 2 cartes piochées sont dans ta main : choisis 2 cartes à défausser ci-dessous.';
+    hint.textContent = 'Tu piochais 2 cartes non distribuées, les voici — elles ont rejoint ta main. Choisis 2 cartes à défausser ci-dessous (parmi toute ta main, pas forcément celles-ci).';
+    const drawnIds = new Set(pending.drawnCardIds || []);
+    const drawnRow = document.createElement('div');
+    drawnRow.className = 'sk-hand sk-will-drawn-row';
+    (state.hand || [])
+      .filter((card) => drawnIds.has(card.id))
+      .forEach((card) => {
+        const el = document.createElement('div');
+        el.className = `sk-card sk-card--will-drawn ${cardClass(card)}`;
+        el.innerHTML = cardFaceHTML(card);
+        attachPowerTooltip(el, card);
+        drawnRow.appendChild(el);
+      });
+    powerPanel.appendChild(drawnRow);
+
     const confirmBtn = document.createElement('button');
     confirmBtn.className = 'btn';
     confirmBtn.disabled = true;

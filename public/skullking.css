@@ -940,6 +940,54 @@ h1 {
   margin: 2px;
 }
 
+/* --- Pouvoir de Juanita Jade : cartes retournées une à une, au survol ou au
+   tap - pas de minuteur imposé, le rythme est donné par le joueur lui-même. --- */
+.sk-juanita-row {
+  gap: 10px;
+  min-height: 0;
+  padding: 6px 0 4px;
+  flex-wrap: wrap;
+}
+
+.sk-flip-card {
+  position: relative;
+  width: 82px;
+  height: 120px;
+  flex-shrink: 0;
+  cursor: pointer;
+  perspective: 600px;
+}
+
+.sk-flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sk-flip-card--flipped .sk-flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.sk-flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.sk-flip-card-back {
+  border-radius: 12px;
+  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
+  border: 3px solid #1a1208;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sk-flip-card-face.sk-card {
+  transform: rotateY(180deg);
+  cursor: default;
+}
+
 .sk-hand {
   display: flex;
   justify-content: center;
@@ -1007,6 +1055,29 @@ h1 {
   border-color: #facc15;
   box-shadow: 0 0 0 3px #facc1599, 3px 3px 0 rgba(0, 0, 0, 0.35);
   z-index: 3;
+}
+
+/* Les deux cartes tout juste piochées par Will le Bandit : un liseré discret
+   dans la main (pour les repérer sans les confondre avec la sélection de
+   défausse ci-dessus, en bleu plutôt qu'en doré), et un aperçu séparé dans le
+   panneau du pouvoir - la vraie "popup" demandée, avant même de choisir quoi
+   défausser. */
+.sk-card--will-drawn {
+  box-shadow: 0 0 0 2px #38bdf8aa, 3px 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sk-will-drawn-row {
+  padding: 6px 0 10px;
+  min-height: 0;
+}
+
+.sk-will-drawn-row .sk-card {
+  cursor: default;
+  animation: sk-card-drop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sk-will-drawn-row .sk-card:hover {
+  transform: none;
 }
 
 /* Cartes numérotées : fond en couleur pleine selon la famille

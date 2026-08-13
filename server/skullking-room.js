@@ -29,7 +29,11 @@ const { recordGameStarted } = require('./play-counts');
 // avant de considérer le joueur vraiment parti.
 const DISCONNECT_GRACE_MS = 45_000;
 const TRICK_REVEAL_MS = 2_600;
-const POWER_REVEAL_MS = 3_500; // temps laissé à Juanita pour lire les cartes non distribuées
+// Filet de sécurité si le joueur n'interagit jamais (déconnexion, inactivité) -
+// pas la vraie limite de lecture : celle-ci est maintenant pilotée par le
+// client lui-même (skullking-power-juanita-done), déclenchée une fois toutes
+// les cartes retournées + une pause de lecture.
+const POWER_REVEAL_MS = 25_000;
 const ROUND_END_MS = 7_000;
 
 // Déconnexion en pleine partie : pause indéfinie, plus de délai de grâce fixe
@@ -295,7 +299,15 @@ function stateFor(room, p) {
     base.myBid = room.bids ? room.bids[p.id] : undefined;
   }
   if (room.phase === 'playing' || room.phase === 'power') {
-    base.currentTrick = room.currentTrick;
+    // La Tigresse doit rester un vrai bluff : on ne renvoie jamais chosenAs
+    // aux autres joueurs (le rendu client ne branche déjà sur rien d'autre
+    // que card.kind pour l'afficher, mais le champ brut restait lisible dans
+    // l'état envoyé - donc visible depuis la console du navigateur).
+    base.currentTrick = room.currentTrick.map((t) => {
+      if (t.card.kind !== 'tigress' || t.playerId === p.id) return t;
+      const { chosenAs, ...cardWithoutChoice } = t.card;
+      return { ...t, card: cardWithoutChoice };
+    });
     const turnPlayer = playerAtTurn(room);
     base.turnPlayerId = turnPlayer ? turnPlayer.id : null;
     base.isMyTurn = room.phase === 'playing' && !room.trickPaused && turnPlayer && turnPlayer.id === p.id;
@@ -322,6 +334,7 @@ function stateFor(room, p) {
       playerId: pending.playerId,
       mine,
       revealCards: mine ? pending.revealCards : undefined,
+      drawnCardIds: mine ? pending.drawnCardIds : undefined,
       options:
         mine && (pending.kind === 'rosie' || pending.kind === 'marythorne')
           ? room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, handCount: pp.hand.length }))
@@ -482,6 +495,10 @@ function startPiratePower(io, room, powerKey, playerId, leaderId) {
   if (powerKey === 'will') {
     const drawn = room.residualPile.splice(0, 2);
     findPlayer(room, playerId).hand.push(...drawn);
+    // Mémorisé pour que le client puisse mettre en évidence CES deux cartes
+    // précisément (le choix de défausse porte sur toute la main, mais sans
+    // repère on ne sait plus lesquelles viennent d'arriver).
+    room.pendingPower.drawnCardIds = drawn.map((c) => c.id);
   }
   if (powerKey === 'juanita') {
     room.pendingPower.revealCards = [...room.residualPile];
@@ -1067,6 +1084,18 @@ function registerSkullKingHandlers(io, socket) {
     resolvePowerDone(io, room);
   });
 
+  // Juanita Jade : le client déclenche lui-même la fin du pouvoir une fois
+  // que le joueur a retourné toutes les cartes (+ une pause de lecture) -
+  // POWER_REVEAL_MS ne sert plus qu'à ne pas bloquer la partie si personne
+  // n'interagit (déconnexion, inactivité).
+  socket.on('skullking-power-juanita-done', () => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!guardPower(room, socket, 'juanita')) return;
+    clearTimeout(room.powerTimer);
+    room.powerTimer = null;
+    resolvePowerDone(io, room);
+  });
+
   socket.on('skullking-next-round', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'round-end') return;
@@ -1121,4 +1150,4 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('disconnecting', () => handleDisconnecting(io, socket));
 }
 
-module.exports = { registerSkullKingHandlers, MIN_PLAYERS, MAX_PLAYERS, eligiblePlankTargets, getStats };
+module.exports = { registerSkullKingHandlers, MIN_PLAYERS, MAX_PLAYERS, eligiblePlankTargets, stateFor, getStats };

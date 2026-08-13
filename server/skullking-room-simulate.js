@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets } = require('./skullking-room');
+const { eligiblePlankTargets, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -52,5 +52,52 @@ check(
   ]).map((t) => t.card.id),
   ['c1', 'c2']
 );
+
+// --- Secret de la Tigresse : chosenAs ne doit jamais fuiter aux autres
+// joueurs dans l'état envoyé, seulement à celle ou celui qui l'a posée.
+function makePlayer(id, nickname) {
+  return { id, nickname, connected: true, hand: [], tricksWon: 0, totalScore: 0, roundHistory: [] };
+}
+
+function makeRoom(currentTrick) {
+  const players = [makePlayer('p1', 'Alice'), makePlayer('p2', 'Bob'), makePlayer('p3', 'Chloé')];
+  return {
+    phase: 'playing',
+    hostId: 'p1',
+    players,
+    bids: { p1: 1, p2: 1, p3: 1 },
+    dealerIndex: 0,
+    leaderIndex: 0,
+    roundSequence: [1, 2, 3],
+    roundIndex: 0,
+    cardsInRound: 3,
+    extensionEnabled: false,
+    currentTrick,
+    turnCount: currentTrick.length,
+    sittingOutId: null,
+    extraCardOwedBy: null,
+    trickPaused: false,
+    lastTrickResult: null,
+    forcedPlays: {},
+    pendingPower: null,
+  };
+}
+
+const trickWithTigress = [
+  { playerId: 'p1', card: { id: 'c1', kind: 'tigress', chosenAs: 'pirate' } },
+  { playerId: 'p2', card: { id: 'c2', kind: 'number', suit: 'vert', value: 5 } },
+];
+
+const seenByOwner = stateFor(makeRoom(trickWithTigress), { id: 'p1', hand: [] });
+check(
+  'la Tigresse voit son propre chosenAs dans son propre état',
+  seenByOwner.currentTrick.find((t) => t.card.id === 'c1').card.chosenAs,
+  'pirate'
+);
+
+const seenByOther = stateFor(makeRoom(trickWithTigress), { id: 'p2', hand: [] });
+const otherView = seenByOther.currentTrick.find((t) => t.card.id === 'c1').card;
+check('chosenAs est absent pour un autre joueur', Object.prototype.hasOwnProperty.call(otherView, 'chosenAs'), false);
+check('le reste de la carte Tigresse reste intact pour un autre joueur', otherView.kind, 'tigress');
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);
