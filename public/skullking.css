@@ -1259,6 +1259,19 @@ h1 {
   color: #facc15;
 }
 
+/* Éléments introduits pour la mise en page paysage (marque du bandeau,
+   intertitres et légende du panneau de scores, jeton de siège, colonne
+   plis/annonce). Masqués par défaut : sous 1000px la mise en page verticale
+   reste strictement celle d'avant, ces ajouts n'y apparaissent jamais. */
+.sk-brand,
+.sk-side-title,
+.sk-side-foot,
+.sk-seat-av,
+.sk-round-step,
+.sk-score-row-bid {
+  display: none;
+}
+
 @media (max-width: 680px) {
   .sk-play-area {
     flex-direction: column;
@@ -1312,10 +1325,10 @@ h1 {
    référence mobile, aucun risque de régression. */
 @media (min-width: 1000px) {
   .app.sk-app:has(#sk-screen-game:not(.hidden)) {
-    max-width: 1500px;
+    max-width: 1600px;
     width: 100%;
     height: 100dvh;
-    padding: 10px 26px 12px;
+    padding: 0;
     display: flex;
     flex-direction: column;
   }
@@ -1325,42 +1338,291 @@ h1 {
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: 6px;
   }
 
+  /* --- Bandeau du haut : plein cadre, marque à gauche, pilule d'avancement
+     (manche + annonces/pli en cours) poussée à droite. --- */
   .sk-game-header {
     flex-shrink: 0;
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.08);
+    justify-content: flex-start;
+    gap: 16px;
+    margin: 0;
+    padding: 7px 18px;
+    background: rgba(0, 0, 0, 0.34);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.07);
   }
 
+  .sk-brand {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #f5c24c;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+  }
+
+  .sk-round-indicator {
+    margin-left: auto;
+    font-size: 0.8rem;
+    padding: 5px 15px;
+    border-radius: 999px;
+    background: #f5c24c1a;
+    border: 2px solid #f5c24c44;
+  }
+
+  .sk-round-step {
+    display: inline;
+  }
+
+  .sk-pill-sep {
+    opacity: 0.4;
+  }
+
+  /* --- Corps : tapis pleine hauteur + panneau de scores permanent. --- */
   .sk-play-area {
     flex: 1;
     min-height: 0;
     align-items: stretch;
+    gap: 12px;
+    padding: 12px 16px 4px;
   }
 
   .sk-table {
     height: auto;
+    border-radius: 50% / 34%;
+    border: 3px solid rgba(0, 0, 0, 0.5);
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.08), transparent 64%),
+      linear-gradient(175deg, #6b1414, #2a0808);
+    box-shadow:
+      inset 0 0 70px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 3px rgba(245, 194, 76, 0.28),
+      0 8px 26px rgba(0, 0, 0, 0.5);
   }
 
+  .sk-trick-caption {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.27);
+  }
+
+  /* --- Sièges : jeton rond porteur du tour, nom nu, annonce en pilule. --- */
+  .sk-seat {
+    width: 104px;
+  }
+
+  .sk-seat-av {
+    order: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    background: radial-gradient(circle at 35% 30%, #7f1d1d, #3b0a0a);
+    border: 2.5px solid #1a1208;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+    transition: all 0.25s;
+  }
+
+  .sk-seat--me .sk-seat-av {
+    background: radial-gradient(circle at 35% 30%, #f5c24c, #b45309);
+  }
+
+  .sk-seat--turn .sk-seat-av {
+    background: radial-gradient(circle at 35% 30%, #fde047, #b45309);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45), 0 0 0 5px #f5c24c40;
+  }
+
+  .sk-seat-label,
+  .sk-seat--turn .sk-seat-label {
+    order: 1;
+    gap: 6px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: inherit;
+  }
+
+  .sk-seat-name {
+    font-size: 0.74rem;
+    font-weight: 800;
+  }
+
+  .sk-seat--turn .sk-seat-name {
+    color: #f5c24c;
+  }
+
+  .sk-seat .sk-seat-bid,
+  .sk-seat--turn .sk-seat-bid {
+    font-size: 0.66rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.33);
+    border: 1px solid #ffffff26;
+    color: #fff;
+  }
+
+  .sk-seat .sk-seat-bid--hit,
+  .sk-seat--turn .sk-seat-bid--hit {
+    background: #16a34a55;
+    border-color: #4ade8088;
+    color: #bbf7d0;
+  }
+
+  .sk-seat .sk-seat-bid--over,
+  .sk-seat--turn .sk-seat-bid--over {
+    background: #b91c1c55;
+    border-color: #f8717188;
+    color: #fecaca;
+  }
+
+  .sk-seat-cards {
+    order: 2;
+    height: 24px;
+  }
+
+  .sk-back-card {
+    width: 16px;
+    height: 22px;
+    margin-left: -9px;
+  }
+
+  /* --- Panneau de scores : le poste de pilotage de la manche. --- */
   .sk-scoreboard {
-    width: 250px;
+    width: 254px;
     display: flex;
     flex-direction: column;
+    gap: 6px;
     min-height: 0;
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+  }
+
+  .sk-side-title {
+    display: block;
+    margin: 0;
+    font-size: 0.58rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    opacity: 0.5;
+  }
+
+  .sk-side-foot {
+    display: block;
+    margin: 0;
+    font-size: 0.62rem;
+    line-height: 1.4;
+    opacity: 0.45;
+  }
+
+  .sk-round-track {
+    margin: 4px 12px 2px;
+  }
+
+  .sk-round-track-label {
+    margin: 4px 0 0;
+    text-align: left;
   }
 
   .sk-scoreboard-rows {
     overflow-y: auto;
     min-height: 0;
+    gap: 4px;
   }
 
+  .sk-score-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    padding: 6px 9px;
+    border-radius: 9px;
+    font-size: 0.76rem;
+    background: #ffffff0d;
+    border: 1px solid transparent;
+  }
+
+  .sk-score-row--me {
+    background: #f5c24c1f;
+    border-color: #f5c24c4d;
+  }
+
+  .sk-score-row-bid {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.33);
+    border: 1px solid #ffffff22;
+  }
+
+  .sk-score-row-bid--hit {
+    background: #16a34a55;
+    border-color: #4ade8088;
+    color: #bbf7d0;
+  }
+
+  .sk-score-row-bid--over {
+    background: #b91c1c55;
+    border-color: #f8717188;
+    color: #fecaca;
+  }
+
+  .sk-score-row-total {
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* --- Bas de l'écran : consigne, barre d'actions flottante, main. --- */
+  .sk-turn-indicator {
+    flex-shrink: 0;
+    margin: 4px 0 6px;
+    padding: 0 16px;
+    font-size: 0.85rem;
+  }
+
+  #sk-power-banner,
+  .sk-power-panel {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  /* Les panneaux de choix (annonce, Tigresse, Joker, valeur déclarée, planche)
+     partagent la même pilule flottante : une seule barre d'actions, toujours
+     au même endroit. :empty écarte #sk-bid-choices quand il est vidé — sans ça
+     une pilule vide flotterait pendant toute la phase de jeu. */
+  .sk-bid-choices:not(.hidden):not(:empty) {
+    flex-shrink: 0;
+    width: fit-content;
+    max-width: calc(100% - 32px);
+    margin: 0 auto 4px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(26, 8, 8, 0.85);
+    border: 2px solid #1a1208;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4), 0 0 0 2px #f5c24c4d;
+  }
+
+  /* Hauteur calée sur la carte la plus haute une fois l'éventail incliné
+     (la rotation agrandit la boîte englobante) + la place du survol :
+     sans cette marge, les cartes du bas dépassaient sous l'écran. */
   .sk-hand {
     flex-shrink: 0;
-    min-height: 158px;
+    min-height: 190px;
+    padding: 14px 20px 24px;
+    overflow: visible;
   }
 
   .sk-hand .sk-card {
@@ -1369,7 +1631,7 @@ h1 {
     font-size: 1.55rem;
   }
 
-  .sk-seat {
-    width: 104px;
+  .sk-card-arc {
+    margin-left: -34px;
   }
 }

@@ -70,6 +70,7 @@
 
       <div class="sk-game-header">
         <button id="sk-btn-leave-game" class="btn-link">← Quitter</button>
+        <span class="sk-brand" aria-hidden="true"><span>💀</span>Skull King</span>
         <p id="sk-round-indicator" class="sk-round-indicator"></p>
         <button id="sk-btn-end-game" class="btn btn-small hidden">🏁 Terminer</button>
       </div>
@@ -82,12 +83,15 @@
         </div>
 
         <aside class="sk-scoreboard">
+          <p class="sk-side-title">Progression de la partie</p>
           <div class="sk-round-track">
             <div class="sk-round-track-fill" id="sk-round-track-fill"></div>
             <div class="sk-round-track-knob" id="sk-round-track-knob"></div>
           </div>
           <p id="sk-round-track-label" class="sk-round-track-label"></p>
+          <p class="sk-side-title">Joueurs — plis / annonce</p>
           <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
+          <p id="sk-side-foot" class="sk-side-foot"></p>
         </aside>
       </div>
 

@@ -450,6 +450,7 @@ const scoreboardRows = document.getElementById('sk-scoreboard-rows');
 const roundTrackFill = document.getElementById('sk-round-track-fill');
 const roundTrackKnob = document.getElementById('sk-round-track-knob');
 const roundTrackLabel = document.getElementById('sk-round-track-label');
+const sideFoot = document.getElementById('sk-side-foot');
 
 let latestState = null;
 let pendingTigressCardId = null;
@@ -477,6 +478,25 @@ const SEAT_POSITIONS = {
 // Sert de calcul de repli : renvoie toujours exactement `count` positions,
 // donc aucun siège ne peut se retrouver sans position, quel que soit l'effectif.
 const SEAT_ELLIPSE = { cx: 50, cy: 50, rx: 44, ry: 40, startDeg: 66 };
+
+// En paysage le tapis devient beaucoup plus large que haut : les tables figées
+// ci-dessus, réglées pour un tapis presque rond de 340px, y collaient les
+// sièges des extrémités au liseré (c'était la réserve laissée lors du
+// correctif 8/9 joueurs). On y répartit donc les joueurs régulièrement sur
+// toute l'ellipse, en partant du bas — la méthode retenue sur la maquette,
+// qui tient aussi bien à 3 joueurs qu'à 9.
+const SEAT_ELLIPSE_LANDSCAPE = { cx: 50, cy: 50, rx: 41, ry: 33 };
+const landscapeTable = window.matchMedia('(min-width: 1000px)');
+
+function computeSeatPositionsEven(count, ellipse) {
+  const { cx, cy, rx, ry } = ellipse;
+  const n = Math.max(1, count);
+  return Array.from({ length: n }, (_, i) => {
+    // i = 0 → angle droit vers le bas : moi, toujours au centre en bas.
+    const angle = Math.PI / 2 + (i * 2 * Math.PI) / n;
+    return [Math.round(cx + rx * Math.cos(angle)), Math.round(cy + ry * Math.sin(angle))];
+  });
+}
 
 function computeSeatPositions(count) {
   const { cx, cy, rx, ry, startDeg } = SEAT_ELLIPSE;
@@ -512,17 +532,45 @@ function nicknameOf(state, id) {
 
 function seatLayout(state) {
   const ordered = seatOrder(state.players);
-  const tuned = SEAT_POSITIONS[ordered.length];
-  // On ne garde la table figée que si elle couvre vraiment tout le monde ;
-  // sinon on calcule, jamais de repli partiel (source du TypeError à 8/9 joueurs).
-  const positions =
-    tuned && tuned.length === ordered.length ? tuned : computeSeatPositions(ordered.length);
+  let positions;
+  if (landscapeTable.matches) {
+    positions = computeSeatPositionsEven(ordered.length, SEAT_ELLIPSE_LANDSCAPE);
+  } else {
+    // On ne garde la table figée que si elle couvre vraiment tout le monde ;
+    // sinon on calcule, jamais de repli partiel (source du TypeError à 8/9 joueurs).
+    const tuned = SEAT_POSITIONS[ordered.length];
+    positions =
+      tuned && tuned.length === ordered.length ? tuned : computeSeatPositions(ordered.length);
+  }
   const map = new Map();
   ordered.forEach((p, i) => map.set(p.id, positions[i]));
   return { ordered, map };
 }
 
 const MAX_VISIBLE_BACKS = 4;
+
+// La pilule du bandeau du haut annonce la manche ET où l'on en est dedans
+// (annonces, ou numéro du pli en cours) : en paysage c'est le seul repère
+// permanent de l'avancement de la manche.
+function renderRoundIndicator(state) {
+  let step = '';
+  if (state.phase === 'bidding') step = 'Annonces';
+  else if (state.trickNumber) step = `Pli ${state.trickNumber}/${state.cardsInRound}`;
+  // L'étape n'est affichée qu'en paysage : sur mobile la ligne passerait sur
+  // deux lignes et ferait grossir l'en-tête, on garde la mention seule.
+  roundIndicator.innerHTML =
+    `Manche ${state.roundNumber}/${state.totalRounds}` +
+    (step ? ` <span class="sk-round-step"><span class="sk-pill-sep">·</span> ${step}</span>` : '');
+}
+
+// Vert = l'annonce est pile tenue à cet instant, rouge = déjà dépassée,
+// donc irrattrapable. Neutre tant qu'on annonce (rien n'est encore joué).
+function bidStateSuffix(state, p) {
+  if (state.phase === 'bidding' || p.bid === undefined || p.bid === null) return '';
+  if (p.tricksWon > p.bid) return '--over';
+  if (p.tricksWon === p.bid) return '--hit';
+  return '';
+}
 
 function renderSeats(state) {
   const { ordered, map } = seatLayout(state);
@@ -559,6 +607,14 @@ function renderSeats(state) {
       seat.appendChild(cards);
     }
 
+    // Jeton du joueur : en paysage il porte la mise en avant du tour (halo
+    // doré) et donne au siège une silhouette lisible de loin. Masqué sous
+    // 1000px, où la place manque et l'étiquette seule suffit.
+    const avatar = document.createElement('div');
+    avatar.className = 'sk-seat-av';
+    avatar.textContent = p.id === myId ? '🫵' : '🏴‍☠️';
+    seat.appendChild(avatar);
+
     const label = document.createElement('div');
     label.className = 'sk-seat-label';
     const name = document.createElement('span');
@@ -567,7 +623,8 @@ function renderSeats(state) {
     label.appendChild(name);
 
     const bidEl = document.createElement('span');
-    bidEl.className = 'sk-seat-bid';
+    const bidState = bidStateSuffix(state, p);
+    bidEl.className = 'sk-seat-bid' + (bidState ? ` sk-seat-bid${bidState}` : '');
     if (state.phase === 'bidding') {
       bidEl.textContent = p.hasBid ? '✓' : '…';
     } else {
@@ -845,6 +902,7 @@ function renderHand(state) {
 
 function renderScoreboard(state) {
   scoreboardRows.innerHTML = '';
+  const byId = new Map(state.players.map((p) => [p.id, p]));
   [...state.scoreboard]
     .sort((a, b) => b.total - a.total)
     .forEach((s) => {
@@ -857,9 +915,27 @@ function renderScoreboard(state) {
       total.className = 'sk-score-row-total';
       total.textContent = s.total;
       row.appendChild(name);
+
+      // Colonne plis/annonce : en paysage le tableau devient le vrai poste de
+      // pilotage, on y lit d'un coup qui tient son contrat et qui l'a déjà raté.
+      const p = byId.get(s.id);
+      if (p) {
+        const bidState = bidStateSuffix(state, p);
+        const bidEl = document.createElement('span');
+        bidEl.className = 'sk-score-row-bid' + (bidState ? ` sk-score-row-bid${bidState}` : '');
+        if (state.phase === 'bidding') bidEl.textContent = p.hasBid ? '✓' : '…';
+        else bidEl.textContent = p.bid === undefined || p.bid === null ? '–' : `${p.tricksWon}/${p.bid}`;
+        row.appendChild(bidEl);
+      }
+
       row.appendChild(total);
       scoreboardRows.appendChild(row);
     });
+
+  sideFoot.textContent =
+    state.phase === 'bidding'
+      ? 'Annonce tenue = 20 pts par pli. Ratée = −10 pts par pli d’écart.'
+      : 'Vert = annonce tenue à cet instant · rouge = déjà dépassée.';
 
   const progress = state.totalRounds > 1 ? (state.roundNumber - 1) / (state.totalRounds - 1) : 0;
   roundTrackFill.style.width = `${progress * 100}%`;
@@ -1038,7 +1114,7 @@ function maybeAnimateDeal(state) {
 
 function renderGame(state) {
   latestState = state;
-  roundIndicator.textContent = `Manche ${state.roundNumber}/${state.totalRounds}`;
+  renderRoundIndicator(state);
   btnEndGame.classList.toggle('hidden', !state.isHost);
   maybeAnimateDeal(state);
   renderSeats(state);
@@ -1049,6 +1125,12 @@ function renderGame(state) {
   renderHand(state);
   renderScoreboard(state);
 }
+
+// Basculer entre portrait et paysage change la géométrie du tapis : on
+// redessine pour que les sièges suivent au lieu de rester sur l'ancienne table.
+landscapeTable.addEventListener('change', () => {
+  if (latestState) renderGame(latestState);
+});
 
 btnEndGame.addEventListener('click', () => socket.emit('skullking-end-game'));
 
