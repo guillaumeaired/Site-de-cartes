@@ -113,6 +113,24 @@ h1 {
   font-size: 0.9rem;
 }
 
+/* Bulle d'explication au survol des cartes à pouvoir : remplace le title
+   natif du navigateur (lent, non stylable). Suit la souris, ne capte jamais
+   le clic (pointer-events: none) pour ne pas gêner la pose de la carte. */
+.sk-card-tooltip {
+  position: fixed;
+  z-index: 90;
+  max-width: 250px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #1a1208f2;
+  border: 2px solid #facc1566;
+  color: #f5f0e6;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
 .sk-toast {
   min-height: 1.2em;
   margin: 0 0 10px;
@@ -646,19 +664,11 @@ h1 {
   z-index: 4;
 }
 
+/* Discret à dessein : juste assez pour confirmer un coup d'œil volontaire,
+   pas un halo qui saute aux yeux et spoile le pli avant qu'on ait joué. */
 .sk-trick-card--leading .sk-card {
-  border-color: #4ade80;
-  box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 3px 3px 0 rgba(0, 0, 0, 0.35);
-  animation: sk-leading-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes sk-leading-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 3px 3px 0 rgba(0, 0, 0, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 0 5px #4ade80, 0 0 24px #4ade80cc, 3px 3px 0 rgba(0, 0, 0, 0.35);
-  }
+  border-color: #4ade8099;
+  box-shadow: 0 0 0 1px #4ade8055, 3px 3px 0 rgba(0, 0, 0, 0.35);
 }
 
 .sk-trick-caption {
@@ -1453,9 +1463,11 @@ h1 {
     border-width: 2.5px;
   }
 
+  /* Le nom + 👑 au-dessus suffisent à dire qui mène : la carte n'a besoin
+     que d'un repère discret, pas d'un halo qui écrase le reste du pli. */
   .sk-trick-slot--leading .sk-card {
-    border-color: #4ade80;
-    box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 2px 2px 0 rgba(0, 0, 0, 0.35);
+    border-color: #4ade8099;
+    box-shadow: 0 0 0 1px #4ade8055, 2px 2px 0 rgba(0, 0, 0, 0.35);
   }
 
   .sk-trick-caption {
@@ -1487,8 +1499,10 @@ h1 {
     transition: all 0.25s;
   }
 
+  /* Le jaune est réservé à qui a la main : mon siège garde l'avatar neutre
+     (le 🫵 suffit à dire « c'est toi »), seul un fin liseré le distingue. */
   .sk-seat--me .sk-seat-av {
-    background: radial-gradient(circle at 35% 30%, #f5c24c, #b45309);
+    border-color: #ffffffaa;
   }
 
   .sk-seat--turn .sk-seat-av {

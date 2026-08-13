@@ -178,6 +178,41 @@ function cardPowerText(card) {
   }
 }
 
+// --- Fenêtre d'explication au survol des cartes à pouvoir ---
+// Le title natif du navigateur est lent à apparaître et non stylable :
+// on le remplace par une bulle qui suit la souris, cohérente avec le reste
+// de l'habillage du jeu.
+const cardTooltip = document.getElementById('sk-card-tooltip');
+
+function positionCardTooltip(e) {
+  const pad = 16;
+  const rect = cardTooltip.getBoundingClientRect();
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  if (x + rect.width > window.innerWidth - 8) x = e.clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight - 8) y = e.clientY - rect.height - pad;
+  cardTooltip.style.left = `${Math.max(8, x)}px`;
+  cardTooltip.style.top = `${Math.max(8, y)}px`;
+}
+
+function hideCardTooltip() {
+  cardTooltip.classList.add('hidden');
+}
+
+// Attache l'explication d'une carte à un élément : rien n'est fait si la
+// carte n'a pas de texte particulier (numérotées hors atout/extension).
+function attachPowerTooltip(el, card) {
+  const text = cardPowerText(card);
+  if (!text) return;
+  el.addEventListener('mouseenter', (e) => {
+    cardTooltip.textContent = text;
+    cardTooltip.classList.remove('hidden');
+    positionCardTooltip(e);
+  });
+  el.addEventListener('mousemove', positionCardTooltip);
+  el.addEventListener('mouseleave', hideCardTooltip);
+}
+
 const screens = {
   home: document.getElementById('sk-screen-home'),
   waiting: document.getElementById('sk-screen-waiting'),
@@ -667,7 +702,7 @@ function renderTrickRow(state, trick) {
     const cardEl = document.createElement('div');
     cardEl.className = `sk-card ${cardClass(t.card)}`;
     cardEl.innerHTML = cardFaceHTML(t.card);
-    cardEl.title = cardPowerText(t.card);
+    attachPowerTooltip(cardEl, t.card);
 
     slot.appendChild(who);
     slot.appendChild(cardEl);
@@ -693,7 +728,7 @@ function renderTrickSeats(state, trick) {
     const cardEl = document.createElement('div');
     cardEl.className = `sk-card ${cardClass(t.card)}`;
     cardEl.innerHTML = cardFaceHTML(t.card);
-    cardEl.title = cardPowerText(t.card);
+    attachPowerTooltip(cardEl, t.card);
     slot.appendChild(cardEl);
 
     tableEl.appendChild(slot);
@@ -884,7 +919,7 @@ function renderHand(state) {
     const el = document.createElement('div');
     el.className = `sk-card ${cardClass(card)}`;
     el.innerHTML = cardFaceHTML(card);
-    el.title = cardPowerText(card);
+    attachPowerTooltip(el, card);
     // Pouvoir de Mary Thorne : une seule carte précise reste jouable, peu
     // importe la couleur imposée ou tout autre effet.
     const playable = !canPlay || (state.forcedCardId ? card.id === state.forcedCardId : isCardPlayable(card, hand, trick));
@@ -1113,7 +1148,7 @@ function renderPower(state) {
       const el = document.createElement('div');
       el.className = `sk-card ${cardClass(card)}`;
       el.innerHTML = cardFaceHTML(card);
-      el.title = cardPowerText(card);
+      attachPowerTooltip(el, card);
       row.appendChild(el);
     });
     powerPanel.appendChild(row);
@@ -1198,6 +1233,10 @@ function maybeAnimateDeal(state) {
 
 function renderGame(state) {
   latestState = state;
+  // Un re-rendu retire les cartes du DOM sans forcément déclencher mouseleave
+  // (ex: une carte jouée disparaît sous le curseur) : la bulle resterait
+  // affichée sur rien sans ce reset.
+  hideCardTooltip();
   renderRoundIndicator(state);
   btnEndGame.classList.toggle('hidden', !state.isHost);
   maybeAnimateDeal(state);
