@@ -1268,8 +1268,22 @@ h1 {
 .sk-side-foot,
 .sk-seat-av,
 .sk-round-step,
+.sk-round-segments,
+.sk-bar-hint,
+.sk-trick-row,
 .sk-score-row-bid {
   display: none;
+}
+
+@keyframes sk-trick-pop {
+  from {
+    transform: translateY(-14px) scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 @media (max-width: 680px) {
@@ -1348,8 +1362,8 @@ h1 {
     gap: 16px;
     margin: 0;
     padding: 7px 18px;
-    background: rgba(0, 0, 0, 0.34);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.07);
+    background: rgba(0, 0, 0, 0.45);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.09);
   }
 
   .sk-brand {
@@ -1402,6 +1416,48 @@ h1 {
       0 8px 26px rgba(0, 0, 0, 0.5);
   }
 
+  /* Le pli regroupé au centre : une carte par joueur, nom au-dessus. */
+  .sk-trick-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .sk-trick-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    animation: sk-trick-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .sk-trick-who {
+    font-size: 0.62rem;
+    font-weight: 700;
+    opacity: 0.65;
+    white-space: nowrap;
+  }
+
+  .sk-trick-slot--leading .sk-trick-who {
+    color: #4ade80;
+    opacity: 1;
+  }
+
+  .sk-trick-row .sk-card {
+    width: 62px;
+    height: 88px;
+    font-size: 1.1rem;
+    border-width: 2.5px;
+  }
+
+  .sk-trick-slot--leading .sk-card {
+    border-color: #4ade80;
+    box-shadow: 0 0 0 3px #4ade80cc, 0 0 16px #4ade8088, 2px 2px 0 rgba(0, 0, 0, 0.35);
+  }
+
   .sk-trick-caption {
     width: fit-content;
     max-width: 100%;
@@ -1440,10 +1496,12 @@ h1 {
     box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45), 0 0 0 5px #f5c24c40;
   }
 
+  /* Comme sur la maquette : nom sur sa ligne, annonce en pilule en dessous. */
   .sk-seat-label,
   .sk-seat--turn .sk-seat-label {
     order: 1;
-    gap: 6px;
+    flex-direction: column;
+    gap: 3px;
     padding: 0;
     background: none;
     border: none;
@@ -1452,8 +1510,9 @@ h1 {
   }
 
   .sk-seat-name {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     font-weight: 800;
+    max-width: 104px;
   }
 
   .sk-seat--turn .sk-seat-name {
@@ -1527,13 +1586,33 @@ h1 {
     opacity: 0.45;
   }
 
-  .sk-round-track {
-    margin: 4px 12px 2px;
+  /* La piste continue à curseur laisse place aux segments de la maquette :
+     une case par manche, remplies au fur et à mesure. */
+  .sk-round-track,
+  .sk-round-track-label {
+    display: none;
   }
 
-  .sk-round-track-label {
-    margin: 4px 0 0;
-    text-align: left;
+  .sk-round-segments {
+    display: flex;
+    gap: 3px;
+  }
+
+  .sk-round-segments i {
+    flex: 1;
+    height: 7px;
+    border-radius: 2px;
+    background: #ffffff1a;
+    border: 1px solid #ffffff14;
+  }
+
+  .sk-round-segments i.sk-round-seg--done {
+    background: #f5c24c88;
+  }
+
+  .sk-round-segments i.sk-round-seg--now {
+    background: #f5c24c;
+    box-shadow: 0 0 8px #f5c24ccc;
   }
 
   .sk-scoreboard-rows {
@@ -1605,6 +1684,7 @@ h1 {
      une pilule vide flotterait pendant toute la phase de jeu. */
   .sk-bid-choices:not(.hidden):not(:empty) {
     flex-shrink: 0;
+    align-items: center;
     width: fit-content;
     max-width: calc(100% - 32px);
     margin: 0 auto 4px;
@@ -1615,23 +1695,55 @@ h1 {
     box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4), 0 0 0 2px #f5c24c4d;
   }
 
+  /* Dans la barre, les boutons redeviennent de simples pastilles claires :
+     le rouge en relief du reste du site y ferait un mur de gros boutons. */
+  .sk-bid-choices .btn {
+    padding: 7px 14px;
+    min-width: 40px;
+    font-size: 0.79rem;
+    border-radius: 999px;
+    border: 2px solid #ffffff28;
+    background: #ffffff12;
+    box-shadow: none;
+  }
+
+  .sk-bid-choices .btn:hover {
+    background: #ffffff26;
+    box-shadow: none;
+  }
+
+  .sk-bid-choices .btn-primary,
+  .sk-bid-choices .btn-primary:hover {
+    background: #f5c24c;
+    color: #1a1208;
+    border-color: #1a1208;
+    box-shadow: none;
+  }
+
+  .sk-bar-hint {
+    display: inline;
+    font-size: 0.7rem;
+    opacity: 0.55;
+    padding: 0 4px;
+  }
+
   /* Hauteur calée sur la carte la plus haute une fois l'éventail incliné
      (la rotation agrandit la boîte englobante) + la place du survol :
      sans cette marge, les cartes du bas dépassaient sous l'écran. */
   .sk-hand {
     flex-shrink: 0;
-    min-height: 190px;
-    padding: 14px 20px 24px;
+    min-height: 176px;
+    padding: 12px 20px 28px;
     overflow: visible;
   }
 
   .sk-hand .sk-card {
-    width: 92px;
-    height: 134px;
-    font-size: 1.55rem;
+    width: 84px;
+    height: 118px;
+    font-size: 1.45rem;
   }
 
   .sk-card-arc {
-    margin-left: -34px;
+    margin-left: -26px;
   }
 }

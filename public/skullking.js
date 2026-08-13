@@ -440,6 +440,7 @@ const roundIndicator = document.getElementById('sk-round-indicator');
 const btnEndGame = document.getElementById('sk-btn-end-game');
 const tableEl = document.getElementById('sk-table');
 const trickCaptionEl = document.getElementById('sk-trick-caption');
+const trickRow = document.getElementById('sk-trick-row');
 const turnIndicator = document.getElementById('sk-turn-indicator');
 const bidChoices = document.getElementById('sk-bid-choices');
 const tigressChoiceEl = document.getElementById('sk-tigress-choice');
@@ -451,6 +452,8 @@ const roundTrackFill = document.getElementById('sk-round-track-fill');
 const roundTrackKnob = document.getElementById('sk-round-track-knob');
 const roundTrackLabel = document.getElementById('sk-round-track-label');
 const sideFoot = document.getElementById('sk-side-foot');
+const sideRound = document.getElementById('sk-side-round');
+const roundSegments = document.getElementById('sk-round-segments');
 
 let latestState = null;
 let pendingTigressCardId = null;
@@ -626,7 +629,8 @@ function renderSeats(state) {
     const bidState = bidStateSuffix(state, p);
     bidEl.className = 'sk-seat-bid' + (bidState ? ` sk-seat-bid${bidState}` : '');
     if (state.phase === 'bidding') {
-      bidEl.textContent = p.hasBid ? '✓' : '…';
+      // En paysage l'étiquette est sur sa propre ligne : on peut écrire le mot.
+      bidEl.textContent = p.hasBid ? (landscapeTable.matches ? '✓ prêt' : '✓') : '…';
     } else {
       bidEl.textContent = p.bid === undefined || p.bid === null ? '?' : `${p.tricksWon}/${p.bid}`;
     }
@@ -645,9 +649,33 @@ function renderSeats(state) {
   });
 }
 
-function renderTrick(state) {
-  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
-  const trick = state.currentTrick || [];
+// Paysage : le pli est regroupé au centre, une carte par joueur avec son nom
+// au-dessus (couronne verte sur celui qui mène) — la lecture retenue sur la
+// maquette. En portrait on garde les cartes posées devant chaque siège, seule
+// disposition tenable sur une table étroite.
+function renderTrickRow(state, trick) {
+  trick.forEach((t) => {
+    const slot = document.createElement('div');
+    const leading = t.playerId === state.leadingPlayerId;
+    slot.className = 'sk-trick-slot' + (leading ? ' sk-trick-slot--leading' : '');
+
+    const who = document.createElement('span');
+    who.className = 'sk-trick-who';
+    who.textContent =
+      (t.playerId === myId ? 'Toi' : nicknameOf(state, t.playerId)) + (leading ? ' 👑' : '');
+
+    const cardEl = document.createElement('div');
+    cardEl.className = `sk-card ${cardClass(t.card)}`;
+    cardEl.innerHTML = cardFaceHTML(t.card);
+    cardEl.title = cardPowerText(t.card);
+
+    slot.appendChild(who);
+    slot.appendChild(cardEl);
+    trickRow.appendChild(slot);
+  });
+}
+
+function renderTrickSeats(state, trick) {
   const { map } = seatLayout(state);
   const PULL = 0.46;
 
@@ -670,8 +698,23 @@ function renderTrick(state) {
 
     tableEl.appendChild(slot);
   });
+}
 
-  if (trick.length === 0) {
+const SUIT_DOT = { vert: '🟢', jaune: '🟡', violet: '🟣', noir: '⚫' };
+
+function renderTrick(state) {
+  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
+  trickRow.innerHTML = '';
+  const trick = state.currentTrick || [];
+
+  if (landscapeTable.matches) renderTrickRow(state, trick);
+  else renderTrickSeats(state, trick);
+
+  if (state.phase === 'bidding') {
+    // Le centre du tapis reste vide pendant les annonces : on y met la consigne
+    // plutôt que de laisser un grand trou au milieu de la table.
+    trickCaptionEl.textContent = '🎯 Tout le monde annonce son nombre de plis…';
+  } else if (trick.length === 0) {
     trickCaptionEl.textContent = '';
   } else if (state.trickPaused) {
     if (state.lastTrickResult && state.lastTrickResult.destroyed) {
@@ -682,6 +725,14 @@ function renderTrick(state) {
     }
   } else if (state.trickWillBeDestroyed) {
     trickCaptionEl.textContent = '💀 Ce pli sera détruit…';
+  } else if (landscapeTable.matches) {
+    // Le nom couronné dit déjà qui mène : la légende sert donc à rappeler la
+    // couleur demandée et l'avancement du pli, comme sur la maquette.
+    const led = ledSuitOf(trick);
+    const progress = `${trick.length}/${state.players.length} cartes jouées`;
+    trickCaptionEl.textContent = led
+      ? `Couleur demandée : ${SUIT_DOT[led]} ${led} — ${progress}`
+      : `Aucune couleur demandée — ${progress}`;
   } else {
     const leader = state.leadingPlayerId === myId ? 'Tu mènes' : `${nicknameOf(state, state.leadingPlayerId)} mène`;
     trickCaptionEl.textContent = `${leader} le pli`;
@@ -703,6 +754,13 @@ function renderBidChoices(state) {
     btn.addEventListener('click', () => socket.emit('skullking-bid', { bid: n }));
     bidChoices.appendChild(btn);
   }
+
+  // Rappel discret à droite des chiffres, dans la barre d'actions elle-même.
+  const hint = document.createElement('span');
+  hint.className = 'sk-bar-hint';
+  hint.textContent =
+    state.myBid === undefined ? 'Choisis un nombre' : 'Annonce enregistrée — modifiable';
+  bidChoices.appendChild(hint);
 }
 
 function renderTurnIndicator(state) {
@@ -712,7 +770,7 @@ function renderTurnIndicator(state) {
   }
   if (state.phase === 'bidding') {
     if (state.myBid === undefined) {
-      turnIndicator.textContent = 'Annonce secrète : combien de plis vas-tu faire ?';
+      turnIndicator.textContent = '🎯 Combien de plis vas-tu remporter cette manche ?';
     } else {
       const waiting = state.players.filter((p) => !p.hasBid).map((p) => p.nickname);
       turnIndicator.textContent = waiting.length
@@ -729,7 +787,20 @@ function renderTurnIndicator(state) {
     turnIndicator.textContent = '💣 Tu as joué la Dernière Salve : tu passes ton tour sur ce pli.';
     return;
   }
-  turnIndicator.textContent = state.isMyTurn ? 'À toi de jouer !' : `${nicknameOf(state, state.turnPlayerId)} joue…`;
+  if (!state.isMyTurn) {
+    turnIndicator.textContent = `${nicknameOf(state, state.turnPlayerId)} joue…`;
+    return;
+  }
+  // En paysage on a la place de rappeler la couleur demandée dans la consigne,
+  // comme sur la maquette : c'est l'info qui manque le plus au moment de jouer.
+  const led = landscapeTable.matches ? ledSuitOf(state.currentTrick || []) : null;
+  if (!led) {
+    turnIndicator.textContent = 'À toi de jouer !';
+  } else if (mustFollowSuit(state.hand || [], led)) {
+    turnIndicator.textContent = `${SUIT_DOT[led]} À toi de jouer — tu dois suivre le ${led}`;
+  } else {
+    turnIndicator.textContent = `${SUIT_DOT[led]} À toi de jouer — tu n'as pas de ${led}, joue ce que tu veux`;
+  }
 }
 
 function hideAllChoicePanels() {
@@ -936,6 +1007,19 @@ function renderScoreboard(state) {
     state.phase === 'bidding'
       ? 'Annonce tenue = 20 pts par pli. Ratée = −10 pts par pli d’écart.'
       : 'Vert = annonce tenue à cet instant · rouge = déjà dépassée.';
+
+  // Piste de manches en segments (paysage) : on voit d'un coup d'œil combien
+  // de manches sont derrière soi et laquelle est en cours.
+  sideRound.textContent =
+    `Manche ${state.roundNumber} / ${state.totalRounds}` +
+    ` — ${state.cardsInRound} carte${state.cardsInRound > 1 ? 's' : ''}`;
+  roundSegments.innerHTML = '';
+  for (let i = 1; i <= state.totalRounds; i++) {
+    const seg = document.createElement('i');
+    if (i < state.roundNumber) seg.className = 'sk-round-seg--done';
+    else if (i === state.roundNumber) seg.className = 'sk-round-seg--now';
+    roundSegments.appendChild(seg);
+  }
 
   const progress = state.totalRounds > 1 ? (state.roundNumber - 1) / (state.totalRounds - 1) : 0;
   roundTrackFill.style.width = `${progress * 100}%`;
