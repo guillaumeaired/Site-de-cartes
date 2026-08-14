@@ -8,7 +8,14 @@ const { SERVER_STARTED_AT, likelyServerRestart } = require('./server-start');
 const { recordGameStarted, getPlayCounts } = require('./play-counts');
 const { registerRamiHandlers, getStats: getRamiStats } = require('./rami-room');
 const { registerAscenseurHandlers, getStats: getAscenseurStats } = require('./ascenseur-room');
-const { registerSkullKingHandlers, getStats: getSkullKingStats } = require('./skullking-room');
+const {
+  registerSkullKingHandlers,
+  setBotAdapter: setSkullKingBotAdapter,
+  getStats: getSkullKingStats,
+} = require('./skullking-room');
+// Bots de test uniquement (voir skullking-bot.js) : branchés ici pour que le
+// module de salle n'en dépende pas.
+setSkullKingBotAdapter(require('./skullking-bot'));
 
 // Plus une partie s'eternise, plus une bataille enterre de cartes : le
 // nombre de cartes cachees monte de 1 toutes les 3 minutes ecoulees depuis

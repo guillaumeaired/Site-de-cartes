@@ -1,5 +1,16 @@
 const socket = io();
 
+// Les pseudos ne sont que tronqués côté serveur (sanitizeNickname), jamais
+// échappés : tout pseudo inséré dans un innerHTML doit passer par ici, sinon
+// un pseudo contenant du HTML s'exécute chez tous les autres joueurs de la
+// table.
+function escapeHTML(value) {
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+  );
+}
+
 function getPlayerToken() {
   let token = sessionStorage.getItem('cardGamesPlayerToken');
   if (!token) {
@@ -314,6 +325,57 @@ formJoin.addEventListener('submit', (e) => {
 btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
 btnCloseRules.addEventListener('click', () => rulesModal.classList.add('hidden'));
 
+// --- Historique des manches ---
+// Le pop-up de fin de manche s'efface au bout de quelques secondes : ce
+// panneau permet d'y revenir. Les données ne sont demandées qu'à l'ouverture
+// (voir skullking-request-history côté serveur), pas envoyées en continu.
+const historyModal = document.getElementById('sk-history-modal');
+const historyBody = document.getElementById('sk-history-body');
+const btnHistory = document.getElementById('sk-btn-history');
+
+btnHistory.addEventListener('click', () => {
+  historyBody.innerHTML = '<p class="hint">Chargement…</p>';
+  historyModal.classList.remove('hidden');
+  socket.emit('skullking-request-history');
+});
+document.getElementById('sk-btn-close-history').addEventListener('click', () =>
+  historyModal.classList.add('hidden')
+);
+
+socket.on('skullking-history', ({ rounds }) => {
+  if (!rounds || !rounds.length) {
+    historyBody.innerHTML = '<p class="hint">Aucune manche terminée pour l\'instant.</p>';
+    return;
+  }
+  const players = rounds[0].rows;
+  const head = players
+    .map((r) => `<th>${r.id === myId ? 'Toi' : escapeHTML(r.nickname)}</th>`)
+    .join('');
+  // Une ligne par manche, une colonne par joueur : « annonce/plis » puis le
+  // delta de la manche, et le cumul en petit — de quoi refaire tout le match.
+  const body = rounds
+    .map((r) => {
+      const cells = r.rows
+        .map((row) => {
+          const exact = row.bid === row.made;
+          const delta = row.delta >= 0 ? `+${row.delta}` : `${row.delta}`;
+          return `<td class="${exact ? 'sk-hist-hit' : 'sk-hist-miss'}">
+              <span class="sk-hist-bid">${row.bid}/${row.made}</span>
+              <span class="sk-hist-delta">${delta}</span>
+              <span class="sk-hist-total">${row.total}</span>
+            </td>`;
+        })
+        .join('');
+      return `<tr><th class="sk-hist-round">${r.round}<small>${r.cards} c.</small></th>${cells}</tr>`;
+    })
+    .join('');
+  historyBody.innerHTML = `<table class="sk-hist-table">
+      <thead><tr><th></th>${head}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <p class="hint sk-hist-legend">annonce/plis · points de la manche · cumul</p>`;
+});
+
 // --- Salon d'attente ---
 
 const shareBlock = document.getElementById('sk-share-block');
@@ -326,6 +388,16 @@ const lobbyList = document.getElementById('sk-lobby-list');
 const lobbyCount = document.getElementById('sk-lobby-count');
 const lobbyRange = document.getElementById('sk-lobby-range');
 const btnStartGame = document.getElementById('sk-btn-start-game');
+const btnAddBot = document.getElementById('sk-btn-add-bot');
+
+// Outils de test (bots) : uniquement en local ou avec ?dev dans l'URL, pour
+// qu'un vrai joueur ne tombe jamais dessus.
+const DEV_TOOLS =
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  new URLSearchParams(location.search).has('dev');
+
+btnAddBot.addEventListener('click', () => socket.emit('skullking-add-bot'));
 const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
@@ -403,6 +475,8 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
       : '';
 
   btnStartGame.classList.toggle('hidden', !isHost);
+  // Outil de test : jamais proposé aux vrais joueurs (voir DEV_TOOLS).
+  btnAddBot.classList.toggle('hidden', !(DEV_TOOLS && isHost && players.length < maxPlayers));
   btnStartGame.disabled = !canStart;
   if (isHost) {
     waitingHint.textContent = canStart
@@ -1020,6 +1094,9 @@ function renderScoreboard(state) {
     roundSegments.appendChild(seg);
   }
 
+  // Rien à consulter tant qu'aucune manche n'est terminée.
+  btnHistory.classList.toggle('hidden', state.roundNumber <= 1);
+
   const progress = state.totalRounds > 1 ? (state.roundNumber - 1) / (state.totalRounds - 1) : 0;
   roundTrackFill.style.width = `${progress * 100}%`;
   roundTrackKnob.style.left = `${progress * 100}%`;
@@ -1229,7 +1306,7 @@ function showBidReveal(state) {
     const row = document.createElement('span');
     row.className = 'sk-bid-reveal-row';
     row.style.setProperty('--sk-bid-delay', `${i * 0.12}s`);
-    row.innerHTML = `${p.id === myId ? 'Toi' : p.nickname} <b>${p.bid}</b>`;
+    row.innerHTML = `${p.id === myId ? 'Toi' : escapeHTML(p.nickname)} <b>${p.bid}</b>`;
     bidRevealRows.appendChild(row);
   });
   bidRevealEl.classList.remove('hidden');
@@ -1382,7 +1459,7 @@ function showRoundPopup(state) {
       row.dataset.playerId = r.id;
       const left = document.createElement('div');
       left.className = 'sk-round-popup-row-left';
-      left.innerHTML = `${r.nickname} <span class="sk-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span><span class="sk-round-popup-row-breakdown">${roundBreakdownText(r)}</span>`;
+      left.innerHTML = `${escapeHTML(r.nickname)} <span class="sk-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span><span class="sk-round-popup-row-breakdown">${roundBreakdownText(r)}</span>`;
       const delta = document.createElement('span');
       delta.className = `sk-round-popup-row-delta ${r.delta >= 0 ? 'sk-delta--up' : 'sk-delta--down'}`;
       delta.textContent = r.delta >= 0 ? `+${r.delta}` : r.delta;
@@ -1420,7 +1497,9 @@ function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
   endTitle.textContent = winner.id === myId ? 'Tu remportes la partie ! 🏆' : `${winner.nickname} remporte la partie !`;
-  endBody.innerHTML = ranking.map((r) => `<tr><td>${r.nickname}</td><td>${r.total}</td></tr>`).join('');
+  endBody.innerHTML = ranking
+    .map((r) => `<tr><td>${escapeHTML(r.nickname)}</td><td>${r.total}</td></tr>`)
+    .join('');
 }
 
 document.getElementById('sk-btn-rematch').addEventListener('click', () => socket.emit('skullking-rematch'));

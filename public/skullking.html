@@ -60,6 +60,7 @@
         <ul id="sk-lobby-list" class="lobby-list"></ul>
       </div>
 
+      <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">🤖 Ajouter un bot (test)</button>
       <button id="sk-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
       <p id="sk-waiting-hint" class="hint"></p>
     </section>
@@ -121,6 +122,7 @@
           <p id="sk-round-track-label" class="sk-round-track-label"></p>
           <p class="sk-side-title">Joueurs — annonce / plis</p>
           <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
+          <button id="sk-btn-history" class="sk-history-link hidden" type="button">📜 Manches précédentes</button>
         </aside>
       </div>
 
@@ -170,6 +172,14 @@
       <button id="sk-btn-leave-end" class="btn btn-leave-end">Quitter</button>
     </section>
   </main>
+
+  <div id="sk-history-modal" class="modal hidden">
+    <div class="modal-content sk-history-content">
+      <h2>📜 Manches précédentes</h2>
+      <div id="sk-history-body" class="sk-history-body"></div>
+      <button id="sk-btn-close-history" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
 
   <div id="sk-rules-modal" class="modal hidden">
     <div class="modal-content">

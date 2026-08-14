@@ -1467,6 +1467,125 @@ h1 {
   opacity: 1;
 }
 
+/* Outil de test (ajout de bots) : volontairement terne et marqué d'un liseré
+   pointillé pour ne jamais être confondu avec un bouton du jeu. */
+.sk-dev-tool {
+  background: none;
+  border: 2px dashed #ffffff33;
+  color: #cbd5e1;
+  box-shadow: none;
+  font-size: 0.8rem;
+  padding: 7px 14px;
+  margin-bottom: 8px;
+}
+
+.sk-dev-tool:hover {
+  background: #ffffff12;
+  box-shadow: none;
+  transform: none;
+}
+
+/* --- Historique des manches (panneau de scores → modale) --- */
+
+.sk-history-link {
+  margin-top: auto;
+  padding: 6px 8px;
+  border: 1px dashed #ffffff2e;
+  border-radius: 9px;
+  background: none;
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sk-history-link:hover {
+  background: #ffffff12;
+  color: #fff;
+}
+
+.sk-history-content {
+  max-width: 760px;
+}
+
+.sk-history-body {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.sk-hist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+}
+
+.sk-hist-table th,
+.sk-hist-table td {
+  padding: 5px 7px;
+  text-align: center;
+  border-bottom: 1px solid #ffffff14;
+}
+
+.sk-hist-table thead th {
+  color: #facc15;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.sk-hist-round {
+  color: #cbd5e1;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sk-hist-round small {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  opacity: 0.5;
+}
+
+/* Une case = annonce/plis, points de la manche, cumul. Le fond dit tout de
+   suite si le contrat a été tenu, sans avoir à comparer les deux chiffres. */
+.sk-hist-table td {
+  line-height: 1.25;
+}
+
+.sk-hist-hit {
+  background: #16a34a26;
+}
+
+.sk-hist-miss {
+  background: #b91c1c26;
+}
+
+.sk-hist-bid {
+  display: block;
+  font-weight: 800;
+}
+
+.sk-hist-delta {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.sk-hist-total {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #facc15;
+}
+
+.sk-hist-legend {
+  margin: 10px 0 0;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
 /* --- Pop-up de fin de manche --- */
 
 .sk-round-popup {

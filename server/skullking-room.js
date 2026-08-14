@@ -169,6 +169,13 @@ function broadcastToRoom(io, room, event, data) {
   for (const p of room.players) io.to(p.id).emit(event, data);
 }
 
+// Bots de test (server/skullking-bot.js) : branchés par injection pour que ce
+// module n'en dépende pas et que le jeu tourne à l'identique sans eux.
+let bots = null;
+function setBotAdapter(adapter) {
+  bots = adapter;
+}
+
 function broadcastLobby(io, room) {
   const maxPlayers = maxPlayersFor(room.extensionEnabled);
   for (const p of room.players) {
@@ -380,6 +387,9 @@ function broadcastState(io, room) {
     io.to(p.id).emit('skullking-state', stateFor(room, p));
   }
   scheduleInactivityCheck(io, room);
+  // Les bots de test « voient » l'état par ce même point de passage : ils
+  // n'ont pas de vraie socket pour recevoir l'événement ci-dessus.
+  if (bots) bots.driveBots(io, room, stateFor);
 }
 
 // Voir la constante INACTIVITY_WARN_MS : seule la phase 'playing', hors
@@ -638,8 +648,12 @@ function removeFromLobby(io, room, id) {
   const idx = room.players.findIndex((p) => p.id === id);
   if (idx === -1) return;
   const [removed] = room.players.splice(idx, 1);
-  if (room.players.length === 0) {
+  // Une salle où il ne reste que des bots de test n'a plus de raison d'exister
+  // (personne ne la verra jamais) : on la ferme comme une salle vide.
+  const humansLeft = room.players.filter((p) => !bots || !bots.isBot(p.id));
+  if (humansLeft.length === 0) {
     clearRoomTimers(room);
+    if (bots) bots.forgetRoom(room);
     rooms.delete(room.code);
     return;
   }
@@ -664,6 +678,7 @@ function finalizeSkullKingDisconnect(io, room, id, reason) {
   }
 
   broadcastToRoom(io, room, 'skullking-player-left', { nickname: player.nickname, reason: reason || 'left' });
+  if (bots) bots.forgetRoom(room);
   finishGame(io, room);
 }
 
@@ -798,6 +813,17 @@ function registerSkullKingHandlers(io, socket) {
     // le plafond de base, on laisse l'hôte constater l'incompatibilité via
     // canStart plutôt que d'expulser qui que ce soit.
     broadcastLobby(io, room);
+  });
+
+  // OUTIL DE TEST : ajoute un joueur automatique au salon. Réservé à l'hôte
+  // et au salon d'attente ; côté client le bouton n'est proposé que sur
+  // localhost ou avec ?dev dans l'URL (voir skullking.js).
+  socket.on('skullking-add-bot', () => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby' || !bots) return;
+    if (socket.id !== room.hostId) return;
+    if (room.players.length >= maxPlayersFor(room.extensionEnabled)) return;
+    if (bots.addBot(io, room, registerSkullKingHandlers)) broadcastLobby(io, room);
   });
 
   socket.on('skullking-start-game', () => {
@@ -1119,6 +1145,28 @@ function registerSkullKingHandlers(io, socket) {
     resolvePowerDone(io, room);
   });
 
+  // Historique des manches jouées, à la demande : le pop-up de fin de manche
+  // s'efface au bout de quelques secondes, sans ça le détail est perdu. Envoyé
+  // seulement quand on l'ouvre plutôt que dans chaque broadcast d'état (10
+  // manches x 9 joueurs à chaque carte posée, pour un panneau rarement ouvert).
+  socket.on('skullking-request-history', () => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || !Array.isArray(room.roundSequence)) return;
+    const playedRounds = room.players.length ? room.players[0].roundHistory.length : 0;
+    const rounds = [];
+    for (let i = 0; i < playedRounds; i++) {
+      rounds.push({
+        round: i + 1,
+        cards: room.roundSequence[i],
+        rows: room.players.map((p) => {
+          const h = p.roundHistory[i] || {};
+          return { id: p.id, nickname: p.nickname, bid: h.bid, made: h.made, delta: h.delta, total: h.total };
+        }),
+      });
+    }
+    socket.emit('skullking-history', { rounds });
+  });
+
   socket.on('skullking-next-round', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'round-end') return;
@@ -1180,5 +1228,6 @@ module.exports = {
   eligiblePlankTargets,
   capturedPirateKeys,
   stateFor,
+  setBotAdapter,
   getStats,
 };
