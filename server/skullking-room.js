@@ -423,13 +423,15 @@ function endRound(io, room) {
   });
 
   // Bonus Butin : +20 chacun si le poseur ET le gagnant du pli réussissent
-  // TOUS LES DEUX leur annonce de manche exactement. On garde aussi la paire
-  // (dédupliquée : plusieurs Butins dans la manche peuvent lier deux fois les
-  // mêmes deux joueurs) pour l'animation de lien côté client.
+  // TOUS LES DEUX leur annonce de manche exactement. Le lien est en revanche
+  // remonté dès qu'une alliance s'est FORMÉE, réussie ou non (avec le drapeau
+  // `paid`) : n'afficher que les alliances payantes le rendait quasi invisible
+  // en vrai, alors que c'est justement ce qu'on veut voir se produire.
   const lootLinks = [];
   const seenLootPairs = new Set();
   room.lootAlliances.forEach(({ lootPlayerId, winnerId }) => {
-    if (exactness[lootPlayerId] && exactness[winnerId]) {
+    const paid = Boolean(exactness[lootPlayerId] && exactness[winnerId]);
+    if (paid) {
       const lootEntry = summary.find((s) => s.id === lootPlayerId);
       const winEntry = summary.find((s) => s.id === winnerId);
       if (lootEntry) {
@@ -440,11 +442,11 @@ function endRound(io, room) {
         winEntry.lootBonus += 20;
         winEntry.delta += 20;
       }
-      const pairKey = [lootPlayerId, winnerId].sort().join('|');
-      if (!seenLootPairs.has(pairKey)) {
-        seenLootPairs.add(pairKey);
-        lootLinks.push({ a: lootPlayerId, b: winnerId });
-      }
+    }
+    const pairKey = [lootPlayerId, winnerId].sort().join('|');
+    if (!seenLootPairs.has(pairKey)) {
+      seenLootPairs.add(pairKey);
+      lootLinks.push({ a: lootPlayerId, b: winnerId, paid });
     }
   });
 

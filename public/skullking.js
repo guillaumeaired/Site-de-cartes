@@ -115,10 +115,11 @@ function cardClass(card) {
   return 'sk-card--special';
 }
 function cardFaceHTML(card) {
-  // Ta propre carte pendant l'annonce de la manche 1 : dos de carte, aucune
-  // information (voir stateFor côté serveur - le contenu n'est même pas
-  // envoyé, seul l'id l'accompagne).
-  if (card.kind === 'hidden') return '';
+  // Ta propre carte pendant l'annonce de la manche 1 : dos de carte marqué
+  // d'un « ? » pour que ce soit lisible comme un choix de règle et pas comme
+  // un bug d'affichage (le contenu n'est même pas envoyé par le serveur -
+  // voir stateFor, seul l'id accompagne la carte).
+  if (card.kind === 'hidden') return '<span class="sk-hidden-mark">?</span>';
   if (card.kind === 'wild15') {
     // Pas encore joué : sa couleur/valeur ne sont pas encore fixées.
     return `<span class="sk-special-emoji">🃏</span><span class="sk-special-label">Joker</span>`;
@@ -134,50 +135,33 @@ function cardFaceHTML(card) {
   return `<span class="sk-special-emoji">${info.emoji}</span><span class="sk-special-label">${label}</span>`;
 }
 
-// Texte d'infobulle (survol) : ce qui se passe SI le joueur qui pose cette
-// carte remporte le pli avec elle.
+// Texte d'infobulle (survol) : réservé aux cartes qui déclenchent un vrai
+// EFFET, pas à celles dont le comportement se résume à leur place dans la
+// hiérarchie (numérotées, Fuite, Sirène, Skull King, Tigresse, Joker...) -
+// une bulle sur chaque carte noyait l'info utile. Renvoyer '' n'attache
+// simplement aucune bulle (voir attachPowerTooltip).
 function cardPowerText(card) {
-  if (card.kind === 'wild15') {
-    return "Joker/Wild 15 : prend la couleur déjà imposée (vert/jaune/violet) si elle existe, sinon tu choisis (jamais noir) ; si le noir est imposé, il perd quand même face à l'atout noir.";
-  }
-  if (card.wild15) {
-    return `Joker joué en ${card.suit} (valeur 15) : bat toute cette couleur, perd face à l'atout noir.`;
-  }
-  if (card.kind === 'number' && card.wild14 && card.value == null) {
-    return 'Tu choisiras 0 (perd toujours) ou 14 (carte forte de sa couleur) au moment de la jouer.';
-  }
   switch (card.kind) {
-    case 'number':
-      if (card.suit === 'noir') return 'Atout permanent : bat toutes les couleurs, quel que soit le chiffre.';
-      if (card.ext && card.value === 8) return "Carte d'extension : +5 points de bonus pour qui la capture.";
-      if (card.ext && card.value === 7) return "Carte d'extension : -5 points de bonus pour qui la capture.";
-      return '';
-    case 'escape':
-      return 'Ne gagne jamais le pli.';
-    case 'tigress':
-      return 'Jouée comme Pirate ou comme Fuite, au choix, au moment de la pose.';
     case 'pirate':
-      return `Bat les numérotées et les Sirènes. Si elle/il remporte le pli : ${card.name ? PIRATE_POWER_TEXT[card.name] : 'aucun pouvoir spécial.'}`;
-    case 'siren':
-      return 'Bat le Skull King, perd contre un Pirate — sauf Pirate + Skull King + Sirène réunis : la Sirène gagne alors toujours.';
-    case 'skullking':
-      return "Bat les Pirates. Face à une Sirène seule, la Sirène gagne quand même. S'il remporte le pli, hérite du/des pouvoir(s) du/des Pirate(s) capturé(s) — sans le bonus de capture normal.";
+      return card.name && PIRATE_POWER_TEXT[card.name]
+        ? `${card.name} — s'il/elle remporte le pli : ${PIRATE_POWER_TEXT[card.name]}`
+        : '';
     case 'loot':
-      return "Agit comme une Fuite. Si un autre joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce de la manche.";
+      return "Si un AUTRE joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce de la manche.";
     case 'kraken':
       return 'Détruit le pli : personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.';
     case 'whale':
       return "Annule l'effet de toutes les cartes spéciales du pli : seule la valeur numérique compte (le noir perd son statut d'atout).";
     case 'firstmate':
-      return "Bat tous les Pirates classiques (Mary Thorne incluse), mais perd contre le Skull King et contre une Sirène (même seule, sans Skull King). S'il remporte le pli, hérite du/des pouvoir(s) du/des Pirate(s) capturé(s) — sans le bonus de capture normal. Capturé par le Skull King ou une Sirène : +30 points pour qui le capture.";
+      return "S'il remporte le pli, hérite du/des pouvoir(s) du/des Pirate(s) capturé(s).";
     case 'stingray':
       return 'Comme la Baleine blanche, mais la carte la PLUS BASSE remporte le pli.';
     case 'lastvolley':
-      return 'Ne gagne jamais le pli. Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).';
+      return 'Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).';
     case 'plank':
-      return 'Ne gagne jamais le pli. Retire un Pirate présent dans le pli en cours (au choix s\'il y en a plusieurs).';
+      return 'Retire un Pirate présent dans le pli en cours (au choix s\'il y en a plusieurs).';
     case 'davyjones':
-      return "Ne gagne jamais le pli. Détruit tous les Monstres Marins présents (Kraken/Baleine/Raie), peu importe l'ordre : +20 points par Monstre détruit.";
+      return "Détruit tous les Monstres Marins présents (Kraken/Baleine/Raie) : +20 points par Monstre détruit.";
     default:
       return '';
   }
@@ -483,7 +467,6 @@ const roundIndicator = document.getElementById('sk-round-indicator');
 const btnEndGame = document.getElementById('sk-btn-end-game');
 const tableEl = document.getElementById('sk-table');
 const trickCaptionEl = document.getElementById('sk-trick-caption');
-const trickRow = document.getElementById('sk-trick-row');
 const turnIndicator = document.getElementById('sk-turn-indicator');
 const bidChoices = document.getElementById('sk-bid-choices');
 const tigressChoiceEl = document.getElementById('sk-tigress-choice');
@@ -494,7 +477,6 @@ const scoreboardRows = document.getElementById('sk-scoreboard-rows');
 const roundTrackFill = document.getElementById('sk-round-track-fill');
 const roundTrackKnob = document.getElementById('sk-round-track-knob');
 const roundTrackLabel = document.getElementById('sk-round-track-label');
-const sideFoot = document.getElementById('sk-side-foot');
 const sideRound = document.getElementById('sk-side-round');
 const roundSegments = document.getElementById('sk-round-segments');
 
@@ -596,18 +578,10 @@ function seatLayout(state) {
 
 const MAX_VISIBLE_BACKS = 4;
 
-// La pilule du bandeau du haut annonce la manche ET où l'on en est dedans
-// (annonces, ou numéro du pli en cours) : en paysage c'est le seul repère
-// permanent de l'avancement de la manche.
+// Le bandeau du haut ne porte que la manche : le numéro du pli en cours se
+// devine déjà aux cartes posées sur le tapis et à la main qui se vide.
 function renderRoundIndicator(state) {
-  let step = '';
-  if (state.phase === 'bidding') step = 'Annonces';
-  else if (state.trickNumber) step = `Pli ${state.trickNumber}/${state.cardsInRound}`;
-  // L'étape n'est affichée qu'en paysage : sur mobile la ligne passerait sur
-  // deux lignes et ferait grossir l'en-tête, on garde la mention seule.
-  roundIndicator.innerHTML =
-    `Manche ${state.roundNumber}/${state.totalRounds}` +
-    (step ? ` <span class="sk-round-step"><span class="sk-pill-sep">·</span> ${step}</span>` : '');
+  roundIndicator.textContent = `Manche ${state.roundNumber}/${state.totalRounds}`;
 }
 
 // Vert = l'annonce est pile tenue à cet instant, rouge = déjà dépassée,
@@ -648,17 +622,13 @@ function renderSeats(state) {
         attachPowerTooltip(el, p.revealedCard);
         cards.appendChild(el);
       } else {
+        // Dos de cartes purement indicatifs (plafonnés) : le compte exact n'est
+        // plus affiché ici, il se lit dans le panneau de droite.
         const shown = Math.min(p.handCount, MAX_VISIBLE_BACKS);
         for (let c = 0; c < shown; c++) {
           const back = document.createElement('div');
           back.className = 'sk-back-card';
           cards.appendChild(back);
-        }
-        if (p.handCount > 0) {
-          const count = document.createElement('span');
-          count.className = 'sk-seat-count';
-          count.textContent = p.handCount;
-          cards.appendChild(count);
         }
       }
       seat.appendChild(cards);
@@ -679,16 +649,20 @@ function renderSeats(state) {
     name.textContent = (p.connected ? '' : '🔌 ') + p.nickname;
     label.appendChild(name);
 
-    const bidEl = document.createElement('span');
-    const bidState = bidStateSuffix(state, p);
-    bidEl.className = 'sk-seat-bid' + (bidState ? ` sk-seat-bid${bidState}` : '');
-    if (state.phase === 'bidding') {
-      // En paysage l'étiquette est sur sa propre ligne : on peut écrire le mot.
-      bidEl.textContent = p.hasBid ? (landscapeTable.matches ? '✓ prêt' : '✓') : '…';
-    } else {
-      bidEl.textContent = p.bid === undefined || p.bid === null ? '?' : `${p.tricksWon}/${p.bid}`;
+    // Annonce et plis gagnés vivent dans le panneau de droite, pas sur le
+    // tapis : en portrait l'étiquette du siège reste le seul endroit où les
+    // lire, on ne les y garde donc que là.
+    if (!landscapeTable.matches) {
+      const bidEl = document.createElement('span');
+      const bidState = bidStateSuffix(state, p);
+      bidEl.className = 'sk-seat-bid' + (bidState ? ` sk-seat-bid${bidState}` : '');
+      if (state.phase === 'bidding') {
+        bidEl.textContent = p.hasBid ? '✓' : '…';
+      } else {
+        bidEl.textContent = p.bid === undefined || p.bid === null ? '?' : `${p.tricksWon}/${p.bid}`;
+      }
+      label.appendChild(bidEl);
     }
-    label.appendChild(bidEl);
 
     if (p.id === state.dealerId) {
       const chip = document.createElement('span');
@@ -703,35 +677,16 @@ function renderSeats(state) {
   });
 }
 
-// Paysage : le pli est regroupé au centre, une carte par joueur avec son nom
-// au-dessus (couronne verte sur celui qui mène) — la lecture retenue sur la
-// maquette. En portrait on garde les cartes posées devant chaque siège, seule
-// disposition tenable sur une table étroite.
-function renderTrickRow(state, trick) {
-  trick.forEach((t) => {
-    const slot = document.createElement('div');
-    const leading = t.playerId === state.leadingPlayerId;
-    slot.className = 'sk-trick-slot' + (leading ? ' sk-trick-slot--leading' : '');
+const SUIT_DOT = { vert: '🟢', jaune: '🟡', violet: '🟣', noir: '⚫' };
 
-    const who = document.createElement('span');
-    who.className = 'sk-trick-who';
-    who.textContent =
-      (t.playerId === myId ? 'Toi' : nicknameOf(state, t.playerId)) + (leading ? ' 👑' : '');
-
-    const cardEl = document.createElement('div');
-    cardEl.className = `sk-card ${cardClass(t.card)}`;
-    cardEl.innerHTML = cardFaceHTML(t.card);
-    attachPowerTooltip(cardEl, t.card);
-
-    slot.appendChild(who);
-    slot.appendChild(cardEl);
-    trickRow.appendChild(slot);
-  });
-}
-
-function renderTrickSeats(state, trick) {
+// Chaque carte du pli est posée devant le siège de qui l'a jouée (interpolée
+// entre le siège et le centre) : le pli dessine un cercle et on lit d'un coup
+// d'œil à qui appartient chaque carte, sans avoir besoin d'étiquette de nom.
+function renderTrick(state) {
+  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
+  const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
-  const PULL = 0.46;
+  const PULL = 0.44;
 
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
@@ -752,24 +707,12 @@ function renderTrickSeats(state, trick) {
 
     tableEl.appendChild(slot);
   });
-}
 
-const SUIT_DOT = { vert: '🟢', jaune: '🟡', violet: '🟣', noir: '⚫' };
-
-function renderTrick(state) {
-  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
-  trickRow.innerHTML = '';
-  const trick = state.currentTrick || [];
-
-  if (landscapeTable.matches) renderTrickRow(state, trick);
-  else renderTrickSeats(state, trick);
-
+  // Le centre ne porte plus que les moments qui comptent : la consigne pendant
+  // l'annonce, puis l'issue du pli. Qui mène se lit déjà au liseré vert de la
+  // carte, la couleur demandée aux cartes grisées dans la main.
   if (state.phase === 'bidding') {
-    // Le centre du tapis reste vide pendant les annonces : on y met la consigne
-    // plutôt que de laisser un grand trou au milieu de la table.
     trickCaptionEl.textContent = '🎯 Tout le monde annonce son nombre de plis…';
-  } else if (trick.length === 0) {
-    trickCaptionEl.textContent = '';
   } else if (state.trickPaused) {
     if (state.lastTrickResult && state.lastTrickResult.destroyed) {
       trickCaptionEl.textContent = '💥 Le pli est détruit !';
@@ -779,17 +722,8 @@ function renderTrick(state) {
     }
   } else if (state.trickWillBeDestroyed) {
     trickCaptionEl.textContent = '💀 Ce pli sera détruit…';
-  } else if (landscapeTable.matches) {
-    // Le nom couronné dit déjà qui mène : la légende sert donc à rappeler la
-    // couleur demandée et l'avancement du pli, comme sur la maquette.
-    const led = ledSuitOf(trick);
-    const progress = `${trick.length}/${state.players.length} cartes jouées`;
-    trickCaptionEl.textContent = led
-      ? `Couleur demandée : ${SUIT_DOT[led]} ${led} — ${progress}`
-      : `Aucune couleur demandée — ${progress}`;
   } else {
-    const leader = state.leadingPlayerId === myId ? 'Tu mènes' : `${nicknameOf(state, state.leadingPlayerId)} mène`;
-    trickCaptionEl.textContent = `${leader} le pli`;
+    trickCaptionEl.textContent = '';
   }
 }
 
@@ -1072,11 +1006,6 @@ function renderScoreboard(state) {
       row.appendChild(total);
       scoreboardRows.appendChild(row);
     });
-
-  sideFoot.textContent =
-    state.phase === 'bidding'
-      ? 'Annonce tenue = 20 pts par pli. Ratée = −10 pts par pli d’écart.'
-      : 'Vert = annonce tenue à cet instant · rouge = déjà dépassée.';
 
   // Piste de manches en segments (paysage) : on voit d'un coup d'œil combien
   // de manches sont derrière soi et laquelle est en cours.
@@ -1407,7 +1336,11 @@ function drawLootLinks(links) {
     const rowA = container.querySelector(`[data-player-id="${link.a}"]`);
     const rowB = container.querySelector(`[data-player-id="${link.b}"]`);
     if (!rowA || !rowB) return;
-    const color = LOOT_LINK_COLORS[i % LOOT_LINK_COLORS.length];
+    // Alliance qui a payé : couleur vive + pièce. Alliance formée mais ratée
+    // (l'un des deux au moins a manqué son annonce) : même trait, en gris et
+    // en pointillés - on voit qu'elle a existé, et qu'elle n'a rien rapporté.
+    const paid = link.paid !== false;
+    const color = paid ? LOOT_LINK_COLORS[i % LOOT_LINK_COLORS.length] : '#94a3b8';
     rowA.classList.add('sk-round-popup-row--loot');
     rowB.classList.add('sk-round-popup-row--loot');
     rowA.style.setProperty('--sk-loot-color', color);
@@ -1419,7 +1352,7 @@ function drawLootLinks(links) {
     const yB = rectB.top - containerRect.top + rectB.height / 2;
     const x = -4 - i * 6; // décale les liens successifs pour ne jamais se superposer
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('class', 'sk-loot-link-path');
+    path.setAttribute('class', 'sk-loot-link-path' + (paid ? '' : ' sk-loot-link-path--unpaid'));
     path.setAttribute('stroke', color);
     path.setAttribute('d', `M -1 ${yA} C ${x} ${yA}, ${x} ${yB}, -1 ${yB}`);
     svg.appendChild(path);
@@ -1429,7 +1362,7 @@ function drawLootLinks(links) {
     coin.setAttribute('x', x - 2);
     coin.setAttribute('y', (yA + yB) / 2 + 3);
     coin.setAttribute('text-anchor', 'middle');
-    coin.textContent = '💰';
+    coin.textContent = paid ? '💰' : '🤝';
     svg.appendChild(coin);
   });
 

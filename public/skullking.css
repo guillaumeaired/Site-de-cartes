@@ -773,28 +773,44 @@ h1 {
   margin-left: 0;
 }
 
-/* Carte adverse révélée pendant l'annonce de la manche 1 : même gabarit que
-   le dos de carte qu'elle remplace, pour ne pas bousculer la mise en page
-   du siège. Sélecteur composé pour primer sur la taille par défaut de
-   .sk-card, déclarée plus loin dans la feuille. */
+/* Carte adverse révélée pendant l'annonce de la manche 1 : elle remplace le
+   dos de carte habituel sur le siège, avec un liseré doré et une légère
+   inclinaison pour qu'on comprenne que c'est une carte posée face visible et
+   pas un simple pictogramme. Sélecteur composé pour primer sur la taille par
+   défaut de .sk-card, déclarée plus loin dans la feuille. */
 .sk-card.sk-seat-reveal-card {
-  width: 30px;
-  height: 42px;
+  width: 38px;
+  height: 54px;
   font-size: 0.6rem;
   border-width: 2px;
+  border-radius: 7px;
   cursor: default;
+  transform: rotate(-4deg);
+  box-shadow: 0 0 0 2px #facc1566, 2px 3px 0 rgba(0, 0, 0, 0.45);
+  animation: sk-reveal-drop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .sk-seat-reveal-card .card-emblem {
-  font-size: 0.85rem;
+  font-size: 1.15rem;
 }
 
 .sk-seat-reveal-card .sk-special-emoji {
-  font-size: 0.85rem;
+  font-size: 1.15rem;
 }
 
 .sk-seat-reveal-card .sk-special-label {
   display: none;
+}
+
+@keyframes sk-reveal-drop {
+  from {
+    opacity: 0;
+    transform: rotate(-4deg) translateY(-10px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-4deg);
+  }
 }
 
 /* Pile de distribution au centre de la table, et cartes volantes qui en
@@ -1160,10 +1176,26 @@ h1 {
 }
 
 /* Ta propre carte pendant l'annonce de la manche 1 : dos de carte, même
-   motif que les piles/dos de sièges - aucune information ne doit filtrer. */
+   motif que les piles/dos de sièges - aucune information ne doit filtrer.
+   Le liseré doré pointillé et le « ? » disent que c'est volontaire. */
 .sk-card--hidden {
   background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
   border-color: #1a0505;
+  box-shadow: inset 0 0 0 2px #facc1555, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  cursor: default;
+}
+
+.sk-card--hidden:hover {
+  transform: none;
+}
+
+.sk-hidden-mark {
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #facc15;
+  opacity: 0.75;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
 }
 
 .sk-card--pirate {
@@ -1523,6 +1555,15 @@ h1 {
   animation-delay: 0.3s;
 }
 
+/* Alliance qui s'est formée mais n'a rien rapporté (au moins un des deux a
+   raté son annonce) : trait gris pointillé, sans l'animation de tracé. */
+.sk-loot-link-path--unpaid {
+  stroke-dasharray: 4 4;
+  stroke-dashoffset: 0;
+  opacity: 0.6;
+  animation: none;
+}
+
 .sk-loot-link-coin {
   font-size: 0.7rem;
   opacity: 0;
@@ -1623,25 +1664,11 @@ h1 {
    reste strictement celle d'avant, ces ajouts n'y apparaissent jamais. */
 .sk-brand,
 .sk-side-title,
-.sk-side-foot,
 .sk-seat-av,
-.sk-round-step,
 .sk-round-segments,
 .sk-bar-hint,
-.sk-trick-row,
 .sk-score-row-bid {
   display: none;
-}
-
-@keyframes sk-trick-pop {
-  from {
-    transform: translateY(-14px) scale(0.7);
-    opacity: 0;
-  }
-  to {
-    transform: none;
-    opacity: 1;
-  }
 }
 
 @media (max-width: 680px) {
@@ -1744,14 +1771,6 @@ h1 {
     border: 2px solid #f5c24c44;
   }
 
-  .sk-round-step {
-    display: inline;
-  }
-
-  .sk-pill-sep {
-    opacity: 0.4;
-  }
-
   /* --- Corps : tapis pleine hauteur + panneau de scores permanent. --- */
   .sk-play-area {
     flex: 1;
@@ -1774,48 +1793,12 @@ h1 {
       0 8px 26px rgba(0, 0, 0, 0.5);
   }
 
-  /* Le pli regroupé au centre : une carte par joueur, nom au-dessus. */
-  .sk-trick-row {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .sk-trick-slot {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    animation: sk-trick-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  .sk-trick-who {
-    font-size: 0.62rem;
-    font-weight: 700;
-    opacity: 0.65;
-    white-space: nowrap;
-  }
-
-  .sk-trick-slot--leading .sk-trick-who {
-    color: #4ade80;
-    opacity: 1;
-  }
-
-  .sk-trick-row .sk-card {
-    width: 62px;
-    height: 88px;
-    font-size: 1.1rem;
-    border-width: 2.5px;
-  }
-
-  /* Le nom + 👑 au-dessus suffisent à dire qui mène : la carte n'a besoin
-     que d'un repère discret, pas d'un halo qui écrase le reste du pli. */
-  .sk-trick-slot--leading .sk-card {
-    border-color: #4ade8099;
-    box-shadow: 0 0 0 1px #4ade8055, 2px 2px 0 rgba(0, 0, 0, 0.35);
+  /* Cartes du pli, posées devant leur siège : un peu plus grandes qu'en
+     portrait, la table est large. */
+  .sk-trick-card .sk-card {
+    width: 72px;
+    height: 102px;
+    font-size: 1.25rem;
   }
 
   .sk-trick-caption {
@@ -1940,13 +1923,6 @@ h1 {
     opacity: 0.5;
   }
 
-  .sk-side-foot {
-    display: block;
-    margin: 0;
-    font-size: 0.62rem;
-    line-height: 1.4;
-    opacity: 0.45;
-  }
 
   /* La piste continue à curseur laisse place aux segments de la maquette :
      une case par manche, remplies au fur et à mesure. */
