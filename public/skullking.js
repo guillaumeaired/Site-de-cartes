@@ -34,21 +34,36 @@ function clearActiveRoom() {
   sessionStorage.removeItem(ACTIVE_ROOM_KEY);
 }
 
+// Plus d'emoji sur les cartes : dans l'éventail, chaque carte est recouverte
+// par la suivante et emoji + libellé ne tenaient pas dans la bande visible
+// (« Skull Kin », « Harry le Gé »). Il ne reste qu'un libellé COURT, calé
+// dans cette bande - le nom complet reste dans l'infobulle au survol.
 const SPECIAL_INFO = {
-  pirate: { emoji: '🏴‍☠️', label: 'Pirate' },
-  siren: { emoji: '🧜', label: 'Sirène' },
-  skullking: { emoji: '💀', label: 'Skull King' },
-  escape: { emoji: '🏳️', label: 'Fuite' },
-  tigress: { emoji: '🐯', label: 'Tigresse' },
-  loot: { emoji: '💰', label: 'Butin' },
-  kraken: { emoji: '🐙', label: 'Kraken' },
-  whale: { emoji: '🐋', label: 'Baleine' },
+  pirate: { label: 'Pirate' },
+  siren: { label: 'Sirène' },
+  skullking: { label: 'Skull King' },
+  escape: { label: 'Fuite' },
+  tigress: { label: 'Tigresse' },
+  loot: { label: 'Butin' },
+  kraken: { label: 'Kraken' },
+  whale: { label: 'Baleine' },
   // Extension
-  firstmate: { emoji: '⚔️', label: 'Mat le Forban' },
-  stingray: { emoji: '🦈', label: 'Raie Tachetée' },
-  lastvolley: { emoji: '💣', label: 'Dernière Salve' },
-  plank: { emoji: '🪵', label: 'Marcher sur la Planche' },
-  davyjones: { emoji: '⚰️', label: 'Coffre de Davy Jones' },
+  firstmate: { label: 'Mat le Forban' },
+  stingray: { label: 'Raie' },
+  lastvolley: { label: 'Salve' },
+  plank: { label: 'Planche' },
+  davyjones: { label: 'Coffre' },
+};
+
+// Les pirates nommés portent leur nom sur la carte : raccourci à un seul mot
+// distinctif, sinon rien ne tient dans la bande visible de l'éventail.
+const PIRATE_SHORT_NAME = {
+  "Rosie D'Laney": 'Rosie',
+  'Will le Bandit': 'Will',
+  'Rascal le Flambeur': 'Rascal',
+  'Juanita Jade': 'Juanita',
+  'Harry le Géant': 'Harry',
+  'Mary Thorne': 'Mary',
 };
 // Ce que déclenche chaque pirate nommé s'IL remporte le pli avec sa propre
 // carte — affiché en infobulle sur la carte, pour savoir à quoi s'attendre
@@ -133,17 +148,18 @@ function cardFaceHTML(card) {
   if (card.kind === 'hidden') return '<span class="sk-hidden-mark">?</span>';
   if (card.kind === 'wild15') {
     // Pas encore joué : sa couleur/valeur ne sont pas encore fixées.
-    return `<span class="sk-special-emoji">🃏</span><span class="sk-special-label">Joker</span>`;
+    return `<span class="sk-special-label">Joker</span>`;
   }
   if (card.kind === 'number') {
     if (card.wild14 && card.value == null) {
-      return `<span class="sk-special-emoji">0/14</span>`;
+      return `<span class="card-emblem card-emblem--wild">0/14</span>`;
     }
     return `<span class="card-emblem">${card.value}</span>`;
   }
   const info = SPECIAL_INFO[card.kind];
-  const label = card.kind === 'pirate' ? card.name || 'Pirate' : info.label;
-  return `<span class="sk-special-emoji">${info.emoji}</span><span class="sk-special-label">${label}</span>`;
+  const label =
+    card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;
+  return `<span class="sk-special-label">${label}</span>`;
 }
 
 // Texte d'infobulle (survol) : réservé aux cartes qui déclenchent un vrai
@@ -650,8 +666,6 @@ function seatLayout(state) {
   return { ordered, map };
 }
 
-const MAX_VISIBLE_BACKS = 4;
-
 // Le bandeau du haut ne porte que la manche : le numéro du pli en cours se
 // devine déjà aux cartes posées sur le tapis et à la main qui se vide.
 function renderRoundIndicator(state) {
@@ -695,17 +709,12 @@ function renderSeats(state) {
         el.innerHTML = cardFaceHTML(p.revealedCard);
         attachPowerTooltip(el, p.revealedCard);
         cards.appendChild(el);
-      } else {
-        // Dos de cartes purement indicatifs (plafonnés) : le compte exact n'est
-        // plus affiché ici, il se lit dans le panneau de droite.
-        const shown = Math.min(p.handCount, MAX_VISIBLE_BACKS);
-        for (let c = 0; c < shown; c++) {
-          const back = document.createElement('div');
-          back.className = 'sk-back-card';
-          cards.appendChild(back);
-        }
       }
-      seat.appendChild(cards);
+      // Plus de dos de cartes décoratifs : chevauchés, ils formaient une tache
+      // illisible et n'apprenaient rien (le compte de cartes se lit dans le
+      // panneau de droite). Le bloc ne sert plus qu'à la carte révélée de la
+      // manche 1.
+      if (cards.childElementCount) seat.appendChild(cards);
     }
 
     // Jeton du joueur : en paysage il porte la mise en avant du tour (halo
@@ -760,7 +769,12 @@ function renderTrick(state) {
   tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
   const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
-  const PULL = 0.44;
+  // Deux tirages différents : le tapis est une ellipse bien plus large que
+  // haute, donc un même pourcentage vaut beaucoup moins de pixels en vertical
+  // qu'en horizontal. Avec un tirage unique, la carte du siège du haut venait
+  // recouvrir son pseudo (26 px mesurés). On tire donc plus fort en vertical.
+  const PULL_X = 0.44;
+  const PULL_Y = 0.6;
 
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
@@ -769,8 +783,8 @@ function renderTrick(state) {
 
     const slot = document.createElement('div');
     slot.className = 'sk-trick-card';
-    slot.style.left = `${seatLeft + (50 - seatLeft) * PULL}%`;
-    slot.style.top = `${seatTop + (50 - seatTop) * PULL}%`;
+    slot.style.left = `${seatLeft + (50 - seatLeft) * PULL_X}%`;
+    slot.style.top = `${seatTop + (50 - seatTop) * PULL_Y}%`;
     if (t.playerId === state.leadingPlayerId) slot.classList.add('sk-trick-card--leading');
 
     const cardEl = document.createElement('div');
