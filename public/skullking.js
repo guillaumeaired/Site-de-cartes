@@ -1031,9 +1031,18 @@ function renderHand(state) {
           return;
         }
         // Marcher sur la Planche : choix du Pirate à retirer seulement s'il
-        // y en a plusieurs dans le pli en cours.
+        // y en a plusieurs dans le pli en cours. Une Tigresse compte comme
+        // candidate potentielle même si on ne sait pas si elle a été jouée
+        // comme Pirate ou comme Fuite : ce choix (chosenAs) reste caché aux
+        // autres joueurs pour préserver son bluff (voir stateFor côté
+        // serveur), donc le client ne peut pas trancher lui-même. Le serveur
+        // connaît la vraie réponse et valide/complète le choix (voir
+        // eligiblePlankTargets côté serveur) : s'il n'y a qu'une vraie cible
+        // possible il l'impose de toute façon, quoi que le joueur ait cliqué.
         if (card.kind === 'plank') {
-          const piratesInTrick = trick.filter((t) => t.card.kind === 'pirate');
+          const piratesInTrick = trick.filter(
+            (t) => t.card.kind === 'pirate' || t.card.kind === 'tigress'
+          );
           if (piratesInTrick.length > 1) {
             pendingPlankCardId = card.id;
             hideAllChoicePanels();
@@ -1041,7 +1050,7 @@ function renderHand(state) {
             piratesInTrick.forEach((t) => {
               const btn = document.createElement('button');
               btn.className = 'btn';
-              btn.textContent = t.card.name || 'Pirate';
+              btn.textContent = t.card.name || (t.card.kind === 'tigress' ? 'Tigresse' : 'Pirate');
               btn.addEventListener('click', () => {
                 if (pendingPlankCardId) playCard(pendingPlankCardId, { removesId: t.card.id });
               });
