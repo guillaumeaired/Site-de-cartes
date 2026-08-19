@@ -1,5 +1,16 @@
 const socket = io();
 
+// Les pseudos ne sont que tronqués côté serveur (sanitizeNickname), jamais
+// échappés : tout pseudo inséré dans un innerHTML doit passer par ici, sinon
+// un pseudo contenant du HTML s'exécute chez tous les autres joueurs de la
+// table.
+function escapeHTML(value) {
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+  );
+}
+
 function getPlayerToken() {
   let token = sessionStorage.getItem('cardGamesPlayerToken');
   if (!token) {
@@ -687,7 +698,7 @@ function showRoundPopup(state) {
       const row = document.createElement('div');
       row.className = 'asc-round-popup-row';
       const left = document.createElement('span');
-      left.innerHTML = `${r.nickname} <span class="asc-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span>`;
+      left.innerHTML = `${escapeHTML(r.nickname)} <span class="asc-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span>`;
       const delta = document.createElement('span');
       delta.className = `asc-round-popup-row-delta ${r.delta >= 0 ? 'asc-delta--up' : 'asc-delta--down'}`;
       delta.textContent = r.delta >= 0 ? `+${r.delta}` : r.delta;
@@ -721,7 +732,7 @@ function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
   endTitle.textContent = winner.id === myId ? 'Tu remportes la partie ! 🏆' : `${winner.nickname} remporte la partie !`;
-  endBody.innerHTML = ranking.map((r) => `<tr><td>${r.nickname}</td><td>${r.total}</td></tr>`).join('');
+  endBody.innerHTML = ranking.map((r) => `<tr><td>${escapeHTML(r.nickname)}</td><td>${r.total}</td></tr>`).join('');
 }
 
 document.getElementById('asc-btn-rematch').addEventListener('click', () => socket.emit('ascenseur-rematch'));
