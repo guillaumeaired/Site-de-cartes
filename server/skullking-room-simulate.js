@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets } = require('./skullking-room');
+const { eligiblePlankTargets, trickForClient } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -51,6 +51,46 @@ check(
     { playerId: 'p4', card: firstMateCard },
   ]).map((t) => t.card.id),
   ['c1', 'c2']
+);
+
+// Panneau de choix de la Planche côté client (bug corrigé) : un vrai
+// Pirate + une Tigresse jouée comme Pirate dans le même pli doivent
+// ressortir tous les deux comme cibles - le client ne filtre plus sur
+// card.kind === 'pirate' en dur, il se fie au plankEligible calculé ici.
+const mixedTrick = [
+  { playerId: 'p1', card: numberCard },
+  { playerId: 'p2', card: pirateCard },
+  { playerId: 'p3', card: tigressAsPirate },
+  { playerId: 'p4', card: firstMateCard },
+];
+
+check(
+  'trickForClient : vrai Pirate + Tigresse-Pirate ressortent tous les deux comme plankEligible',
+  trickForClient(mixedTrick)
+    .filter((t) => t.plankEligible)
+    .map((t) => t.card.id),
+  ['c1', 'c2']
+);
+
+check(
+  "trickForClient : Fuite, Tigresse-Fuite et Mat le Forban ne sont jamais plankEligible",
+  trickForClient(mixedTrick)
+    .filter((t) => !t.plankEligible)
+    .map((t) => t.card.id),
+  ['c4', 'c5']
+);
+
+// Garde-fou de forme : trickForClient n'ajoute que playerId/card/plankEligible,
+// jamais un champ dédié qui dupliquerait chosenAs à côté du booléen. Le
+// masquage de chosenAs lui-même aux AUTRES joueurs (chantier séparé, pas
+// encore en place) devra pouvoir s'appliquer à `card` sans toucher au calcul
+// de plankEligible ci-dessus, qui lui reste calculé côté serveur sur le pli
+// complet et authentique (room.currentTrick), jamais recalculé côté client.
+const clientView = trickForClient(mixedTrick);
+check(
+  "trickForClient : chaque entrée n'expose que playerId, card et plankEligible",
+  clientView.every((t) => Object.keys(t).sort().join(',') === 'card,plankEligible,playerId'),
+  true
 );
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

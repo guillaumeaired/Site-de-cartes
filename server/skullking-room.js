@@ -53,6 +53,20 @@ function eligiblePlankTargets(trick) {
   return trick.filter((t) => effectiveKind(t.card) === 'pirate');
 }
 
+// Version du pli envoyée au client : ajoute un booléen neutre par carte
+// (ciblable par la Planche ou non) calculé côté serveur via effectiveKind,
+// pour que le client n'ait jamais besoin de recalculer lui-même le "kind
+// effectif" d'une Tigresse (et reste correct même si chosenAs venait à être
+// masqué aux autres joueurs côté serveur).
+function trickForClient(trick) {
+  const eligibleIds = new Set(eligiblePlankTargets(trick).map((t) => t.card.id));
+  return trick.map((t) => ({
+    playerId: t.playerId,
+    card: t.card,
+    plankEligible: eligibleIds.has(t.card.id),
+  }));
+}
+
 const rooms = new Map();
 
 // Compteurs simples pour l'observabilite (route /stats, server/index.js) -
@@ -295,7 +309,7 @@ function stateFor(room, p) {
     base.myBid = room.bids ? room.bids[p.id] : undefined;
   }
   if (room.phase === 'playing' || room.phase === 'power') {
-    base.currentTrick = room.currentTrick;
+    base.currentTrick = trickForClient(room.currentTrick);
     const turnPlayer = playerAtTurn(room);
     base.turnPlayerId = turnPlayer ? turnPlayer.id : null;
     base.isMyTurn = room.phase === 'playing' && !room.trickPaused && turnPlayer && turnPlayer.id === p.id;
@@ -1121,4 +1135,11 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('disconnecting', () => handleDisconnecting(io, socket));
 }
 
-module.exports = { registerSkullKingHandlers, MIN_PLAYERS, MAX_PLAYERS, eligiblePlankTargets, getStats };
+module.exports = {
+  registerSkullKingHandlers,
+  MIN_PLAYERS,
+  MAX_PLAYERS,
+  eligiblePlankTargets,
+  trickForClient,
+  getStats,
+};

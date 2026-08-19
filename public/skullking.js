@@ -980,7 +980,12 @@ function renderHand(state) {
         // Marcher sur la Planche : choix du Pirate à retirer seulement s'il
         // y en a plusieurs dans le pli en cours.
         if (card.kind === 'plank') {
-          const piratesInTrick = trick.filter((t) => t.card.kind === 'pirate');
+          // plankEligible vient du serveur (voir trickForClient côté
+          // skullking-room.js) : une Tigresse jouée comme Pirate doit
+          // ressortir ici, mais le client ne peut pas le recalculer
+          // lui-même sans forcément voir chosenAs des cartes des autres
+          // joueurs.
+          const piratesInTrick = trick.filter((t) => t.plankEligible);
           if (piratesInTrick.length > 1) {
             pendingPlankCardId = card.id;
             hideAllChoicePanels();
