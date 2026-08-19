@@ -1336,49 +1336,91 @@ h1 {
   letter-spacing: 0.03em;
 }
 
+/* Assez large pour aligner 6 annonces d'un coup ; au-delà (jusqu'à 9 avec
+   l'extension) ça passe sur deux rangs, ce qui reste lisible. */
 .sk-bid-reveal-rows {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  max-width: 360px;
+  max-width: 460px;
 }
 
-.sk-bid-reveal-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: #ffffff14;
-  border: 2px solid #ffffff2e;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: #fff;
-  opacity: 0;
-  transform: scale(0.5);
-  animation: sk-bid-reveal-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+/* Annonces révélées : une carte face cachée par joueur, qui se retourne en
+   cascade. Même idiome 3D que le pouvoir de Juanita (preserve-3d +
+   backface-visibility), volontairement dupliqué plutôt que mutualisé. */
+.sk-bid-card {
+  width: 66px;
+  height: 92px;
+  perspective: 700px;
+}
+
+.sk-bid-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: sk-bid-flip 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   animation-delay: var(--sk-bid-delay, 0s);
 }
 
-.sk-bid-reveal-row b {
-  color: #facc15;
-  font-size: 1rem;
+/* Animation plutôt que transition : elle démarre d'elle-même, sans avoir à
+   peindre un état initial puis basculer une classe depuis JS (ce qui
+   imposait un double rAF, gelé dans un onglet en arrière-plan). */
+@keyframes sk-bid-flip {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
+  }
 }
 
-@keyframes sk-bid-reveal-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.12);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+.sk-bid-card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  border: 3px solid #1a1208;
+  backface-visibility: hidden;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sk-bid-card-back {
+  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
+  box-shadow: inset 0 0 0 2px #facc1544, 3px 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sk-bid-card-front {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
+  color: #1a1208;
+}
+
+.sk-bid-card-num {
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* Le pseudo tient sur la largeur de la carte ou se coupe proprement : il
+   accompagne le chiffre, c'est le chiffre qu'on vient lire. */
+.sk-bid-card-who {
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.48rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
 }
 
 /* --- Roue de tirage au sort (qui mène le premier pli), même DA que celle

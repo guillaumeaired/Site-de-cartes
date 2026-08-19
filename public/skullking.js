@@ -1361,18 +1361,51 @@ const bidRevealRows = document.getElementById('sk-bid-reveal-rows');
 let bidRevealTimer = null;
 let lastPhase = null;
 
+// Les annonces étaient secrètes : on les retourne, une par une, comme des
+// cartes posées face cachée. Une pastille qui apparaît disait la même chose
+// sans raconter le geste - c'est le retournement qui fait le petit moment.
 function showBidReveal(state) {
   clearTimeout(bidRevealTimer);
   bidRevealRows.innerHTML = '';
+  const STEP_MS = 260;
+
   state.players.forEach((p, i) => {
-    const row = document.createElement('span');
-    row.className = 'sk-bid-reveal-row';
-    row.style.setProperty('--sk-bid-delay', `${i * 0.12}s`);
-    row.innerHTML = `${p.id === myId ? 'Toi' : escapeHTML(p.nickname)} <b>${p.bid}</b>`;
-    bidRevealRows.appendChild(row);
+    const card = document.createElement('div');
+    card.className = 'sk-bid-card';
+    card.style.setProperty('--sk-bid-delay', `${i * STEP_MS}ms`);
+
+    const inner = document.createElement('div');
+    inner.className = 'sk-bid-card-inner';
+
+    const back = document.createElement('div');
+    back.className = 'sk-bid-card-face sk-bid-card-back';
+
+    const front = document.createElement('div');
+    front.className = 'sk-bid-card-face sk-bid-card-front';
+    const num = document.createElement('span');
+    num.className = 'sk-bid-card-num';
+    num.textContent = p.bid;
+    const who = document.createElement('span');
+    who.className = 'sk-bid-card-who';
+    who.textContent = p.id === myId ? 'Toi' : p.nickname;
+    front.append(num, who);
+
+    inner.append(back, front);
+    card.appendChild(inner);
+    bidRevealRows.appendChild(card);
   });
+
   bidRevealEl.classList.remove('hidden');
-  bidRevealTimer = setTimeout(() => bidRevealEl.classList.add('hidden'), 1900 + state.players.length * 120);
+
+  // Le retournement est une animation CSS (animation-delay en cascade) et
+  // non une transition déclenchée en JS : une transition aurait exigé de
+  // peindre l'état "face cachée" avant de basculer la classe, donc un
+  // double requestAnimationFrame - or rAF est gelé dans un onglet en
+  // arrière-plan, et les annonces se révèlent justement pendant qu'on peut
+  // avoir la tête ailleurs. L'animation, elle, part toute seule.
+
+  const total = 1500 + state.players.length * STEP_MS;
+  bidRevealTimer = setTimeout(() => bidRevealEl.classList.add('hidden'), total);
 }
 
 function maybeAnimateDeal(state) {
