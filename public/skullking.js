@@ -31,6 +31,8 @@ function loadActiveRoom() {
   }
 }
 function clearActiveRoom() {
+  // Nouveau salon = nouvelle table : la préférence de pièce sera reproposée.
+  piecePrefApplied = false;
   sessionStorage.removeItem(ACTIVE_ROOM_KEY);
 }
 
@@ -460,7 +462,66 @@ socket.on('skullking-room-created', ({ code }) => {
   shareBlock.classList.remove('hidden');
 });
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled }) => {
+// --- Choix de sa pièce dans le salon d'attente ---
+// Une pièce par joueur : celles déjà prises sont montrées barrées plutôt que
+// masquées, pour qu'on voie tout de suite qui a quoi. Le dernier choix est
+// gardé sur cet appareil et re-proposé à la partie suivante s'il est libre.
+const PIECE_PREF_KEY = 'guimams-sk-piece';
+const piecePicker = document.getElementById('sk-piece-picker');
+const pieceGrid = document.getElementById('sk-piece-grid');
+let piecePrefApplied = false;
+
+function renderPiecePicker(players) {
+  const me = players.find((p) => p.id === myId);
+  const takenBy = new Map();
+  players.forEach((p) => {
+    if (p.piece) takenBy.set(p.piece, p);
+  });
+
+  // Une seule fois par salon : si la pièce gardée sur cet appareil est
+  // encore libre, on la reprend sans rien demander.
+  if (!piecePrefApplied && me) {
+    piecePrefApplied = true;
+    let pref = null;
+    try {
+      pref = localStorage.getItem(PIECE_PREF_KEY);
+    } catch (e) {
+      pref = null;
+    }
+    if (pref && pref !== me.piece && PIECE_BY_KEY[pref] && !takenBy.has(pref)) {
+      socket.emit('skullking-set-piece', { piece: pref });
+      return; // le lobby suivant redessinera avec le bon choix
+    }
+  }
+
+  piecePicker.classList.remove('hidden');
+  pieceGrid.innerHTML = '';
+  PIECES.forEach((piece) => {
+    const owner = takenBy.get(piece.key);
+    const mine = owner && owner.id === myId;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sk-piece-btn' + (mine ? ' sk-piece-btn--mine' : '') + (owner && !mine ? ' sk-piece-btn--taken' : '');
+    btn.style.setProperty('--sk-av-color', piece.color);
+    btn.disabled = Boolean(owner) && !mine;
+    btn.title = owner && !mine ? `${piece.label} — pris par ${owner.nickname}` : piece.label;
+    btn.setAttribute('aria-label', btn.title);
+    btn.innerHTML = pieceSVG(piece);
+    btn.addEventListener('click', () => {
+      if (btn.disabled || mine) return;
+      try {
+        localStorage.setItem(PIECE_PREF_KEY, piece.key);
+      } catch (e) {
+        /* navigation privée : le choix vaut pour cette partie, sans plus */
+      }
+      socket.emit('skullking-set-piece', { piece: piece.key });
+    });
+    pieceGrid.appendChild(btn);
+  });
+}
+
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, myId: id }) => {
+  if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
@@ -470,10 +531,17 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   lobbyList.innerHTML = '';
   players.forEach((p) => {
     const li = document.createElement('li');
-    li.textContent = p.nickname;
+    const piece = pieceFor(p);
+    const badge = document.createElement('span');
+    badge.className = 'sk-lobby-piece';
+    badge.style.setProperty('--sk-av-color', piece.color);
+    badge.innerHTML = pieceSVG(piece);
+    li.appendChild(badge);
+    li.appendChild(document.createTextNode(p.nickname));
     if (p.id === hostId) li.classList.add('lobby-host');
     lobbyList.appendChild(li);
   });
+  renderPiecePicker(players);
   lobbyCount.textContent = players.length;
   lobbyRange.textContent = `${minPlayers} à ${maxPlayers}`;
 
@@ -701,28 +769,73 @@ function bidStateSuffix(state, p) {
   return '';
 }
 
-// Allure du jeton d'un joueur. Tous les sièges portaient le même drapeau
-// pirate sur le même rond bordeaux : autour d'une table à 7 ou 9, plus rien
-// ne distinguait les joueurs que le pseudo écrit en petit. Chacun reçoit
-// donc une figure et une couleur propres, tirées de son pseudo - donc
-// stables d'une manche à l'autre, d'un rendu à l'autre, et identiques pour
-// tout le monde sans que le serveur ait à trancher.
-const AVATAR_EMOJIS = ['🏴‍☠️', '💀', '⚓', '🦜', '🗡️', '🧭', '🍺', '🪝', '🐙'];
-const AVATAR_COLORS = [
-  '#b91c1c', '#c2410c', '#a16207', '#15803d', '#0f766e',
-  '#1d4ed8', '#6d28d9', '#a21caf', '#be123c',
+// --- Pièces de joueur ---
+// Chacun choisit sa pièce dans le salon, comme au Monopoly. Avant, tous les
+// sièges portaient le même drapeau pirate sur le même rond bordeaux : autour
+// d'une table à 7 ou 9, plus rien ne distinguait les joueurs que le pseudo
+// écrit en petit. Des figures dessinées plutôt que des emojis, parce qu'un
+// emoji dépend de la police du système, ne se cale pas au pixel dans son
+// rond, et n'a pas la même allure d'un appareil à l'autre.
+//
+// Tracé commun : boîte 24x24, trait de 2, bouts arrondis, couleur héritée -
+// une seule silhouette lisible à 30px comme à 60px.
+const PIECES = [
+  {
+    key: 'crane', label: 'Crâne', color: '#b91c1c',
+    svg: '<circle cx="12" cy="9.5" r="6.6"/><circle cx="9.6" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><circle cx="14.4" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M8.2 15.6h7.6v3a1.6 1.6 0 0 1-1.6 1.6H9.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M10.7 15.8v4.3M13.3 15.8v4.3"/>',
+  },
+  {
+    key: 'ancre', label: 'Ancre', color: '#1d4ed8',
+    svg: '<circle cx="12" cy="4.4" r="2.3"/><path d="M12 6.7V21"/><path d="M8 10h8"/><path d="M4.8 14.3c0 3.7 3.2 6.7 7.2 6.7s7.2-3 7.2-6.7"/>',
+  },
+  {
+    key: 'voilier', label: 'Voilier', color: '#15803d',
+    svg: '<path d="M12 2.8v12.6"/><path d="M13.3 4.6l5 10.8h-5z" fill="currentColor" stroke="none"/><path d="M10.7 6.8 6.2 15.4h4.5z"/><path d="M3.4 17.2h17.2l-2.7 3.9H6.1z"/>',
+  },
+  {
+    key: 'sabre', label: 'Sabre', color: '#a16207',
+    svg: '<path d="M20.2 3.8 9.7 14.3"/><path d="M6.9 12.9l4.2 4.2"/><path d="M8.3 15.7 4.9 19.1"/><circle cx="3.9" cy="20.1" r="1.5"/>',
+  },
+  {
+    key: 'boussole', label: 'Boussole', color: '#0f766e',
+    svg: '<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-2 4.8-4.8 2 2-4.8z" fill="currentColor" stroke="none"/>',
+  },
+  {
+    key: 'coffre', label: 'Coffre', color: '#c2410c',
+    svg: '<path d="M3.6 10.6h16.8V19a1.6 1.6 0 0 1-1.6 1.6H5.2A1.6 1.6 0 0 1 3.6 19z"/><path d="M3.6 10.6A8.6 8.6 0 0 1 12 5.6a8.6 8.6 0 0 1 8.4 5"/><path d="M3.6 13.8h16.8"/><rect x="10.6" y="12.1" width="2.8" height="4" rx="0.7" fill="currentColor" stroke="none"/>',
+  },
+  {
+    key: 'barre', label: 'Barre', color: '#6d28d9',
+    svg: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>',
+  },
+  {
+    key: 'bouteille', label: 'Bouteille', color: '#a21caf',
+    svg: '<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>',
+  },
+  {
+    key: 'crochet', label: 'Crochet', color: '#be123c',
+    svg: '<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>',
+  },
 ];
-function avatarLook(nickname) {
+
+const PIECE_BY_KEY = Object.fromEntries(PIECES.map((p) => [p.key, p]));
+
+// Repli quand un joueur n'a rien choisi (partie en cours lancée avant cette
+// fonctionnalité, ou bot) : une pièce tirée du pseudo, donc stable et
+// différente d'un joueur à l'autre sans qu'on ait à trancher côté serveur.
+function pieceFor(player) {
+  const chosen = player && player.piece && PIECE_BY_KEY[player.piece];
+  if (chosen) return chosen;
+  const nickname = (player && player.nickname) || '';
   let hash = 0;
-  for (let i = 0; i < (nickname || '').length; i++) {
-    hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
-  }
-  return {
-    emoji: AVATAR_EMOJIS[hash % AVATAR_EMOJIS.length],
-    // Décalé d'un cran pour que deux pseudos voisins ne récupèrent pas à la
-    // fois la même figure ET la même couleur.
-    color: AVATAR_COLORS[(hash >>> 3) % AVATAR_COLORS.length],
-  };
+  for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
+  return PIECES[hash % PIECES.length];
+}
+
+// Le SVG porte la couleur de la pièce sur son trait ; le rond du siège prend
+// la même teinte en fond, en plus sombre (voir --sk-av-color).
+function pieceSVG(piece) {
+  return `<svg class="sk-piece-svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${piece.svg}</svg>`;
 }
 
 function renderSeats(state) {
@@ -766,9 +879,10 @@ function renderSeats(state) {
     // 1000px, où la place manque et l'étiquette seule suffit.
     const avatar = document.createElement('div');
     avatar.className = 'sk-seat-av';
-    const look = avatarLook(p.nickname);
-    avatar.textContent = look.emoji;
-    avatar.style.setProperty('--sk-av-color', look.color);
+    const piece = pieceFor(p);
+    avatar.innerHTML = pieceSVG(piece);
+    avatar.style.setProperty('--sk-av-color', piece.color);
+    avatar.title = piece.label;
     seat.appendChild(avatar);
 
     const label = document.createElement('div');

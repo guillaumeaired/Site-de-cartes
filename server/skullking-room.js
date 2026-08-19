@@ -70,6 +70,22 @@ function capturedPirateKeys(trick, excludedIdx, isLastTrick) {
     .filter((k) => k && (k === 'harry' || !isLastTrick));
 }
 
+// Pièces de joueur (façon Monopoly) : une seule par salon, choisie dans le
+// salon d'attente. Le serveur ne connaît que les clés - le dessin vit côté
+// client (voir PIECES dans public/skullking.js) ; les deux listes doivent
+// rester alignées.
+const PIECE_KEYS = [
+  'crane', 'ancre', 'voilier', 'sabre', 'boussole',
+  'coffre', 'barre', 'bouteille', 'crochet',
+];
+
+// Première pièce encore libre, pour qu'un joueur qui ne choisit rien ait
+// quand même une figure à lui (et que deux joueurs n'aient jamais la même).
+function firstFreePiece(room) {
+  const taken = new Set(room.players.map((p) => p.piece).filter(Boolean));
+  return PIECE_KEYS.find((k) => !taken.has(k)) || null;
+}
+
 const rooms = new Map();
 
 // Compteurs simples pour l'observabilite (route /stats, server/index.js) -
@@ -181,7 +197,13 @@ function broadcastLobby(io, room) {
   for (const p of room.players) {
     io.to(p.id).emit('skullking-lobby-update', {
       code: room.code,
-      players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname })),
+      // Le salon est déjà émis joueur par joueur (isHost en dépend) : on en
+      // profite pour dire à chacun qui il est, sinon le choix de pièce ne
+      // sait pas quelle case est la sienne (myId n'arrive qu'avec l'état de
+      // jeu, donc trop tard).
+      myId: p.id,
+      players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, piece: pp.piece || null })),
+      pieceKeys: PIECE_KEYS,
       hostId: room.hostId,
       isHost: p.id === room.hostId,
       canStart: room.players.length >= MIN_PLAYERS && room.players.length <= maxPlayers,
@@ -298,6 +320,7 @@ function stateFor(room, p) {
     players: room.players.map((pp) => ({
       id: pp.id,
       nickname: pp.nickname,
+      piece: pp.piece || null,
       connected: pp.connected !== false,
       handCount: pp.hand ? pp.hand.length : 0,
       tricksWon: pp.tricksWon || 0,
@@ -769,6 +792,7 @@ function registerSkullKingHandlers(io, socket) {
         {
           id: socket.id,
           nickname,
+          piece: PIECE_KEYS[0],
           token: payload && payload.token,
           connected: true,
           disconnectTimer: null,
@@ -811,6 +835,7 @@ function registerSkullKingHandlers(io, socket) {
     room.players.push({
       id: socket.id,
       nickname,
+      piece: firstFreePiece(room),
       token: payload && payload.token,
       connected: true,
       disconnectTimer: null,
@@ -838,6 +863,25 @@ function registerSkullKingHandlers(io, socket) {
     // Si l'extension vient d'être désactivée et que la salle dépassait déjà
     // le plafond de base, on laisse l'hôte constater l'incompatibilité via
     // canStart plutôt que d'expulser qui que ce soit.
+    broadcastLobby(io, room);
+  });
+
+  // Choix de sa pièce dans le salon d'attente. Une pièce ne peut être prise
+  // que par un seul joueur : c'est ce qui la rend utile pour se reconnaître
+  // autour du tapis. Refusé une fois la partie lancée, pour ne pas changer
+  // de figure en cours de route.
+  socket.on('skullking-set-piece', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+    const piece = payload && payload.piece;
+    if (!PIECE_KEYS.includes(piece)) return;
+    if (room.players.some((p) => p.id !== socket.id && p.piece === piece)) {
+      sendError(socket, 'Cette pièce est déjà prise par un autre joueur.');
+      return;
+    }
+    player.piece = piece;
     broadcastLobby(io, room);
   });
 

@@ -2327,3 +2327,90 @@ h1 {
     transform: scale(0.96);
   }
 }
+
+/* --- Pièces de joueur --- */
+
+/* Le SVG occupe une part fixe du jeton : plus d'emoji, donc plus de
+   dépendance à la police du système ni de calage approximatif — la figure
+   est centrée au pixel dans son rond, à toutes les tailles. */
+.sk-piece-svg {
+  width: 58%;
+  height: 58%;
+  display: block;
+  color: #fff5e6;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
+}
+
+/* Choix de sa pièce dans le salon : une grille de 9, celles déjà prises
+   restent visibles (barrées) pour qu'on voie qui a quoi. */
+.sk-piece-picker {
+  margin: 0 auto 18px;
+  max-width: 300px;
+}
+
+.sk-piece-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  justify-items: center;
+}
+
+.sk-piece-btn {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid #1a1208;
+  background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.sk-piece-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45);
+}
+
+.sk-piece-btn--mine {
+  border-color: #facc15;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(250, 204, 21, 0.35);
+  cursor: default;
+}
+
+.sk-piece-btn--taken {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* Barre oblique sur une pièce déjà prise : plus lisible qu'un simple
+   estompage, qui pouvait passer pour un bouton désactivé sans raison. */
+.sk-piece-btn--taken::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 50%;
+  height: 3px;
+  border-radius: 2px;
+  background: #fff5e6;
+  transform: rotate(-45deg);
+}
+
+/* Pastille de rappel à côté du pseudo dans la liste du salon. */
+.sk-lobby-piece {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  border: 2px solid #1a1208;
+  background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
+}
