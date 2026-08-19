@@ -559,6 +559,9 @@ function startPiratePower(io, room, powerKey, playerId, leaderId) {
 // Résumé en clair de la décision prise avec ce pouvoir, diffusé à toute la
 // table avant de ramasser le pli - sans ça, seul le joueur qui a utilisé le
 // pouvoir sait ce qu'il vient de se passer.
+// Annonce d'un pouvoir de Pirate, en deux morceaux : le pirate concerné (le
+// titre de la bannière) et ce qu'il vient de changer. Renvoie null quand il
+// n'y a rien à annoncer aux autres.
 function powerResultMessage(room) {
   const pending = room.pendingPower;
   const player = findPlayer(room, pending.playerId);
@@ -566,29 +569,45 @@ function powerResultMessage(room) {
   switch (pending.kind) {
     case 'rosie': {
       const leader = findPlayer(room, pending.leaderId);
-      const leaderName = leader ? (leader.id === pending.playerId ? 'elle-même/lui-même' : leader.nickname) : '?';
-      return `🏴‍☠️ Rosie D'Laney (${name}) désigne ${leaderName} pour mener le prochain pli.`;
+      const leaderName = leader ? (leader.id === pending.playerId ? 'soi-même' : leader.nickname) : '?';
+      return {
+        title: "Rosie D'Laney",
+        detail: `${name} désigne ${leaderName} pour mener le prochain pli.`,
+      };
     }
+    // Will et Juanita ne changent rien de visible pour les autres : l'un
+    // remanie sa propre main, l'autre ne fait que regarder. Pas d'annonce -
+    // seuls les pouvoirs qui pèsent sur la suite de la manche en méritent
+    // une (qui mène, quelle annonce, quelle carte imposée).
     case 'will':
-      return `🏴‍☠️ Will le Bandit (${name}) a pioché 2 cartes non distribuées et en a défaussé 2.`;
+    case 'juanita':
+      return null;
     case 'rascal': {
       const stake = player ? player.rascalStake || 0 : 0;
-      return stake > 0
-        ? `🏴‍☠️ Rascal le Flambeur (${name}) mise ${stake} points de plus sur sa propre annonce.`
-        : `🏴‍☠️ Rascal le Flambeur (${name}) ne mise rien de plus cette manche.`;
+      return {
+        title: 'Rascal le Flambeur',
+        detail:
+          stake > 0
+            ? `${name} mise ${stake} points de plus sur sa propre annonce.`
+            : `${name} ne mise rien de plus cette manche.`,
+      };
     }
-    case 'juanita':
-      return `🏴‍☠️ Juanita Jade (${name}) a consulté les cartes non distribuées.`;
     case 'harry': {
       const delta = pending.harryDelta || 0;
       const newBid = room.bids[pending.playerId];
       const sign = delta > 0 ? '+1' : delta < 0 ? '-1' : '±0';
-      return `🏴‍☠️ Harry le Géant (${name}) modifie son annonce (${sign}) : nouvelle annonce ${newBid}.`;
+      return {
+        title: 'Harry le Géant',
+        detail: `${name} modifie son annonce (${sign}) : nouvelle annonce ${newBid}.`,
+      };
     }
     case 'marythorne': {
       const target = findPlayer(room, pending.marythorneTargetId);
-      const targetName = target ? (target.id === pending.playerId ? 'elle-même/lui-même' : target.nickname) : '?';
-      return `🏴‍☠️ Mary Thorne (${name}) tire une carte au hasard dans la main de ${targetName}, à jouer obligatoirement au pli suivant.`;
+      const targetName = target ? (target.id === pending.playerId ? 'sa propre main' : `la main de ${target.nickname}`) : '?';
+      return {
+        title: 'Mary Thorne',
+        detail: `${name} tire une carte au hasard dans ${targetName}, à jouer obligatoirement au pli suivant.`,
+      };
     }
     default:
       return null;
@@ -598,8 +617,8 @@ function powerResultMessage(room) {
 function resolvePowerDone(io, room) {
   const leaderId = room.pendingPower.leaderId;
   const playerId = room.pendingPower.playerId;
-  const message = powerResultMessage(room);
-  if (message) broadcastToRoom(io, room, 'skullking-power-result', { message });
+  const announce = powerResultMessage(room);
+  if (announce) broadcastToRoom(io, room, 'skullking-power-result', announce);
   // Mat le Forban : plusieurs pouvoirs de Pirates capturés à résoudre à la
   // suite (file constituée à la résolution du pli, voir plus bas) - on
   // enchaîne sur le suivant avant de ramasser le pli pour de bon, en
@@ -1234,6 +1253,7 @@ module.exports = {
   MAX_PLAYERS,
   eligiblePlankTargets,
   capturedPirateKeys,
+  powerResultMessage,
   stateFor,
   setBotAdapter,
   getStats,

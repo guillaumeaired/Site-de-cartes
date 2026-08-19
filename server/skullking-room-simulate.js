@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, capturedPirateKeys, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, capturedPirateKeys, powerResultMessage, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -203,6 +203,63 @@ check(
   'et je ne vois plus les cartes des autres via revealedCard (redevenu normal)',
   playingView.players.every((p) => p.revealedCard === undefined),
   true
+);
+
+// --- Annonces des pouvoirs de Pirates ---
+// Un pouvoir qui pèse sur la suite de la manche doit être annoncé à toute la
+// table ; ceux qui ne changent rien de visible pour les autres (Will remanie
+// sa propre main, Juanita ne fait que regarder) ne doivent rien envoyer.
+function makePowerRoom(pending, extra) {
+  return {
+    players: [
+      { id: 'p1', nickname: 'Guillaume', rascalStake: 0 },
+      { id: 'p2', nickname: 'Barbe-Rousse', rascalStake: 20 },
+    ],
+    bids: { p1: 2, p2: 3 },
+    pendingPower: pending,
+    ...extra,
+  };
+}
+
+check(
+  "Will le Bandit n'envoie aucune annonce",
+  powerResultMessage(makePowerRoom({ kind: 'will', playerId: 'p1' })),
+  null
+);
+check(
+  "Juanita Jade n'envoie aucune annonce",
+  powerResultMessage(makePowerRoom({ kind: 'juanita', playerId: 'p1' })),
+  null
+);
+check(
+  'Rosie annonce qui mènera le prochain pli',
+  powerResultMessage(makePowerRoom({ kind: 'rosie', playerId: 'p1', leaderId: 'p2' })),
+  { title: "Rosie D'Laney", detail: 'Guillaume désigne Barbe-Rousse pour mener le prochain pli.' }
+);
+check(
+  'Rosie qui se désigne elle-même le dit sans répéter le pseudo',
+  powerResultMessage(makePowerRoom({ kind: 'rosie', playerId: 'p1', leaderId: 'p1' })).detail,
+  'Guillaume désigne soi-même pour mener le prochain pli.'
+);
+check(
+  'Rascal annonce sa mise supplémentaire',
+  powerResultMessage(makePowerRoom({ kind: 'rascal', playerId: 'p2' })),
+  { title: 'Rascal le Flambeur', detail: 'Barbe-Rousse mise 20 points de plus sur sa propre annonce.' }
+);
+check(
+  'Rascal qui ne mise rien le dit quand même',
+  powerResultMessage(makePowerRoom({ kind: 'rascal', playerId: 'p1' })).detail,
+  "Guillaume ne mise rien de plus cette manche."
+);
+check(
+  'Harry annonce sa nouvelle annonce',
+  powerResultMessage(makePowerRoom({ kind: 'harry', playerId: 'p1', harryDelta: 1 })),
+  { title: 'Harry le Géant', detail: 'Guillaume modifie son annonce (+1) : nouvelle annonce 2.' }
+);
+check(
+  'Mary Thorne annonce à qui elle prend une carte',
+  powerResultMessage(makePowerRoom({ kind: 'marythorne', playerId: 'p1', marythorneTargetId: 'p2' })).detail,
+  'Guillaume tire une carte au hasard dans la main de Barbe-Rousse, à jouer obligatoirement au pli suivant.'
 );
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

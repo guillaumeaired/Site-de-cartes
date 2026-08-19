@@ -2252,3 +2252,78 @@ h1 {
     margin-left: -26px;
   }
 }
+
+/* --- Annonce d'un pouvoir de Pirate ---
+   Remplace le toast (une ligne grise en haut de page) : un pouvoir décide
+   qui mène le pli suivant, modifie une annonce ou impose une carte, il faut
+   que toute la table le voie passer. Ne bloque pas les clics : la partie
+   continue derrière pendant les 3,6 s d'affichage. */
+.sk-power-announce {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.sk-power-announce-card {
+  max-width: min(90vw, 420px);
+  padding: 16px 30px 18px;
+  text-align: center;
+  background: rgba(20, 6, 6, 0.94);
+  border: 3px solid #ef4444;
+  border-radius: 16px;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45), 0 0 30px rgba(239, 68, 68, 0.35);
+  animation: sk-power-announce-pop 3.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.sk-power-announce-kicker {
+  margin: 0 0 4px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #fca5a5;
+}
+
+.sk-power-announce-title {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #facc15;
+  letter-spacing: 0.01em;
+}
+
+.sk-power-announce-detail {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #f5f0e6;
+}
+
+/* Entrée franche, longue pause de lecture, sortie douce : le texte doit être
+   lisible en entier même en jetant un œil au dernier moment. */
+@keyframes sk-power-announce-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  18% {
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}

@@ -525,8 +525,28 @@ socket.on('skullking-error', (message) => {
   showToast(message);
 });
 
-socket.on('skullking-power-result', ({ message }) => {
-  if (message) showToast(message);
+// Pouvoir de Pirate : bannière plein écran, pas un toast. Le toast est une
+// ligne de texte gris tout en haut de la page - personne ne comprenait ce
+// qui venait de se passer, alors qu'un pouvoir change la suite de la manche
+// (qui mène, quelle annonce, quelle carte imposée). Will et Juanita n'en
+// envoient pas : ils ne changent rien de visible pour les autres (voir
+// powerResultMessage côté serveur).
+const powerAnnounceEl = document.getElementById('sk-power-announce');
+const powerAnnounceTitle = document.getElementById('sk-power-announce-title');
+const powerAnnounceDetail = document.getElementById('sk-power-announce-detail');
+let powerAnnounceTimer = null;
+
+socket.on('skullking-power-result', ({ title, detail }) => {
+  if (!title && !detail) return;
+  clearTimeout(powerAnnounceTimer);
+  powerAnnounceTitle.textContent = title || '';
+  powerAnnounceDetail.textContent = detail || '';
+  // Retire puis remet la classe pour rejouer l'animation quand deux pouvoirs
+  // s'enchaînent (Mat le Forban ou le Skull King qui en hérite plusieurs).
+  powerAnnounceEl.classList.add('hidden');
+  void powerAnnounceEl.offsetWidth;
+  powerAnnounceEl.classList.remove('hidden');
+  powerAnnounceTimer = setTimeout(() => powerAnnounceEl.classList.add('hidden'), 3600);
 });
 
 socket.on('skullking-player-left', ({ nickname, reason }) => {
