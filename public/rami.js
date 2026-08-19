@@ -965,6 +965,10 @@ socket.on('rami-game-start', ({ myId: id, hand, players, drawPileCount, turnPlay
   // ne pas laisser trainer l'état de l'écran de fin précédent.
   endSummary = null;
   rematchRequestedIds = [];
+  // Coupe le compte a rebours de l'entre-deux-parties : la partie suivante
+  // vient de demarrer, il n'a plus rien a annoncer.
+  clearInterval(matchNextTimer);
+  matchNextTimer = null;
   latestState = {
     hand,
     players,
@@ -1201,19 +1205,129 @@ function renderRematchStatus() {
   }
 }
 
-socket.on('rami-game-end', ({ summary, gameWinnerId, myId: id, rematchRequested }) => {
+// --- Ecran de score : fin de match, et entre-deux-parties d'un match ---
+
+const matchStandingEl = document.getElementById('rami-match-standing');
+const matchNextEl = document.getElementById('rami-match-next');
+const btnLeaveEnd = document.getElementById('rami-btn-leave-end');
+let matchNextTimer = null;
+
+// Etat du match apres cette partie, en une ligne : nombre de manches gagnees
+// (bo3/bo5) ou cumul de points face a l'objectif (race). Renvoie '' pour le
+// format "single", qui n'a pas de match autour de la partie.
+function matchStandingText({ matchFormat, matchWins, matchCumulative, raceTarget, summary }) {
+  if (matchFormat === 'bo3' || matchFormat === 'bo5') {
+    const need = matchFormat === 'bo3' ? 2 : 3;
+    const parts = summary.map((s) => `${s.nickname} ${(matchWins && matchWins[s.id]) || 0}`);
+    return `🏅 Manches gagnées — ${parts.join('  ·  ')} (premier à ${need})`;
+  }
+  if (matchFormat === 'race') {
+    const parts = summary.map((s) => `${s.nickname} ${(matchCumulative && matchCumulative[s.id]) || 0}`);
+    return `📈 Cumul — ${parts.join('  ·  ')} (objectif ${raceTarget || 200})`;
+  }
+  return '';
+}
+
+// Remet l'ecran de score dans son mode "fin de match" : boutons rendus, plus
+// de compte a rebours en cours. Appele avant chaque affichage pour qu'un
+// entre-deux-parties precedent ne laisse pas l'ecran amoindri.
+function resetEndScreenChrome() {
+  clearInterval(matchNextTimer);
+  matchNextTimer = null;
+  matchNextEl.classList.add('hidden');
+  matchStandingEl.classList.add('hidden');
+  btnRematch.classList.remove('hidden');
+  btnLeaveEnd.classList.remove('hidden');
+}
+
+socket.on('rami-game-end', ({ summary, gameWinnerId, myId: id, rematchRequested, matchOver, matchWinnerId, matchFormat, matchWins, matchCumulative, raceTarget }) => {
   if (id) myId = id;
   showReconnectingOverlay(false);
   joinModal.classList.add('hidden');
+  resetEndScreenChrome();
   const gameWinner = summary.find((s) => s.id === gameWinnerId);
-  document.getElementById('rami-end-title').textContent =
-    gameWinnerId === myId ? 'Tu remportes la partie ! 🏆' : `${gameWinner ? gameWinner.nickname : 'Un joueur'} remporte la partie !`;
+  // Fin d'un match en plusieurs parties : c'est le match qui se conclut ici,
+  // pas seulement la derniere partie - le titre doit le dire, sinon on croit
+  // avoir gagne une simple partie de plus.
+  const title = document.getElementById('rami-end-title');
+  if (matchOver) {
+    const matchWinner = summary.find((s) => s.id === matchWinnerId);
+    title.textContent =
+      matchWinnerId === myId
+        ? 'Tu remportes le match ! 🏆'
+        : `${matchWinner ? matchWinner.nickname : 'Un joueur'} remporte le match !`;
+    const standing = matchStandingText({ matchFormat, matchWins, matchCumulative, raceTarget, summary });
+    if (standing) {
+      matchStandingEl.textContent = standing;
+      matchStandingEl.classList.remove('hidden');
+    }
+  } else {
+    title.textContent =
+      gameWinnerId === myId ? 'Tu remportes la partie ! 🏆' : `${gameWinner ? gameWinner.nickname : 'Un joueur'} remporte la partie !`;
+  }
   endSummary = summary;
   rematchRequestedIds = rematchRequested || [];
   btnRematch.disabled = false;
   renderRematchStatus();
   showScreen('end');
   revealScoresSequentially([...summary].sort((a, b) => b.total - a.total));
+});
+
+// Entre deux parties d'un match (bo3/bo5/cumul) : le serveur relance tout
+// seul au bout de nextGameInMs. Sans ce gestionnaire l'evenement etait
+// simplement ignore - on passait de la derniere carte defaussee directement a
+// la roue de la partie suivante, sans jamais voir le score (bug remonte le
+// 2026-08-18). Meme ecran que la fin de match, mais sans les boutons
+// (revanche/quitter n'ont pas de sens : la suite s'enchaine) et avec un
+// compte a rebours qui annonce l'enchainement.
+socket.on('rami-match-round-end', ({ summary, gameWinnerId, myId: id, matchFormat, matchWins, matchCumulative, raceTarget, nextGameInMs }) => {
+  if (id) myId = id;
+  showReconnectingOverlay(false);
+  joinModal.classList.add('hidden');
+  resetEndScreenChrome();
+  const gameWinner = summary.find((s) => s.id === gameWinnerId);
+  document.getElementById('rami-end-title').textContent =
+    gameWinnerId === myId ? 'Tu remportes cette partie ! 🎉' : `${gameWinner ? gameWinner.nickname : 'Un joueur'} remporte cette partie !`;
+
+  const standing = matchStandingText({ matchFormat, matchWins, matchCumulative, raceTarget, summary });
+  if (standing) {
+    matchStandingEl.textContent = standing;
+    matchStandingEl.classList.remove('hidden');
+  }
+
+  btnRematch.classList.add('hidden');
+  btnLeaveEnd.classList.add('hidden');
+  rematchStatusEl.classList.add('hidden');
+
+  let left = Math.max(1, Math.round((nextGameInMs || 6000) / 1000));
+  matchNextEl.textContent = `⏳ Partie suivante dans ${left}s…`;
+  matchNextEl.classList.remove('hidden');
+  matchNextTimer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) {
+      clearInterval(matchNextTimer);
+      matchNextTimer = null;
+      matchNextEl.textContent = '⏳ Distribution…';
+      return;
+    }
+    matchNextEl.textContent = `⏳ Partie suivante dans ${left}s…`;
+  }, 1000);
+
+  endSummary = summary;
+  showScreen('end');
+  revealScoresSequentially([...summary].sort((a, b) => b.total - a.total));
+});
+
+// Egalite parfaite sur une partie de match : elle est annulee et rejouee
+// immediatement (le serveur relance sans delai), donc un simple toast - un
+// ecran de score serait balaye par la distribution dans la foulee.
+socket.on('rami-match-tie-replay', () => {
+  showToast('🤝 Égalité parfaite — partie annulée, on rejoue !');
+});
+
+// Garde-fou anti-inactivite : signal visible de tous, sans saut de tour.
+socket.on('rami-inactivity-notice', ({ id, nickname }) => {
+  showToast(id === myId ? '⏰ À toi de jouer !' : `⏰ ${nickname} tarde à jouer…`);
 });
 
 socket.on('rami-rematch-status', ({ requested }) => {

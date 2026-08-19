@@ -351,6 +351,10 @@ function endGame(io, room, winnerId) {
     }
   }
 
+  // raceTarget et nextGameInMs voyagent avec le payload pour que l'ecran de
+  // fin de partie se suffise a lui-meme : il est aussi renvoye tel quel a un
+  // joueur qui se reconnecte en plein entre-deux-parties (voir rami-state),
+  // sans qu'il ait forcement recu un rami-lobby-update recent.
   const basePayload = {
     winnerId,
     summary,
@@ -358,6 +362,8 @@ function endGame(io, room, winnerId) {
     matchFormat: room.matchFormat,
     matchWins: room.matchWins,
     matchCumulative: room.matchCumulative,
+    raceTarget: room.raceTarget || DEFAULT_RACE_TARGET,
+    nextGameInMs: MATCH_ROUND_END_MS,
   };
 
   if (matchOver) {

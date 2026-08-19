@@ -1398,3 +1398,18 @@ h1 {
   color: #facc15;
   font-weight: 800;
 }
+
+/* Etat du match (manches gagnees ou cumul) sous le tableau de score : c'est
+   l'info qui donne son sens a la partie qu'on vient de finir dans un bo3/bo5
+   ou un cumul, donc plus visible qu'un simple .hint. */
+.rami-match-standing {
+  display: inline-block;
+  margin: 10px auto 0;
+  padding: 7px 18px;
+  background: rgba(250, 204, 21, 0.14);
+  border: 2px solid rgba(250, 204, 21, 0.5);
+  border-radius: 20px;
+  color: #facc15;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
