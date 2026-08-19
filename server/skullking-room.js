@@ -70,6 +70,20 @@ function capturedPirateKeys(trick, excludedIdx, isLastTrick) {
     .filter((k) => k && (k === 'harry' || !isLastTrick));
 }
 
+// Pirates « mangés » par le Skull King quand il remporte le pli : sert
+// uniquement à l'animation côté client (voir playDevourAnimation). On lit
+// l'identité choisie (effectiveKind), donc une Tigresse annoncée en Pirate
+// est dévorée elle aussi - c'est ce que le joueur voit sur le tapis. Les
+// Pirates déjà retirés par la Planche (excludedIdx) ne sont plus là pour
+// être mangés. Vide si le pli est détruit ou gagné par autre chose.
+function devouredPirateIds(cards, result) {
+  if (result.destroyed) return [];
+  if (cards[result.winnerIdx].kind !== 'skullking') return [];
+  return cards
+    .filter((c, i) => i !== result.winnerIdx && !result.excludedIdx.has(i) && effectiveKind(c) === 'pirate')
+    .map((c) => c.id);
+}
+
 // Pièces de joueur (façon Monopoly) : une seule par salon, choisie dans le
 // salon d'attente. Le serveur ne connaît que les clés - le dessin vit côté
 // client (voir PIECES dans public/skullking.js) ; les deux listes doivent
@@ -1068,7 +1082,11 @@ function registerSkullKingHandlers(io, socket) {
       });
     }
     const leaderId = room.currentTrick[result.leaderIdx].playerId;
-    room.lastTrickResult = { destroyed: result.destroyed, winnerId };
+    room.lastTrickResult = {
+      destroyed: result.destroyed,
+      winnerId,
+      devouredCardIds: devouredPirateIds(cards, result),
+    };
     room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
     room.trickPaused = true;
     broadcastState(io, room);
@@ -1297,6 +1315,7 @@ module.exports = {
   MAX_PLAYERS,
   eligiblePlankTargets,
   capturedPirateKeys,
+  devouredPirateIds,
   powerResultMessage,
   stateFor,
   setBotAdapter,

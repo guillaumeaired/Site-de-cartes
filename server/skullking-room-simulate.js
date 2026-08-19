@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, capturedPirateKeys, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, capturedPirateKeys, devouredPirateIds, powerResultMessage, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -260,6 +260,52 @@ check(
   'Mary Thorne annonce à qui elle prend une carte',
   powerResultMessage(makePowerRoom({ kind: 'marythorne', playerId: 'p1', marythorneTargetId: 'p2' })).detail,
   'Guillaume tire une carte au hasard dans la main de Barbe-Rousse, à jouer obligatoirement au pli suivant.'
+);
+
+// --- Pirates dévorés par le Skull King (animation) ---
+const sk = { id: 'sk', kind: 'skullking' };
+const rosie = { id: 'r1', kind: 'pirate', name: "Rosie D'Laney" };
+const harry = { id: 'r2', kind: 'pirate', name: 'Harry le Géant' };
+const num = { id: 'n1', kind: 'number', suit: 'vert', value: 9 };
+const forban = { id: 'f1', kind: 'firstmate' };
+const tigressePirate = { id: 't1', kind: 'tigress', chosenAs: 'pirate' };
+const tigresseFuite = { id: 't2', kind: 'tigress', chosenAs: 'escape' };
+const win = (idx, extra) => ({ destroyed: false, winnerIdx: idx, excludedIdx: new Set(), ...extra });
+
+check(
+  'le Skull King dévore les deux Pirates du pli',
+  devouredPirateIds([sk, rosie, harry, num], win(0)),
+  ['r1', 'r2']
+);
+check(
+  'une Tigresse annoncée en Pirate est dévorée elle aussi',
+  devouredPirateIds([sk, tigressePirate], win(0)),
+  ['t1']
+);
+check(
+  "une Tigresse annoncée en Fuite n'est pas dévorée",
+  devouredPirateIds([sk, tigresseFuite], win(0)),
+  []
+);
+check(
+  "Mat le Forban n'est pas un Pirate à dévorer",
+  devouredPirateIds([sk, forban], win(0)),
+  []
+);
+check(
+  'un Pirate retiré par la Planche n\'est plus là pour être mangé',
+  devouredPirateIds([sk, rosie, harry], win(0, { excludedIdx: new Set([1]) })),
+  ['r2']
+);
+check(
+  "rien à dévorer si c'est un Pirate qui remporte le pli",
+  devouredPirateIds([rosie, num], win(0)),
+  []
+);
+check(
+  'rien à dévorer si le pli est détruit (Kraken)',
+  devouredPirateIds([sk, rosie], { destroyed: true, winnerIdx: -1, excludedIdx: new Set() }),
+  []
 );
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

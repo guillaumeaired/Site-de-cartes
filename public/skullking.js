@@ -570,8 +570,11 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     waitingHint.textContent = "En attente que l'hôte lance la partie…";
   }
   // On repasse par le salon avant chaque nouvelle partie (y compris une
-  // revanche) : c'est le point sûr pour réarmer la roue de tirage au sort.
+  // revanche) : c'est le point sûr pour réarmer la roue de tirage au sort et
+  // le repère de pli déjà animé (sinon la manche 1 / pli 1 de la partie
+  // suivante porterait la même clé que celui de la partie précédente).
   startRevealPlayed = false;
+  lastDevouredTrick = null;
 });
 
 btnExtension.addEventListener('click', () => {
@@ -956,6 +959,10 @@ function renderTrick(state) {
 
     const slot = document.createElement('div');
     slot.className = 'sk-trick-card';
+    // L'id de la carte sert à retrouver la case après coup (animation du
+    // Skull King qui dévore les Pirates, voir playDevourAnimation).
+    slot.dataset.cardId = t.card.id;
+    slot.dataset.kind = t.card.kind;
     slot.style.left = `${seatLeft + (50 - seatLeft) * PULL_X}%`;
     slot.style.top = `${seatTop + (50 - seatTop) * PULL_Y}%`;
     if (t.playerId === state.leadingPlayerId) slot.classList.add('sk-trick-card--leading');
@@ -985,6 +992,64 @@ function renderTrick(state) {
     trickCaptionEl.textContent = '💀 Ce pli sera détruit…';
   } else {
     trickCaptionEl.textContent = '';
+  }
+}
+
+// --- Le Skull King dévore les Pirates du pli ---
+// Joué une seule fois par pli (repère lastDevouredTrick) : les cartes de
+// Pirate glissent vers le Skull King en rétrécissant, pendant qu'il grossit
+// d'un temps. Pilotée par l'API Web Animations plutôt qu'en CSS parce que la
+// distance à parcourir dépend de la position réelle des cases sur le tapis,
+// qui change à chaque pli et à chaque nombre de joueurs.
+let lastDevouredTrick = null;
+
+function playDevourAnimation(state) {
+  const res = state.lastTrickResult;
+  const ids = (res && res.devouredCardIds) || [];
+  if (!state.trickPaused || !ids.length) return;
+
+  // Un même pli est rediffusé à chaque broadcast pendant la pause : sans ce
+  // repère, l'animation repartirait à zéro à chaque état reçu.
+  const key = `${state.roundNumber}-${state.trickNumber}`;
+  if (lastDevouredTrick === key) return;
+  lastDevouredTrick = key;
+
+  const king = tableEl.querySelector('.sk-trick-card[data-kind="skullking"]');
+  if (!king) return;
+  const kingCard = king.querySelector('.sk-card');
+
+  // Distances prises sur offsetLeft/offsetTop, pas sur getBoundingClientRect :
+  // les cases viennent d'être créées et leur animation d'apparition
+  // (sk-card-drop) est encore en cours, donc leur boîte mesurée est décalée
+  // et la carte n'atterrissait pas sur le roi (35 px d'écart mesurés). Les
+  // offsets, eux, sont la position de mise en page, insensible aux
+  // transformations en cours.
+  ids.forEach((id, i) => {
+    const slot = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(id)}"]`);
+    if (!slot) return;
+    const dx = king.offsetLeft - slot.offsetLeft;
+    const dy = king.offsetTop - slot.offsetTop;
+    slot.style.zIndex = '4';
+    slot.animate(
+      [
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+        { transform: `translate(-50%, -50%) translate(${dx * 0.25}px, ${dy * 0.25}px) scale(1.08) rotate(-6deg)`, opacity: 1, offset: 0.28 },
+        { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.15) rotate(14deg)`, opacity: 0 },
+      ],
+      { duration: 850, delay: 120 + i * 90, easing: 'cubic-bezier(0.5, -0.3, 0.7, 1)', fill: 'forwards' }
+    );
+  });
+
+  // Le roi encaisse : une pulsation dorée au moment où les cartes arrivent.
+  if (kingCard) {
+    kingCard.animate(
+      [
+        { transform: 'scale(1)', filter: 'brightness(1)' },
+        { transform: 'scale(1.14)', filter: 'brightness(1.5)', offset: 0.55 },
+        { transform: 'scale(1)', filter: 'brightness(1)' },
+      ],
+      { duration: 700, delay: 700 + (ids.length - 1) * 90, easing: 'ease-out' }
+    );
   }
 }
 
@@ -1587,6 +1652,9 @@ function renderGame(state) {
   maybeAnimateDeal(state);
   renderSeats(state);
   renderTrick(state);
+  // Après renderTrick : l'animation mesure la position réelle des cases du
+  // pli, elles doivent donc déjà être dans le DOM.
+  playDevourAnimation(state);
   renderBidChoices(state);
   renderPower(state);
   renderTurnIndicator(state);
