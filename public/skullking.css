@@ -1421,8 +1421,6 @@ h1 {
   opacity: 0.75;
 }
 
-}
-
 /* --- Roue de tirage au sort (qui mène le premier pli), même DA que celle
    du Rami : secteurs fixes, seule la flèche tourne. Généralisée à N joueurs
    (3 à 9) au lieu du split à deux du Rami - un secteur par joueur, étiquette
