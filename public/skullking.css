@@ -1676,51 +1676,27 @@ h1 {
    tableau, entre les deux (ou trois, si un joueur cumule deux alliances)
    joueurs concernés - même si d'autres lignes s'intercalent entre eux. --- */
 .sk-round-popup-row--loot {
-  border-left: 3px solid var(--sk-loot-color, #facc15);
+  border-left: 3px solid #facc15;
   padding-left: 7px;
 }
 
-.sk-loot-links {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 0;
+/* Pictogramme d'alliance Butin sur une ligne du récapitulatif de manche. */
+.sk-round-popup-loot {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  animation: sk-loot-coin-pop 0.4s ease forwards;
 }
 
-.sk-loot-link-path {
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: sk-loot-link-draw 0.7s ease forwards;
-  animation-delay: 0.3s;
+/* Le même, à côté du pseudo sur le tapis : il reste affiché de la formation
+   de l'alliance jusqu'à la fin de la manche. */
+.sk-seat-loot {
+  margin-left: 4px;
+  font-size: 0.85rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  animation: sk-loot-coin-pop 0.4s ease forwards;
 }
 
-/* Alliance qui s'est formée mais n'a rien rapporté (au moins un des deux a
-   raté son annonce) : trait gris pointillé, sans l'animation de tracé. */
-.sk-loot-link-path--unpaid {
-  stroke-dasharray: 4 4;
-  stroke-dashoffset: 0;
-  opacity: 0.6;
-  animation: none;
-}
-
-.sk-loot-link-coin {
-  font-size: 0.7rem;
-  opacity: 0;
-  animation: sk-loot-link-coin-pop 0.4s ease forwards;
-  animation-delay: 0.9s;
-}
-
-@keyframes sk-loot-link-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes sk-loot-link-coin-pop {
+@keyframes sk-loot-coin-pop {
   from {
     opacity: 0;
     transform: scale(0.4);
@@ -1977,16 +1953,19 @@ h1 {
     height: 58px;
     border-radius: 50%;
     font-size: 1.6rem;
-    background: radial-gradient(circle at 35% 30%, #7f1d1d, #3b0a0a);
+    /* Couleur propre au joueur, posée par avatarLook() ; le bordeaux ne sert
+       plus que de repli si la variable manque. */
+    background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
     border: 3px solid #1a1208;
     box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
     transition: all 0.25s;
   }
 
-  /* Le jaune est réservé à qui a la main : mon siège garde l'avatar neutre
-     (le 🫵 suffit à dire « c'est toi »), seul un fin liseré le distingue. */
+  /* Le jaune est réservé à qui a la main : mon siège garde sa couleur, seul
+     un liseré clair dit « c'est toi ». */
   .sk-seat--me .sk-seat-av {
-    border-color: #ffffffaa;
+    border-color: #ffffffcc;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(255, 255, 255, 0.16);
   }
 
   .sk-seat--turn .sk-seat-av {

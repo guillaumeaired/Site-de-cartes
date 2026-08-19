@@ -681,6 +681,30 @@ function bidStateSuffix(state, p) {
   return '';
 }
 
+// Allure du jeton d'un joueur. Tous les sièges portaient le même drapeau
+// pirate sur le même rond bordeaux : autour d'une table à 7 ou 9, plus rien
+// ne distinguait les joueurs que le pseudo écrit en petit. Chacun reçoit
+// donc une figure et une couleur propres, tirées de son pseudo - donc
+// stables d'une manche à l'autre, d'un rendu à l'autre, et identiques pour
+// tout le monde sans que le serveur ait à trancher.
+const AVATAR_EMOJIS = ['🏴‍☠️', '💀', '⚓', '🦜', '🗡️', '🧭', '🍺', '🪝', '🐙'];
+const AVATAR_COLORS = [
+  '#b91c1c', '#c2410c', '#a16207', '#15803d', '#0f766e',
+  '#1d4ed8', '#6d28d9', '#a21caf', '#be123c',
+];
+function avatarLook(nickname) {
+  let hash = 0;
+  for (let i = 0; i < (nickname || '').length; i++) {
+    hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
+  }
+  return {
+    emoji: AVATAR_EMOJIS[hash % AVATAR_EMOJIS.length],
+    // Décalé d'un cran pour que deux pseudos voisins ne récupèrent pas à la
+    // fois la même figure ET la même couleur.
+    color: AVATAR_COLORS[(hash >>> 3) % AVATAR_COLORS.length],
+  };
+}
+
 function renderSeats(state) {
   const { ordered, map } = seatLayout(state);
   tableEl.querySelectorAll('.sk-seat').forEach((el) => el.remove());
@@ -722,7 +746,9 @@ function renderSeats(state) {
     // 1000px, où la place manque et l'étiquette seule suffit.
     const avatar = document.createElement('div');
     avatar.className = 'sk-seat-av';
-    avatar.textContent = p.id === myId ? '🫵' : '🏴‍☠️';
+    const look = avatarLook(p.nickname);
+    avatar.textContent = look.emoji;
+    avatar.style.setProperty('--sk-av-color', look.color);
     seat.appendChild(avatar);
 
     const label = document.createElement('div');
@@ -753,6 +779,19 @@ function renderSeats(state) {
       chip.textContent = 'D';
       chip.title = 'Donneur';
       label.appendChild(chip);
+    }
+
+    // Alliance Butin : une fois formée, elle reste marquée à côté de chaque
+    // allié jusqu'à la fin de la manche. Un simple pictogramme sur les deux
+    // (ou trois) sièges concernés se lit mieux qu'un trait tracé entre eux.
+    // Posé DANS le pseudo, pas à côté : en paysage l'étiquette est une
+    // colonne, un frère du pseudo tomberait sur la ligne du dessous.
+    if ((state.lootAllies || []).includes(p.id)) {
+      const coin = document.createElement('span');
+      coin.className = 'sk-seat-loot';
+      coin.textContent = '💰';
+      coin.title = 'Allié par un Butin cette manche';
+      name.appendChild(coin);
     }
 
     seat.appendChild(label);
@@ -1420,53 +1459,27 @@ function roundBreakdownText(r) {
   return parts.join(' · ');
 }
 
-const LOOT_LINK_COLORS = ['#facc15', '#4ade80', '#38bdf8'];
-
-// Trace un lien entre les deux lignes d'une alliance Butin, même si d'autres
-// joueurs s'intercalent entre elles dans le classement - un simple badge de
-// couleur assorti sur chaque ligne ne suffirait pas à dire QUI est lié à qui.
-function drawLootLinks(links) {
+// Marque les lignes d'une alliance Butin dans le récapitulatif de fin de
+// manche. Un trait tracé entre les deux lignes a été essayé puis abandonné :
+// illisible dès que d'autres joueurs s'intercalaient, et redondant avec le
+// pictogramme désormais affiché sur les sièges pendant toute la manche.
+function markLootRows(links) {
   if (!links || !links.length) return;
-  const container = roundPopupRows;
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', 'sk-loot-links');
-  const containerRect = container.getBoundingClientRect();
-
-  links.forEach((link, i) => {
-    const rowA = container.querySelector(`[data-player-id="${link.a}"]`);
-    const rowB = container.querySelector(`[data-player-id="${link.b}"]`);
-    if (!rowA || !rowB) return;
-    // Alliance qui a payé : couleur vive + pièce. Alliance formée mais ratée
-    // (l'un des deux au moins a manqué son annonce) : même trait, en gris et
-    // en pointillés - on voit qu'elle a existé, et qu'elle n'a rien rapporté.
+  links.forEach((link) => {
     const paid = link.paid !== false;
-    const color = paid ? LOOT_LINK_COLORS[i % LOOT_LINK_COLORS.length] : '#94a3b8';
-    rowA.classList.add('sk-round-popup-row--loot');
-    rowB.classList.add('sk-round-popup-row--loot');
-    rowA.style.setProperty('--sk-loot-color', color);
-    rowB.style.setProperty('--sk-loot-color', color);
-
-    const rectA = rowA.getBoundingClientRect();
-    const rectB = rowB.getBoundingClientRect();
-    const yA = rectA.top - containerRect.top + rectA.height / 2;
-    const yB = rectB.top - containerRect.top + rectB.height / 2;
-    const x = -4 - i * 6; // décale les liens successifs pour ne jamais se superposer
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('class', 'sk-loot-link-path' + (paid ? '' : ' sk-loot-link-path--unpaid'));
-    path.setAttribute('stroke', color);
-    path.setAttribute('d', `M -1 ${yA} C ${x} ${yA}, ${x} ${yB}, -1 ${yB}`);
-    svg.appendChild(path);
-
-    const coin = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    coin.setAttribute('class', 'sk-loot-link-coin');
-    coin.setAttribute('x', x - 2);
-    coin.setAttribute('y', (yA + yB) / 2 + 3);
-    coin.setAttribute('text-anchor', 'middle');
-    coin.textContent = paid ? '💰' : '🤝';
-    svg.appendChild(coin);
+    [link.a, link.b].forEach((id) => {
+      const row = roundPopupRows.querySelector(`[data-player-id="${id}"]`);
+      if (!row) return;
+      row.classList.add('sk-round-popup-row--loot');
+      const coin = document.createElement('span');
+      coin.className = 'sk-round-popup-loot';
+      // Alliance qui a payé (les deux annonces réussies) contre alliance
+      // formée mais restée sans effet : la distinction vaut d'être gardée.
+      coin.textContent = paid ? '💰' : '🤝';
+      coin.title = paid ? 'Alliance Butin réussie (+20)' : 'Alliance Butin formée, sans bonus';
+      row.appendChild(coin);
+    });
   });
-
-  container.prepend(svg);
 }
 
 function showRoundPopup(state) {
@@ -1493,10 +1506,7 @@ function showRoundPopup(state) {
 
   btnNextRound.classList.toggle('hidden', !myIsHost);
   roundPopup.classList.remove('hidden');
-  // Doit passer APRES l'affichage de la popup : tant qu'elle est display:none,
-  // les lignes du tableau n'ont pas de vraie position (getBoundingClientRect
-  // ne renverrait que des zéros).
-  drawLootLinks(summary.lootLinks);
+  markLootRows(summary.lootLinks);
 
   const ms = state.roundEndMs || 7000;
   roundPopupBar.style.transition = 'none';

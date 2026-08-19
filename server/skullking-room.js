@@ -319,6 +319,13 @@ function stateFor(room, p) {
     cardsInRound: room.cardsInRound,
     scoreboard: scoreboard(room),
     extensionEnabled: Boolean(room.extensionEnabled),
+    // Joueurs actuellement liés par une alliance Butin sur cette manche :
+    // remonté en direct (et plus seulement dans le résumé de fin de manche)
+    // pour qu'un pictogramme reste affiché à côté des alliés jusqu'au bout
+    // de la manche, une fois l'alliance formée.
+    lootAllies: inRound
+      ? [...new Set((room.lootAlliances || []).flatMap((a) => [a.lootPlayerId, a.winnerId]))]
+      : [],
   };
 
   if (inRound) {
