@@ -1365,7 +1365,59 @@ function renderHand(state) {
   });
 }
 
+// « Ce qu'il te reste à faire » : la phrase qu'on se répète en jouant et qui
+// n'était écrite nulle part. Réécrite à chaque pli, elle dit combien de plis
+// il reste à prendre et avec combien de cartes — et surtout quand l'annonce
+// est déjà perdue, ce qui change complètement la façon de jouer la fin de
+// manche (on cherche alors à en donner, plus à en prendre).
+const objectiveEl = document.getElementById('sk-objective');
+const objectiveTextEl = document.getElementById('sk-objective-text');
+
+function objectiveState(state) {
+  const me = state.players.find((p) => p.id === myId);
+  if (!me) return null;
+
+  if (state.phase === 'bidding') {
+    return me.hasBid
+      ? { ton: 'ok', texte: 'Annonce envoyée. On attend les autres.' }
+      : { ton: 'todo', texte: 'Annonce combien de plis tu comptes remporter.' };
+  }
+  if (state.phase !== 'playing' && state.phase !== 'power') return null;
+  if (me.bid == null) return null;
+
+  const reste = me.bid - (me.tricksWon || 0);
+  const cartes = (state.hand || []).length;
+
+  if (reste < 0) {
+    const trop = -reste;
+    return { ton: 'perdu', texte: `Annonce dépassée de ${trop} pli${trop > 1 ? 's' : ''} — la manche est perdue, limite les dégâts.` };
+  }
+  if (reste === 0) {
+    if (cartes === 0) return { ton: 'ok', texte: 'Annonce tenue ! Manche réussie.' };
+    return { ton: 'ok', texte: `N'en prends plus aucun — encore ${cartes} carte${cartes > 1 ? 's' : ''} à écouler.` };
+  }
+  if (reste > cartes) {
+    return { ton: 'perdu', texte: `Il te faudrait ${reste} plis mais il ne te reste que ${cartes} carte${cartes > 1 ? 's' : ''} : c'est déjà manqué.` };
+  }
+  if (reste === cartes) {
+    return { ton: 'tendu', texte: `Il faut remporter tous tes ${cartes} derniers plis. Aucune marge.` };
+  }
+  return { ton: 'todo', texte: `Encore ${reste} pli${reste > 1 ? 's' : ''} à prendre, avec ${cartes} carte${cartes > 1 ? 's' : ''} en main.` };
+}
+
+function renderObjective(state) {
+  const o = objectiveState(state);
+  if (!o) {
+    objectiveEl.classList.add('hidden');
+    return;
+  }
+  objectiveEl.classList.remove('hidden');
+  objectiveEl.className = `sk-objective sk-objective--${o.ton}`;
+  objectiveTextEl.textContent = o.texte;
+}
+
 function renderScoreboard(state) {
+  renderObjective(state);
   scoreboardRows.innerHTML = '';
   const byId = new Map(state.players.map((p) => [p.id, p]));
   [...state.scoreboard]

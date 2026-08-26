@@ -2609,3 +2609,63 @@ h1 {
   height: 3px;
   border-radius: 2px;
 }
+
+/* --- « Ton objectif » : ce qu'il te reste à faire cette manche --- */
+
+.sk-objective {
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-left-width: 5px;
+  text-align: left;
+}
+
+.sk-objective-kicker {
+  margin: 0 0 3px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  opacity: 0.5;
+}
+
+.sk-objective-text {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #f5f0e6;
+}
+
+/* Quatre états, du plus tranquille au plus grave : encore du travail (doré),
+   plus aucune marge (orange), objectif atteint (vert), manche perdue (rouge).
+   La bordure gauche porte l'état, pour le lire sans lire la phrase. */
+.sk-objective--todo {
+  border-left-color: #facc15;
+}
+
+.sk-objective--tendu {
+  border-left-color: #fb923c;
+}
+
+.sk-objective--tendu .sk-objective-text {
+  color: #fed7aa;
+}
+
+.sk-objective--ok {
+  border-left-color: #4ade80;
+}
+
+.sk-objective--ok .sk-objective-text {
+  color: #bbf7d0;
+}
+
+.sk-objective--perdu {
+  border-left-color: #f87171;
+}
+
+.sk-objective--perdu .sk-objective-text {
+  color: #fecaca;
+}
