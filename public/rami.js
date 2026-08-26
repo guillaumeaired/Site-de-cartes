@@ -770,11 +770,21 @@ function renderDiscardRow(state) {
   drawCountEl.textContent = state.drawPileCount;
   discardRowEl.innerHTML = '';
   const canTake = state.isMyTurn && state.turnPhase === 'PIOCHE';
-  state.discardPile.forEach((card) => {
+  const total = state.discardPile.length;
+  state.discardPile.forEach((card, i) => {
     const chip = document.createElement('div');
     chip.className = `rami-discard-card ${cardColorClass(card)}`;
     if (!canTake) chip.classList.add('rami-discard-card--disabled');
     chip.innerHTML = cardFaceHTML(card);
+    // Prendre une carte enfouie récupère aussi TOUTES celles défaussées
+    // après elle : c'est la règle, mais rien ne le disait et on pouvait se
+    // retrouver avec cinq cartes de plus sans l'avoir voulu.
+    const dessus = total - 1 - i;
+    if (canTake) {
+      if (dessus === 0) chip.title = `Prendre ${cardLabel(card)} (dernière défaussée).`;
+      else if (dessus === 1) chip.title = `Prendre ${cardLabel(card)} — tu récupères aussi la carte défaussée juste après.`;
+      else chip.title = `Prendre ${cardLabel(card)} — tu récupères aussi les ${dessus} cartes défaussées après elle.`;
+    }
     chip.addEventListener('click', () => {
       if (!canTake) return;
       socket.emit('rami-draw-discard', { cardId: card.id });
@@ -917,6 +927,38 @@ drawPileBtn.addEventListener('click', () => {
   socket.emit('rami-draw-stock');
 });
 
+// Score de match dans le bandeau (paysage). Affiché seulement quand il y a
+// un match en cours : en partie simple il n'y a rien à compter avant la fin,
+// et un « 0 – 0 » figé n'apprendrait rien.
+const scoresEl = document.getElementById('rami-scores');
+
+function renderMatchScores(state) {
+  if (!scoresEl) return;
+  const format = state.matchFormat || 'single';
+  if (format === 'single' || !state.players) {
+    scoresEl.classList.add('hidden');
+    scoresEl.innerHTML = '';
+    return;
+  }
+  const cumul = format === 'race';
+  const valeurs = cumul ? state.matchCumulative || {} : state.matchWins || {};
+  scoresEl.classList.remove('hidden');
+  // Construit en textContent plutôt qu'en innerHTML : le pseudo vient d'un
+  // autre joueur, et c'est la règle suivie partout ailleurs dans ce fichier.
+  scoresEl.innerHTML = '';
+  state.players.forEach((p) => {
+    const pastille = document.createElement('span');
+    pastille.className = 'rami-score' + (p.id === myId ? ' rami-score--me' : '');
+    pastille.appendChild(document.createTextNode(p.id === myId ? 'Moi' : p.nickname));
+    const val = document.createElement('b');
+    val.textContent = valeurs[p.id] || 0;
+    pastille.appendChild(val);
+    scoresEl.appendChild(pastille);
+  });
+  const but = cumul ? `${state.raceTarget} pts` : format.toUpperCase();
+  scoresEl.title = `Match en cours — ${but}`;
+}
+
 function renderAll() {
   renderHand();
   renderStaging();
@@ -925,6 +967,7 @@ function renderAll() {
     renderOpponent(latestState);
     renderTable(latestState);
     renderDiscardRow(latestState);
+    renderMatchScores(latestState);
     updateTurnIndicator(latestState);
   }
   updateActionButtons();
@@ -986,7 +1029,13 @@ function playStartReveal(players, turnPlayerId) {
     });
   });
 
+  // Au moment où la flèche s'arrête, le nom désigné s'allume. Sans ça, il
+  // fallait deviner à quelle moitié de la roue correspondait quel nom — même
+  // traitement que sur la roue du Skull King.
+  labelA.classList.remove('rami-wheel-tag--winner');
+  labelB.classList.remove('rami-wheel-tag--winner');
   setTimeout(() => {
+    (winnerIndex === 1 ? labelB : labelA).classList.add('rami-wheel-tag--winner');
     text.textContent = `🎯 ${label} commence !`;
     text.classList.add('rami-visible');
   }, 2150);

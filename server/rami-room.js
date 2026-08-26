@@ -251,6 +251,14 @@ function stateFor(room, p) {
     isMyTurn: activePlayer(room).id === p.id,
     drawnCardId: room.drawnCardId,
     drawnFromDiscard: room.drawnFromDiscard,
+    // Score de match (BO3/BO5/cumul) : le seul chiffre qui évolue pendant
+    // qu'on joue. Le score de partie, lui, ne se calcule qu'à la fin (mêlées
+    // posées moins cartes restantes) et vaut 0 tout du long — il n'y a rien à
+    // afficher en direct. En partie simple, rien n'est envoyé.
+    matchFormat: room.matchFormat || 'single',
+    matchWins: room.matchWins || {},
+    matchCumulative: room.matchCumulative || {},
+    raceTarget: room.raceTarget || DEFAULT_RACE_TARGET,
     canUndoDraw:
       room.drawnFromDiscard &&
       Array.isArray(room.drawnCardIds) &&
