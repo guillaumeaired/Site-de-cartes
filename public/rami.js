@@ -426,15 +426,54 @@ function cardColorClass(card) {
   return RED_SUITS.has(card.suit) ? 'card-red' : 'card-black';
 }
 
-// Visage de carte classique façon Balatro : index rang+symbole en haut a
-// gauche (couleur pleine, pas de degrade - illisible en petit) + un gros
-// symbole plein au centre.
+// --- Visage de carte classique ---
+// Reprise de la direction artistique validée sur la maquette V3
+// (public/rami-v2.html) : de vraies cartes à jouer plutôt qu'un gros symbole
+// central. Index rang+couleur dans deux coins opposés (la carte se lit dans
+// les deux sens, comme un vrai jeu français), et au centre le semis de pips
+// propre à chaque rang.
+//
+// Position des pips en pourcentage d'un champ central : [x, y], 0/0 en haut
+// à gauche. Un pip de la moitié basse est retourné, comme sur une vraie
+// carte imprimée.
+const PIP_LAYOUT = {
+  '2': [[50, 0], [50, 100]],
+  '3': [[50, 0], [50, 50], [50, 100]],
+  '4': [[0, 0], [100, 0], [0, 100], [100, 100]],
+  '5': [[0, 0], [100, 0], [50, 50], [0, 100], [100, 100]],
+  '6': [[0, 0], [100, 0], [0, 50], [100, 50], [0, 100], [100, 100]],
+  '7': [[0, 0], [100, 0], [50, 25], [0, 50], [100, 50], [0, 100], [100, 100]],
+  '8': [[0, 0], [100, 0], [50, 25], [0, 50], [100, 50], [50, 75], [0, 100], [100, 100]],
+  '9': [[0, 0], [100, 0], [0, 33], [100, 33], [50, 50], [0, 67], [100, 67], [0, 100], [100, 100]],
+  '10': [[0, 0], [100, 0], [0, 33], [100, 33], [50, 17], [50, 83], [0, 67], [100, 67], [0, 100], [100, 100]],
+};
+const COURT_RANKS = new Set(['V', 'D', 'R']);
+
+function cardIndexHTML(rank, symbol) {
+  return `<span class="card-idx card-idx--tl"><span class="card-idx-rank">${rank}</span><span class="card-idx-suit">${symbol}</span></span>` +
+    `<span class="card-idx card-idx--br"><span class="card-idx-rank">${rank}</span><span class="card-idx-suit">${symbol}</span></span>`;
+}
+
+// Centre de la carte : un grand pip pour l'As, un cartouche à lettre pour
+// les figures, le semis réglementaire pour les numérotées.
+function cardCenterHTML(rank, symbol) {
+  if (rank === 'A') return `<span class="card-ace">${symbol}</span>`;
+  if (COURT_RANKS.has(rank)) {
+    return `<span class="card-court">` +
+      `<span class="card-court-suit">${symbol}</span>` +
+      `<span class="card-court-letter">${rank}</span>` +
+      `<span class="card-court-suit card-court-suit--dn">${symbol}</span>` +
+      `</span>`;
+  }
+  const pips = PIP_LAYOUT[rank] || [];
+  return `<span class="card-pips">${pips
+    .map(([x, y]) => `<span class="card-pip${y > 50 ? ' card-pip--dn' : ''}" style="left:${x}%;top:${y}%">${symbol}</span>`)
+    .join('')}</span>`;
+}
+
 function cardFaceHTML(card) {
   const symbol = SUIT_SYMBOL[card.suit];
-  return `
-    <span class="card-corner"><span class="card-corner-rank">${card.rank}</span><span class="card-corner-suit">${symbol}</span></span>
-    <span class="card-emblem">${symbol}</span>
-  `;
+  return cardIndexHTML(card.rank, symbol) + cardCenterHTML(card.rank, symbol);
 }
 
 // Une fois posé dans une combinaison, le Joker montre ce qu'il remplace
@@ -445,11 +484,10 @@ function jokerMeldFaceHTML(card, meldType) {
   const rank = (card.jokerFor && card.jokerFor.rank) || card.rank;
   const suit = meldType === 'sequence' ? card.jokerFor && card.jokerFor.suit : null;
   const symbol = suit ? SUIT_SYMBOL[suit] : '★';
-  return `
-    <span class="card-corner"><span class="card-corner-rank">${rank}</span><span class="card-corner-suit">${symbol}</span></span>
-    <span class="card-emblem">${symbol}</span>
-    <span class="rami-joker-badge">🃏</span>
-  `;
+  // Sans couleur propre (brelan/carré), l'étoile ne porte aucun semis :
+  // afficher dix étoiles ferait lire une vraie carte là où il n'y en a pas.
+  const center = suit ? cardCenterHTML(rank, symbol) : `<span class="card-ace">${symbol}</span>`;
+  return cardIndexHTML(rank, symbol) + center + '<span class="rami-joker-badge">🃏</span>';
 }
 
 // Indice visuel : une carte de la main peut-elle compléter une combinaison
