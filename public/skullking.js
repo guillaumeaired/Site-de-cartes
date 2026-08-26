@@ -922,7 +922,11 @@ function renderSeats(state) {
     // annonces sont encore secrètes.
     if (landscapeTable.matches && state.phase !== 'bidding' && p.bid != null) {
       const tally = document.createElement('div');
-      tally.className = 'sk-seat-tally';
+      // Le compteur se pose du côté OPPOSÉ au centre du tapis : au-dessus
+      // pour les sièges du haut, en dessous pour ceux du bas. Posé toujours
+      // au-dessus, il dépassait vers le centre sur le siège du bas et la
+      // carte du pli venait le recouvrir.
+      tally.className = 'sk-seat-tally' + (top > 50 ? ' sk-seat-tally--below' : '');
       const won = p.tricksWon || 0;
       tally.textContent = `${won}/${p.bid}`;
       // Vert tant que l'annonce reste tenable, rouge dès qu'elle est dépassée.
@@ -1000,12 +1004,39 @@ function renderTrick(state) {
   tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
   const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
-  // Deux tirages différents : le tapis est une ellipse bien plus large que
-  // haute, donc un même pourcentage vaut beaucoup moins de pixels en vertical
-  // qu'en horizontal. Avec un tirage unique, la carte du siège du haut venait
-  // recouvrir son pseudo (26 px mesurés). On tire donc plus fort en vertical.
+  // Horizontalement, un tirage en pourcentage suffit : le tapis est large et
+  // les sièges de gauche/droite sont loin du centre.
   const PULL_X = 0.44;
-  const PULL_Y = 0.6;
+
+  // Verticalement, non : un pourcentage vaut de moins en moins de pixels à
+  // mesure que la fenêtre raccourcit, et la carte finissait par recouvrir le
+  // siège (21 px mesurés à 4 joueurs sur une fenêtre de 700 px, en haut comme
+  // en bas). On pose donc la carte à une distance FIXE du siège, mesurée sur
+  // les éléments réellement rendus plutôt que codée en dur — et quand le
+  // tapis est trop court pour tout loger, ce sont les cartes qui rétrécissent,
+  // jamais le dégagement autour des sièges.
+  const tableH = tableEl.getBoundingClientRect().height || 1;
+  const CARTE_H = 118; // hauteur nominale d'une carte du pli, à l'échelle 1
+  const MARGE = 8;
+
+  const sieges = [...tableEl.querySelectorAll('.sk-seat')];
+  const hSiege = sieges.length ? sieges[0].offsetHeight : 76;
+  const hauteurs = sieges.map((el) => parseFloat(el.style.top) || 50);
+  const plusHaut = Math.min(...hauteurs, 50);
+  const plusBas = Math.max(...hauteurs, 50);
+
+  // Bande libre entre le siège le plus haut et le plus bas. S'il y a des
+  // sièges des deux côtés du centre, deux cartes doivent y tenir ; sinon une
+  // seule, et rien ne contraint.
+  const bande = ((plusBas - plusHaut) / 100) * tableH - hSiege - 2 * MARGE;
+  const rangees = plusHaut < 50 && plusBas > 50 ? 2 : 1;
+  const hDispo = rangees === 2 ? (bande - MARGE) / 2 : bande;
+  const echelle = Math.max(0.62, Math.min(1, hDispo / CARTE_H));
+  tableEl.style.setProperty('--sk-trick-scale', echelle.toFixed(3));
+
+  const DEMI_SIEGE = hSiege / 2;
+  const DEMI_CARTE = (CARTE_H * echelle) / 2;
+  const ECART = DEMI_SIEGE + DEMI_CARTE + MARGE;
 
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
@@ -1019,7 +1050,15 @@ function renderTrick(state) {
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
     slot.style.left = `${seatLeft + (50 - seatLeft) * PULL_X}%`;
-    slot.style.top = `${seatTop + (50 - seatTop) * PULL_Y}%`;
+
+    // Sens du décalage : vers le centre du tapis. Un siège pile au milieu
+    // (gauche/droite) ne bouge pas verticalement. Aucun garde-fou ici : la
+    // taille des cartes a déjà été ajustée pour que tout tienne, et brider la
+    // position revenait à repousser la carte sur le siège — précisément le
+    // défaut qu'on corrige.
+    const sens = seatTop < 50 ? 1 : seatTop > 50 ? -1 : 0;
+    const y = (seatTop / 100) * tableH + sens * ECART;
+    slot.style.top = `${(y / tableH) * 100}%`;
     if (t.playerId === state.leadingPlayerId) slot.classList.add('sk-trick-card--leading');
 
     const cardEl = document.createElement('div');
@@ -1108,27 +1147,62 @@ function playDevourAnimation(state) {
   }
 }
 
+// Annonce en deux temps : on choisit un chiffre (sélection locale, rien n'est
+// envoyé), puis on confirme. Avant, le clic envoyait directement et un simple
+// texte disait « annonce enregistrée — modifiable » : on ne savait pas si on
+// avait validé quelque chose, et un clic de trop changeait l'annonce sans
+// qu'on s'en aperçoive. L'annonce reste modifiable tant que tout le monde n'a
+// pas confirmé — il suffit de choisir un autre chiffre et de reconfirmer.
+let pendingBid = null;
+let bidRoundRef = null;
+
 function renderBidChoices(state) {
   bidChoices.innerHTML = '';
   bidChoices.classList.toggle('hidden', state.phase !== 'bidding');
-  if (state.phase !== 'bidding') return;
-  // L'annonce reste modifiable tant que tout le monde n'a pas encore
-  // annoncé (le choix actuel reste affiché en surbrillance, cliquer sur un
-  // autre chiffre la remplace) - une fois tout le monde prêt, la phase
-  // change et ces boutons disparaissent d'eux-mêmes.
+  if (state.phase !== 'bidding') {
+    pendingBid = null;
+    return;
+  }
+
+  // Nouvelle manche : on repart d'une sélection vide plutôt que de traîner
+  // le chiffre de la manche précédente.
+  if (bidRoundRef !== state.roundNumber) {
+    bidRoundRef = state.roundNumber;
+    pendingBid = null;
+  }
+  // À la reconnexion, on retrouve l'annonce déjà envoyée comme sélection.
+  if (pendingBid === null && state.myBid !== undefined) pendingBid = state.myBid;
+
   for (let n = 0; n <= state.cardsInRound; n++) {
     const btn = document.createElement('button');
-    btn.className = 'btn' + (state.myBid === n ? ' btn-primary' : '');
+    btn.className = 'btn' + (pendingBid === n ? ' btn-primary' : '');
     btn.textContent = n;
-    btn.addEventListener('click', () => socket.emit('skullking-bid', { bid: n }));
+    btn.addEventListener('click', () => {
+      pendingBid = n;
+      renderBidChoices(state);
+    });
     bidChoices.appendChild(btn);
   }
 
-  // Rappel discret à droite des chiffres, dans la barre d'actions elle-même.
+  const confirme = pendingBid !== null && pendingBid === state.myBid;
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn sk-bid-confirm' + (confirme ? ' sk-bid-confirm--done' : '');
+  confirmBtn.disabled = pendingBid === null || confirme;
+  confirmBtn.textContent = confirme ? '✓ Annonce envoyée' : '✅ Confirmer';
+  confirmBtn.addEventListener('click', () => {
+    if (pendingBid === null) return;
+    socket.emit('skullking-bid', { bid: pendingBid });
+  });
+  bidChoices.appendChild(confirmBtn);
+
+  // Rappel discret à droite, dans la barre d'actions elle-même.
   const hint = document.createElement('span');
   hint.className = 'sk-bar-hint';
-  hint.textContent =
-    state.myBid === undefined ? 'Choisis un nombre' : 'Annonce enregistrée — modifiable';
+  hint.textContent = confirme
+    ? 'Modifiable tant que tout le monde n\'a pas annoncé'
+    : pendingBid === null
+      ? 'Choisis ton annonce'
+      : 'Confirme pour envoyer';
   bidChoices.appendChild(hint);
 }
 
@@ -1748,6 +1822,14 @@ function maybeAnimateDeal(state) {
   setTimeout(() => pile.remove(), i * DEAL_WAVE_MS + DEAL_FLIGHT_MS + 150);
 }
 
+// Efface ce que le dernier pli a laissé sur le tapis. Appelé quand on cesse
+// de rendre le tapis (fin de manche) : le rendu normal s'en charge tout seul
+// le reste du temps.
+function clearTrickTable() {
+  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
+  trickCaptionEl.textContent = '';
+}
+
 function renderGame(state) {
   latestState = state;
   // Un re-rendu retire les cartes du DOM sans forcément déclencher mouseleave
@@ -2105,6 +2187,11 @@ function applyState(state) {
   }
   if (state.phase === 'round-end') {
     showScreen('game');
+    // À partir d'ici le tapis n'est plus rendu (seule la popup de fin de
+    // manche compte) : il faut donc effacer à la main ce qui reste du dernier
+    // pli. Sans ça, « X remporte le pli ! » restait affiché derrière la popup
+    // puis jusqu'au premier rendu de la manche suivante.
+    clearTrickTable();
     showRoundPopup(state);
     return;
   }

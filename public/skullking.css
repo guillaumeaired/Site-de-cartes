@@ -1239,6 +1239,13 @@ h1 {
   pointer-events: none;
 }
 
+/* Sièges du bas : le compteur passe sous le pseudo, pour ne pas dépasser
+   vers le centre du tapis où se pose la carte du pli. */
+.sk-seat-tally--below {
+  bottom: auto;
+  top: calc(100% + 4px);
+}
+
 /* Annonce tenue pile : vert. Dépassée : rouge — c'est perdu, autant que ça
    se voie tout de suite. */
 .sk-seat-tally--exact {
@@ -2028,10 +2035,14 @@ h1 {
   /* Cartes du pli : même gabarit que celles de la main. Tout ce qui est posé
      sur le tapis doit être à la même échelle, sinon les adversaires ont l'air
      de figurines à côté du jeu. */
+  /* Taille des cartes du pli, pilotée par renderTrick : sur un tapis trop
+     court pour loger deux cartes entre les sièges opposés, elles rétrécissent
+     plutôt que de venir se poser sur les avatars. L'échelle vaut 1 dès qu'il
+     y a la place. */
   .sk-trick-card .sk-card {
-    width: 84px;
-    height: 118px;
-    font-size: 1.45rem;
+    width: calc(84px * var(--sk-trick-scale, 1));
+    height: calc(118px * var(--sk-trick-scale, 1));
+    font-size: calc(1.45rem * var(--sk-trick-scale, 1));
   }
 
   .sk-trick-caption {
@@ -2668,4 +2679,24 @@ h1 {
 
 .sk-objective--perdu .sk-objective-text {
   color: #fecaca;
+}
+
+/* Bouton de confirmation de l'annonce : détaché des chiffres par une teinte
+   propre, pour qu'on voie qu'il ne s'agit pas d'un chiffre de plus. */
+.sk-bid-confirm {
+  margin-left: 6px;
+  background: linear-gradient(160deg, #16a34a, #14532d);
+  border-color: #1a1208;
+  font-weight: 800;
+}
+
+.sk-bid-confirm:hover:not(:disabled) {
+  background: linear-gradient(160deg, #22c55e, #166534);
+}
+
+/* Une fois envoyée, le bouton devient un état plutôt qu'une action : il
+   reste lisible mais n'invite plus au clic. */
+.sk-bid-confirm--done {
+  background: linear-gradient(160deg, #334155, #1e293b);
+  opacity: 0.85;
 }
