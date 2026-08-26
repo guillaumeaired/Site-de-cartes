@@ -689,10 +689,48 @@ function clearRoomTimers(room) {
   room.inactivityTimer = null;
 }
 
+// Récap de fin de partie : le classement seul ne raconte rien de la partie
+// qu'on vient de jouer. On dérive de l'historique des manches (déjà tenu à
+// jour manche après manche) de quoi se comparer autrement que par le score :
+// combien d'annonces tenues, combien de plis pris, la meilleure et la pire
+// manche, la plus longue série.
+function playerRecap(p) {
+  const h = p.roundHistory || [];
+  const exact = h.filter((r) => r.made === r.bid).length;
+  const tricks = h.reduce((sum, r) => sum + (r.made || 0), 0);
+  // Une annonce à zéro tenue est le pari le plus risqué du jeu : il vaut la
+  // peine de dire combien de fois on l'a réussi.
+  const zeros = h.filter((r) => r.bid === 0 && r.made === 0).length;
+  let streak = 0;
+  let bestStreak = 0;
+  h.forEach((r) => {
+    if (r.made === r.bid) {
+      streak += 1;
+      bestStreak = Math.max(bestStreak, streak);
+    } else {
+      streak = 0;
+    }
+  });
+  const best = h.reduce((b, r) => (b === null || r.delta > b.delta ? r : b), null);
+  const worst = h.reduce((b, r) => (b === null || r.delta < b.delta ? r : b), null);
+  return {
+    id: p.id,
+    nickname: p.nickname,
+    total: p.totalScore,
+    rounds: h.length,
+    exact,
+    tricks,
+    zeros,
+    bestStreak,
+    bestRound: best ? { round: best.round, delta: best.delta } : null,
+    worstRound: worst ? { round: worst.round, delta: worst.delta } : null,
+  };
+}
+
 function finishGame(io, room) {
   clearRoomTimers(room);
   const ranking = [...room.players]
-    .map((p) => ({ id: p.id, nickname: p.nickname, total: p.totalScore }))
+    .map(playerRecap)
     .sort((a, b) => b.total - a.total);
   room.finalRanking = ranking;
   room.phase = 'game-end';

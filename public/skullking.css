@@ -2479,3 +2479,55 @@ h1 {
   border: 2px solid #1a1208;
   background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
 }
+
+/* --- Récap de fin de partie --- */
+
+.sk-end-table td:first-child,
+.sk-end-table th:first-child {
+  width: 2.4em;
+  text-align: center;
+}
+
+.sk-end-table td:nth-child(3),
+.sk-end-table td:nth-child(4),
+.sk-end-table th:nth-child(3),
+.sk-end-table th:nth-child(4) {
+  text-align: center;
+  opacity: 0.8;
+}
+
+/* Sa propre ligne surlignée : dans un tableau à 7 ou 9 joueurs, on cherche
+   d'abord la sienne. */
+.sk-end-row--me {
+  background: rgba(250, 204, 21, 0.12);
+}
+
+.sk-end-row--me td {
+  color: #facc15;
+}
+
+.sk-end-facts {
+  margin: 14px auto 4px;
+  max-width: 460px;
+  text-align: left;
+}
+
+.sk-end-facts-title {
+  margin: 0 0 6px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #facc15;
+  opacity: 0.8;
+}
+
+.sk-end-fact {
+  margin: 0 0 5px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}

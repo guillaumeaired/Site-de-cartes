@@ -1816,13 +1816,69 @@ function hideRoundPopup() {
 const endTitle = document.getElementById('sk-end-title');
 const endBody = document.getElementById('sk-end-body');
 
+// Récap de fin : le classement seul ne racontait rien de la partie. On y
+// ajoute ce que l'historique des manches permet de dire — annonces tenues,
+// plis pris — puis quelques faits marquants qui font parler la table.
+const endFactsEl = document.getElementById('sk-end-facts');
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function endFacts(ranking) {
+  const facts = [];
+  const withRounds = ranking.filter((r) => r.rounds);
+  if (!withRounds.length) return facts;
+
+  const bestRound = withRounds
+    .filter((r) => r.bestRound)
+    .reduce((b, r) => (b === null || r.bestRound.delta > b.bestRound.delta ? r : b), null);
+  if (bestRound && bestRound.bestRound.delta > 0) {
+    facts.push(`🔥 Meilleure manche : ${bestRound.nickname}, +${bestRound.bestRound.delta} points à la manche ${bestRound.bestRound.round}.`);
+  }
+
+  const worstRound = withRounds
+    .filter((r) => r.worstRound)
+    .reduce((b, r) => (b === null || r.worstRound.delta < b.worstRound.delta ? r : b), null);
+  if (worstRound && worstRound.worstRound.delta < 0) {
+    facts.push(`💀 Pire manche : ${worstRound.nickname}, ${worstRound.worstRound.delta} points à la manche ${worstRound.worstRound.round}.`);
+  }
+
+  const streak = withRounds.reduce((b, r) => (r.bestStreak > b.bestStreak ? r : b));
+  if (streak.bestStreak >= 2) {
+    facts.push(`🎯 Plus longue série d'annonces tenues : ${streak.nickname}, ${streak.bestStreak} manches d'affilée.`);
+  }
+
+  const zeros = withRounds.reduce((b, r) => (r.zeros > b.zeros ? r : b));
+  if (zeros.zeros >= 2) {
+    facts.push(`🧊 Sang-froid : ${zeros.nickname} a tenu ${zeros.zeros} annonces à zéro.`);
+  }
+
+  const tricks = withRounds.reduce((b, r) => (r.tricks > b.tricks ? r : b));
+  if (tricks.tricks > 0) {
+    facts.push(`🗡️ Plus gros ramasseur : ${tricks.nickname}, ${tricks.tricks} plis sur la partie.`);
+  }
+  return facts;
+}
+
 function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
   endTitle.textContent = winner.id === myId ? 'Tu remportes la partie ! 🏆' : `${winner.nickname} remporte la partie !`;
   endBody.innerHTML = ranking
-    .map((r) => `<tr><td>${escapeHTML(r.nickname)}</td><td>${r.total}</td></tr>`)
+    .map((r, i) => {
+      const rang = MEDALS[i] || `${i + 1}ᵉ`;
+      // Les parties d'avant ce récap n'ont pas ces champs : on retombe alors
+      // sur un tiret plutôt que d'afficher « undefined ».
+      const annonces = r.rounds ? `${r.exact}/${r.rounds}` : '—';
+      const plis = r.tricks == null ? '—' : r.tricks;
+      const moi = r.id === myId ? ' class="sk-end-row--me"' : '';
+      return `<tr${moi}><td>${rang}</td><td>${escapeHTML(r.nickname)}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td></tr>`;
+    })
     .join('');
+
+  const facts = endFacts(ranking);
+  endFactsEl.innerHTML = facts.length
+    ? `<p class="sk-end-facts-title">Faits marquants</p>` +
+      facts.map((f) => `<p class="sk-end-fact">${escapeHTML(f)}</p>`).join('')
+    : '';
 }
 
 document.getElementById('sk-btn-rematch').addEventListener('click', () => socket.emit('skullking-rematch'));

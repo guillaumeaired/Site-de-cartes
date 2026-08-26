@@ -177,10 +177,19 @@
 
     <section id="sk-screen-end" class="screen hidden">
       <h2 id="sk-end-title"></h2>
-      <table class="sk-score-table">
-        <thead><tr><th>Joueur</th><th>Total</th></tr></thead>
+      <table class="sk-score-table sk-end-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Joueur</th>
+            <th title="Annonces tenues exactement">Annonces</th>
+            <th title="Plis remportés sur toute la partie">Plis</th>
+            <th>Total</th>
+          </tr>
+        </thead>
         <tbody id="sk-end-body"></tbody>
       </table>
+      <div id="sk-end-facts" class="sk-end-facts"></div>
       <button id="sk-btn-rematch" class="btn btn-primary">🔄 Rejouer</button>
       <button id="sk-btn-leave-end" class="btn btn-leave-end">Quitter</button>
     </section>
