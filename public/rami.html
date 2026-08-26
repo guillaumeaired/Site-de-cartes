@@ -77,6 +77,7 @@
     <section id="rami-screen-game" class="screen hidden">
       <div class="rami-game-header">
         <button id="rami-btn-leave-game" class="btn-link">← Quitter</button>
+        <span class="rami-brand" aria-hidden="true"><span>♣</span>Rami<span class="rami-brand-red">♦</span></span>
         <p id="rami-turn-indicator" class="rami-turn-indicator"></p>
       </div>
 
@@ -106,35 +107,41 @@
         <p id="rami-start-reveal-text" class="rami-start-reveal-text"></p>
       </div>
 
-      <div class="rami-opponent">
-        <span class="seat-name" id="rami-opponent-name"></span>
-        <span id="rami-opponent-status" class="rami-opponent-status hidden"></span>
-        <div id="rami-opponent-hand" class="rami-opponent-hand"></div>
-      </div>
-
-      <div class="rami-tapis">
-        <div id="rami-table-opponent" class="rami-table-side rami-table-side--opponent"></div>
-
-        <div class="rami-piles">
-          <div class="rami-pile-block">
-            <button id="rami-draw-pile" type="button" class="pile" aria-label="Piocher"></button>
-            <span class="pile-count" id="rami-draw-count">0</span>
-            <span class="rami-pile-label">Pioche</span>
-          </div>
-          <div class="rami-pile-block rami-pile-block--discard">
-            <div id="rami-discard-row" class="rami-discard-row"></div>
-            <button
-              type="button"
-              id="rami-discard-toggle"
-              class="rami-pile-label rami-pile-label--btn"
-              title="Touche pour écarter les cartes et voir celles cachées derrière"
-            >
-              ↔️ Défausse
-            </button>
-          </div>
+      <!-- Cadre du tapis : simple enveloppe sans style en portrait, c'est
+           lui qui porte le feutre et la grille en paysage. Les libellés de
+           zone sont posés en CSS (::before) et non en HTML, parce que le
+           rendu des combinaisons vide ces conteneurs par innerHTML. -->
+      <div class="rami-felt">
+        <div class="rami-opponent">
+          <span class="seat-name" id="rami-opponent-name"></span>
+          <span id="rami-opponent-status" class="rami-opponent-status hidden"></span>
+          <div id="rami-opponent-hand" class="rami-opponent-hand"></div>
         </div>
 
-        <div id="rami-table-mine" class="rami-table-side rami-table-side--mine"></div>
+        <div class="rami-tapis">
+          <div id="rami-table-opponent" class="rami-table-side rami-table-side--opponent"></div>
+
+          <div class="rami-piles">
+            <div class="rami-pile-block">
+              <button id="rami-draw-pile" type="button" class="pile" aria-label="Piocher"></button>
+              <span class="pile-count" id="rami-draw-count">0</span>
+              <span class="rami-pile-label">Pioche</span>
+            </div>
+            <div class="rami-pile-block rami-pile-block--discard">
+              <div id="rami-discard-row" class="rami-discard-row"></div>
+              <button
+                type="button"
+                id="rami-discard-toggle"
+                class="rami-pile-label rami-pile-label--btn"
+                title="Touche pour écarter les cartes et voir celles cachées derrière"
+              >
+                ↔️ Défausse
+              </button>
+            </div>
+          </div>
+
+          <div id="rami-table-mine" class="rami-table-side rami-table-side--mine"></div>
+        </div>
       </div>
 
       <div id="rami-open-staging" class="rami-open-staging hidden">

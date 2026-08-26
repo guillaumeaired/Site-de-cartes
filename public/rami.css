@@ -1529,3 +1529,284 @@ h1 {
   font-weight: 800;
   letter-spacing: 0.01em;
 }
+
+/* =========================================================
+   MISE EN PAGE PAYSAGE (ordinateur)
+   Portage de la maquette V3 (public/rami-v2.html) sur le vrai jeu.
+   Tout est enfermé dans ce palier : en dessous de 1000 px — donc sur
+   téléphone — le Rami garde sa mise en page verticale, inchangée.
+   Le tapis devient trois bandes empilées (combinaisons adverses, pioche
+   et défausse, mes combinaisons) au lieu de trois colonnes.
+   ========================================================= */
+
+/* La marque n'apparaît que dans le bandeau paysage : en portrait elle
+   surchargerait un en-tête déjà serré entre « Quitter » et le tour. */
+.rami-brand {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  /* Assombrit les bords de la page : sans ce voile, le feutre du tapis se
+     confondait avec le fond, qui est vert lui aussi. */
+  body:has(.rami-app--game)::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0, 0, 0, 0.55) 100%);
+    animation: none;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app.rami-app.rami-app--game {
+    max-width: 1500px;
+    width: 100%;
+    height: 100dvh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #rami-screen-game {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* --- Bandeau du haut : pleine largeur, marque à gauche, tour à droite. --- */
+  .rami-game-header {
+    flex-shrink: 0;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 0;
+    padding: 7px 18px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .rami-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #facc15;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .rami-brand-red {
+    color: #f87171;
+  }
+
+  .rami-game-header .rami-turn-indicator {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* --- Cadre du tapis : le feutre, qui contient le siège adverse et les
+     trois bandes. C'est lui qui absorbe la hauteur restante. --- */
+  .rami-felt {
+    flex: 1;
+    min-height: 0;
+    margin: 12px 22px 6px;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    padding: 10px 26px 14px;
+    border-radius: 130px / 52px;
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.075), transparent 66%),
+      linear-gradient(175deg, rgba(6, 95, 70, 0.6), rgba(2, 44, 34, 0.6));
+    border: 3px solid rgba(0, 0, 0, 0.45);
+    box-shadow:
+      inset 0 0 70px rgba(0, 0, 0, 0.4),
+      inset 0 0 0 3px rgba(74, 222, 128, 0.5),
+      0 0 40px rgba(74, 222, 128, 0.18),
+      0 8px 26px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Siège adverse : sur une ligne, pseudo et dos de cartes côte à côte. */
+  .rami-opponent {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 0;
+  }
+
+  /* --- Le tapis passe de trois colonnes à trois bandes empilées. --- */
+  .rami-tapis {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: stretch;
+    min-height: 0;
+    margin-bottom: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+  }
+
+  /* Zones de combinaisons : une bande pleine largeur chacune, les
+     combinaisons s'y rangent en lignes qui se replient. */
+  .rami-table-side {
+    flex: none;
+    min-width: 0;
+    min-height: 92px;
+    align-self: stretch;
+    margin-top: 0;
+    padding: 18px 10px 8px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: 10px;
+    overflow-y: auto;
+  }
+
+  /* Libellé posé en CSS et non en HTML : le rendu des combinaisons vide ces
+     conteneurs par innerHTML, un élément réel n'y survivrait pas. */
+  .rami-table-side::before {
+    content: 'Combinaisons adverses';
+    position: absolute;
+    top: 5px;
+    left: 14px;
+    font-size: 0.56rem;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    opacity: 0.38;
+    font-weight: 800;
+    pointer-events: none;
+  }
+
+  .rami-table-side--mine::before {
+    content: 'Mes combinaisons';
+  }
+
+  /* --- Bande du centre : pioche à gauche, défausse qui prend le reste. --- */
+  .rami-piles {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    min-height: 0;
+    padding: 2px 0;
+  }
+
+  /* La défausse prend toute la largeur restante à droite de la pioche.
+     align-items: stretch et non center, sinon le bloc reste à la largeur de
+     son contenu et la rangée n'occupe qu'un coin du tapis. */
+  .rami-pile-block--discard {
+    flex: 1;
+    min-width: 0;
+    /* Le portrait plafonne la défausse à 360 px pour qu'elle reste lisible
+       dans une colonne étroite ; en paysage elle doit au contraire occuper
+       toute la largeur libre à droite de la pioche. */
+    max-width: none;
+    align-items: stretch;
+  }
+
+  .rami-discard-row {
+    width: 100%;
+    min-height: 110px;
+  }
+
+  .rami-pile-block--discard .rami-pile-label {
+    text-align: center;
+  }
+
+  /* --- Bas de l'écran : bandeaux, barre d'actions, éventail. --- */
+  #rami-open-staging,
+  #rami-resolve-banner {
+    flex-shrink: 0;
+    margin-left: 22px;
+    margin-right: 22px;
+  }
+
+  /* Barre d'actions en pastille centrée, comme sur la maquette. */
+  .rami-actions {
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    width: fit-content;
+    max-width: calc(100% - 44px);
+    margin: 0 auto 2px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(3, 32, 22, 0.85);
+    border: 2px solid #1a1208;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.38), 0 0 0 2px #f5c24c4d;
+    position: relative;
+    z-index: 5;
+  }
+
+  .rami-actions .btn {
+    padding: 7px 14px;
+    font-size: 0.79rem;
+    white-space: nowrap;
+    border-radius: 999px;
+  }
+
+  /* L'éventail penche les cartes autour de leur bas : une carte de 114 px
+     occupe alors 133 px de haut, qui débordaient sous le bas de la fenêtre
+     (19 px mesurés). Le rembourrage bas absorbe ce débord — la page ne
+     défile jamais. */
+  .rami-hand {
+    flex-shrink: 0;
+    padding: 8px 20px 34px;
+    min-height: 188px;
+  }
+
+  /* Combinaisons posées à la taille de la maquette : le paysage leur donne
+     une bande pleine largeur, autant qu'elles se lisent de loin. */
+  .rami-mini-card {
+    width: 52px;
+    height: 75px;
+    margin-left: -18px;
+    --idx: 15px;
+  }
+
+  /* Cartes en main à la taille de la maquette : c'est la zone qu'on regarde
+     le plus, elle mérite la place que le paysage libère. */
+  .rami-hand .rami-card {
+    width: 94px;
+    height: 136px;
+    --idx: 15px;
+    --pip: 22px;
+  }
+
+  .rami-card-arc {
+    margin-left: -38px;
+  }
+
+  /* Bandeaux d'ouverture / de résolution : compacts, ils ne doivent pas
+     manger la place du tapis quand ils apparaissent. */
+  #rami-open-staging {
+    width: fit-content;
+    max-width: calc(100% - 44px);
+    margin: 0 auto 4px;
+    padding: 6px 14px;
+  }
+
+  #rami-open-staging .hint {
+    font-size: 0.78rem;
+    margin: 0 0 4px;
+  }
+
+  #rami-resolve-banner {
+    margin-bottom: 4px;
+  }
+
+  /* Bandeau du haut resserré : c'est une barre de repères, pas une zone de
+     jeu — chaque pixel gagné ici va au tapis. */
+  .rami-game-header .rami-turn-indicator {
+    font-size: 0.9rem;
+    margin: 0;
+    padding: 4px 14px;
+  }
+}
