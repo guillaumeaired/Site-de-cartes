@@ -1858,6 +1858,67 @@ function endFacts(ranking) {
   return facts;
 }
 
+// Courbe des scores de la partie : une ligne par joueur, à la couleur de sa
+// pièce (même repère que sur le tapis, on retrouve la sienne sans lire de
+// légende). Tracée en SVG à la main plutôt qu'avec une bibliothèque : c'est
+// une polyligne et deux axes, rien qui justifie une dépendance.
+function renderScoreCurve(ranking) {
+  const series = ranking.filter((r) => r.curve && r.curve.length);
+  if (series.length < 1) return '';
+
+  const W = 460;
+  const H = 190;
+  const PAD_L = 38;
+  const PAD_R = 10;
+  const PAD_T = 12;
+  const PAD_B = 22;
+
+  const maxRound = Math.max(...series.map((r) => r.curve.length));
+  const totaux = series.flatMap((r) => r.curve.map((c) => c.total));
+  let min = Math.min(0, ...totaux);
+  let max = Math.max(0, ...totaux);
+  if (max === min) max = min + 10; // partie à 0 partout : évite une division par zéro
+  // Marge haute et basse pour que les lignes ne collent pas au cadre.
+  const span = max - min;
+  min -= span * 0.08;
+  max += span * 0.08;
+
+  const x = (i) => PAD_L + (maxRound === 1 ? 0 : (i / (maxRound - 1)) * (W - PAD_L - PAD_R));
+  const y = (v) => PAD_T + (1 - (v - min) / (max - min)) * (H - PAD_T - PAD_B);
+
+  // Ligne du zéro : le repère qui compte, on passe son temps à repasser
+  // au-dessus et en dessous.
+  const zeroY = y(0);
+  let svg = `<svg class="sk-curve" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des scores manche par manche">`;
+  svg += `<line x1="${PAD_L}" y1="${zeroY}" x2="${W - PAD_R}" y2="${zeroY}" class="sk-curve-zero" />`;
+  svg += `<text x="${PAD_L - 6}" y="${zeroY + 3}" class="sk-curve-tick">0</text>`;
+
+  // Repères de manche en bas (1, puis tous les 3).
+  for (let i = 0; i < maxRound; i++) {
+    if (i !== 0 && (i + 1) % 3 !== 0 && i !== maxRound - 1) continue;
+    svg += `<text x="${x(i)}" y="${H - 6}" class="sk-curve-round">${i + 1}</text>`;
+  }
+
+  series.forEach((r) => {
+    const couleur = (PIECE_BY_KEY[r.piece] || pieceFor(r)).color;
+    const pts = r.curve.map((c, i) => `${x(i)},${y(c.total)}`).join(' ');
+    const moi = r.id === myId ? ' sk-curve-line--me' : '';
+    svg += `<polyline points="${pts}" class="sk-curve-line${moi}" style="stroke:${couleur}" />`;
+    const dernier = r.curve[r.curve.length - 1];
+    svg += `<circle cx="${x(r.curve.length - 1)}" cy="${y(dernier.total)}" r="${r.id === myId ? 4.5 : 3.2}" style="fill:${couleur}" class="sk-curve-dot" />`;
+  });
+  svg += '</svg>';
+
+  const legende = series
+    .map((r) => {
+      const couleur = (PIECE_BY_KEY[r.piece] || pieceFor(r)).color;
+      return `<span class="sk-curve-key"><i style="background:${couleur}"></i>${escapeHTML(r.nickname)}</span>`;
+    })
+    .join('');
+
+  return `<p class="sk-end-facts-title">Évolution des scores</p><div class="sk-curve-wrap">${svg}<div class="sk-curve-legend">${legende}</div></div>`;
+}
+
 function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
@@ -1875,10 +1936,12 @@ function renderGameEnd(state) {
     .join('');
 
   const facts = endFacts(ranking);
-  endFactsEl.innerHTML = facts.length
-    ? `<p class="sk-end-facts-title">Faits marquants</p>` +
-      facts.map((f) => `<p class="sk-end-fact">${escapeHTML(f)}</p>`).join('')
-    : '';
+  endFactsEl.innerHTML =
+    renderScoreCurve(ranking) +
+    (facts.length
+      ? `<p class="sk-end-facts-title">Faits marquants</p>` +
+        facts.map((f) => `<p class="sk-end-fact">${escapeHTML(f)}</p>`).join('')
+      : '');
 }
 
 document.getElementById('sk-btn-rematch').addEventListener('click', () => socket.emit('skullking-rematch'));

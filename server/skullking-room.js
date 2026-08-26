@@ -716,6 +716,9 @@ function playerRecap(p) {
   return {
     id: p.id,
     nickname: p.nickname,
+    // La pièce sert à colorer la courbe des scores : même repère que sur le
+    // tapis, on retrouve sa ligne sans lire la légende.
+    piece: p.piece || null,
     total: p.totalScore,
     rounds: h.length,
     exact,
@@ -724,6 +727,8 @@ function playerRecap(p) {
     bestStreak,
     bestRound: best ? { round: best.round, delta: best.delta } : null,
     worstRound: worst ? { round: worst.round, delta: worst.delta } : null,
+    // Score cumulé après chaque manche, pour tracer la courbe de la partie.
+    curve: h.map((r) => ({ round: r.round, total: r.total })),
   };
 }
 

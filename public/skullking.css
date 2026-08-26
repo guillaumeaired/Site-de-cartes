@@ -2531,3 +2531,81 @@ h1 {
   font-size: 0.84rem;
   line-height: 1.35;
 }
+
+/* --- Courbe des scores (récap de fin) --- */
+
+.sk-curve-wrap {
+  margin: 0 0 16px;
+}
+
+.sk-curve {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sk-curve-line {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+/* Sa propre ligne passe devant et plus épaisse : c'est celle qu'on suit. */
+.sk-curve-line--me {
+  stroke-width: 3.4;
+  opacity: 1;
+}
+
+.sk-curve-dot {
+  stroke: #1a1208;
+  stroke-width: 1.5;
+}
+
+.sk-curve-zero {
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.sk-curve-tick,
+.sk-curve-round {
+  fill: rgba(255, 255, 255, 0.45);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sk-curve-tick {
+  text-anchor: end;
+}
+
+.sk-curve-round {
+  text-anchor: middle;
+}
+
+.sk-curve-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin-top: 6px;
+}
+
+.sk-curve-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.sk-curve-key i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
