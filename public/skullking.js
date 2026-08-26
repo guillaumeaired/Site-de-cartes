@@ -1004,39 +1004,79 @@ function renderTrick(state) {
   tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
   const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
-  // Horizontalement, un tirage en pourcentage suffit : le tapis est large et
-  // les sièges de gauche/droite sont loin du centre.
-  const PULL_X = 0.44;
-
-  // Verticalement, non : un pourcentage vaut de moins en moins de pixels à
-  // mesure que la fenêtre raccourcit, et la carte finissait par recouvrir le
-  // siège (21 px mesurés à 4 joueurs sur une fenêtre de 700 px, en haut comme
-  // en bas). On pose donc la carte à une distance FIXE du siège, mesurée sur
-  // les éléments réellement rendus plutôt que codée en dur — et quand le
-  // tapis est trop court pour tout loger, ce sont les cartes qui rétrécissent,
-  // jamais le dégagement autour des sièges.
-  const tableH = tableEl.getBoundingClientRect().height || 1;
-  const CARTE_H = 118; // hauteur nominale d'une carte du pli, à l'échelle 1
-  const MARGE = 8;
+  // La carte se pose DEVANT le siège : sur la droite qui va du siège au
+  // centre du tapis, à une distance juste suffisante pour dégager les deux.
+  // Avant, l'horizontale suivait un tirage proportionnel et la verticale un
+  // décalage fixe : deux règles qui ne s'accordent plus dès qu'un siège sort
+  // des axes, et à 5 joueurs les cartes se retrouvaient éparpillées au milieu
+  // au lieu d'être devant leur avatar.
+  const rect = tableEl.getBoundingClientRect();
+  const tableW = rect.width || 1;
+  const tableH = rect.height || 1;
+  const CARTE_L = 84; // taille nominale d'une carte du pli, à l'échelle 1
+  const CARTE_H = 118;
+  const MARGE = 14; // dégagement entre un siège et la carte posée devant lui
 
   const sieges = [...tableEl.querySelectorAll('.sk-seat')];
   const hSiege = sieges.length ? sieges[0].offsetHeight : 76;
+  const lSiege = sieges.length ? sieges[0].offsetWidth : 132;
   const hauteurs = sieges.map((el) => parseFloat(el.style.top) || 50);
   const plusHaut = Math.min(...hauteurs, 50);
   const plusBas = Math.max(...hauteurs, 50);
 
-  // Bande libre entre le siège le plus haut et le plus bas. S'il y a des
-  // sièges des deux côtés du centre, deux cartes doivent y tenir ; sinon une
-  // seule, et rien ne contraint.
+  // Bande libre entre le siège le plus haut et le plus bas : s'il y a des
+  // sièges des deux côtés du centre, deux cartes doivent y tenir. Quand le
+  // tapis est trop court, ce sont les cartes qui rétrécissent, jamais le
+  // dégagement autour des sièges.
   const bande = ((plusBas - plusHaut) / 100) * tableH - hSiege - 2 * MARGE;
   const rangees = plusHaut < 50 && plusBas > 50 ? 2 : 1;
   const hDispo = rangees === 2 ? (bande - MARGE) / 2 : bande;
-  const echelle = Math.max(0.62, Math.min(1, hDispo / CARTE_H));
-  tableEl.style.setProperty('--sk-trick-scale', echelle.toFixed(3));
+  const echelleBande = Math.max(0.62, Math.min(1, hDispo / CARTE_H));
 
-  const DEMI_SIEGE = hSiege / 2;
-  const DEMI_CARTE = (CARTE_H * echelle) / 2;
-  const ECART = DEMI_SIEGE + DEMI_CARTE + MARGE;
+  // Position d'une carte pour une échelle donnée : sur la droite siège →
+  // centre, à la distance qui dégage le siège ET la carte dans cette
+  // direction précise (on projette les demi-tailles sur le vecteur, donc un
+  // siège de côté dégage en largeur, un siège du haut en hauteur).
+  const placer = (seatLeft, seatTop, ech) => {
+    const sx = (seatLeft / 100) * tableW;
+    const sy = (seatTop / 100) * tableH;
+    const vx = tableW / 2 - sx;
+    const vy = tableH / 2 - sy;
+    const dist = Math.hypot(vx, vy) || 1;
+    const ux = vx / dist;
+    const uy = vy / dist;
+    const dL = (CARTE_L * ech) / 2;
+    const dH = (CARTE_H * ech) / 2;
+    const degagement =
+      Math.abs(ux) * (lSiege / 2 + dL) + Math.abs(uy) * (hSiege / 2 + dH) + MARGE;
+    // Jamais au-delà des trois quarts du chemin : sur un tapis étroit, la
+    // carte irait sinon se poser au centre, voire de l'autre côté.
+    const pas = Math.min(degagement, dist * 0.75);
+    return { x: sx + ux * pas, y: sy + uy * pas };
+  };
+
+  // À 9 joueurs la couronne des cartes devient trop serrée et deux cartes
+  // voisines se recouvrent (29 px mesurés). On cherche donc aussi la plus
+  // grande échelle qui les laisse séparées. Les positions dépendant
+  // elles-mêmes de l'échelle, deux passes suffisent à converger.
+  const places = trick.map((t) => map.get(t.playerId)).filter(Boolean);
+  let echelle = echelleBande;
+  for (let passe = 0; passe < 2; passe += 1) {
+    const pts = places.map(([l, tp]) => placer(l, tp, echelle));
+    let max = echelleBande;
+    for (let i = 0; i < pts.length; i += 1) {
+      for (let j = i + 1; j < pts.length; j += 1) {
+        const dx = Math.abs(pts[i].x - pts[j].x);
+        const dy = Math.abs(pts[i].y - pts[j].y);
+        // Deux rectangles ne se touchent plus dès qu'ils sont séparés sur UN
+        // des deux axes : on garde la contrainte la moins punitive.
+        const possible = Math.max(dx / CARTE_L, dy / CARTE_H);
+        if (possible < max) max = possible;
+      }
+    }
+    echelle = Math.max(0.55, Math.min(echelleBande, max));
+  }
+  tableEl.style.setProperty('--sk-trick-scale', echelle.toFixed(3));
 
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
@@ -1049,16 +1089,9 @@ function renderTrick(state) {
     // Skull King qui dévore les Pirates, voir playDevourAnimation).
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
-    slot.style.left = `${seatLeft + (50 - seatLeft) * PULL_X}%`;
-
-    // Sens du décalage : vers le centre du tapis. Un siège pile au milieu
-    // (gauche/droite) ne bouge pas verticalement. Aucun garde-fou ici : la
-    // taille des cartes a déjà été ajustée pour que tout tienne, et brider la
-    // position revenait à repousser la carte sur le siège — précisément le
-    // défaut qu'on corrige.
-    const sens = seatTop < 50 ? 1 : seatTop > 50 ? -1 : 0;
-    const y = (seatTop / 100) * tableH + sens * ECART;
-    slot.style.top = `${(y / tableH) * 100}%`;
+    const pos = placer(seatLeft, seatTop, echelle);
+    slot.style.left = `${(pos.x / tableW) * 100}%`;
+    slot.style.top = `${(pos.y / tableH) * 100}%`;
     if (t.playerId === state.leadingPlayerId) slot.classList.add('sk-trick-card--leading');
 
     const cardEl = document.createElement('div');
@@ -1543,6 +1576,16 @@ function renderChat(state) {
 }
 
 socket.on('skullking-chat-message', ajouterMessage);
+
+// Cliquer n'importe où dans le panneau donne le focus au champ : viser la
+// petite bulle de saisie demandait trop de précision, surtout en pleine
+// partie. On laisse passer les clics sur le journal, pour pouvoir y
+// sélectionner du texte.
+document.querySelector('.sk-chat').addEventListener('mousedown', (e) => {
+  if (e.target.closest('.sk-chat-log') || e.target.closest('button') || e.target === chatInputEl) return;
+  e.preventDefault();
+  chatInputEl.focus();
+});
 
 chatFormEl.addEventListener('submit', (e) => {
   e.preventDefault();

@@ -2706,16 +2706,39 @@ h1 {
 .sk-chat {
   display: none;
   flex-direction: column;
-  min-height: 0;
-  margin-top: 10px;
 }
 
-/* Réservé au paysage : sous 1000px le panneau de droite n'existe pas, la
-   place manque et le chat viendrait manger le tapis. */
+/* Réservé au paysage : sous 1000px la place manque et le chat viendrait
+   manger le tapis.
+
+   Ancré en bas à droite de la fenêtre plutôt que posé dans le flux du
+   panneau : à 5 joueurs et plus, la liste des joueurs grandit et poussait le
+   chat hors du panneau — le champ de saisie se retrouvait dans le vide, sous
+   le cadre. Ancré, il garde la même place et la même taille quel que soit le
+   nombre de joueurs. */
 @media (min-width: 1000px) {
   .sk-chat {
     display: flex;
-    flex: 1;
+    position: fixed;
+    right: 16px;
+    bottom: 14px;
+    width: 250px;
+    max-height: 40vh;
+    z-index: 40;
+    padding: 8px 10px 10px;
+    border-radius: 14px;
+    background: rgba(10, 4, 4, 0.92);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    /* Toute la zone donne le focus au champ : viser la petite bulle de
+       saisie demandait trop de précision. */
+    cursor: text;
+  }
+
+  /* Le panneau de droite s'arrête au-dessus du chat, pour ne pas passer
+     dessous. */
+  .sk-scoreboard {
+    padding-bottom: calc(40vh + 24px);
   }
 }
 
