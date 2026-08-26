@@ -398,5 +398,38 @@ check('7 d\'extension capturé : bonus -5', trickBonusForWinner([{ kind: 'number
 check('8 d\'extension capturé : bonus +5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 8, ext: true }, num('jaune', 3)], 0), 5);
 check('un 7 de base (non-extension) ne donne aucun bonus', trickBonusForWinner([num('vert', 7), num('jaune', 3)], 0), 0);
 
+// --- Égalité sous la Baleine blanche / la Raie Tachetée ---
+// La Baleine annule les cartes spéciales : seule la valeur compte, et deux
+// joueurs peuvent donc se retrouver à égalité, ce qui n'arrive jamais dans
+// la hiérarchie normale. Dans ce cas c'est le premier à avoir posé cette
+// valeur qui remporte le pli (l'ordre du tableau est l'ordre de pose).
+const nb = (id, v) => ({ id, kind: 'number', suit: 'vert', value: v });
+
+check(
+  'Baleine + égalité : le premier à avoir posé la valeur gagne',
+  resolveTrick([nb('a', 9), { id: 'w', kind: 'whale' }, nb('b', 9), nb('c', 5)]).winnerIdx,
+  0
+);
+check(
+  'Baleine + égalité posée plus tard dans le pli : toujours le premier des deux',
+  resolveTrick([nb('x', 5), { id: 'w', kind: 'whale' }, nb('y', 9), nb('z', 9)]).winnerIdx,
+  2
+);
+check(
+  'Baleine + trois cartes à égalité : le tout premier posé',
+  resolveTrick([nb('p', 7), nb('q', 7), { id: 'w', kind: 'whale' }, nb('r', 7)]).winnerIdx,
+  0
+);
+check(
+  'Baleine : la couleur ne départage pas (le noir perd son statut d\'atout)',
+  resolveTrick([nb('v', 9), { id: 'w', kind: 'whale' }, { id: 'n', kind: 'number', suit: 'noir', value: 9 }]).winnerIdx,
+  0
+);
+check(
+  'Raie Tachetée + égalité sur la plus basse : le premier posé aussi',
+  resolveTrick([nb('a', 3), { id: 'r', kind: 'stingray' }, nb('b', 3), nb('c', 9)]).winnerIdx,
+  0
+);
+
 console.log(`\n${passed} test(s) OK, ${failed} échec(s).`);
 process.exit(failed > 0 ? 1 : 0);

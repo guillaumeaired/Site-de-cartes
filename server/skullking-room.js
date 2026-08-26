@@ -373,12 +373,15 @@ function stateFor(room, p) {
     base.myBid = room.bids ? room.bids[p.id] : undefined;
   }
   if (room.phase === 'playing' || room.phase === 'power') {
-    // La Tigresse doit rester un vrai bluff : on ne renvoie jamais chosenAs
-    // aux autres joueurs (le rendu client ne branche déjà sur rien d'autre
-    // que card.kind pour l'afficher, mais le champ brut restait lisible dans
-    // l'état envoyé - donc visible depuis la console du navigateur).
+    // La Tigresse doit rester un vrai bluff TANT QUE le pli se joue : on ne
+    // renvoie pas chosenAs aux autres joueurs (le champ brut restait sinon
+    // lisible depuis la console du navigateur, même si rien ne l'affichait).
+    // Une fois le pli résolu, en revanche, le choix est révélé à tout le
+    // monde : le bluff a servi, et sans ça personne ne comprenait en quoi la
+    // carte s'était changée (voir cardClass/cardFaceHTML côté client).
+    const tigressRevealed = Boolean(room.trickPaused);
     base.currentTrick = room.currentTrick.map((t) => {
-      if (t.card.kind !== 'tigress' || t.playerId === p.id) return t;
+      if (t.card.kind !== 'tigress' || t.playerId === p.id || tigressRevealed) return t;
       const { chosenAs, ...cardWithoutChoice } = t.card;
       return { ...t, card: cardWithoutChoice };
     });

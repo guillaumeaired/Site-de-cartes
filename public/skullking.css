@@ -1218,6 +1218,71 @@ h1 {
   background: linear-gradient(155deg, #ef4444, #7f1d1d);
 }
 
+/* Compteur de plis posé au-dessus du jeton (paysage) : plis remportés sur
+   plis annoncés. Le siège est en position absolue et centré par
+   translate(-50%, -50%) ; le compteur se cale donc au-dessus de lui en
+   valeur absolue plutôt que dans le flux. */
+.sk-seat-tally {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(10, 4, 4, 0.88);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #f5f0e6;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Annonce tenue pile : vert. Dépassée : rouge — c'est perdu, autant que ça
+   se voie tout de suite. */
+.sk-seat-tally--exact {
+  border-color: #4ade8099;
+  color: #86efac;
+}
+
+.sk-seat-tally--over {
+  border-color: #f8717199;
+  color: #fca5a5;
+}
+
+/* Famille Fuite : bleu, à l'opposé du rouge des Pirates. Une Fuite renonce
+   au pli quand un Pirate le prend — deux intentions contraires, deux
+   couleurs contraires, lisibles d'un coup d'œil sur le tapis. */
+.sk-card--escape {
+  background: linear-gradient(155deg, #3b82f6, #1e3a8a);
+}
+
+.sk-card--escape .sk-special-label {
+  color: #eff6ff;
+}
+
+/* La Tigresse est l'une ou l'autre au choix : tant que son choix n'est pas
+   connu, elle est coupée en deux, moitié rouge moitié bleue. */
+.sk-card--tigress {
+  background: linear-gradient(155deg, #ef4444 0%, #7f1d1d 47%, #1e3a8a 53%, #3b82f6 100%);
+}
+
+.sk-card--tigress .sk-special-label {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Une fois la décision révélée (pli résolu), elle bascule franchement dans
+   la couleur correspondante — on lit son choix sans avoir à le déduire. */
+.sk-card--tigress-pirate {
+  background: linear-gradient(155deg, #ef4444, #7f1d1d);
+}
+
+.sk-card--tigress-escape {
+  background: linear-gradient(155deg, #3b82f6, #1e3a8a);
+}
+
 /* Libellé d'une carte spéciale : c'est tout ce que porte la carte (plus
    d'emoji). Calé en haut à gauche plutôt que centré, parce que dans
    l'éventail la carte suivante recouvre la moitié droite : seule cette bande

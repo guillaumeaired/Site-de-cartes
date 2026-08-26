@@ -163,6 +163,22 @@ const otherView = seenByOther.currentTrick.find((t) => t.card.id === 'c1').card;
 check('chosenAs est absent pour un autre joueur', Object.prototype.hasOwnProperty.call(otherView, 'chosenAs'), false);
 check('le reste de la carte Tigresse reste intact pour un autre joueur', otherView.kind, 'tigress');
 
+// Le bluff ne dure que le temps du pli : une fois celui-ci résolu (pause de
+// révélation), le choix est montré à tout le monde — sans ça personne ne
+// comprenait en quoi la carte s'était changée.
+const pausedRoom = { ...makeRoom(trickWithTigress), trickPaused: true };
+const otherViewPaused = stateFor(pausedRoom, { id: 'p2', hand: [] }).currentTrick.find((t) => t.card.id === 'c1').card;
+check(
+  'pli résolu : les autres joueurs voient enfin le choix de la Tigresse',
+  otherViewPaused.chosenAs,
+  'pirate'
+);
+check(
+  'et la carte reste bien une Tigresse une fois révélée',
+  otherViewPaused.kind,
+  'tigress'
+);
+
 // --- Manche 1 : chacun voit les cartes des autres, jamais la sienne, tant
 // qu'on est en phase d'annonce.
 function makeBiddingRoom() {

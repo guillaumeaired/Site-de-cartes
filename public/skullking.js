@@ -132,6 +132,11 @@ function isCardPlayable(card, hand, trick) {
   return !mustFollowSuit(hand, ledSuit);
 }
 
+// Code couleur des cartes spéciales : rouge = famille Pirate (elle prend le
+// pli), bleu = famille Fuite (elle y renonce). La Tigresse, qui est l'une ou
+// l'autre au choix, est coupée en deux — et une fois son choix connu elle
+// bascule dans la couleur correspondante (voir stateFor côté serveur : le
+// choix n'est révélé aux autres qu'une fois le pli résolu).
 function cardClass(card) {
   if (card.kind === 'hidden') return 'sk-card--hidden';
   if (card.kind === 'wild15' || card.wild15) return 'sk-card--wild15';
@@ -140,6 +145,12 @@ function cardClass(card) {
     return `sk-card--${card.suit}`;
   }
   if (card.kind === 'pirate' || card.kind === 'firstmate') return 'sk-card--pirate';
+  if (card.kind === 'escape') return 'sk-card--escape';
+  if (card.kind === 'tigress') {
+    if (card.chosenAs === 'pirate') return 'sk-card--tigress sk-card--tigress-pirate';
+    if (card.chosenAs === 'escape') return 'sk-card--tigress sk-card--tigress-escape';
+    return 'sk-card--tigress';
+  }
   return 'sk-card--special';
 }
 function cardFaceHTML(card) {
@@ -159,38 +170,65 @@ function cardFaceHTML(card) {
     return `<span class="card-emblem">${card.value}</span>`;
   }
   const info = SPECIAL_INFO[card.kind];
-  const label =
-    card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;
+  let label = card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;
+  // Une fois la décision de la Tigresse connue, la carte le dit : sans ça on
+  // voyait bien qu'elle avait été jouée, jamais en quoi elle s'était changée.
+  if (card.kind === 'tigress' && card.chosenAs) {
+    label = card.chosenAs === 'pirate' ? 'Tigresse Pirate' : 'Tigresse Fuite';
+  }
   return `<span class="sk-special-label">${label}</span>`;
 }
 
-// Texte d'infobulle (survol) : réservé aux cartes qui déclenchent un vrai
-// EFFET, pas à celles dont le comportement se résume à leur place dans la
-// hiérarchie (numérotées, Fuite, Sirène, Skull King, Tigresse, Joker...) -
-// une bulle sur chaque carte noyait l'info utile. Renvoyer '' n'attache
-// simplement aucune bulle (voir attachPowerTooltip).
+// Texte d'infobulle (survol). Toutes les cartes en ont une, y compris celles
+// dont le comportement se résume à leur place dans la hiérarchie : il en
+// manquait, et ne rien afficher laissait croire à un oubli plutôt qu'à un
+// choix. Une carte sans texte n'attache simplement aucune bulle (voir
+// attachPowerTooltip), ce qui ne concerne plus que le dos de carte.
 function cardPowerText(card) {
   switch (card.kind) {
     case 'pirate':
       return card.name && PIRATE_POWER_TEXT[card.name]
         ? `${card.name} — s'il/elle remporte le pli : ${PIRATE_POWER_TEXT[card.name]}`
-        : '';
+        : "Pirate — bat toutes les cartes numérotées et les Sirènes. Seul le Skull King le bat.";
+    case 'siren':
+      return "Sirène — bat toutes les cartes numérotées, mais perd contre un Pirate. Elle bat en revanche le Skull King : c'est la seule carte à le faire.";
+    case 'skullking':
+      return "Skull King — bat les Pirates et toutes les cartes numérotées, et hérite du pouvoir de chaque Pirate qu'il capture. Seule une Sirène peut le battre.";
+    case 'escape':
+      return "Fuite — ne remporte jamais le pli et n'impose aucune couleur. À jouer quand on veut surtout ne pas gagner. Si tout le monde fuit, la première Fuite posée ramasse.";
+    case 'tigress':
+      return "Tigresse — au moment de la poser, tu choisis : Pirate (elle prend le pli) ou Fuite (elle y renonce). Les autres joueurs ne voient ton choix qu'une fois le pli résolu.";
     case 'loot':
-      return "Si un AUTRE joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce de la manche.";
+      return "Butin — si un AUTRE joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce de la manche.";
     case 'kraken':
-      return 'Détruit le pli : personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.';
+      return 'Kraken — détruit le pli : personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.';
     case 'whale':
-      return "Annule l'effet de toutes les cartes spéciales du pli : seule la valeur numérique compte (le noir perd son statut d'atout).";
+      return "Baleine blanche — annule l'effet de toutes les cartes spéciales du pli : seule la valeur numérique compte, le noir perd son statut d'atout. La plus haute valeur l'emporte, et à égalité le premier à l'avoir posée.";
     case 'firstmate':
-      return "S'il remporte le pli, hérite du/des pouvoir(s) du/des Pirate(s) capturé(s).";
+      return "Mat le Forban — se comporte comme un Pirate, et s'il remporte le pli il hérite du/des pouvoir(s) du/des Pirate(s) capturé(s).";
     case 'stingray':
-      return 'Comme la Baleine blanche, mais la carte la PLUS BASSE remporte le pli.';
+      return "Raie Tachetée — comme la Baleine blanche, mais c'est la carte la PLUS BASSE qui remporte le pli (à égalité, la première posée).";
     case 'lastvolley':
-      return 'Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).';
+      return "Dernière Salve — ne remporte jamais le pli. Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).";
     case 'plank':
-      return 'Retire un Pirate présent dans le pli en cours (au choix s\'il y en a plusieurs).';
+      return "Marcher sur la Planche — ne remporte jamais le pli, mais retire un Pirate présent dans le pli en cours (au choix s'il y en a plusieurs).";
     case 'davyjones':
-      return "Détruit tous les Monstres Marins présents (Kraken/Baleine/Raie) : +20 points par Monstre détruit.";
+      return 'Coffre de Davy Jones — ne remporte jamais le pli. Détruit tous les Monstres Marins présents (Kraken, Baleine, Raie) : +20 points par Monstre détruit.';
+    case 'wild15':
+      return "Joker — tu choisis sa couleur au moment de la poser (sauf si une couleur est déjà imposée). Il vaut alors 15, la plus haute valeur du jeu.";
+    case 'number': {
+      if (card.wild14 && card.value == null) {
+        return "0 ou 14 — au moment de la poser, tu décides si elle vaut 0 (elle perd toujours) ou 14 (carte forte, qui rapporte un bonus si tu remportes le pli).";
+      }
+      const noir = card.suit === 'noir';
+      const base = noir
+        ? 'Carte noire — le noir est atout : il bat les trois autres couleurs.'
+        : 'Carte numérotée — la plus haute de la couleur demandée remporte le pli, sauf si du noir est joué (le noir est atout).';
+      if (card.value === 14) return `${base} Un 14 remporté rapporte un bonus de ${noir ? 20 : 10} points si ton annonce est réussie.`;
+      if (card.ext && card.value === 8) return `${base} Ce 8 d'extension rapporte +5 points à qui remporte le pli.`;
+      if (card.ext && card.value === 7) return `${base} Ce 7 d'extension coûte 5 points à qui remporte le pli.`;
+      return base;
+    }
     default:
       return '';
   }
@@ -875,6 +913,23 @@ function renderSeats(state) {
       // panneau de droite). Le bloc ne sert plus qu'à la carte révélée de la
       // manche 1.
       if (cards.childElementCount) seat.appendChild(cards);
+    }
+
+    // Plis gagnés / annoncés, posé au-dessus du jeton : c'est l'information
+    // qu'on cherche en regardant un adversaire (« il en a fait combien sur
+    // ce qu'il a annoncé ? »), elle vivait jusqu'ici uniquement dans le
+    // panneau de droite, loin du tapis. Rien pendant l'annonce, où les
+    // annonces sont encore secrètes.
+    if (landscapeTable.matches && state.phase !== 'bidding' && p.bid != null) {
+      const tally = document.createElement('div');
+      tally.className = 'sk-seat-tally';
+      const won = p.tricksWon || 0;
+      tally.textContent = `${won}/${p.bid}`;
+      // Vert tant que l'annonce reste tenable, rouge dès qu'elle est dépassée.
+      if (won > p.bid) tally.classList.add('sk-seat-tally--over');
+      else if (won === p.bid) tally.classList.add('sk-seat-tally--exact');
+      tally.title = `${won} pli(s) remporté(s) sur ${p.bid} annoncé(s)`;
+      seat.appendChild(tally);
     }
 
     // Jeton du joueur : en paysage il porte la mise en avant du tour (halo
