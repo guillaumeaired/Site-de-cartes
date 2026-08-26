@@ -44,6 +44,37 @@ const DEFAULT_RACE_TARGET = 200;
 // toute seule, l'hote peut arreter le match pendant ce laps de temps.
 const MATCH_ROUND_END_MS = 6_000;
 
+// --- Chat de salon ---
+// Volontairement dupliqué depuis skullking-room.js plutôt que mutualisé :
+// c'est la convention du projet, chaque jeu reste indépendant. L'historique
+// vit sur le salon, donc il traverse les manches et les revanches et ne
+// disparaît qu'avec le salon. Plafonné, tout étant en mémoire.
+const CHAT_MAX_LENGTH = 200;
+const CHAT_HISTORY = 80;
+const CHAT_MIN_INTERVAL_MS = 700;
+const CHAT_BURST_WINDOW_MS = 12_000;
+const CHAT_BURST_MAX = 8;
+
+function sanitizeChatText(text) {
+  if (typeof text !== 'string') return null;
+  const clean = text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LENGTH);
+  return clean || null;
+}
+
+function chatRateLimit(player, now) {
+  if (player.chatLast && now - player.chatLast < CHAT_MIN_INTERVAL_MS) {
+    return 'Doucement — un message à la fois.';
+  }
+  const recents = (player.chatTimes || []).filter((t) => now - t < CHAT_BURST_WINDOW_MS);
+  if (recents.length >= CHAT_BURST_MAX) {
+    return 'Trop de messages d\'affilée, laisse souffler la table.';
+  }
+  player.chatTimes = recents;
+  return null;
+}
+
+let chatSeq = 0;
+
 const rooms = new Map();
 
 // Compteurs simples pour l'observabilite (route /stats, server/index.js) -
@@ -94,6 +125,11 @@ function rekeyPlayerId(room, oldId, newId) {
     const payload = room.lastGameEndPayload;
     if (payload.winnerId === oldId) payload.winnerId = newId;
     if (payload.gameWinnerId === oldId) payload.gameWinnerId = newId;
+  }
+  if (Array.isArray(room.chat)) {
+    room.chat.forEach((m) => {
+      if (m.playerId === oldId) m.playerId = newId;
+    });
   }
 }
 
@@ -155,7 +191,10 @@ function broadcastLobby(io, room) {
       isHost: p.id === room.hostId,
       canStart: room.players.length === MAX_PLAYERS,
       // Reglage hote, verrouillable seulement en lobby (voir rami-set-match-format).
-      matchFormat: room.matchFormat || 'single',
+      // Historique du chat : renvoyé avec l'état pour qu'une reconnexion
+    // retrouve la conversation.
+    chat: room.chat || [],
+    matchFormat: room.matchFormat || 'single',
       raceTarget: room.raceTarget || DEFAULT_RACE_TARGET,
     });
   }
@@ -1000,6 +1039,38 @@ function registerRamiHandlers(io, socket) {
     if (wasDisconnected) {
       broadcastToRoom(io, room, 'rami-player-reconnected', { id: player.id, nickname: player.nickname });
     }
+  });
+
+  // Chat du salon : disponible à toutes les phases, y compris dans le salon
+  // d'attente et entre deux parties d'un match.
+  socket.on('rami-chat', (payload) => {
+    const room = rooms.get(socket.data.ramiRoom);
+    if (!room) return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+
+    const text = sanitizeChatText(payload && payload.text);
+    if (!text) return;
+
+    const now = Date.now();
+    const refus = chatRateLimit(player, now);
+    if (refus) {
+      sendError(socket, refus);
+      return;
+    }
+    player.chatLast = now;
+    player.chatTimes = [...(player.chatTimes || []), now];
+
+    chatSeq += 1;
+    const message = {
+      id: `c${chatSeq}`,
+      playerId: player.id,
+      nickname: player.nickname,
+      text,
+      at: now,
+    };
+    room.chat = [...(room.chat || []), message].slice(-CHAT_HISTORY);
+    broadcastToRoom(io, room, 'rami-chat-message', message);
   });
 
   socket.on('rami-leave-room', () => handleExplicitLeave(io, socket));

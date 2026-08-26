@@ -141,6 +141,16 @@
           <p class="sk-side-title">Joueurs — annonce / plis</p>
           <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
           <button id="sk-btn-history" class="sk-history-link hidden" type="button">📜 Manches précédentes</button>
+
+          <div class="sk-chat">
+            <p class="sk-side-title">Discussion</p>
+            <div id="sk-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
+            <form id="sk-chat-form" class="sk-chat-form" autocomplete="off">
+              <label for="sk-chat-input" class="visually-hidden">Message</label>
+              <input id="sk-chat-input" type="text" maxlength="200" placeholder="Écrire à la table…" />
+              <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
+            </form>
+          </div>
         </aside>
       </div>
 

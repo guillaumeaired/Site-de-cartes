@@ -1490,8 +1490,71 @@ function renderObjective(state) {
   objectiveTextEl.textContent = o.texte;
 }
 
+// --- Chat du salon ---
+// Les messages sont posés en textContent, jamais en innerHTML : le texte
+// vient d'un autre joueur et le serveur le stocke tel quel (il ne fait que
+// borner la longueur et écraser les espaces). C'est ici, au rendu, que se
+// joue la sécurité — deux failles XSS ont déjà été trouvées dans ce projet
+// par ce chemin exact.
+const chatLogEl = document.getElementById('sk-chat-log');
+const chatFormEl = document.getElementById('sk-chat-form');
+const chatInputEl = document.getElementById('sk-chat-input');
+const chatSeen = new Set();
+
+function chatHeure(at) {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function chatAuBas() {
+  // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
+  // quelqu'un en train de remonter l'historique.
+  return chatLogEl.scrollHeight - chatLogEl.scrollTop - chatLogEl.clientHeight < 40;
+}
+
+function ajouterMessage(m) {
+  if (!m || chatSeen.has(m.id)) return;
+  chatSeen.add(m.id);
+  const colle = chatAuBas();
+
+  const ligne = document.createElement('div');
+  ligne.className = 'sk-chat-line' + (m.playerId === myId ? ' sk-chat-line--me' : '');
+
+  const tete = document.createElement('span');
+  tete.className = 'sk-chat-who';
+  tete.textContent = m.playerId === myId ? 'Toi' : m.nickname;
+  const heure = document.createElement('span');
+  heure.className = 'sk-chat-time';
+  heure.textContent = chatHeure(m.at);
+  tete.appendChild(heure);
+
+  const corps = document.createElement('span');
+  corps.className = 'sk-chat-text';
+  corps.textContent = m.text;
+
+  ligne.append(tete, corps);
+  chatLogEl.appendChild(ligne);
+  while (chatLogEl.childElementCount > 80) chatLogEl.removeChild(chatLogEl.firstChild);
+  if (colle) chatLogEl.scrollTop = chatLogEl.scrollHeight;
+}
+
+function renderChat(state) {
+  (state.chat || []).forEach(ajouterMessage);
+}
+
+socket.on('skullking-chat-message', ajouterMessage);
+
+chatFormEl.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = chatInputEl.value.trim();
+  if (!text) return;
+  socket.emit('skullking-chat', { text });
+  chatInputEl.value = '';
+});
+
 function renderScoreboard(state) {
   renderObjective(state);
+  renderChat(state);
   scoreboardRows.innerHTML = '';
   const byId = new Map(state.players.map((p) => [p.id, p]));
   [...state.scoreboard]

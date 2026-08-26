@@ -100,6 +100,43 @@ function firstFreePiece(room) {
   return PIECE_KEYS.find((k) => !taken.has(k)) || null;
 }
 
+// --- Chat de salon ---
+// L'historique vit sur le salon, pas sur la partie : il traverse les manches
+// et les revanches, et ne disparaît qu'avec le salon lui-même. Plafonné pour
+// qu'une partie longue ne fasse pas gonfler la mémoire indéfiniment (aucune
+// base de données ici, tout est en RAM).
+const CHAT_MAX_LENGTH = 200;
+const CHAT_HISTORY = 80;
+// Anti-spam : un message au plus toutes les 700 ms, et pas plus de 8 sur une
+// fenêtre glissante de 12 s. Un salon de jeu n'a aucune raison d'écrire plus
+// vite, et ça évite qu'un joueur noie les autres.
+const CHAT_MIN_INTERVAL_MS = 700;
+const CHAT_BURST_WINDOW_MS = 12_000;
+const CHAT_BURST_MAX = 8;
+
+function sanitizeChatText(text) {
+  if (typeof text !== 'string') return null;
+  // On normalise les retours à la ligne et on écrase les séries d'espaces :
+  // un message ne doit pas pouvoir occuper dix lignes à lui seul.
+  const clean = text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LENGTH);
+  return clean || null;
+}
+
+// Renvoie null si le joueur a le droit d'écrire, sinon la raison du refus.
+function chatRateLimit(player, now) {
+  if (player.chatLast && now - player.chatLast < CHAT_MIN_INTERVAL_MS) {
+    return 'Doucement — un message à la fois.';
+  }
+  const recents = (player.chatTimes || []).filter((t) => now - t < CHAT_BURST_WINDOW_MS);
+  if (recents.length >= CHAT_BURST_MAX) {
+    return 'Trop de messages d\'affilée, laisse souffler la table.';
+  }
+  player.chatTimes = recents;
+  return null;
+}
+
+let chatSeq = 0;
+
 const rooms = new Map();
 
 // Compteurs simples pour l'observabilite (route /stats, server/index.js) -
@@ -182,6 +219,11 @@ function rekeyPlayerId(room, oldId, newId) {
     room.forcedPlays[newId] = room.forcedPlays[oldId];
     delete room.forcedPlays[oldId];
   }
+  if (Array.isArray(room.chat)) {
+    room.chat.forEach((m) => {
+      if (m.playerId === oldId) m.playerId = newId;
+    });
+  }
   if (room.sittingOutId === oldId) room.sittingOutId = newId;
   if (room.extraCardOwedBy === oldId) room.extraCardOwedBy = newId;
   rekeyHostId(room, oldId, newId);
@@ -218,6 +260,7 @@ function broadcastLobby(io, room) {
       myId: p.id,
       players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, piece: pp.piece || null })),
       pieceKeys: PIECE_KEYS,
+      chat: room.chat || [],
       hostId: room.hostId,
       isHost: p.id === room.hostId,
       canStart: room.players.length >= MIN_PLAYERS && room.players.length <= maxPlayers,
@@ -346,6 +389,9 @@ function stateFor(room, p) {
       bid: room.bids && (!bidding || pp.id === p.id) ? room.bids[pp.id] : undefined,
       revealedCard: blindRound1 && pp.id !== p.id && pp.hand && pp.hand[0] ? pp.hand[0] : undefined,
     })),
+    // Historique du chat : renvoyé avec l'état pour qu'une reconnexion ou un
+    // arrivant en cours de partie retrouve la conversation.
+    chat: room.chat || [],
     dealerId: room.players[room.dealerIndex] && room.players[room.dealerIndex].id,
     // Qui mène/mènera le pli en cours (fixé dès la donne, avant même
     // l'annonce) - permet de savoir "qui commence" dès la phase d'annonce,
@@ -943,6 +989,38 @@ function registerSkullKingHandlers(io, socket) {
     }
     player.piece = piece;
     broadcastLobby(io, room);
+  });
+
+  // Chat du salon : disponible à toutes les phases, y compris dans le salon
+  // d'attente et entre deux manches — c'est justement là qu'on se parle.
+  socket.on('skullking-chat', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room) return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+
+    const text = sanitizeChatText(payload && payload.text);
+    if (!text) return;
+
+    const now = Date.now();
+    const refus = chatRateLimit(player, now);
+    if (refus) {
+      sendError(socket, refus);
+      return;
+    }
+    player.chatLast = now;
+    player.chatTimes = [...(player.chatTimes || []), now];
+
+    chatSeq += 1;
+    const message = {
+      id: `c${chatSeq}`,
+      playerId: player.id,
+      nickname: player.nickname,
+      text,
+      at: now,
+    };
+    room.chat = [...(room.chat || []), message].slice(-CHAT_HISTORY);
+    broadcastToRoom(io, room, 'skullking-chat-message', message);
   });
 
   // OUTIL DE TEST : ajoute un joueur automatique au salon. Réservé à l'hôte

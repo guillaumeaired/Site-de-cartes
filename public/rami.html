@@ -108,6 +108,10 @@
         <p id="rami-start-reveal-text" class="rami-start-reveal-text"></p>
       </div>
 
+      <!-- Zone de jeu : en paysage, le tapis et le chat côte à côte. En
+           portrait, simple enveloppe sans style — le chat y est masqué, la
+           place manque. -->
+      <div class="rami-play-area">
       <!-- Cadre du tapis : simple enveloppe sans style en portrait, c'est
            lui qui porte le feutre et la grille en paysage. Les libellés de
            zone sont posés en CSS (::before) et non en HTML, parce que le
@@ -143,6 +147,17 @@
 
           <div id="rami-table-mine" class="rami-table-side rami-table-side--mine"></div>
         </div>
+      </div>
+
+      <aside class="rami-chat">
+        <p class="rami-chat-title">Discussion</p>
+        <div id="rami-chat-log" class="rami-chat-log" role="log" aria-live="polite"></div>
+        <form id="rami-chat-form" class="rami-chat-form" autocomplete="off">
+          <label for="rami-chat-input" class="visually-hidden">Message</label>
+          <input id="rami-chat-input" type="text" maxlength="200" placeholder="Écrire…" />
+          <button type="submit" class="rami-chat-send" aria-label="Envoyer">➤</button>
+        </form>
+      </aside>
       </div>
 
       <div id="rami-open-staging" class="rami-open-staging hidden">

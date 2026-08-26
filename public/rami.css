@@ -1549,6 +1549,12 @@ h1 {
    et défausse, mes combinaisons) au lieu de trois colonnes.
    ========================================================= */
 
+/* Chat réservé au paysage : en portrait la colonne est déjà étroite et le
+   tapis a besoin de toute la place. */
+.rami-chat {
+  display: none;
+}
+
 /* La marque n'apparaît que dans le bandeau paysage : en portrait elle
    surchargerait un en-tête déjà serré entre « Quitter » et le tour. */
 .rami-brand {
@@ -1655,10 +1661,123 @@ h1 {
 
   /* --- Cadre du tapis : le feutre, qui contient le siège adverse et les
      trois bandes. C'est lui qui absorbe la hauteur restante. --- */
-  .rami-felt {
+  .rami-play-area {
     flex: 1;
     min-height: 0;
+    display: flex;
+    gap: 12px;
     margin: 12px 22px 6px;
+  }
+
+  .rami-chat {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 250px;
+    min-height: 0;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+  }
+
+  .rami-chat-title {
+    margin: 0 0 6px;
+    font-size: 0.56rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    opacity: 0.5;
+  }
+
+  .rami-chat-log {
+    flex: 1;
+    min-height: 90px;
+    overflow-y: auto;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .rami-chat-line {
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .rami-chat-who {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-weight: 800;
+    font-size: 0.66rem;
+    color: #facc15;
+    opacity: 0.9;
+  }
+
+  .rami-chat-line--me .rami-chat-who {
+    color: #86efac;
+  }
+
+  .rami-chat-time {
+    font-weight: 600;
+    font-size: 0.58rem;
+    opacity: 0.45;
+    color: #f5f0e6;
+  }
+
+  /* Coupure forcée : une suite de caractères sans espace ne doit pas
+     déborder de la colonne. */
+  .rami-chat-text {
+    display: block;
+    color: #f5f0e6;
+    overflow-wrap: anywhere;
+  }
+
+  .rami-chat-form {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .rami-chat-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 0.78rem;
+  }
+
+  .rami-chat-form input:focus {
+    outline: none;
+    border-color: #facc15;
+  }
+
+  .rami-chat-send {
+    flex-shrink: 0;
+    width: 34px;
+    border-radius: 50%;
+    border: 2px solid #1a1208;
+    background: linear-gradient(160deg, #35915b, #1f5c39);
+    color: #fff;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+
+  .rami-chat-send:hover {
+    background: linear-gradient(160deg, #3fa66a, #256a41);
+  }
+
+  .rami-felt {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     gap: 6px;

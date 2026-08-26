@@ -959,6 +959,64 @@ function renderMatchScores(state) {
   scoresEl.title = `Match en cours — ${but}`;
 }
 
+// --- Chat du salon ---
+// Dupliqué depuis skullking.js (convention du projet), avec la même règle de
+// sécurité : le texte vient d'un autre joueur et le serveur le stocke tel
+// quel — il est donc posé en textContent, jamais en innerHTML.
+const chatLogEl = document.getElementById('rami-chat-log');
+const chatFormEl = document.getElementById('rami-chat-form');
+const chatInputEl = document.getElementById('rami-chat-input');
+const chatSeen = new Set();
+
+function chatHeure(at) {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function ajouterMessage(m) {
+  if (!m || !chatLogEl || chatSeen.has(m.id)) return;
+  chatSeen.add(m.id);
+  // Ne recolle en bas que si on y était déjà, pour ne pas arracher la lecture
+  // à quelqu'un en train de remonter l'historique.
+  const colle = chatLogEl.scrollHeight - chatLogEl.scrollTop - chatLogEl.clientHeight < 40;
+
+  const ligne = document.createElement('div');
+  ligne.className = 'rami-chat-line' + (m.playerId === myId ? ' rami-chat-line--me' : '');
+
+  const tete = document.createElement('span');
+  tete.className = 'rami-chat-who';
+  tete.textContent = m.playerId === myId ? 'Toi' : m.nickname;
+  const heure = document.createElement('span');
+  heure.className = 'rami-chat-time';
+  heure.textContent = chatHeure(m.at);
+  tete.appendChild(heure);
+
+  const corps = document.createElement('span');
+  corps.className = 'rami-chat-text';
+  corps.textContent = m.text;
+
+  ligne.append(tete, corps);
+  chatLogEl.appendChild(ligne);
+  while (chatLogEl.childElementCount > 80) chatLogEl.removeChild(chatLogEl.firstChild);
+  if (colle) chatLogEl.scrollTop = chatLogEl.scrollHeight;
+}
+
+function renderChat(state) {
+  (state.chat || []).forEach(ajouterMessage);
+}
+
+socket.on('rami-chat-message', ajouterMessage);
+
+if (chatFormEl) {
+  chatFormEl.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = chatInputEl.value.trim();
+    if (!text) return;
+    socket.emit('rami-chat', { text });
+    chatInputEl.value = '';
+  });
+}
+
 function renderAll() {
   renderHand();
   renderStaging();
@@ -968,6 +1026,7 @@ function renderAll() {
     renderTable(latestState);
     renderDiscardRow(latestState);
     renderMatchScores(latestState);
+    renderChat(latestState);
     updateTurnIndicator(latestState);
   }
   updateActionButtons();
