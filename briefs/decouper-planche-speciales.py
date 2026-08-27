@@ -37,15 +37,15 @@ PLANCHES = {
     # Deux rangées de cinq sur un plan de bois. Dix cases pour neuf cartes :
     # seul le second Will est un vrai doublon.
     #
-    # Les deux femmes de la rangée du bas portent le MÊME nom peint, « Rosie
-    # la Douce » — Gemini l'a écrit deux fois. Ce ne sont pourtant pas deux
-    # variantes du même personnage : la blonde au rouleau à pâtisserie est
-    # Rosie, la brune à la boule de cristal est Juanita Jade. On les sert
-    # donc chacune à sa carte, en se fiant au sujet et pas au bandeau. Reste
-    # que celui de Juanita ment ; à 104 px sur le tapis il tombe sous les
-    # 6 px de haut et ne se lit pas, dans la fiche ouverte par le « ? » il se
-    # lit. À regénérer quand la planche repassera par Gemini.
-    'extra-cards-sk.png': [
+    # Seconde version de la planche, et c'est elle qui sert. La première
+    # portait le MÊME nom peint sous les deux femmes de la rangée du bas,
+    # « Rosie la Douce » — d'où la seconde longtemps classée doublon, alors
+    # que c'était Juanita Jade. On l'avait servie quand même, en se fiant au
+    # sujet plutôt qu'au bandeau, avec un nom peint qui mentait : illisible
+    # sur le tapis à 104 px, lisible dans la fiche ouverte par le « ? ».
+    # Celle-ci nomme correctement les neuf. Rien à arbitrer, et les neuf
+    # cartes sont redécoupées ensemble, donc dans la même lumière.
+    'extra-cards-2-sk.png': [
         'classique-fuite',      # le navire à la voile, au couchant
         'classique-skullking',  # le capitaine à la barre, fond noir
         'classique-sirene-1',   # Sirena, à la boule de cristal
