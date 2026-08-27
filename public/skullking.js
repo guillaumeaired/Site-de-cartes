@@ -2670,6 +2670,14 @@ document.getElementById('sk-btn-rematch').addEventListener('click', () => socket
 // Le serveur attribue une pièce libre à qui n'en a pas choisi (voir
 // skullking-room.js), deux secteurs ne peuvent donc pas se confondre.
 
+// Durée du tirage, en un seul endroit. Elle était auparavant écrite deux
+// fois — dans la transition CSS et dans les minuteries d'ici — ce qui est
+// exactement le genre de paire qui se désynchronise au premier réglage.
+// C'est le JS qui pose la transition, les timings en découlent.
+const ROUE_DUREE = 5400;      // ms de rotation
+const ROUE_TOURS = 7;         // tours complets avant de viser le secteur
+const ROUE_LECTURE = 2600;    // ms pendant lesquelles le nom reste affiché
+
 function playStartReveal(players, starterId) {
   const overlay = document.getElementById('sk-start-reveal');
   const wheel = document.getElementById('sk-wheel');
@@ -2710,14 +2718,22 @@ function playStartReveal(players, starterId) {
   text.classList.remove('sk-visible');
   overlay.classList.remove('hidden');
 
-  const target = 5 * 360 + (winnerIndex + 0.5) * step;
+  const target = ROUE_TOURS * 360 + (winnerIndex + 0.5) * step;
+
+  // Une seule source pour la durée : le CSS la lit ici.
+  document.documentElement.style.setProperty('--sk-roue-duree', `${ROUE_DUREE}ms`);
 
   needle.style.transition = 'none';
   needle.style.transform = 'rotate(0deg)';
 
-  // Double rAF : garantit que l'état de repos (0°) est bien peint avant de
-  // lancer la transition, sinon le tout premier chargement peut "sauter"
-  // directement à l'état final (bug déjà rencontré sur la roue du Rami).
+  // Double rAF : garantit que l'angle de repos (0°) est bien peint avant que
+  // l'angle cible ne soit posé, sinon le navigateur saute droit à l'état
+  // final (bug déjà rencontré sur la roue du Rami).
+  //
+  // La transition elle-même est déclarée en CSS, pas ici : la poser en JS
+  // dans la même image que le changement d'angle n'anime rien du tout. Seule
+  // sa DURÉE vient d'ici, par une variable — de sorte qu'elle reste
+  // d'accord avec les minuteries ci-dessous, qui en dépendent.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       needle.style.transition = '';
@@ -2725,13 +2741,15 @@ function playStartReveal(players, starterId) {
     });
   });
 
+  // Le nom se pose quand la barre se pose : 150 ms avant la fin, le temps
+  // que l'oeil ait déjà vu où elle s'arrête.
   setTimeout(() => {
     const tags = labelsEl.querySelectorAll('.sk-wheel-tag');
     if (tags[winnerIndex]) tags[winnerIndex].classList.add('sk-wheel-tag--winner');
-    text.textContent = `${starter ? starter.nickname : '???'} mène le premier pli !`;
+    text.textContent = `${starter ? starter.nickname : '???'} ouvre la manche`;
     text.classList.add('sk-visible');
-  }, 2150);
-  setTimeout(() => overlay.classList.add('hidden'), 3400);
+  }, ROUE_DUREE - 150);
+  setTimeout(() => overlay.classList.add('hidden'), ROUE_DUREE + ROUE_LECTURE);
 }
 
 // --- Dispatch d'état ---
