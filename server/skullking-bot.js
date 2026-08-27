@@ -49,6 +49,9 @@ function addBot(io, room, registerHandlers) {
     botSockets.delete(socket.id);
     return null;
   }
+  // Un bot ne cliquera jamais "Je suis prêt" : il se déclare tout de suite,
+  // sinon il bloquerait le lancement de la table de test.
+  socket.emit('skullking-set-ready', { ready: true });
   return socket.id;
 }
 

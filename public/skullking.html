@@ -15,59 +15,137 @@
     <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
     <div id="sk-card-tooltip" class="sk-card-tooltip hidden" role="tooltip"></div>
 
-    <section id="sk-screen-home" class="screen">
-      <a href="index.html" class="btn-link">← Tous les jeux</a>
-      <p class="mascot" aria-hidden="true">💀</p>
-      <h1><span class="suit suit-black">🏴‍☠️</span>Skull King<span class="suit suit-red">🧜</span></h1>
-      <p class="tagline">De 3 à 7 joueurs (jusqu'à 9 avec l'extension officielle) — 10 manches, annonces simultanées.</p>
-      <button id="sk-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+    <section id="sk-screen-home" class="screen sk-home">
+      <header class="sk-topbar">
+        <a href="index.html" class="sk-topbar-back">← Tous les jeux</a>
+        <span class="sk-topbar-logo" aria-hidden="true"><span>🃏</span><span>Guimams</span></span>
+        <button id="sk-btn-rules" class="sk-topbar-rules" type="button">📖 Règles du jeu</button>
+      </header>
 
-      <div class="nickname-field">
-        <label for="sk-input-nickname" class="visually-hidden">Ton pseudo</label>
-        <input id="sk-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <div class="sk-home-corps">
+        <div class="sk-home-hero">
+          <span class="sk-pastille">Jeu de plis · Pirates</span>
+          <p class="sk-home-mascotte" aria-hidden="true">💀</p>
+          <h1 class="sk-home-titre">Skull King</h1>
+          <p class="sk-home-accroche">
+            Annonce le nombre de plis que tu vas remporter, puis tiens parole.
+            Dix manches, des cartes spéciales, et des pirates qui changent tout.
+          </p>
+          <div class="sk-home-faits">
+            <div class="sk-fait"><span class="sk-fait-valeur">3–7</span><span class="sk-fait-label">Joueurs</span></div>
+            <div class="sk-fait"><span class="sk-fait-valeur">~25 min</span><span class="sk-fait-label">Durée</span></div>
+            <div class="sk-fait"><span class="sk-fait-valeur">10</span><span class="sk-fait-label">Manches</span></div>
+          </div>
+        </div>
+
+        <div class="sk-home-panneau">
+          <div class="sk-eventail" aria-hidden="true">
+            <span style="--r:-16deg"></span><span style="--r:-6deg"></span>
+            <span style="--r:4deg"></span><span style="--r:14deg"></span>
+          </div>
+          <h2 class="sk-home-panneau-titre">Prends place</h2>
+          <p class="sk-home-panneau-sous">Choisis ton pseudo, puis crée une table ou rejoins celle d'un ami.</p>
+
+          <div class="sk-champ-pseudo">
+            <span id="sk-piece-apercu" class="sk-piece-apercu" aria-hidden="true"></span>
+            <label for="sk-input-nickname" class="visually-hidden">Ton pseudo</label>
+            <input id="sk-input-nickname" type="text" maxlength="16" placeholder="Ton pseudo" autocomplete="off" />
+          </div>
+
+          <button id="sk-btn-create" class="btn btn-primary btn-create sk-btn-creer">
+            <span class="btn-icon">💀</span> Créer une partie
+          </button>
+          <p id="sk-home-error" class="error"></p>
+
+          <form id="sk-form-join" class="sk-rejoindre">
+            <span class="sk-rejoindre-label">Un ami t'a donné un code ?</span>
+            <label for="sk-input-code" class="visually-hidden">Code de la partie</label>
+            <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
+            <button type="submit" class="btn sk-rejoindre-btn">Rejoindre →</button>
+          </form>
+        </div>
       </div>
-
-      <button id="sk-btn-create" class="btn btn-primary btn-create">
-        <span class="btn-icon">💀</span> Créer une partie
-      </button>
-      <div class="divider">ou rejoindre avec un code</div>
-      <form id="sk-form-join">
-        <label for="sk-input-code" class="visually-hidden">Code de la partie</label>
-        <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
-        <button type="submit" class="btn">Rejoindre</button>
-      </form>
-      <p id="sk-home-error" class="error"></p>
     </section>
 
-    <section id="sk-screen-waiting" class="screen hidden">
-      <button id="sk-btn-leave-waiting" class="btn-link">← Quitter</button>
+    <section id="sk-screen-waiting" class="screen hidden sk-salon">
+      <header class="sk-topbar">
+        <button id="sk-btn-leave-waiting" class="sk-topbar-back" type="button">← Quitter</button>
+        <span class="sk-topbar-logo" aria-hidden="true"><span>💀</span><span>Skull King</span></span>
+        <span class="sk-topbar-code">Code <b id="sk-share-code"></b></span>
+      </header>
 
-      <div id="sk-share-block" class="invite-card hidden">
-        <p class="invite-label">Code de la partie</p>
-        <div class="code-badge" id="sk-share-code"></div>
-        <button id="sk-btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
-        <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      <div class="sk-salon-corps">
+        <!-- Colonne gauche : inviter, puis discuter en attendant -->
+        <aside class="sk-salon-col">
+          <p class="sk-bloc-titre">Invite tes amis</p>
+          <div id="sk-code-grille" class="sk-code-grille"></div>
+          <p id="sk-lien-affiche" class="sk-lien"></p>
+          <button id="sk-btn-copy" class="btn btn-copy-link sk-btn-copier">🔗 Copier le lien</button>
+          <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+          <p class="sk-salon-aide">
+            Ils arrivent directement dans ce salon. Tant que la partie n'est pas
+            lancée, chacun peut entrer et sortir librement.
+          </p>
+
+          <div class="sk-lobby-chat">
+            <p class="sk-bloc-titre">Salon</p>
+            <div id="sk-lobby-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
+            <form id="sk-lobby-chat-form" class="sk-chat-form" autocomplete="off">
+              <label for="sk-lobby-chat-input" class="visually-hidden">Message</label>
+              <input id="sk-lobby-chat-input" type="text" maxlength="200" placeholder="Écrire au salon…" />
+              <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
+            </form>
+          </div>
+        </aside>
+
+        <!-- Centre : les places, sur toute la largeur -->
+        <section class="sk-salon-col sk-salon-centre">
+          <div class="sk-salon-entete">
+            <h2>Joueurs</h2>
+            <span id="sk-lobby-compte" class="sk-pastille"></span>
+            <div class="sk-jauge"><span id="sk-jauge"></span></div>
+          </div>
+          <div id="sk-lobby-places" class="sk-places"></div>
+        </section>
+
+        <!-- Droite : réglages de la partie et rappel des règles -->
+        <aside class="sk-salon-col sk-salon-reglages">
+          <div>
+            <p class="sk-bloc-titre" id="sk-reglages-titre">Réglages de la partie</p>
+            <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
+              <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+              <span class="sk-extension-toggle-label">🏆 Jouer avec l'extension</span>
+            </button>
+            <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
+          </div>
+
+          <div id="sk-piece-picker" class="sk-piece-picker hidden">
+            <p class="sk-bloc-titre">Ta pièce</p>
+            <div id="sk-piece-grid" class="sk-piece-grid"></div>
+            <p class="hint sk-piece-aide">Les pièces grisées sont déjà prises par un autre joueur.</p>
+          </div>
+
+          <div>
+            <p class="sk-bloc-titre">Rappel express</p>
+            <ul class="sk-rappel">
+              <li>Atout noir : les cartes noires battent toutes les couleurs.</li>
+              <li>Annonce exacte : 20 points par pli annoncé.</li>
+              <li>Annonce 0 réussie : 10 points × le numéro de la manche.</li>
+              <li>Skull King bat les pirates… mais tombe face à la sirène.</li>
+            </ul>
+          </div>
+        </aside>
       </div>
 
-      <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
-        <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
-        <span class="sk-extension-toggle-label">🏆 Jouer avec l'extension</span>
-      </button>
-      <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
-
-      <div id="sk-piece-picker" class="sk-piece-picker hidden">
-        <p class="invite-label">Ta pièce</p>
-        <div id="sk-piece-grid" class="sk-piece-grid"></div>
-      </div>
-
-      <div id="sk-lobby-players" class="lobby-players hidden">
-        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (<span id="sk-lobby-range">3 à 7</span>)</p>
-        <ul id="sk-lobby-list" class="lobby-list"></ul>
-      </div>
-
-      <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">🤖 Ajouter un bot (test)</button>
-      <button id="sk-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
-      <p id="sk-waiting-hint" class="hint"></p>
+      <footer class="sk-salon-pied">
+        <span id="sk-waiting-hint" class="sk-pied-info"></span>
+        <div class="sk-prets">
+          <div id="sk-prets-points" class="sk-prets-points"></div>
+          <span id="sk-prets-texte" class="sk-prets-texte"></span>
+        </div>
+        <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">🤖 Ajouter un bot (test)</button>
+        <button id="sk-btn-action" class="btn btn-primary sk-action" type="button"></button>
+      </footer>
     </section>
 
     <section id="sk-screen-game" class="screen hidden">

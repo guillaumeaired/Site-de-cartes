@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, capturedPirateKeys, devouredPirateIds, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, capturedPirateKeys, devouredPirateIds, powerResultMessage, stateFor, lobbyReadiness } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -322,6 +322,66 @@ check(
   'rien à dévorer si le pli est détruit (Kraken)',
   devouredPirateIds([sk, rosie], { destroyed: true, winnerIdx: -1, excludedIdx: new Set() }),
   []
+);
+
+// --- Salon : qui doit cliquer "prêt" avant que l'hôte puisse lancer.
+// L'hôte est prêt par définition ; seuls les invités comptent.
+const salon = (players, extensionEnabled = false) => ({
+  hostId: 'h',
+  extensionEnabled,
+  players,
+});
+const joueur = (id, ready) => ({ id, ready });
+
+check(
+  "l'hôte n'est jamais compté parmi les invités à attendre",
+  lobbyReadiness(salon([joueur('h', false), joueur('a', true), joueur('b', true)])).guests,
+  2
+);
+
+check(
+  'tous les invités prêts et effectif atteint : on peut lancer',
+  lobbyReadiness(salon([joueur('h', false), joueur('a', true), joueur('b', true)])).canStart,
+  true
+);
+
+check(
+  "un invité pas prêt bloque le lancement, même à effectif suffisant",
+  lobbyReadiness(salon([joueur('h', false), joueur('a', true), joueur('b', false)])).canStart,
+  false
+);
+
+check(
+  "l'hôte marqué non prêt ne se bloque pas lui-même",
+  lobbyReadiness(salon([joueur('h', false), joueur('a', true), joueur('b', true)])).allReady,
+  true
+);
+
+check(
+  'tout le monde prêt mais effectif trop faible : lancement refusé',
+  lobbyReadiness(salon([joueur('h', false), joueur('a', true)])).canStart,
+  false
+);
+
+check(
+  'effectif au-delà du plafond sans extension : lancement refusé',
+  lobbyReadiness(salon([joueur('h', false), ...['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id) => joueur(id, true))])).canStart,
+  false
+);
+
+check(
+  'le même effectif passe avec l\'extension activée',
+  lobbyReadiness(salon([joueur('h', false), ...['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id) => joueur(id, true))], true)).canStart,
+  true
+);
+
+check(
+  'décompte des prêts affiché dans le salon',
+  (() => {
+    const r = lobbyReadiness(salon([joueur('h', false), joueur('a', true), joueur('b', false), joueur('c', true)]));
+    return [r.readyCount, r.guests];
+  })(),
+  [2, 3]
 );
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

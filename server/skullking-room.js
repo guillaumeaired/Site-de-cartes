@@ -248,8 +248,28 @@ function setBotAdapter(adapter) {
   bots = adapter;
 }
 
+// Qui doit cliquer "prêt", et l'hôte peut-il lancer ?
+// L'hôte est prêt par définition : son clic sur "Lancer la partie" EST son
+// signal, il n'a donc pas de bouton "prêt". Les invités, eux, doivent le dire
+// explicitement — c'est ce qui évite de démarrer sur quelqu'un qui n'a pas
+// encore choisi sa pièce ou qui s'est levé.
+function lobbyReadiness(room) {
+  const maxPlayers = maxPlayersFor(room.extensionEnabled);
+  const guests = room.players.filter((p) => p.id !== room.hostId);
+  const readyCount = guests.filter((p) => p.ready).length;
+  const enough = room.players.length >= MIN_PLAYERS && room.players.length <= maxPlayers;
+  return {
+    guests: guests.length,
+    readyCount,
+    allReady: readyCount === guests.length,
+    enough,
+    canStart: enough && readyCount === guests.length,
+  };
+}
+
 function broadcastLobby(io, room) {
   const maxPlayers = maxPlayersFor(room.extensionEnabled);
+  const readiness = lobbyReadiness(room);
   for (const p of room.players) {
     io.to(p.id).emit('skullking-lobby-update', {
       code: room.code,
@@ -258,12 +278,21 @@ function broadcastLobby(io, room) {
       // sait pas quelle case est la sienne (myId n'arrive qu'avec l'état de
       // jeu, donc trop tard).
       myId: p.id,
-      players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, piece: pp.piece || null })),
+      players: room.players.map((pp) => ({
+        id: pp.id,
+        nickname: pp.nickname,
+        piece: pp.piece || null,
+        // L'hôte est affiché prêt d'office : il n'a pas de bouton à cliquer.
+        ready: pp.id === room.hostId ? true : Boolean(pp.ready),
+      })),
       pieceKeys: PIECE_KEYS,
       chat: room.chat || [],
       hostId: room.hostId,
       isHost: p.id === room.hostId,
-      canStart: room.players.length >= MIN_PLAYERS && room.players.length <= maxPlayers,
+      canStart: readiness.canStart,
+      guestCount: readiness.guests,
+      readyCount: readiness.readyCount,
+      enoughPlayers: readiness.enough,
       minPlayers: MIN_PLAYERS,
       maxPlayers,
       // Le switch est cliquable seulement par l'hôte (imposé aussi côté
@@ -942,6 +971,8 @@ function registerSkullKingHandlers(io, socket) {
       id: socket.id,
       nickname,
       piece: firstFreePiece(room),
+      // Un arrivant n'est jamais prêt d'office : il doit le dire lui-même.
+      ready: false,
       token: payload && payload.token,
       connected: true,
       disconnectTimer: null,
@@ -953,6 +984,21 @@ function registerSkullKingHandlers(io, socket) {
       roundHistory: [],
     });
     socket.data.skullkingRoom = code;
+    broadcastLobby(io, room);
+  });
+
+  // "Je suis prêt" : réservé aux invités, uniquement dans le salon. L'hôte
+  // n'en a pas besoin (voir lobbyReadiness), et l'ignorer ici évite qu'un
+  // hôte se déclare "pas prêt" et se bloque lui-même.
+  socket.on('skullking-set-ready', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id === room.hostId) return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+    const ready = Boolean(payload && payload.ready);
+    if (player.ready === ready) return;
+    player.ready = ready;
     broadcastLobby(io, room);
   });
 
@@ -1038,8 +1084,10 @@ function registerSkullKingHandlers(io, socket) {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
-    const maxPlayers = maxPlayersFor(room.extensionEnabled);
-    if (room.players.length < MIN_PLAYERS || room.players.length > maxPlayers) return;
+    // Même règle que celle affichée dans le salon : effectif atteint ET tous
+    // les invités prêts. Vérifié ici aussi, pour qu'un client bricolé ne
+    // puisse pas lancer sur une table qui n'a pas dit oui.
+    if (!lobbyReadiness(room).canStart) return;
     recordGameStarted('skullking');
     startGame(io, room);
   });
@@ -1055,6 +1103,8 @@ function registerSkullKingHandlers(io, socket) {
       p.rascalStake = 0;
       p.totalScore = 0;
       p.roundHistory = [];
+      // Nouvelle partie, nouveau consentement : chacun reclique "prêt".
+      p.ready = false;
     });
     broadcastLobby(io, room);
   });
@@ -1444,4 +1494,5 @@ module.exports = {
   stateFor,
   setBotAdapter,
   getStats,
+  lobbyReadiness,
 };

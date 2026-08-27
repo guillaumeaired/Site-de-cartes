@@ -434,16 +434,19 @@ socket.on('skullking-history', ({ rounds }) => {
 
 // --- Salon d'attente ---
 
-const shareBlock = document.getElementById('sk-share-block');
 const shareLink = document.getElementById('sk-share-link');
 const shareCode = document.getElementById('sk-share-code');
+const codeGrid = document.getElementById('sk-code-grille');
+const lienAffiche = document.getElementById('sk-lien-affiche');
 const btnCopy = document.getElementById('sk-btn-copy');
 const btnLeaveWaiting = document.getElementById('sk-btn-leave-waiting');
-const lobbyPlayers = document.getElementById('sk-lobby-players');
-const lobbyList = document.getElementById('sk-lobby-list');
-const lobbyCount = document.getElementById('sk-lobby-count');
-const lobbyRange = document.getElementById('sk-lobby-range');
-const btnStartGame = document.getElementById('sk-btn-start-game');
+const lobbyPlaces = document.getElementById('sk-lobby-places');
+const lobbyCompte = document.getElementById('sk-lobby-compte');
+const lobbyJauge = document.getElementById('sk-jauge');
+const pretsPoints = document.getElementById('sk-prets-points');
+const pretsTexte = document.getElementById('sk-prets-texte');
+const btnAction = document.getElementById('sk-btn-action');
+const reglagesTitre = document.getElementById('sk-reglages-titre');
 const btnAddBot = document.getElementById('sk-btn-add-bot');
 
 // Outils de test (bots) : uniquement en local ou avec ?dev dans l'URL, pour
@@ -491,13 +494,33 @@ btnCopy.addEventListener('click', async () => {
   }
 });
 
+// Le code et le lien s'affichent pour tout le monde, plus seulement pour
+// celui qui a créé la partie : les invités aussi ont besoin de le partager.
+// Les cases ne sont reconstruites que si le code change, sinon leur petite
+// animation d'apparition rejouerait à chaque arrivée d'un joueur.
+let codeAffiche = null;
+function setRoomCode(code) {
+  if (!code) return;
+  const url = `${window.location.protocol}//${window.location.host}/skullking.html?room=${code}`;
+  shareLink.value = url;
+  lienAffiche.textContent = url.replace(/^https?:\/\//, '');
+  if (code === codeAffiche) return;
+  codeAffiche = code;
+  shareCode.textContent = code;
+  codeGrid.innerHTML = '';
+  [...code].forEach((caractere, i) => {
+    const case_ = document.createElement('span');
+    case_.className = 'sk-code-case';
+    case_.style.setProperty('--i', i);
+    case_.textContent = caractere;
+    codeGrid.appendChild(case_);
+  });
+}
+
 socket.on('skullking-room-created', ({ code }) => {
   setCreateBusy(false);
   saveActiveRoom(code, myNickname);
-  const url = `${window.location.protocol}//${window.location.host}/skullking.html?room=${code}`;
-  shareLink.value = url;
-  shareCode.textContent = code;
-  shareBlock.classList.remove('hidden');
+  setRoomCode(code);
 });
 
 // --- Choix de sa pièce dans le salon d'attente ---
@@ -553,39 +576,102 @@ function renderPiecePicker(players) {
         /* navigation privée : le choix vaut pour cette partie, sans plus */
       }
       socket.emit('skullking-set-piece', { piece: piece.key });
+      renderPieceApercu();
     });
     pieceGrid.appendChild(btn);
   });
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, myId: id }) => {
+// Places autour de la table : une carte par siège prévu, les sièges encore
+// libres en pointillés. L'hôte porte une couronne et n'a pas d'état « prêt » —
+// son clic sur « Lancer la partie » vaut signal (voir lobbyReadiness côté
+// serveur) ; les invités, eux, affichent Prêt ou En attente.
+function renderLobbyPlaces(players, hostId, minPlayers, maxPlayers) {
+  const colonnes = maxPlayers <= 4 ? maxPlayers : Math.min(5, Math.ceil(maxPlayers / 2));
+  // Posée sur le conteneur parent, pas sur la grille : une valeur en ligne
+  // battrait la requête média qui repasse le téléphone à deux colonnes.
+  lobbyPlaces.parentElement.style.setProperty('--sk-places-cols', colonnes);
+  lobbyPlaces.innerHTML = '';
+
+  for (let i = 0; i < maxPlayers; i += 1) {
+    const p = players[i];
+    const el = document.createElement('div');
+    el.style.setProperty('--i', i);
+
+    if (p) {
+      const hote = p.id === hostId;
+      const pret = hote || p.ready;
+      el.className =
+        'sk-place' + (p.id === myId ? ' sk-place--moi' : '') + (pret && !hote ? ' sk-place--pret' : '');
+
+      if (hote) {
+        const couronne = document.createElement('span');
+        couronne.className = 'sk-place-couronne';
+        couronne.textContent = '👑';
+        couronne.title = 'Hôte de la partie';
+        el.appendChild(couronne);
+      }
+
+      const piece = pieceFor(p);
+      const rond = document.createElement('span');
+      rond.className = 'sk-place-piece';
+      rond.style.setProperty('--sk-av-color', piece.color);
+      rond.innerHTML = pieceSVG(piece);
+
+      const nom = document.createElement('span');
+      nom.className = 'sk-place-nom';
+      // textContent : le pseudo vient d'un autre joueur (voir le chat).
+      nom.textContent = p.id === myId ? `${p.nickname} (toi)` : p.nickname;
+
+      const tag = document.createElement('span');
+      tag.className =
+        'sk-place-tag ' + (hote ? 'sk-place-tag--hote' : pret ? 'sk-place-tag--pret' : '');
+      tag.textContent = hote ? 'Hôte' : pret ? '✓ Prêt' : 'En attente';
+
+      el.append(rond, nom, tag);
+    } else {
+      const requis = i < minPlayers;
+      el.className = 'sk-place sk-place--vide';
+      const rond = document.createElement('span');
+      rond.className = 'sk-place-piece';
+      rond.textContent = '+';
+      const nom = document.createElement('span');
+      nom.className = 'sk-place-nom';
+      nom.textContent = requis ? 'Place à remplir' : 'Place libre';
+      const tag = document.createElement('span');
+      tag.className = 'sk-place-tag';
+      tag.textContent = requis ? 'Requis' : 'Optionnel';
+      el.append(rond, nom, tag);
+    }
+
+    lobbyPlaces.appendChild(el);
+  }
+}
+
+socket.on('skullking-lobby-update', ({
+  code, players, hostId, isHost, canStart, minPlayers, maxPlayers,
+  extensionEnabled, guestCount, readyCount, enoughPlayers, chat, myId: id,
+}) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
   showScreen('waiting');
   joinModal.classList.add('hidden');
-  lobbyPlayers.classList.remove('hidden');
-  lobbyList.innerHTML = '';
-  players.forEach((p) => {
-    const li = document.createElement('li');
-    const piece = pieceFor(p);
-    const badge = document.createElement('span');
-    badge.className = 'sk-lobby-piece';
-    badge.style.setProperty('--sk-av-color', piece.color);
-    badge.innerHTML = pieceSVG(piece);
-    li.appendChild(badge);
-    li.appendChild(document.createTextNode(p.nickname));
-    if (p.id === hostId) li.classList.add('lobby-host');
-    lobbyList.appendChild(li);
-  });
+
+  setRoomCode(code);
+  // Historique du salon : celui qui arrive rattrape ce qui s'est dit avant.
+  (chat || []).forEach(ajouterMessage);
+  renderLobbyPlaces(players, hostId, minPlayers, maxPlayers);
   renderPiecePicker(players);
-  lobbyCount.textContent = players.length;
-  lobbyRange.textContent = `${minPlayers} à ${maxPlayers}`;
+
+  lobbyCompte.textContent = `${players.length} / ${minPlayers}–${maxPlayers}`;
+  lobbyJauge.style.width = `${Math.min(100, (players.length / maxPlayers) * 100)}%`;
 
   // Switch d'extension : cliquable par l'hôte uniquement (imposé aussi côté
   // serveur), lecture seule pour les autres - tout le monde voit le même
   // état en temps réel via ce même événement de lobby.
+  reglagesTitre.textContent = isHost ? 'Réglages de la partie' : "Réglages de l'hôte";
   btnExtension.classList.toggle('sk-extension-toggle--on', extensionEnabled);
   btnExtension.setAttribute('aria-pressed', String(extensionEnabled));
   btnExtension.disabled = !isHost;
@@ -594,25 +680,69 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     ? "12 numérotées, un Joker, 6 nouvelles cartes spéciales — jusqu'à 9 joueurs."
     : isHost
       ? "Active l'extension officielle pour plus de cartes et jusqu'à 9 joueurs."
-      : '';
+      : "Réglé par l'hôte de la partie.";
 
-  btnStartGame.classList.toggle('hidden', !isHost);
+  // Une pastille par invité : l'hôte n'en a pas, il est prêt par définition.
+  pretsPoints.innerHTML = '';
+  players
+    .filter((p) => p.id !== hostId)
+    .forEach((p) => {
+      const point = document.createElement('span');
+      point.className = 'sk-prets-point' + (p.ready ? ' sk-prets-point--pret' : '');
+      point.title = `${p.nickname} : ${p.ready ? 'prêt' : 'pas encore prêt'}`;
+      pretsPoints.appendChild(point);
+    });
+  const tousPrets = guestCount > 0 && readyCount === guestCount;
+  pretsTexte.textContent = guestCount
+    ? `${readyCount} / ${guestCount} invité${guestCount > 1 ? 's' : ''} prêt${readyCount > 1 ? 's' : ''}`
+    : "Personne n'est encore arrivé";
+
+  // Bouton unique, toujours au même endroit : lancer pour l'hôte, prêt pour
+  // les invités.
+  const moi = players.find((p) => p.id === myId);
+  const jeSuisPret = Boolean(moi && moi.ready);
+  btnAction.classList.remove('sk-action--pret', 'sk-action--annuler');
+  if (isHost) {
+    btnAction.disabled = !canStart;
+    const manquants = guestCount - readyCount;
+    btnAction.textContent = !enoughPlayers || tousPrets || guestCount === 0
+      ? '🎮 Lancer la partie'
+      : `⏳ ${manquants} invité${manquants > 1 ? 's' : ''} pas prêt${manquants > 1 ? 's' : ''}`;
+  } else {
+    btnAction.disabled = false;
+    btnAction.classList.add(jeSuisPret ? 'sk-action--annuler' : 'sk-action--pret');
+    btnAction.textContent = jeSuisPret ? '✓ Prêt — annuler' : 'Je suis prêt';
+  }
+
+  if (!enoughPlayers) {
+    const manque = Math.max(0, minPlayers - players.length);
+    waitingHint.textContent = manque
+      ? `Il manque ${manque} joueur${manque > 1 ? 's' : ''} pour pouvoir lancer.`
+      : `Trop de joueurs pour ce réglage (${maxPlayers} maximum).`;
+  } else if (!isHost && jeSuisPret && tousPrets) {
+    waitingHint.textContent = "⏳ En attente du lancement par l'hôte…";
+  } else {
+    waitingHint.textContent = `${players.length} joueurs à table.`;
+  }
+
   // Outil de test : jamais proposé aux vrais joueurs (voir DEV_TOOLS).
   btnAddBot.classList.toggle('hidden', !(DEV_TOOLS && isHost && players.length < maxPlayers));
-  btnStartGame.disabled = !canStart;
-  if (isHost) {
-    waitingHint.textContent = canStart
-      ? 'Prêt ! Lance la partie quand tu veux.'
-      : `Il faut entre ${minPlayers} et ${maxPlayers} joueurs pour commencer…`;
-  } else {
-    waitingHint.textContent = "En attente que l'hôte lance la partie…";
-  }
+
   // On repasse par le salon avant chaque nouvelle partie (y compris une
   // revanche) : c'est le point sûr pour réarmer la roue de tirage au sort et
   // le repère de pli déjà animé (sinon la manche 1 / pli 1 de la partie
   // suivante porterait la même clé que celui de la partie précédente).
   startRevealPlayed = false;
   lastDevouredTrick = null;
+});
+
+// Un seul bouton pour les deux rôles : l'hôte lance, l'invité se déclare prêt.
+btnAction.addEventListener('click', () => {
+  if (myIsHost) {
+    socket.emit('skullking-start-game');
+    return;
+  }
+  socket.emit('skullking-set-ready', { ready: !btnAction.classList.contains('sk-action--annuler') });
 });
 
 btnExtension.addEventListener('click', () => {
@@ -666,7 +796,6 @@ socket.on('skullking-player-left', ({ nickname, reason }) => {
   }
 });
 
-btnStartGame.addEventListener('click', () => socket.emit('skullking-start-game'));
 
 btnJoinModal.addEventListener('click', () => {
   const nickname = joinModalNickname.value.trim().slice(0, 16);
@@ -878,6 +1007,26 @@ function pieceFor(player) {
 function pieceSVG(piece) {
   return `<svg class="sk-piece-svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${piece.svg}</svg>`;
 }
+
+// Aperçu de sa pièce à côté du champ pseudo, sur l'écran d'accueil : la
+// pièce gardée sur cet appareil (ou la première, à défaut). C'est le même
+// choix que reprendra renderPiecePicker une fois dans le salon.
+function renderPieceApercu() {
+  const el = document.getElementById('sk-piece-apercu');
+  if (!el) return;
+  let pref = null;
+  try {
+    pref = localStorage.getItem(PIECE_PREF_KEY);
+  } catch (e) {
+    pref = null;
+  }
+  const piece = (pref && PIECE_BY_KEY[pref]) || PIECES[0];
+  el.style.setProperty('--sk-av-color', piece.color);
+  el.innerHTML = pieceSVG(piece);
+  el.title = piece.label;
+}
+
+renderPieceApercu();
 
 function renderSeats(state) {
   const { ordered, map } = seatLayout(state);
@@ -1529,9 +1678,16 @@ function renderObjective(state) {
 // borner la longueur et écraser les espaces). C'est ici, au rendu, que se
 // joue la sécurité — deux failles XSS ont déjà été trouvées dans ce projet
 // par ce chemin exact.
+// Deux journaux, un seul flux : celui de la partie et celui du salon
+// d'attente. Chaque message est ajouté aux deux, si bien qu'on retrouve dans
+// le salon ce qui s'est dit pendant la manche précédente (et inversement).
 const chatLogEl = document.getElementById('sk-chat-log');
 const chatFormEl = document.getElementById('sk-chat-form');
 const chatInputEl = document.getElementById('sk-chat-input');
+const lobbyChatLogEl = document.getElementById('sk-lobby-chat-log');
+const lobbyChatFormEl = document.getElementById('sk-lobby-chat-form');
+const lobbyChatInputEl = document.getElementById('sk-lobby-chat-input');
+const chatLogs = [chatLogEl, lobbyChatLogEl].filter(Boolean);
 const chatSeen = new Set();
 
 function chatHeure(at) {
@@ -1539,17 +1695,13 @@ function chatHeure(at) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function chatAuBas() {
+function chatAuBas(log) {
   // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
   // quelqu'un en train de remonter l'historique.
-  return chatLogEl.scrollHeight - chatLogEl.scrollTop - chatLogEl.clientHeight < 40;
+  return log.scrollHeight - log.scrollTop - log.clientHeight < 40;
 }
 
-function ajouterMessage(m) {
-  if (!m || chatSeen.has(m.id)) return;
-  chatSeen.add(m.id);
-  const colle = chatAuBas();
-
+function construireLigne(m) {
   const ligne = document.createElement('div');
   ligne.className = 'sk-chat-line' + (m.playerId === myId ? ' sk-chat-line--me' : '');
 
@@ -1566,9 +1718,18 @@ function ajouterMessage(m) {
   corps.textContent = m.text;
 
   ligne.append(tete, corps);
-  chatLogEl.appendChild(ligne);
-  while (chatLogEl.childElementCount > 80) chatLogEl.removeChild(chatLogEl.firstChild);
-  if (colle) chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  return ligne;
+}
+
+function ajouterMessage(m) {
+  if (!m || chatSeen.has(m.id)) return;
+  chatSeen.add(m.id);
+  chatLogs.forEach((log) => {
+    const colle = chatAuBas(log);
+    log.appendChild(construireLigne(m));
+    while (log.childElementCount > 80) log.removeChild(log.firstChild);
+    if (colle) log.scrollTop = log.scrollHeight;
+  });
 }
 
 function renderChat(state) {
@@ -1581,19 +1742,24 @@ socket.on('skullking-chat-message', ajouterMessage);
 // petite bulle de saisie demandait trop de précision, surtout en pleine
 // partie. On laisse passer les clics sur le journal, pour pouvoir y
 // sélectionner du texte.
-document.querySelector('.sk-chat').addEventListener('mousedown', (e) => {
-  if (e.target.closest('.sk-chat-log') || e.target.closest('button') || e.target === chatInputEl) return;
-  e.preventDefault();
-  chatInputEl.focus();
-});
+function brancherChat(panneau, form, input) {
+  if (!panneau || !form || !input) return;
+  panneau.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.sk-chat-log') || e.target.closest('button') || e.target === input) return;
+    e.preventDefault();
+    input.focus();
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    socket.emit('skullking-chat', { text });
+    input.value = '';
+  });
+}
 
-chatFormEl.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const text = chatInputEl.value.trim();
-  if (!text) return;
-  socket.emit('skullking-chat', { text });
-  chatInputEl.value = '';
-});
+brancherChat(document.querySelector('.sk-chat'), chatFormEl, chatInputEl);
+brancherChat(document.querySelector('.sk-lobby-chat'), lobbyChatFormEl, lobbyChatInputEl);
 
 function renderScoreboard(state) {
   renderObjective(state);
