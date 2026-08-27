@@ -227,17 +227,28 @@ function resolveHierarchy(cards, kinds) {
   // jamais".
   const neverWinning = (i) => NEVER_WINS.has(kinds[i]) || (kinds[i] === 'number' && cards[i].value === 0);
 
-  // Butin exceptionnel : si le pli n'est composé que de cartes qui ne
-  // gagnent jamais autrement (Fuite et assimilées, 0/14 déclaré à 0) +
-  // éventuellement du Butin, le Butin l'emporte (le premier joué s'il y en
-  // a deux) ; sinon, s'il n'y a QUE des Fuites, la première gagne (règle
-  // inchangée) ; sinon (mélange avec au moins une carte "ne gagne jamais"
-  // de l'extension ou un Monstre Marin neutralisé), personne ne gagne, le
-  // pli est défaussé.
+  // Un pli où plus rien ne peut gagner. Trois issues, dans cet ordre :
+  //
+  // 1. Le Butin l'emporte (le premier joué s'il y en a deux) — il ne gagne
+  //    jamais face à une vraie carte, mais entre cartes qui ne gagnent pas
+  //    il reste le mieux classé.
+  // 2. Sinon, LA PREMIÈRE FUITE JOUÉE gagne, même si le pli contient aussi
+  //    des cartes d'extension qui ne gagnent jamais. Le livret est explicite :
+  //    « Davy Jones' Locker, The Last Volley, The Spotted Stingray, and Walk
+  //    the Plank are not escape cards, and don't act like one in a trick. If
+  //    played in a trick where the remaining cards played are all escape
+  //    cards, the first escape played will win the trick. » On exigeait
+  //    auparavant que le pli ne contienne QUE des Fuites : une Dernière Salve
+  //    posée au milieu de deux Fuites détruisait le pli au lieu de le laisser
+  //    à la première d'entre elles.
+  // 3. Sinon — aucune Fuite, que des spéciales non gagnantes — le pli est
+  //    défaussé, et c'est l'entameur qui mène le suivant. Le livret en donne
+  //    l'exemple : Davy Jones + Raie Tachetée + Marcher sur la Planche.
   if (kinds.every((k, i) => neverWinning(i) || k === 'loot')) {
     const lootIdx = kinds.indexOf('loot');
     if (lootIdx !== -1) return { winnerIdx: lootIdx };
-    if (kinds.every((k) => k === 'escape')) return { winnerIdx: 0 };
+    const fuiteIdx = kinds.indexOf('escape');
+    if (fuiteIdx !== -1) return { winnerIdx: fuiteIdx };
     return { winnerIdx: null, allNeverWin: true };
   }
 
@@ -361,18 +372,31 @@ function resolveTrick(cards) {
     kinds.forEach((k, i) => {
       if (k === 'number' && i !== monsterI && cards[i].value !== 0) numberIdx.push(i);
     });
+    // Ce que le monstre a mis hors course : tout ce qui n'est pas une
+    // numérotée en lice, sauf lui-même — il est la cause, pas une victime —
+    // et sauf ce qui était déjà sorti du pli autrement (jeté à la Planche,
+    // avalé par le Coffre), qui a son propre sort à l'écran.
+    //
+    // La liste se déduit des candidats plutôt que de se redécider : elle
+    // suit donc la règle exactement, y compris ses coins. Un 0/14 déclaré à
+    // 0 en fait partie sous la Raie, où il gagnerait sans l'exclusion.
+    const enLice = new Set(numberIdx);
+    const neutralisedIdx = [];
+    cards.forEach((c, i) => {
+      if (i !== monsterI && !enLice.has(i) && !excludedIdx.has(i)) neutralisedIdx.push(i);
+    });
     if (numberIdx.length === 0) {
       // Aucune numérotée dans le pli : le monstre a neutralisé tout le reste
       // et il ne reste rien qui puisse gagner. `destroyerIdx` dit LEQUEL — un
       // joueur qui voit son Pirate ne rien remporter cherche la cause, et la
       // Raie posée trois cartes plus tôt n'est pas celle qu'il soupçonne.
-      return { winnerIdx: null, leaderIdx: 0, destroyed: true, monstersDestroyed, excludedIdx, destroyerIdx: monsterI };
+      return { winnerIdx: null, leaderIdx: 0, destroyed: true, monstersDestroyed, excludedIdx, destroyerIdx: monsterI, neutralisedIdx };
     }
     const winnerIdx = numberIdx.reduce((best, i) => {
       const better = pickLowest ? cards[i].value < cards[best].value : cards[i].value > cards[best].value;
       return better ? i : best;
     });
-    return { winnerIdx, leaderIdx: winnerIdx, destroyed: false, monstersDestroyed, excludedIdx };
+    return { winnerIdx, leaderIdx: winnerIdx, destroyed: false, monstersDestroyed, excludedIdx, neutralisedIdx };
   }
 
   const { winnerIdx, allNeverWin } = resolveHierarchy(cards, kinds);

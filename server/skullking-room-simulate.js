@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, capturedPirateKeys, devouredPirateIds, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, activeOrderThisTrick, capturedPirateKeys, devouredPirateIds, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -178,7 +178,7 @@ function makeRoom(currentTrick) {
     extensionEnabled: false,
     currentTrick,
     turnCount: currentTrick.length,
-    sittingOutId: null,
+    sittingOutIds: new Set(),
     extraCardOwedBy: null,
     trickPaused: false,
     lastTrickResult: null,
@@ -366,5 +366,46 @@ check(
   devouredPirateIds([sk, rosie], { destroyed: true, winnerIdx: -1, excludedIdx: new Set() }),
   []
 );
+
+// --- Dernière Salve : qui joue le pli, et qui n'a plus de carte ---------
+//
+// Celui qui pose la Salve joue DEUX cartes dans le même pli : il lui en
+// manque une, et c'est le DERNIER pli de la manche qu'il ne peut pas jouer.
+// Le livret de l'extension : « That player will then skip the final trick of
+// the round. » On ne fabrique donc pas un tour de pause au pli suivant — on
+// constate une main vide à l'ouverture d'un pli.
+{
+  const salle = (mains, leaderIndex = 0) => ({
+    players: mains.map((n, i) => ({ id: `p${i}`, hand: Array.from({ length: n }, (_, k) => ({ id: `c${i}-${k}` })) })),
+    leaderIndex,
+    sittingOutIds: new Set(),
+  });
+
+  const ordre = (room) => {
+    room.sittingOutIds = new Set(room.players.filter((p) => !p.hand.length).map((p) => p.id));
+    return activeOrderThisTrick(room).map((p) => p.id);
+  };
+
+  check(
+    'Tout le monde a des cartes : la rotation complète, depuis le meneur',
+    ordre(salle([2, 2, 2], 1)).join(','),
+    'p1,p2,p0'
+  );
+  check(
+    'Main vide (Dernière Salve jouée plus tôt) : ce joueur est absent du pli',
+    ordre(salle([1, 0, 1], 0)).join(','),
+    'p0,p2'
+  );
+  check(
+    'Le joueur à main vide aurait dû mener : le suivant prend sa place',
+    ordre(salle([0, 1, 1], 0)).join(','),
+    'p1,p2'
+  );
+  check(
+    'Deux Dernières Salves dans la manche : les deux joueurs manquent au dernier pli',
+    ordre(salle([0, 1, 0, 1], 1)).join(','),
+    'p1,p3'
+  );
+}
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

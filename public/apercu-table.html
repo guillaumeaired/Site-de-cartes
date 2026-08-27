@@ -27,6 +27,7 @@
     ?phase=playing  playing (défaut) | bidding | paused (pli remporté)
                     | fin (l'écran de fin ; &exaequo=4, &loupe=0)
                     | kraken (pli englouti, l'animation part au chargement)
+    ?salve=1        la Dernière Salve + la carte en plus de son joueur
     ?planche=cible  la Planche en main, deux Pirates au tapis (désignation)
     ?planche=avale  le même pli résolu, le Pirate poussé par-dessus bord
     ?fige=1300      fige toutes les animations à cet instant (ms), pour capturer
@@ -34,6 +35,7 @@
                     tournée vers les autres, la mienne face cachée
     ?annonces=1     la révélation des annonces, plaques peintes retournées
     ?tigresse=pirate|fuite   un adversaire pose la Tigresse, annoncée
+    ?phase=baleine  la Baleine met les spéciales hors course, sans rien détruire
 -->
 <script>
 const P = new URLSearchParams(location.search);
@@ -45,6 +47,10 @@ const KRAKEN = PHASE === 'kraken';
 // détruit alors le pli, et c'est le cas où l'écran doit NOMMER la coupable —
 // des Pirates posés APRÈS elle croient l'emporter (voir PLI_DETRUIT).
 const RAIE = PHASE === 'raie';
+// ?phase=baleine : la Baleine avec des numérotées à départager. Elle ne
+// détruit alors rien — elle met simplement hors course toutes les spéciales,
+// et c'est le cas qui règle le voile.
+const BALEINE = PHASE === 'baleine';
 const TIGRESSE = P.get('tigresse');
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
 const MANCHE1 = P.get('manche') === '1';
@@ -73,6 +79,13 @@ function carte(i) {
   // En mode kraken, le 3e joueur pose le Kraken : c'est lui qui engloutit.
   if (KRAKEN && i === 2) return { id: `c${i}`, kind: 'kraken' };
   if (RAIE) return i === 2 ? { id: `c${i}`, kind: 'stingray' } : { id: `c${i}`, kind: 'pirate', name: PIRATES[i % PIRATES.length] };
+  if (BALEINE) {
+    if (i === 2) return { id: `c${i}`, kind: 'whale' };
+    if (i === 0) return { id: `c${i}`, kind: 'skullking' };
+    if (i === 1) return { id: `c${i}`, kind: 'pirate', name: PIRATES[1] };
+    if (i === 3) return { id: `c${i}`, kind: 'number', suit: 'noir', value: 4 };
+    return { id: `c${i}`, kind: 'number', suit: COULEURS[i % 3], value: 3 + ((i * 5) % 11) };
+  }
   // ?tigresse=pirate|fuite : le 5e joueur pose la Tigresse, annoncée dans un
   // sens ou dans l'autre. C'est la seule carte qui change de nature en se
   // posant, donc la seule dont l'annonce doit se voir depuis les autres sièges.
@@ -100,7 +113,20 @@ const joueurs = Array.from({ length: N }, (_, i) => ({
 // bord — le cas qui règle l'animation.
 const PLANCHE = P.get('planche');
 
-const pli = PLANCHE
+// `?salve=1` : le pli contient la Dernière Salve ET la carte supplémentaire
+// de son joueur — deux cartes du MÊME joueur, le seul cas où ça se produit.
+const SALVE = P.get('salve') === '1';
+
+const pli = SALVE
+  ? [
+      { playerId: 'p1', card: { id: 's-a', kind: 'number', suit: 'vert', value: 6 } },
+      { playerId: 'p0', card: { id: 's-salve', kind: 'lastvolley', ext: true } },
+      { playerId: 'p2', card: { id: 's-b', kind: 'number', suit: 'vert', value: 12 } },
+      { playerId: 'p3', card: { id: 's-c', kind: 'number', suit: 'vert', value: 4 } },
+      // La carte supplémentaire, jouée après tout le monde.
+      { playerId: 'p0', card: { id: 's-extra', kind: 'number', suit: 'noir', value: 3 } },
+    ]
+  : PLANCHE
   ? [
       { playerId: 'p1', card: { id: 'pir1', kind: 'pirate', name: 'Harry le Géant' } },
       { playerId: 'p2', card: { id: 'num1', kind: 'number', suit: 'vert', value: 11 } },
@@ -148,6 +174,9 @@ const etat = {
   leadingPlayerId: 'p1',
   trickWillBeDestroyed: false,
   trickPaused: PHASE === 'paused' || KRAKEN || RAIE || PLANCHE === 'avale',
+  // Les cartes que le monstre met hors course : le serveur les calcule (voir
+  // resolveTrick), on les nomme ici à la main pour la seule mise en scène.
+  trickNeutralisedCardIds: BALEINE ? ['c0', 'c1'] : RAIE ? ['c0', 'c1', 'c3', 'c4'] : [],
   lastTrickResult: PLANCHE === 'avale'
     ? { winnerId: 'p1', destroyed: false, devouredCardIds: [], plankedCardIds: ['pir2'], davyJones: null }
     : KRAKEN

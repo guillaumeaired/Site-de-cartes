@@ -319,7 +319,7 @@ function rekeyPlayerId(room, oldId, newId) {
       if (m.playerId === oldId) m.playerId = newId;
     });
   }
-  if (room.sittingOutId === oldId) room.sittingOutId = newId;
+  if (room.sittingOutIds && room.sittingOutIds.delete(oldId)) room.sittingOutIds.add(newId);
   if (room.extraCardOwedBy === oldId) room.extraCardOwedBy = newId;
   rekeyHostId(room, oldId, newId);
 }
@@ -415,6 +415,10 @@ function currentTrickPreview(room) {
     leaderId: entry ? entry.playerId : null,
     destroyed: result.destroyed,
     destroyedBy: destroyerIdx != null && destroyerIdx !== -1 ? effectiveKind(cards[destroyerIdx]) : null,
+    // Les cartes que la Baleine ou la Raie a mises hors course. Renvoyées
+    // pendant que le pli se joue, pas seulement à sa résolution : c'est là
+    // qu'elles servent, quand on choisit encore sa propre carte.
+    neutralisedCardIds: (result.neutralisedIdx || []).map((i) => cards[i].id),
   };
 }
 
@@ -445,22 +449,23 @@ function startRound(io, room) {
   room.lastTrickResult = null;
   room.lastWinningCard = null;
   room.forcedPlays = {};
-  room.sittingOutId = null;
+  room.sittingOutIds = new Set();
   room.extraCardOwedBy = null;
   room.phase = 'bidding';
   broadcastState(io, room);
 }
 
 // Ordre de jeu du pli en cours, en partant du meneur : identique à
-// room.players tant que personne ne "passe son tour" (effet de Dernière
-// Salve sur le pli suivant sa pose) - dans ce cas, le joueur concerné est
-// simplement absent de la rotation pour CE pli-ci uniquement. Si c'est lui
-// qui aurait dû mener, le joueur suivant dans l'ordre prend sa place
-// naturellement (aucun cas particulier à gérer).
+// room.players tant que tout le monde a encore une carte. Celui qui a posé
+// une Dernière Salve a joué deux fois dans un pli : sa main est vide au
+// dernier pli de la manche, il en est donc absent. Si c'est lui qui aurait
+// dû mener, le joueur suivant dans l'ordre prend sa place naturellement
+// (aucun cas particulier à gérer).
 function activeOrderThisTrick(room) {
   const n = room.players.length;
   const rotated = Array.from({ length: n }, (_, i) => room.players[(room.leaderIndex + i) % n]);
-  return room.sittingOutId ? rotated.filter((p) => p.id !== room.sittingOutId) : rotated;
+  const absents = room.sittingOutIds;
+  return absents && absents.size ? rotated.filter((p) => !absents.has(p.id)) : rotated;
 }
 
 // Nombre total de cartes attendues pour boucler le pli en cours : un joueur
@@ -574,12 +579,13 @@ function stateFor(room, p) {
     base.leadingPlayerId = preview.leaderId;
     base.trickWillBeDestroyed = preview.destroyed;
     base.trickDestroyedBy = preview.destroyedBy;
+    base.trickNeutralisedCardIds = preview.neutralisedCardIds;
     base.trickPaused = Boolean(room.trickPaused);
     base.lastTrickResult = room.trickPaused ? room.lastTrickResult : null;
     // Dernière Salve : ce joueur n'a tout simplement pas de carte à jouer
     // ce pli-ci (autre chose qu'"attendre son tour normalement" - le client
     // affiche un message dédié plutôt qu'une attente silencieuse).
-    base.sittingOutThisTrick = room.sittingOutId === p.id;
+    base.sittingOutThisTrick = !!room.sittingOutIds && room.sittingOutIds.has(p.id);
     // Pouvoir de Mary Thorne : une carte précise de SA main a été tirée au
     // sort pour lui - toute autre carte devient injouable tant que ce
     // n'est pas fait, peu importe la couleur imposée.
@@ -737,10 +743,18 @@ function finishTrickCollection(io, room, leaderId) {
   room.leaderIndex = room.players.findIndex((p) => p.id === leaderId);
   room.turnCount = 0;
   room.trickNumber += 1;
-  // Dernière Salve : le joueur qui l'a posée passe son tour sur le pli qui
-  // vient de s'ouvrir (celui-ci uniquement), puis redevient actif normal.
-  room.sittingOutId = room.extraCardOwedBy;
+  // Dernière Salve : celui qui l'a posée a joué DEUX cartes dans le même
+  // pli. Il lui en manque donc une, et le pli qu'il ne peut pas jouer est le
+  // DERNIER de la manche — pas le suivant, comme on le faisait. Le livret de
+  // l'extension le dit ainsi (« That player will then skip the final trick of
+  // the round »), et c'est de toute façon ce que l'arithmétique impose : on
+  // ne fabrique pas un tour de pause, on constate qu'une main est vide.
+  //
+  // La liste est figée à l'OUVERTURE du pli, pas recalculée en cours de
+  // route : un joueur qui pose sa dernière carte au milieu d'un pli verrait
+  // sinon sa main se vider et disparaîtrait de l'ordre de jeu en plein pli.
   room.extraCardOwedBy = null;
+  room.sittingOutIds = new Set(room.players.filter((p) => !(p.hand || []).length).map((p) => p.id));
 
   if (room.trickNumber > room.cardsInRound) {
     endRound(io, room);
@@ -1455,6 +1469,7 @@ function registerSkullKingHandlers(io, socket) {
       destroyedBy: result.destroyerIdx != null && result.destroyerIdx !== -1
         ? effectiveKind(cards[result.destroyerIdx])
         : null,
+      neutralisedCardIds: (result.neutralisedIdx || []).map((i) => cards[i].id),
     };
     room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
     room.trickPaused = true;
@@ -1683,6 +1698,7 @@ module.exports = {
   MIN_PLAYERS,
   MAX_PLAYERS,
   eligiblePlankTargets,
+  activeOrderThisTrick,
   capturedPirateKeys,
   devouredPirateIds,
   plankedCardIds,

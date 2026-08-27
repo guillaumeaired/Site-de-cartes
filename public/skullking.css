@@ -1726,6 +1726,40 @@ h3 {
     0 10px 22px rgba(0, 0, 0, 0.6);
 }
 
+/* Mises hors course par la Baleine blanche ou la Raie Tachetée. Ces deux-là
+   annulent toutes les cartes spéciales du pli : un Pirate, un Skull King, une
+   Sirène posés sous elles ne valent plus rien, et rien ne le disait — un
+   joueur a vu son Pirate ne rien remporter et a cherché la faute ailleurs.
+
+   Le voile est froid et il éteint : la couleur part (le laiton et le rouge
+   des cadres peints sont ce qui accroche l'œil), la carte s'assombrit et
+   recule d'un cran. Le liseré d'étain la referme, la même couleur que la
+   Fuite — ce qu'elle est devenue, une carte qui ne peut plus gagner.
+
+   Pas de rature ni de croix : la carte reste lisible, elle n'est pas
+   annulée du pli, elle est hors course. On doit pouvoir la lire pour
+   comprendre ce qu'on vient de perdre. */
+.sk-trick-card--neutralisee {
+  z-index: 2;
+  --sk-gagne: 0.94;
+}
+
+.sk-trick-card--neutralisee .sk-card {
+  filter: grayscale(0.72) brightness(0.62) contrast(0.94);
+  box-shadow:
+    0 0 0 2px rgba(150, 158, 166, 0.5),
+    0 0 0 3px rgba(12, 14, 16, 0.75),
+    0 6px 14px rgba(0, 0, 0, 0.55);
+}
+
+/* Le voile passe DEVANT le laiton du meneur, et c'est voulu. Une carte peut
+   porter les deux : quand le monstre détruit le pli, `resolveTrick` renvoie
+   `leaderIdx: 0` — la première carte posée, qui mènera le pli suivant sans
+   avoir rien gagné, et qui est souvent hors course elle-même. Lui laisser le
+   cerclage de laiton la ferait passer pour la gagnante d'un pli que personne
+   ne remporte. Le voile étant déclaré après, son étain et son échelle
+   l'emportent : il suffit de ne pas déplacer ce bloc au-dessus du meneur. */
+
 /* Le pli est tombé. La carte qui l'emporte se hausse d'un cran de plus et
    son laiton respire : le bandeau du centre nomme le vainqueur, la carte dit
    laquelle c'était. Les deux ensemble, parce qu'un nom ne désigne pas une
@@ -3755,6 +3789,24 @@ body.sk-ciblage .sk-turn-indicator {
   padding: 20px 22px 22px;
   max-width: 360px;
   width: 100%;
+  /* La planche est centrée sur le PLATEAU, qui est bas dans la fenêtre : elle
+     descend donc de `--sk-plateau-dy`, et une planche déjà haute (neuf
+     joueurs) sortait par le bas — avec le bouton « Manche suivante » avec
+     elle. Une boîte centrée de hauteur H descendue de dy a son bord bas en
+     (V + H) / 2 + dy : pour qu'il reste à 20 px du bord, il faut
+     H <= V - 40 - 2 dy. C'est exactement ce que dit ce calcul, et le `max`
+     écarte le cas d'un plateau plus haut que le centre de la fenêtre, où le
+     décalage rendrait de la place au lieu d'en prendre.
+     À sept joueurs sur un écran d'ordinateur le plafond n'est jamais
+     atteint ; au-delà la planche défile plutôt que de se faire couper. */
+  max-height: calc(100dvh - 40px - 2 * max(var(--sk-plateau-dy, 0px), 0px));
+  /* Ce qui défile, c'est la LISTE, pas la planche : le titre, la jauge et
+     « Manche suivante » restent en place. Sinon le bouton de l'hôte partait
+     sous le pli du panneau, à chercher au défilement au moment précis où
+     toute la table l'attend. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background:
     linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
     linear-gradient(180deg, #2a1b0f, #150c06);
@@ -7011,4 +7063,41 @@ body.sk-ciblage .sk-turn-indicator {
   .sk-tigress-note {
     margin-top: 8px;
   }
+}
+
+/* =====================================================================
+   CENTRÉ SUR LE PLATEAU, PAS SUR LA FENÊTRE
+
+   Les messages qui se posent par-dessus le jeu partagent tous la même
+   mécanique : une boîte `fixed; inset: 0` centrée en flex, avec un voile
+   qui doit couvrir tout l'écran. On ne peut donc pas rétrécir la boîte au
+   plateau — on laisse le centrage travailler sur la fenêtre et on déplace la
+   carte du delta entre les deux centres, publié par le JS (voir
+   publierCentreDuPlateau).
+
+   `translate` et non `transform` : c'est une propriété à part, appliquée
+   AVANT `transform` dans la composition. Les animations d'apparition, qui
+   sont toutes des `transform` (scale, translateY), continuent donc de jouer
+   par-dessus sans qu'on ait à les réécrire.
+
+   Hors jeu les deux variables valent 0 : rien ne bouge sur l'accueil, au
+   salon ni à l'écran de fin.
+   ===================================================================== */
+.sk-round-start-banner span,
+.sk-power-announce-card,
+.sk-bid-reveal-inner,
+.sk-round-popup-inner,
+.sk-tigress-cadre,
+.sk-start-reveal > * {
+  translate: var(--sk-plateau-dx, 0px) var(--sk-plateau-dy, 0px);
+}
+
+/* La liste des résultats est la seule partie élastique de la planche de fin
+   de manche (voir .sk-round-popup-inner) : à neuf joueurs sur une fenêtre
+   basse, c'est elle qui défile. */
+#sk-round-popup-rows {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
 }

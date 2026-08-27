@@ -399,7 +399,12 @@ function cardPowerText(card) {
     case 'stingray':
       return "Raie Tachetée — comme la Baleine blanche, mais c'est la carte la PLUS BASSE qui remporte le pli (à égalité, la première posée).";
     case 'lastvolley':
-      return "Dernière Salve — ne remporte jamais le pli. Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).";
+      // Elle ne gagne jamais — mais la carte SUPPLÉMENTAIRE qu'elle donne,
+      // si : c'est tout son intérêt, et c'est ce qui fait croire que la
+      // Salve a remporté le pli. Autant le dire. Le tour manqué est le
+      // DERNIER pli de la manche, pas le suivant : deux cartes posées dans
+      // un même pli, c'est une carte de moins pour la fin.
+      return "Dernière Salve — elle ne remporte jamais le pli, mais tu poses une carte de plus après tout le monde : c'est ELLE qui peut l'emporter. Tu auras alors une carte de moins, donc tu ne joueras pas le dernier pli de la manche (sauf si tu la poses justement sur ce dernier pli : elle ne fait alors rien de plus).";
     case 'plank':
       // Trois choses que la carte ne dit pas et qu'on ne devine pas : le
       // choix est au joueur (et pas au premier Pirate posé), le Pirate retiré
@@ -520,10 +525,42 @@ const screens = {
   game: document.getElementById('sk-screen-game'),
   end: document.getElementById('sk-screen-end'),
 };
+// --- Le centre du plateau, publié en variables CSS ---------------------
+// Tout ce qui se pose PAR-DESSUS le jeu — bandeau de manche, annonce de
+// pouvoir, révélation des annonces, roue de tirage, récap de manche, cadre de
+// la Tigresse — est une boîte `fixed; inset: 0` centrée en flex. Le voile qui
+// l'accompagne doit couvrir tout l'écran, on ne peut donc pas rétrécir la
+// boîte au plateau : on laisse le centrage faire son travail sur la fenêtre,
+// et on déplace la CARTE du delta entre les deux centres.
+//
+// Ce delta n'est jamais nul en jeu. La scène est une image à ratio fixe,
+// centrée dans la fenêtre avec des bandes de part et d'autre ; et dans la
+// scène, le feutre n'est pas au milieu non plus — la colonne du registre le
+// pousse à gauche, la main le pousse vers le haut. Centré fenêtre, un message
+// tombait donc systématiquement à droite du tapis et trop bas, par-dessus le
+// registre plutôt que par-dessus le jeu.
+function publierCentreDuPlateau() {
+  const feutre = document.querySelector('#sk-screen-game:not(.hidden) .sk-table');
+  const r = feutre && feutre.getBoundingClientRect();
+  const style = document.documentElement.style;
+  // Hors jeu (accueil, salon, écran de fin) il n'y a pas de plateau : le
+  // delta retombe à zéro et tout se recentre sur la fenêtre, comme avant.
+  if (!r || !r.width) {
+    style.setProperty('--sk-plateau-dx', '0px');
+    style.setProperty('--sk-plateau-dy', '0px');
+    return;
+  }
+  style.setProperty('--sk-plateau-dx', `${Math.round(r.left + r.width / 2 - window.innerWidth / 2)}px`);
+  style.setProperty('--sk-plateau-dy', `${Math.round(r.top + r.height / 2 - window.innerHeight / 2)}px`);
+}
+
+window.addEventListener('resize', publierCentreDuPlateau);
+
 function showScreen(name) {
   for (const key of Object.keys(screens)) {
     screens[key].classList.toggle('hidden', key !== name);
   }
+  publierCentreDuPlateau();
 }
 
 const toastEl = document.getElementById('sk-toast');
@@ -2075,6 +2112,30 @@ function renderTrick(state) {
   const sieges = new Map();
   tableEl.querySelectorAll('.sk-seat').forEach((el) => sieges.set(el.dataset.player, el));
 
+  // Pendant que le pli se joue, la liste vient de l'aperçu ; une fois tombé,
+  // du résultat — sans quoi le voile sauterait à la seconde même où il sert
+  // le plus, celle où l'on comprend ce qui vient de se passer.
+  const neutralisees = new Set(
+    (state.trickPaused && state.lastTrickResult
+      ? state.lastTrickResult.neutralisedCardIds
+      : state.trickNeutralisedCardIds) || []
+  );
+
+  // UN JOUEUR PEUT AVOIR DEUX CARTES DANS LE MÊME PLI. C'est le seul effet de
+  // la Dernière Salve : celui qui la pose rejoue après tout le monde. Les
+  // deux cartes se posaient alors exactement au même endroit, contre son
+  // siège — la seconde recouvrait la première, entièrement. On ne voyait donc
+  // pas que la Salve avait été jouée, seulement une carte devant son nom, et
+  // quand cette carte-là remportait le pli tout portait à croire que c'était
+  // la Salve qui l'avait gagné. Elles s'écartent maintenant l'une de l'autre.
+  const combienParJoueur = new Map();
+  const rangDeLaCarte = new Map();
+  trick.forEach((t) => {
+    const n = combienParJoueur.get(t.playerId) || 0;
+    rangDeLaCarte.set(t.card.id, n);
+    combienParJoueur.set(t.playerId, n + 1);
+  });
+
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
     if (!seatPos) return;
@@ -2087,6 +2148,11 @@ function renderTrick(state) {
     // Skull King qui dévore les Pirates, voir playDevourAnimation).
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
+    // Voile des cartes que la Baleine ou la Raie a mises hors course. La
+    // liste vient du moteur (voir resolveTrick) : la règle est trop
+    // contre-intuitive pour être redevinée ici, et elle a des coins — un
+    // 0/14 déclaré à 0 en fait partie sous la Raie.
+    if (neutralisees.has(t.card.id)) slot.classList.add('sk-trick-card--neutralisee');
     // De qui est la carte, en clair : le ciblage de la Planche s'en sert
     // pour annoncer sa cible à un lecteur d'écran, qui ne voit ni le tapis
     // ni de qui la carte est voisine.
@@ -2123,8 +2189,16 @@ function renderTrick(state) {
       Math.abs(dy) > EPS ? (demiSiegeH + demiCarteH + MARGE) / Math.abs(dy) : Infinity
     );
 
-    const x = borner(sx + dx * ecart, cadre.x0 + demiCarteL, cadre.x1 - demiCarteL);
-    let y = borner(sy + dy * ecart, cadre.y0 + demiCarteH, cadre.y1 - demiCarteH);
+    // Perpendiculairement à la direction siège → carte, pour que la paire
+    // reste à la même distance du tapis et se lise comme une paire : deux
+    // cartes du même joueur, côte à côte, pas une devant l'autre.
+    const combien = combienParJoueur.get(t.playerId) || 1;
+    let ecartFrere = 0;
+    if (combien > 1) {
+      ecartFrere = (rangDeLaCarte.get(t.card.id) - (combien - 1) / 2) * demiCarteL * 1.25;
+    }
+    const x = borner(sx + dx * ecart - dy * ecartFrere, cadre.x0 + demiCarteL, cadre.x1 - demiCarteL);
+    let y = borner(sy + dy * ecart + dx * ecartFrere, cadre.y0 + demiCarteH, cadre.y1 - demiCarteH);
     bandes.forEach((bande) => {
       y = ecarterDe(x, y, demiCarteL, demiCarteH, bande, MARGE);
     });
@@ -2675,7 +2749,7 @@ function renderTurnIndicator(state) {
     return;
   }
   if (state.sittingOutThisTrick) {
-    turnIndicator.textContent = '💣 Tu as joué la Dernière Salve : tu passes ton tour sur ce pli.';
+    turnIndicator.textContent = 'Tu as joué la Dernière Salve : tu avais deux cartes à poser dans un même pli, il ne t\'en reste plus pour celui-ci.';
     return;
   }
   if (!state.isMyTurn) {
@@ -3671,6 +3745,9 @@ function renderGame(state) {
   renderBidChoices(state);
   renderHand(state);
   renderScoreboard(state);
+  // En dernier : le feutre vient d'être mis à sa taille, c'est le moment où
+  // le mesurer donne la bonne réponse.
+  publierCentreDuPlateau();
 }
 
 // Basculer entre portrait et paysage change la géométrie du tapis : on

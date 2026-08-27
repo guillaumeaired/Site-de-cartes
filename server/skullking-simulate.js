@@ -475,12 +475,31 @@ check('Baleine puis Kraken puis Raie : la Raie (dernière) décide', destroyed([
 // --- Dernière Salve : ne gagne jamais ---
 check('Dernière Salve ne gagne jamais face à une numérotée', winnerIdx([lastvolley(), num('vert', 2)]), 1);
 
-// --- Mélange de cartes "ne gagnent jamais" sans numérotée : défaussé, mené par l'entameur ---
+// --- Pli où plus rien ne peut gagner : la première Fuite ramasse s'il y en a
+// une, sinon seulement le pli est défaussé. Livret de l'extension, « A FEW
+// NOTES » : « Davy Jones' Locker, The Last Volley, The Spotted Stingray, and
+// Walk the Plank are not escape cards, and don't act like one in a trick. If
+// played in a trick where the remaining cards played are all escape cards,
+// the first escape played will win the trick. »
 {
   const cards = [esc(), lastvolley(), plank(undefined)];
   const r = resolveTrick(cards);
-  check('Fuite + Dernière Salve + Planche (aucune numérotée) : pli défaussé', r.destroyed, true);
-  check('Fuite + Dernière Salve + Planche : mené par l\'entameur d\'origine', r.leaderIdx, 0);
+  check('Fuite + Dernière Salve + Planche : la Fuite ramasse, le pli n\'est pas défaussé', r.destroyed, false);
+  check('Fuite + Dernière Salve + Planche : c\'est la PREMIÈRE Fuite jouée qui gagne', r.winnerIdx, 0);
+}
+{
+  // Une Fuite posée APRÈS les non-gagnantes gagne tout autant : c'est la
+  // première FUITE qui compte, pas la première carte du pli.
+  const cards = [lastvolley(), esc(), plank(undefined), esc()];
+  check('Dernière Salve en tête puis deux Fuites : la première Fuite gagne', winnerIdx(cards), 1);
+}
+{
+  // L'exemple du livret, mot pour mot : que des spéciales non gagnantes,
+  // aucune Fuite, aucune numérotée — le pli est bien défaussé.
+  const cards = [davyjones(), stingray(), plank(undefined)];
+  const r = resolveTrick(cards);
+  check('Davy Jones + Raie + Planche (aucune Fuite) : pli défaussé', r.destroyed, true);
+  check('Davy Jones + Raie + Planche : mené par l\'entameur d\'origine', r.leaderIdx, 0);
 }
 check('Mais "que des Fuites" (sans les nouvelles cartes) reste gagné par la première', winnerIdx([esc(), esc()]), 0);
 check('Butin reste exceptionnel même mélangé aux nouvelles cartes non-gagnantes', winnerIdx([lastvolley(), loot(), plank(undefined)]), 1);
@@ -489,7 +508,11 @@ check('Butin reste exceptionnel même mélangé aux nouvelles cartes non-gagnant
 check('Joker (couleur prise = vert) bat une autre numérotée vert', winnerIdx([num('vert', 14), wild15('vert')]), 1);
 check('Joker perd face à l\'atout noir', winnerIdx([num('noir', 5), wild15('vert')]), 0);
 check('0/14 déclaré à 14 se comporte comme un vrai 14 (bonus couleur)', trickBonusForWinner([declared014('vert', 14), num('jaune', 3)], 0), 10);
-check('0/14 déclaré à 0 ne gagne jamais, même seule carte numérotée en lice', winnerIdx([esc(), declared014('vert', 0)]), null);
+// Le 0/14 déclaré à 0 ne gagne jamais, « exactement comme une Fuite » : face
+// à une vraie Fuite et à rien d'autre, c'est donc la Fuite posée en premier
+// qui ramasse, comme entre deux Fuites. Le pli n'est plus défaussé.
+check('0/14 déclaré à 0 face à une Fuite : la Fuite, posée en premier, ramasse', winnerIdx([esc(), declared014('vert', 0)]), 0);
+check('0/14 déclaré à 0 posé en premier : la Fuite ramasse quand même', winnerIdx([declared014('vert', 0), esc()]), 1);
 check('0/14 déclaré à 0 + Butin (rien d\'autre) : le Butin gagne quand même exceptionnellement', winnerIdx([declared014('vert', 0), loot()]), 1);
 check('7 d\'extension capturé : bonus -5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 7, ext: true }, num('jaune', 3)], 0), -5);
 check('8 d\'extension capturé : bonus +5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 8, ext: true }, num('jaune', 3)], 0), 5);
