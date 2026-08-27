@@ -808,7 +808,12 @@ function startGame(io, room) {
   assignMissingPieces(room);
   room.roundSequence = buildRoundSequence(room.totalRounds);
   room.roundIndex = 0;
-  room.dealerIndex = 0;
+  // Le donneur de la première manche est tiré au sort, comme au Rami : il
+  // était figé sur le premier de la liste, donc le meneur du tout premier pli
+  // (dealerIndex + 1, voir startRound) était TOUJOURS le même joueur - la
+  // roue de tirage n'avait alors plus rien à tirer. Le donneur tourne
+  // ensuite normalement d'une manche à l'autre (advanceRound).
+  room.dealerIndex = Math.floor(Math.random() * room.players.length);
   room.players.forEach((p) => {
     p.totalScore = 0;
     p.roundHistory = [];

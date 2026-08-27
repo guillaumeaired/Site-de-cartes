@@ -2757,8 +2757,9 @@ document.getElementById('sk-btn-rematch').addEventListener('click', () => socket
 
 // --- Roue de tirage au sort : qui mène le tout premier pli ---
 // Même principe que le Rami (les secteurs sont fixes, seule la flèche
-// tourne), généralisé à N joueurs : un secteur par joueur, étiquette posée à
-// l'extérieur de la roue. Ne joue qu'une fois par partie, sur la toute
+// tourne), généralisé à N joueurs : un secteur par joueur, et son étiquette
+// posée en vis-à-vis sur le pourtour - la pièce du joueur au-dessus de son
+// nom, comme à son siège. Ne joue qu'une fois par partie, sur la toute
 // première annonce de la manche 1 (voir applyState) - startRevealPlayed est
 // réarmé à chaque retour au salon (nouvelle partie ou revanche).
 // Chaque secteur est peint à la couleur de la pièce de SON joueur — l'émail
@@ -2794,21 +2795,34 @@ function playStartReveal(players, starterId) {
     .join(', ');
   wheel.style.background = `conic-gradient(${stops})`;
 
-  // Étiquettes à l'extérieur de la roue, à l'angle du centre de leur secteur
-  // (0° = en haut, sens horaire) - même convention que la rotation de la
-  // flèche ci-dessous, pour que l'aiguille s'arrête pile devant le bon nom.
+  // Étiquettes à l'angle du centre de leur secteur (0° = en haut, sens
+  // horaire) - même convention que la rotation de la flèche ci-dessous, pour
+  // que l'aiguille s'arrête pile devant le bon nom. On ne pose QUE l'angle :
+  // le placement polaire est fait en CSS, autour du même centre que la barre
+  // (--sk-roue-cx/cy) - c'était justement le décalage entre ce centre-ci et
+  // celui-là qui posait les noms de travers.
+  //
+  // Le rayon s'écarte quand la table se remplit : posées sur le bois, huit
+  // ou neuf étiquettes se chevaucheraient (il faut ~112 px entre deux voisines
+  // pour qu'elles ne se touchent pas). Elles sortent alors de la roue.
   labelsEl.innerHTML = '';
-  const cx = 130;
-  const cy = 130;
-  const R = 108;
+  const rayonTags = Math.max(124, Math.round(56 / Math.sin(Math.PI / n)));
+  labelsEl.style.setProperty('--sk-roue-etiquettes', `${rayonTags}px`);
   players.forEach((p, i) => {
-    const center = (i + 0.5) * step;
-    const rad = (center * Math.PI) / 180;
     const tag = document.createElement('span');
     tag.className = 'sk-wheel-tag';
-    tag.textContent = p.nickname;
-    tag.style.left = `${cx + R * Math.sin(rad)}px`;
-    tag.style.top = `${cy - R * Math.cos(rad)}px`;
+    tag.style.setProperty('--sk-tag-angle', `${((i + 0.5) * step).toFixed(2)}deg`);
+    // La pièce au-dessus du nom : on retrouve son secteur à la figure autant
+    // qu'à la couleur, et c'est le même médaillon qu'au siège du joueur.
+    const piece = pieceFor(p);
+    const medaillon = document.createElement('span');
+    medaillon.className = 'sk-wheel-tag-piece';
+    medaillon.innerHTML = pieceSVG(piece);
+    medaillon.title = piece.label;
+    const nom = document.createElement('span');
+    nom.className = 'sk-wheel-tag-name';
+    nom.textContent = p.nickname;
+    tag.append(medaillon, nom);
     labelsEl.appendChild(tag);
   });
 
