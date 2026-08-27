@@ -3409,8 +3409,13 @@ body.sk-ciblage .sk-turn-indicator {
 .sk-bid-piece {
   position: absolute;
   left: 50%;
-  top: 83.5%;
-  width: 32%;
+  top: 82%;
+  /* 46 % et non 32 % : c'est le médaillon qui dit DE QUI est l'annonce, et
+     à 27 px sur une plaque de 84 il fallait le chercher. Il déborde
+     maintenant du crâne casqué sur les sabres qui l'encadrent — sertie, la
+     pièce est plus lisible que posée bien au centre d'un cartouche trop
+     petit pour elle. */
+  width: 46%;
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
 }
@@ -3448,12 +3453,15 @@ body.sk-ciblage .sk-turn-indicator {
    d'où l'absence de `color` ici. Il se coupe proprement plutôt que d'élargir
    la colonne : c'est le chiffre qu'on vient lire, le nom le rattache. */
 .sk-bid-nom {
-  max-width: 92px;
+  /* Un peu plus large que la plaque, et au corps d'un vrai libellé : à
+     0,6 rem le nom se lisait comme une mention de pied de page alors que
+     c'est la moitié de l'information — le chiffre ne vaut rien sans lui. */
+  max-width: 106px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.6rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;

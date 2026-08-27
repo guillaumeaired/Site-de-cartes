@@ -3667,7 +3667,19 @@ function showBidReveal(state) {
   // arrière-plan, et les annonces se révèlent justement pendant qu'on peut
   // avoir la tête ailleurs. L'animation, elle, part toute seule.
 
-  const total = 1500 + state.players.length * STEP_MS;
+  // Le panneau ne se retire qu'un TEMPS DE LECTURE après la dernière plaque
+  // retournée, et non après une durée forfaitaire : c'est la lecture qui
+  // compte, et elle ne commence qu'une fois tout le monde découvert. Le
+  // forfait d'avant (1,5 s + 260 ms par joueur) laissait 1,2 s pour lire
+  // cinq à neuf annonces d'un coup — le temps d'en repérer deux.
+  //
+  // 2,6 s, la même beat de lecture que la révélation d'un pli et que
+  // l'annonce d'un pouvoir de Pirate (voir TRICK_REVEAL_MS côté serveur) :
+  // c'est ce que le jeu accorde partout ailleurs à un fait qu'on doit
+  // enregistrer avant de jouer.
+  const FLIP_MS = 550;      // durée de sk-bid-flip, côté CSS
+  const LECTURE_MS = 2600;
+  const total = (state.players.length - 1) * STEP_MS + FLIP_MS + LECTURE_MS;
   bidRevealTimer = setTimeout(() => bidRevealEl.classList.add('hidden'), total);
 }
 
