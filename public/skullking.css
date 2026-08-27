@@ -2433,8 +2433,10 @@ h3 {
 .sk-card--art-guigui { --art: url('assets/cards/guigui.webp'); }
 .sk-card--art-pablo { --art: url('assets/cards/pablo.webp'); }
 
-/* Les trois familles peintes : le coffre (Jaune), la carte au trésor
-   (Violet), le pavillon noir (Noir, l'atout). */
+/* Les quatre familles peintes : le coffre (Jaune), la carte au trésor
+   (Violet), le pavillon noir (Noir, l'atout) et les Perroquets (Vert). Les
+   trois premières se passent de leur pied, le Vert le garde — voir plus
+   bas. */
 
 /* Une famille peinte n'a pas de pied : l'illustration grave déjà son chiffre
    dans deux médaillons d'angle, et sa couleur se lit sur le cadre — un
@@ -2498,6 +2500,26 @@ h3 {
 .sk-card--art-pavillon-12 { --art: url('assets/cards/pavillon-12.webp'); }
 .sk-card--art-pavillon-13 { --art: url('assets/cards/pavillon-13.webp'); }
 .sk-card--art-pavillon-14 { --art: url('assets/cards/pavillon-14.webp'); }
+
+/* La famille VERTE est illustrée de bout en bout : les 14 Perroquets. Chaque
+   valeur a sa carte parce que le chiffre est peint dans les médaillons d'or,
+   en haut à gauche et en bas à droite. Le pied de parchemin le redit quand
+   même : dans l'éventail, les cartes se recouvrent et le médaillon du haut
+   passe sous la voisine — seul le pied reste lisible. */
+.sk-card--art-perroquet-1 { --art: url('assets/cards/perroquet-1.webp'); }
+.sk-card--art-perroquet-2 { --art: url('assets/cards/perroquet-2.webp'); }
+.sk-card--art-perroquet-3 { --art: url('assets/cards/perroquet-3.webp'); }
+.sk-card--art-perroquet-4 { --art: url('assets/cards/perroquet-4.webp'); }
+.sk-card--art-perroquet-5 { --art: url('assets/cards/perroquet-5.webp'); }
+.sk-card--art-perroquet-6 { --art: url('assets/cards/perroquet-6.webp'); }
+.sk-card--art-perroquet-7 { --art: url('assets/cards/perroquet-7.webp'); }
+.sk-card--art-perroquet-8 { --art: url('assets/cards/perroquet-8.webp'); }
+.sk-card--art-perroquet-9 { --art: url('assets/cards/perroquet-9.webp'); }
+.sk-card--art-perroquet-10 { --art: url('assets/cards/perroquet-10.webp'); }
+.sk-card--art-perroquet-11 { --art: url('assets/cards/perroquet-11.webp'); }
+.sk-card--art-perroquet-12 { --art: url('assets/cards/perroquet-12.webp'); }
+.sk-card--art-perroquet-13 { --art: url('assets/cards/perroquet-13.webp'); }
+.sk-card--art-perroquet-14 { --art: url('assets/cards/perroquet-14.webp'); }
 
 /* --- Extension : fanion de laiton au coin coupé ---------------------- */
 .sk-card--ext::before {

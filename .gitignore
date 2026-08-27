@@ -5,5 +5,7 @@ node_modules/
 data/
 
 # Sources brutes des illustrations : elles ne servent qu'à regénérer les
-# .webp (briefs/traiter-assets.py). Inutiles au runtime, et lourdes.
+# .webp (briefs/traiter-assets.py, briefs/decouper-cartes-perroquet.py).
+# Inutiles au runtime, et lourdes.
 public/assets/skin/src/
+public/assets/cards/src/

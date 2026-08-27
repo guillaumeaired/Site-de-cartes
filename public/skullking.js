@@ -148,12 +148,17 @@ const CARD_ART = {
   "Rosie D'Laney": 'pablo',
 };
 
-// Les trois familles illustrées, et le préfixe de leurs quatorze fichiers.
-// Le Vert n'a pas encore sa planche : il reste dessiné en CSS, comme avant.
+// Les quatre familles illustrées, et le préfixe de leurs quatorze fichiers.
+// Trois d'entre elles gravent leur chiffre dans l'illustration assez gros
+// pour se passer du pied de parchemin ; les Perroquets le gardent, parce que
+// leur chiffre n'est peint que dans les médaillons d'angle, et que le
+// médaillon du haut passe sous la carte voisine dès que l'éventail se
+// recouvre — seul le pied reste alors lisible.
 const SUIT_ART = {
-  jaune: 'tresor',     // le coffre ouvert
-  violet: 'carte',     // la carte au trésor
-  noir: 'pavillon',    // le pavillon noir — la famille d'atout
+  jaune: { prefixe: 'tresor', pied: false },      // le coffre ouvert
+  violet: { prefixe: 'carte', pied: false },      // la carte au trésor
+  noir: { prefixe: 'pavillon', pied: false },     // le pavillon noir — la famille d'atout
+  vert: { prefixe: 'perroquet', pied: true },     // les Perroquets
 };
 
 function cardClass(card) {
@@ -162,15 +167,19 @@ function cardClass(card) {
   if (card.kind === 'number') {
     if (card.wild14 && card.value == null) return 'sk-card--wild14';
     // Familles peintes : une planche d'illustrations par couleur, quatorze
-    // valeurs (voir briefs/decouper-planche-numerotees.py). Même mécanique
-    // que les Pirates illustrés, à ceci près que le pied ne se surimpose pas
-    // (voir sk-card--art-num) : sur un Pirate il porte le nom, absent de
-    // l'illustration ; ici il redirait un chiffre déjà gravé deux fois.
-    // Le 0/14 de l'extension en est exclu : sa valeur peut valoir 0, qui
-    // n'existe dans aucune planche, et il a déjà son habillage.
+    // valeurs (briefs/decouper-planche-numerotees.py, et pour le Vert
+    // briefs/decouper-cartes-perroquet.py). Même mécanique que les Pirates
+    // illustrés, à ceci près que le pied ne se surimpose que là où
+    // l'illustration ne dit pas déjà son chiffre lisiblement (voir SUIT_ART) :
+    // sur un Pirate il porte le nom, absent de l'illustration ; sur un Trésor
+    // il redirait un chiffre déjà gravé deux fois.
+    // Le 0/14 de l'extension en est exclu, quelle que soit sa famille : sa
+    // valeur peut valoir 0, qui n'existe dans aucune planche, et il a déjà
+    // son habillage.
     const art = SUIT_ART[card.suit];
     if (art && !card.wild14 && card.value >= 1 && card.value <= 14) {
-      return `sk-card--${card.suit} sk-card--art sk-card--art-num sk-card--art-${art}-${card.value}`;
+      const pied = art.pied ? '' : ' sk-card--art-num';
+      return `sk-card--${card.suit} sk-card--art${pied} sk-card--art-${art.prefixe}-${card.value}`;
     }
     return `sk-card--${card.suit}`;
   }

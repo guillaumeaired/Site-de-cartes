@@ -21,7 +21,17 @@ DOM — net à tout zoom, sélectionnable, lisible au lecteur d'écran, traduisi
 
 Ajouter à chaque prompt : `NO TEXT, no lettering, no numbers, no watermark`.
 
-Seule exception : **le logo**, qui ne change jamais.
+Deux exceptions, et une seule est gratuite :
+
+- **le logo**, qui ne change jamais ;
+- **la planche des Perroquets** (famille verte), livrée avec son chiffre peint
+  dans les deux médaillons d'or. Le prix de l'entorse est exactement celui que
+  R1 annonce : là où un cadre vide couvrirait les 14 valeurs d'une famille avec
+  **un** fichier, il en faut **14** — 14 générations à surveiller, 14 fichiers
+  à charger (~28 Ko pièce), et aucun 0 possible pour le 0/14 de l'extension,
+  qui retombe donc sur le cadre CSS. On l'a gardée parce que les médaillons
+  peints sont beaux et que le pied de parchemin, lui, reste du DOM. Pour les
+  trois familles restantes : cadre vide, chiffre au DOM.
 
 ### R2 — Tout ce qui s'étire est généré en « 9 tranches »
 
@@ -155,8 +165,31 @@ Format 1× : **84 × 118 px** → générer en 3×, soit ~252 × 354.
 | fichier | nb | note |
 |---|---|---|
 | `carte-dos.png` | 1 | Dos de carte, motif symétrique |
-| `cadre-{vert,jaune,violet,noir}.png` | 4 | **Cadre vide** : bord crème, fenêtre de couleur, médaillons d'angle. Le chiffre est écrit par le DOM → 4 images couvrent les 56 numérotées |
+| `cadre-{jaune,violet,noir}.png` | 3 | **Cadre vide** : bord crème, fenêtre de couleur, médaillons d'angle. Le chiffre est écrit par le DOM → 1 image couvre les 14 numérotées d'une famille |
+| `perroquet-{1..14}.webp` | 14 ✅ | La famille **verte**, illustrée valeur par valeur : le chiffre est peint dans les médaillons d'or, donc pas de cadre vide possible. Planche unique de 14 cartes, découpée par `briefs/decouper-cartes-perroquet.py` |
 | illustrations spéciales | ~20 | Skull King, 2 Sirènes, 5 Pirates *(4 déjà faits)*, 5 Fuites, Tigresse, Butin, Kraken, Baleine blanche, + 6 de l'extension |
+
+Les planches de familles se génèrent d'un coup, les 14 cartes ensemble : c'est
+ce qui leur donne le même cadre et la même lumière.
+
+**Le ratio est la seule chose à ne pas rater.** Une carte du jeu fait 7:10
+(`.sk-card` : `height: width / 0.7`), et les illustrations en place sont à ce
+ratio exact — elles se posent en `cover` sans être recadrées. La planche des
+Perroquets, elle, est arrivée au ratio d'une vraie carte à jouer, ~1:2 : bien
+plus étroite. Trois sorties possibles, comparées à la taille réelle
+d'affichage (84 px de large) :
+
+| sortie | ce qu'on y perd |
+|---|---|
+| **recadrer en hauteur** | le cadre lui-même : le bandeau vert du haut et le médaillon d'angle sautent. Éliminé d'office |
+| **poser la carte sur une marge blanche** | une bande blanche franche à gauche et à droite, deux fois plus large qu'en haut — ça se voit tout de suite à côté d'un Pirate |
+| **élargir la carte** ✅ | ~40 % d'étirement horizontal. Le perroquet s'épaissit, les médaillons deviennent des ovales — invisible à 84 px, vérifié au rendu |
+
+D'où le choix du script : élargissement pur, 434 × 620. Mais c'est une
+rustine, pas une méthode. **Pour les planches suivantes, demander le ratio
+7:10 à la génération** (`playing-card frame, aspect ratio 7:10, slightly wide
+— NOT a standard poker card`) : le découpage les reprendra telles quelles et
+il n'y aura plus rien à étirer.
 
 ### Lot 5 — les portraits
 
