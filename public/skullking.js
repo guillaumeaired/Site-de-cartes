@@ -2975,14 +2975,27 @@ document.getElementById('sk-btn-declare-14').addEventListener('click', () => {
 let willDiscardSelection = new Set();
 let willConfirmBtn = null;
 
-// Pouvoir de Juanita Jade : les cartes sont retournées une à une par le
-// joueur (survol ou tap), pas révélées d'un coup avec un minuteur fixe -
-// sans ça il n'y avait pas le temps de toutes les lire. juanitaSessionKey
-// identifie l'instance en cours (les ids de cartes changent à chaque
-// déclenchement, jamais réutilisés) pour repartir de zéro à chaque fois.
+// Pouvoir de Juanita Jade : les cartes se retournent TOUTES SEULES, en
+// vague, dès que le panneau s'ouvre. Il fallait auparavant survoler chacune
+// des 85 cartes du reliquat pour la découvrir — quatre-vingt-cinq gestes
+// pour un pouvoir dont l'intérêt est de LIRE, pas de cliquer, et le compteur
+// « 12/85 » ne faisait que rappeler tout ce qu'on n'aurait pas le temps de
+// retourner. Le survol reste actif : il découvre une carte avant que la
+// vague ne l'atteigne, pour celui qui cherche une couleur précise.
+//
+// juanitaSessionKey identifie l'instance en cours (les ids de cartes
+// changent à chaque déclenchement, jamais réutilisés) pour repartir de zéro
+// à chaque fois — le panneau est reconstruit à chaque état reçu, la vague ne
+// doit pas repartir du début pour autant.
 let juanitaSessionKey = null;
 let juanitaFlipped = new Set();
-let juanitaDoneTimer = null;
+let juanitaVagueLancee = false;
+let juanitaVagueTimers = [];
+
+function arreterVagueJuanita() {
+  juanitaVagueTimers.forEach(clearTimeout);
+  juanitaVagueTimers = [];
+}
 
 function updateWillConfirmButton() {
   if (!willConfirmBtn) return;
@@ -3455,13 +3468,15 @@ function renderPower(state) {
     willDiscardSelection.clear();
     juanitaSessionKey = null;
     juanitaFlipped.clear();
-    clearTimeout(juanitaDoneTimer);
+    juanitaVagueLancee = false;
+    arreterVagueJuanita();
     return;
   }
   if (pending.kind !== 'juanita') {
     juanitaSessionKey = null;
     juanitaFlipped.clear();
-    clearTimeout(juanitaDoneTimer);
+    juanitaVagueLancee = false;
+    arreterVagueJuanita();
   }
 
   powerBanner.textContent = `${nicknameOf(state, pending.playerId)} déclenche le pouvoir de ${POWER_LABEL[pending.kind]} !`;
@@ -3522,7 +3537,8 @@ function renderPower(state) {
     if (juanitaSessionKey !== key) {
       juanitaSessionKey = key;
       juanitaFlipped.clear();
-      clearTimeout(juanitaDoneTimer);
+      juanitaVagueLancee = false;
+      arreterVagueJuanita();
     }
     // Le pouvoir montre TOUT le reste du paquet : jusqu'à 85 cartes aux
     // premières manches. Dans la barre du bas de l'écran, elles débordaient
@@ -3530,18 +3546,18 @@ function renderPower(state) {
     // moitié. La grille passe donc au centre de l'écran, et les cartes sont
     // taillées à la volée pour tenir d'un seul tenant (voir ajusterGrilleJuanita).
     powerPanel.classList.add('sk-power-panel--juanita');
-    const majHint = () => {
-      hint.textContent =
-        juanitaFlipped.size === cards.length
-          ? 'Toutes retournées — la partie reprend dans un instant…'
-          : `Cartes non distribuées ce tour-ci — survole (ou touche) chacune pour la retourner (${juanitaFlipped.size}/${cards.length}).`;
-    };
-    majHint();
+    // Plus de compteur « 12/85 » : il ne comptait qu'une corvée. La consigne
+    // dit ce qu'il y a à faire — lire — et la barre en dessous dit combien de
+    // temps il reste pour ça.
+    hint.textContent = `Les ${cards.length} cartes non distribuées ce tour-ci. Elles se retournent toutes seules — survole-en une pour la découvrir tout de suite.`;
     const row = document.createElement('div');
     // Plus de classe .sk-hand ici : elle apportait tout l'habillage de
     // l'éventail (défilement horizontal, hauteur minimale, survol qui
     // soulève la carte) à une grille qui n'en est pas un.
     row.className = 'sk-juanita-row';
+    // Les fonctions de retournement, dans l'ordre de la grille : c'est ce que
+    // la vague parcourt.
+    const reveleurs = [];
     cards.forEach((card) => {
       const flip = document.createElement('div');
       flip.className = 'sk-flip-card' + (juanitaFlipped.has(card.id) ? ' sk-flip-card--flipped' : '');
@@ -3558,22 +3574,70 @@ function renderPower(state) {
       flip.appendChild(inner);
       // Une carte retournée le reste : le survol ne fait que la découvrir,
       // il ne la referme jamais (ni en repassant dessus, ni en s'en allant).
+      // Une carte retournée le reste. Le pouvoir ne se termine PLUS quand
+      // elles le sont toutes : avant, elles l'étaient parce qu'on venait de
+      // les retourner une à une, donc de les lire ; maintenant la vague les
+      // retourne en quelques secondes et il faut encore le temps de les
+      // parcourir. C'est la barre, ou le bouton, qui décide de la fin.
       const reveal = () => {
         if (juanitaFlipped.has(card.id)) return;
         juanitaFlipped.add(card.id);
         flip.classList.add('sk-flip-card--flipped');
         flip.title = 'Déjà retournée — elle reste face visible';
-        majHint();
-        if (juanitaFlipped.size === cards.length) {
-          clearTimeout(juanitaDoneTimer);
-          juanitaDoneTimer = setTimeout(() => socket.emit('skullking-power-juanita-done'), 2000);
-        }
       };
       flip.addEventListener('mouseenter', reveal);
       flip.addEventListener('click', reveal);
+      reveleurs.push(reveal);
       row.appendChild(flip);
     });
     powerPanel.appendChild(row);
+
+    // LA VAGUE. Un pas court, et surtout plafonné par le nombre de cartes :
+    // à 85 cartes un pas fixe de 55 ms mettrait presque cinq secondes à
+    // balayer la grille, sur les vingt-cinq qu'on a pour tout lire. La vague
+    // ne mange donc jamais plus de trois secondes, quelle que soit la manche.
+    //
+    // Le retournement lui-même dure une demi-seconde (sk-flip-card-inner) :
+    // les cartes se chevauchent largement et ça se lit comme un souffle qui
+    // traverse la grille, pas comme une file d'attente.
+    if (!juanitaVagueLancee) {
+      juanitaVagueLancee = true;
+      const pas = Math.min(55, 3000 / Math.max(1, reveleurs.length));
+      reveleurs.forEach((reveler, i) => {
+        juanitaVagueTimers.push(setTimeout(reveler, 260 + i * pas));
+      });
+    }
+
+    // LE MINUTEUR. Une barre qui se vide, parce que ce pouvoir est le seul
+    // du jeu où l'on peut passer trop de temps sans s'en rendre compte — on
+    // lit, et le pli reprend sans prévenir. La durée vient du serveur (voir
+    // revealMs), qui la recalcule à chaque état : elle reste juste même si
+    // l'écran est reconstruit au milieu, ou si l'on se reconnecte.
+    const resteMs = Math.max(0, Number(pending.revealMs) || 0);
+    if (resteMs > 0) {
+      const jauge = document.createElement('div');
+      jauge.className = 'sk-juanita-minuteur';
+      jauge.setAttribute('role', 'timer');
+      jauge.setAttribute('aria-label', `Il reste ${Math.round(resteMs / 1000)} secondes pour regarder`);
+      const barre = document.createElement('i');
+      barre.className = 'sk-juanita-jauge';
+      jauge.appendChild(barre);
+      powerPanel.appendChild(jauge);
+      // scaleX plutôt que la largeur : c'est la seule des deux que le
+      // navigateur sait animer sans refaire la mise en page à chaque image.
+      // Et le laiton vire au rouge sur les cinq dernières secondes — la
+      // longueur seule ne se remarque pas quand on a le nez dans les cartes.
+      const virage = resteMs > 5000 ? 1 - 5000 / resteMs : 0;
+      barre.animate(
+        [
+          { transform: 'scaleX(1)', background: 'var(--sk-brass)', offset: 0 },
+          { background: 'var(--sk-brass)', offset: Math.max(0, virage - 0.001) },
+          { background: '#c0483a', offset: virage },
+          { transform: 'scaleX(0)', background: '#c0483a', offset: 1 },
+        ],
+        { duration: resteMs, easing: 'linear', fill: 'forwards' }
+      );
+    }
 
     // Le panneau couvre maintenant l'écran : il lui faut une sortie, sinon on
     // attend les 25 s du minuteur serveur sans rien pouvoir faire.
@@ -3581,7 +3645,7 @@ function renderPower(state) {
     doneBtn.className = 'btn sk-juanita-done';
     doneBtn.textContent = "J'ai fini de regarder";
     doneBtn.addEventListener('click', () => {
-      clearTimeout(juanitaDoneTimer);
+      arreterVagueJuanita();
       socket.emit('skullking-power-juanita-done');
     });
     powerPanel.appendChild(doneBtn);

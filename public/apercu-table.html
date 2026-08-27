@@ -27,6 +27,7 @@
     ?phase=playing  playing (défaut) | bidding | paused (pli remporté)
                     | fin (l'écran de fin ; &exaequo=4, &loupe=0)
                     | kraken (pli englouti, l'animation part au chargement)
+    ?pouvoir=juanita  le reliquat de Juanita Jade ; &reste=40, &ms=25000
     ?salve=1        la Dernière Salve + la carte en plus de son joueur
     ?planche=cible  la Planche en main, deux Pirates au tapis (désignation)
     ?planche=avale  le même pli résolu, le Pirate poussé par-dessus bord
@@ -228,6 +229,28 @@ function classementFinal() {
   }).sort((a, b) => b.total - a.total);
 }
 
+// --- Le pouvoir de Juanita Jade ----------------------------------------
+// `?pouvoir=juanita&reste=40` : le panneau du reliquat, avec 40 cartes non
+// distribuées et le minuteur du serveur. C'est le seul moyen de regarder la
+// vague de retournement sans jouer jusqu'à ce qu'un Pirate nommé sorte.
+const POUVOIR = P.get('pouvoir');
+const RELIQUAT = Math.max(1, Math.min(90, Number(P.get('reste') || 40)));
+
+function pouvoirJuanita() {
+  const familles = ['vert', 'jaune', 'violet', 'noir'];
+  return {
+    kind: 'juanita',
+    playerId: 'p0',
+    mine: true,
+    revealMs: Number(P.get('ms') || 25000),
+    revealCards: Array.from({ length: RELIQUAT }, (_, i) => (
+      i % 11 === 7
+        ? { id: `r${i}`, kind: 'escape' }
+        : { id: `r${i}`, kind: 'number', suit: familles[i % 4], value: 1 + (i % 14) }
+    )),
+  };
+}
+
 // --- Montage ------------------------------------------------------------
 (async () => {
   const html = await (await fetch('skullking.html')).text();
@@ -246,6 +269,12 @@ function classementFinal() {
     emettre('skullking-state', { ...etat, phase: 'game-end', finalRanking: classementFinal() });
     // La courbe agrandie est ce qu'on vient régler : on l'ouvre d'office.
     if (P.get('loupe') !== '0') document.getElementById('sk-curve-zoom').click();
+    document.documentElement.dataset.apercuPret = '1';
+    return;
+  }
+
+  if (POUVOIR === 'juanita') {
+    emettre('skullking-state', { ...etat, phase: 'power', pendingPower: pouvoirJuanita() });
     document.documentElement.dataset.apercuPret = '1';
     return;
   }

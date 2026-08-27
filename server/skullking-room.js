@@ -614,6 +614,11 @@ function stateFor(room, p) {
           ? room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, handCount: pp.hand.length }))
           : undefined,
       currentBid: mine && pending.kind === 'harry' ? room.bids[pending.playerId] : undefined,
+      // Ce qu'il reste à Juanita Jade pour regarder, en millisecondes.
+      revealMs:
+        mine && pending.kind === 'juanita' && pending.revealUntil
+          ? Math.max(0, pending.revealUntil - Date.now())
+          : undefined,
     };
   }
   if (room.phase === 'round-end') {
@@ -795,6 +800,13 @@ function startPiratePower(io, room, powerKey, playerId, leaderId) {
   broadcastState(io, room);
 
   if (powerKey === 'juanita') {
+    // L'échéance, et pas seulement le minuteur : l'écran affiche une barre
+    // qui se vide, et elle doit dire le temps qui reste VRAIMENT — y compris
+    // à un joueur qui se reconnecte au milieu du pouvoir, ou dont l'onglet
+    // était en arrière-plan. Le temps restant est recalculé à chaque état
+    // envoyé plutôt que d'expédier une date : les horloges des deux machines
+    // n'ont aucune raison d'être d'accord, la durée si.
+    room.pendingPower.revealUntil = Date.now() + POWER_REVEAL_MS;
     room.powerTimer = setTimeout(() => {
       if (rooms.get(room.code) === room && room.phase === 'power') resolvePowerDone(io, room);
     }, POWER_REVEAL_MS);
