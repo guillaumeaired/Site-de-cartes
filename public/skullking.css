@@ -1127,7 +1127,7 @@ h3 {
    qu'il est écrit, pas parce que le logo s'efface. */
 .sk-end-logo {
   display: block;
-  width: 210px;
+  width: 300px;
   height: auto;
   margin: 0 auto 6px;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7));
@@ -4597,8 +4597,8 @@ h3 {
    déjà celle de `.modal`. Une simple max-width ne suffit pas : posée en
    élément flexible, la boîte se dimensionnerait sur son contenu. */
 .sk-curve-content {
-  width: min(1120px, 100%);
-  max-width: min(1120px, 100%);
+  width: min(1220px, 100%);
+  max-width: min(1220px, 100%);
   /* Sans ce 0, la planche ne peut pas descendre sous la largeur utile de la
      courbe (voir min-width plus bas) : posée en élément flexible, elle
      refuserait de rétrécir et déborderait de l'écran au lieu de la laisser
@@ -4659,24 +4659,27 @@ h3 {
 
 .sk-curve-modal-body .sk-curve {
   min-width: 520px;
-}
-
-.sk-curve-modal-body .sk-curve {
   border-radius: 6px;
 }
 
 .sk-curve-modal-body .sk-curve-legend {
-  margin-top: 10px;
+  margin-top: 12px;
+  gap: 7px 20px;
 }
 
+/* La légende agrandie porte les pseudos à la taille d'un texte qu'on lit,
+   pas d'une mention : c'est elle qui rattache une couleur à un joueur, et à
+   sept lignes voisines on y revient plusieurs fois. */
 .sk-curve-modal-body .sk-curve-key {
-  font-size: 0.82rem;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.02rem;
+  letter-spacing: 0.03em;
   opacity: 1;
 }
 
 .sk-curve-modal-body .sk-curve-key i {
-  width: 18px;
-  height: 4px;
+  width: 24px;
+  height: 5px;
 }
 
 .sk-curve-legend {
@@ -6108,7 +6111,7 @@ h3 {
   }
 
   .sk-end-logo {
-    width: 190px;
+    width: 285px;
     margin: 0;
   }
 
