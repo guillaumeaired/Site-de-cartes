@@ -383,7 +383,7 @@ function cardPowerText(card) {
     case 'escape':
       return "Fuite — ne remporte jamais le pli et n'impose aucune couleur. À jouer quand on veut surtout ne pas gagner. Si tout le monde fuit, la première Fuite posée ramasse.";
     case 'tigress':
-      return "Tigresse — au moment de la poser, tu choisis : Pirate (elle prend le pli) ou Fuite (elle y renonce). Les autres joueurs ne voient ton choix qu'une fois le pli résolu.";
+      return "Tigresse — au moment de la poser, tu choisis : Pirate (elle prend le pli) ou Fuite (elle y renonce). Le choix est annoncé à toute la table dans la foulée : le bluff est dans ce que tu décides, pas dans le secret.";
     case 'loot':
       return "Butin — si un AUTRE joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce de la manche.";
     case 'kraken':

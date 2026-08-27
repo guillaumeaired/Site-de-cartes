@@ -546,18 +546,18 @@ function stateFor(room, p) {
     base.myBid = room.bids ? room.bids[p.id] : undefined;
   }
   if (room.phase === 'playing' || room.phase === 'power') {
-    // La Tigresse doit rester un vrai bluff TANT QUE le pli se joue : on ne
-    // renvoie pas chosenAs aux autres joueurs (le champ brut restait sinon
-    // lisible depuis la console du navigateur, même si rien ne l'affichait).
-    // Une fois le pli résolu, en revanche, le choix est révélé à tout le
-    // monde : le bluff a servi, et sans ça personne ne comprenait en quoi la
-    // carte s'était changée (voir cardClass/cardFaceHTML côté client).
-    const tigressRevealed = Boolean(room.trickPaused);
-    base.currentTrick = room.currentTrick.map((t) => {
-      if (t.card.kind !== 'tigress' || t.playerId === p.id || tigressRevealed) return t;
-      const { chosenAs, ...cardWithoutChoice } = t.card;
-      return { ...t, card: cardWithoutChoice };
-    });
+    // La Tigresse annonce son choix EN SE POSANT, comme dans la règle
+    // officielle : on la déclare Pirate ou Fuite au moment de la jouer, et
+    // tout le monde l'entend. Le bluff est dans le choix, pas dans le secret.
+    //
+    // Le choix était caché aux autres joueurs jusqu'à la résolution du pli.
+    // C'était plus tendu et c'était faux : une Tigresse posée sans marque ne
+    // dit pas si le pli est pris ou abandonné, et c'est précisément ce qu'il
+    // faut savoir pour choisir sa propre carte. Les suivants jouaient à
+    // l'aveugle sur la seule carte du jeu qui change de nature en se posant —
+    // ils ne pouvaient même pas s'en rendre compte, puisque rien à l'écran ne
+    // signalait qu'il y avait quelque chose à savoir.
+    base.currentTrick = room.currentTrick;
     const turnPlayer = playerAtTurn(room);
     base.turnPlayerId = turnPlayer ? turnPlayer.id : null;
     base.isMyTurn = room.phase === 'playing' && !room.trickPaused && turnPlayer && turnPlayer.id === p.id;

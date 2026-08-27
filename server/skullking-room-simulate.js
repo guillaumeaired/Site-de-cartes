@@ -156,8 +156,9 @@ check(
   []
 );
 
-// --- Secret de la Tigresse : chosenAs ne doit jamais fuiter aux autres
-// joueurs dans l'état envoyé, seulement à celle ou celui qui l'a posée.
+// --- L'annonce de la Tigresse : chosenAs part vers TOUS les joueurs dès que
+// la carte est posée. C'est la seule carte du jeu qui change de nature en se
+// posant, et ce que l'état envoie décide de ce que l'écran peut montrer.
 function makePlayer(id, nickname) {
   return { id, nickname, connected: true, hand: [], tricksWon: 0, totalScore: 0, roundHistory: [] };
 }
@@ -198,18 +199,20 @@ check(
   'pirate'
 );
 
+// Le choix s'annonce EN SE POSANT, comme dans la règle officielle : les
+// autres joueurs le voient tout de suite, sans attendre la résolution. Il a
+// été caché un temps — plus tendu, mais faux, et surtout injouable : les
+// joueurs suivants ne savaient pas si le pli était pris ou abandonné au
+// moment de choisir leur propre carte.
 const seenByOther = stateFor(makeRoom(trickWithTigress), { id: 'p2', hand: [] });
 const otherView = seenByOther.currentTrick.find((t) => t.card.id === 'c1').card;
-check('chosenAs est absent pour un autre joueur', Object.prototype.hasOwnProperty.call(otherView, 'chosenAs'), false);
+check('un autre joueur voit le choix de la Tigresse dès la pose', otherView.chosenAs, 'pirate');
 check('le reste de la carte Tigresse reste intact pour un autre joueur', otherView.kind, 'tigress');
 
-// Le bluff ne dure que le temps du pli : une fois celui-ci résolu (pause de
-// révélation), le choix est montré à tout le monde — sans ça personne ne
-// comprenait en quoi la carte s'était changée.
 const pausedRoom = { ...makeRoom(trickWithTigress), trickPaused: true };
 const otherViewPaused = stateFor(pausedRoom, { id: 'p2', hand: [] }).currentTrick.find((t) => t.card.id === 'c1').card;
 check(
-  'pli résolu : les autres joueurs voient enfin le choix de la Tigresse',
+  'et il le voit toujours une fois le pli résolu',
   otherViewPaused.chosenAs,
   'pirate'
 );

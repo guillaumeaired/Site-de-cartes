@@ -31,6 +31,7 @@
     ?manche=1       la manche 1 pendant l'annonce : la carte de chacun est
                     tournée vers les autres, la mienne face cachée
     ?annonces=1     la révélation des annonces, plaques peintes retournées
+    ?tigresse=pirate|fuite   un adversaire pose la Tigresse, annoncée
 -->
 <script>
 const P = new URLSearchParams(location.search);
@@ -38,6 +39,7 @@ const N = Math.max(2, Math.min(9, Number(P.get('n') || 5)));
 const PHASE = P.get('phase') || 'playing';
 // ?phase=kraken : le pli est posé, le Kraken l'a détruit, la pause court.
 const KRAKEN = PHASE === 'kraken';
+const TIGRESSE = P.get('tigresse');
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
 const MANCHE1 = P.get('manche') === '1';
 
@@ -64,6 +66,10 @@ function carte(i) {
   // une planche vient d'être redécoupée.
   // En mode kraken, le 3e joueur pose le Kraken : c'est lui qui engloutit.
   if (KRAKEN && i === 2) return { id: `c${i}`, kind: 'kraken' };
+  // ?tigresse=pirate|fuite : le 5e joueur pose la Tigresse, annoncée dans un
+  // sens ou dans l'autre. C'est la seule carte qui change de nature en se
+  // posant, donc la seule dont l'annonce doit se voir depuis les autres sièges.
+  if (TIGRESSE && i === 4) return { id: `c${i}`, kind: 'tigress', chosenAs: TIGRESSE === 'fuite' ? 'escape' : 'pirate' };
   if (i === 3) return { id: `c${i}`, kind: 'escape' };
   if (i === 5) return { id: `c${i}`, kind: 'skullking' };
   if (i < 9) return { id: `c${i}`, kind: 'pirate', name: PIRATES[i % PIRATES.length] };
