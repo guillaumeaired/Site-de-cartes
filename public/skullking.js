@@ -3671,7 +3671,13 @@ function renderScoreboard(state) {
         const bidEl = document.createElement('span');
         bidEl.className = 'sk-score-row-bid' + (bidState ? ` sk-score-row-bid${bidState}` : '');
         if (state.phase === 'bidding') bidEl.textContent = p.hasBid ? '✓' : '…';
-        else bidEl.textContent = p.bid === undefined || p.bid === null ? '–' : `${p.tricksWon} sur ${p.bid}`;
+        else bidEl.textContent = p.bid === undefined || p.bid === null ? '–' : `${p.tricksWon}/${p.bid}`;
+        // « 2/3 » se lit, mais ne se dit pas : la barre oblique s'annonce
+        // « deux barre oblique trois » à la synthèse vocale. La phrase reste
+        // donc en titre, où elle sert aussi au survol.
+        bidEl.title = p.bid === undefined || p.bid === null
+          ? 'Annonce inconnue'
+          : `${p.tricksWon} pli(s) remporté(s) sur ${p.bid} annoncé(s)`;
         row.appendChild(bidEl);
       }
 
