@@ -170,13 +170,24 @@ Format 1× : **84 × 118 px** → générer en 3×, soit ~252 × 354.
 | `dos-cartes-sk.png` | 1 ✅ | Dos de carte, motif symétrique. Sort à 512 px de large : il ne se voit jamais à plus de 84 px |
 | `cartes-{tresor,violettes,atouts,perroquets}-sk.png` | 4 ✅ | Les quatre familles numérotées, **une planche de 14 cartes chacune** : Trésor (jaune), Carte au trésor (violet), Pavillon noir (l'atout) et Perroquets (vert). Le chiffre est peint dans les médaillons, donc pas de cadre vide possible. Découpées par `briefs/decouper-planche-numerotees.py` |
 | `extra-cards-sk.png` | 1 ✅ | **Planche des spéciales classiques**, dix cases en deux rangées de cinq : Fuite, Skull King, les deux Sirènes, puis Will, Harry, Rosie, Rascal — et deux doublons sans emploi (une seconde Rosie, un second Will). Découpée par `briefs/decouper-planche-speciales.py`, qui réutilise la grille des familles numérotées |
-| illustrations spéciales restantes | ~12 | Juanita Jade, Mary Thorne, Tigresse, Butin, Kraken, Baleine blanche, + 5 de l'extension |
+| `extras-extras.png` | 1 ✅ | **Seconde planche**, cinq cases en une rangée, sur drap bleu : Kraken, Butin, Baleine blanche, Raie Tachetée, Tigresse. Même script — le repérage isole ce qui n'est pas le fond, échantillonné dans les marges, et se moque que le fond soit du bois ou du drap |
+| illustrations spéciales restantes | 7 | Juanita Jade, et l'extension : Mary Thorne, Mat le Forban, Dernière Salve, Marcher sur la Planche, Coffre de Davy Jones, Joker/Wild 15 |
 
-**Les huit cases retenues peignent leur nom** dans un cartouche de parchemin —
+**La Tigresse est le seul cas où l'illustration coûte un signal.** Sur la carte
+dessinée, sa fenêtre est coupée en deux — rouge Pirate d'un côté, étain Fuite
+de l'autre — et bascule franchement dans la couleur retenue une fois son choix
+révélé. Le cadre peint, lui, est rouge : juste tant que le choix est ouvert,
+menteur dès qu'elle est annoncée en Fuite. D'où un liseré de 3 px posé autour
+de la carte illustrée, de la couleur retenue, doublé du pied qui écrit
+« Tigresse Pirate » ou « Tigresse Fuite » en toutes lettres.
+
+**Les cases à personnage peignent leur nom** dans un cartouche de parchemin —
 une deuxième entorse à R1, du même genre que les chiffres des familles
 numérotées et payée du même prix : la Fuite existe en cinq exemplaires et se
 contente d'un fichier, mais chaque personnage en demande un, et une Rosie
-peinte « Rosie la Douce » ne peut plus servir de Juanita Jade. Et le nom peint
+peinte « Rosie la Douce » ne peut plus servir de Juanita Jade. Les cinq cases
+de la seconde planche n'ont pas ce problème : seule la Tigresse y porte un
+nom, les quatre autres ne montrent qu'un sujet. Et le nom peint
 ne remplace pas le pied : mesuré à 84 px, la largeur d'une carte en main, il
 tombe sous les 6 px de haut et n'est plus qu'un gribouillis. Le pied reste donc
 visible par-dessus, comme sur les portraits perso — c'est lui qui porte le nom

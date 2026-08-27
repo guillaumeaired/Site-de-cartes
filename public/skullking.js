@@ -167,11 +167,16 @@ const PIRATE_ART = {
   },
 };
 
-// Les spéciales peintes de la planche classique. Le paquet perso n'en a
+// Les spéciales peintes des planches classiques. Le paquet perso n'en a
 // aucune : elles habillent donc les deux paquets.
 const SPECIAL_ART = {
   skullking: 'classique-skullking',
   escape: 'classique-fuite',
+  kraken: 'classique-kraken',
+  loot: 'classique-butin',
+  whale: 'classique-baleine',
+  stingray: 'classique-raie',
+  tigress: 'classique-tigresse',
 };
 
 // Les deux Sirènes sont identiques en règle et distinctes en peinture. Le
@@ -254,11 +259,17 @@ function cardClass(card) {
     return art ? `sk-card--pirate ${artClasses(art)}` : 'sk-card--pirate';
   }
   // La Tigresse passe AVANT la Fuite : une fois annoncée en Fuite, elle
-  // reste une Tigresse à l'écran, pas un navire qui s'éloigne.
+  // reste une Tigresse à l'écran, pas un navire qui s'éloigne. Illustrée,
+  // elle perd sa fenêtre coupée en deux — mais garde ses classes de choix,
+  // qui lui posent alors un liseré de la couleur retenue (voir la CSS) et
+  // son pied, qui dit « Tigresse Pirate » ou « Tigresse Fuite » en toutes
+  // lettres. Le choix reste donc lisible, deux fois plutôt qu'une.
   if (card.kind === 'tigress') {
-    if (card.chosenAs === 'pirate') return 'sk-card--tigress sk-card--tigress-pirate';
-    if (card.chosenAs === 'escape') return 'sk-card--tigress sk-card--tigress-escape';
-    return 'sk-card--tigress';
+    const peinte = artFor(card);
+    const base = 'sk-card--tigress' + (peinte ? ` ${artClasses(peinte)}` : '');
+    if (card.chosenAs === 'pirate') return `${base} sk-card--tigress-pirate`;
+    if (card.chosenAs === 'escape') return `${base} sk-card--tigress-escape`;
+    return base;
   }
   const art = artFor(card);
   // Les classes de couleur restent posées sous l'illustration : elles ne

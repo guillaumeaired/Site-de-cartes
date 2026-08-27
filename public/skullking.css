@@ -2437,6 +2437,29 @@ h3 {
 .sk-card--art-classique-harry { --art: url('assets/cards/classique-harry.webp'); }
 .sk-card--art-classique-rosie { --art: url('assets/cards/classique-rosie.webp'); }
 .sk-card--art-classique-rascal { --art: url('assets/cards/classique-rascal.webp'); }
+.sk-card--art-classique-kraken { --art: url('assets/cards/classique-kraken.webp'); }
+.sk-card--art-classique-butin { --art: url('assets/cards/classique-butin.webp'); }
+.sk-card--art-classique-baleine { --art: url('assets/cards/classique-baleine.webp'); }
+.sk-card--art-classique-raie { --art: url('assets/cards/classique-raie.webp'); }
+.sk-card--art-classique-tigresse { --art: url('assets/cards/classique-tigresse.webp'); }
+
+/* La Tigresse illustrée : son cadre peint est rouge, celui d'un Pirate. Tant
+   que son choix n'est pas connu ce rouge ne ment pas — elle en est un, au
+   choix. Une fois annoncée, il faut le dire : la fenêtre coupée en deux, qui
+   portait ce signal sur la carte dessinée, est sous l'illustration. Un liseré
+   de la couleur retenue prend le relais, doublé du pied qui l'écrit en
+   toutes lettres. */
+.sk-card--art.sk-card--tigress-pirate,
+.sk-card--art.sk-card--tigress-escape {
+  box-shadow:
+    0 0 0 3px var(--sk-tigresse-liser),
+    0 0 0 4px rgba(20, 12, 5, 0.7),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.sk-card--art.sk-card--tigress-pirate { --sk-tigresse-liser: var(--sk-pirate); }
+.sk-card--art.sk-card--tigress-escape { --sk-tigresse-liser: var(--sk-fuite); }
 
 /* Les quatre familles peintes : le coffre (Jaune), la carte au trésor
    (Violet), le pavillon noir (Noir, l'atout) et les Perroquets (Vert). Les
