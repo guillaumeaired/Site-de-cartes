@@ -148,11 +148,30 @@ const CARD_ART = {
   "Rosie D'Laney": 'pablo',
 };
 
+// Les trois familles illustrées, et le préfixe de leurs quatorze fichiers.
+// Le Vert n'a pas encore sa planche : il reste dessiné en CSS, comme avant.
+const SUIT_ART = {
+  jaune: 'tresor',     // le coffre ouvert
+  violet: 'carte',     // la carte au trésor
+  noir: 'pavillon',    // le pavillon noir — la famille d'atout
+};
+
 function cardClass(card) {
   if (card.kind === 'hidden') return 'sk-card--hidden';
   if (card.kind === 'wild15' || card.wild15) return 'sk-card--wild15';
   if (card.kind === 'number') {
     if (card.wild14 && card.value == null) return 'sk-card--wild14';
+    // Familles peintes : une planche d'illustrations par couleur, quatorze
+    // valeurs (voir briefs/decouper-planche-numerotees.py). Même mécanique
+    // que les Pirates illustrés, à ceci près que le pied ne se surimpose pas
+    // (voir sk-card--art-num) : sur un Pirate il porte le nom, absent de
+    // l'illustration ; ici il redirait un chiffre déjà gravé deux fois.
+    // Le 0/14 de l'extension en est exclu : sa valeur peut valoir 0, qui
+    // n'existe dans aucune planche, et il a déjà son habillage.
+    const art = SUIT_ART[card.suit];
+    if (art && !card.wild14 && card.value >= 1 && card.value <= 14) {
+      return `sk-card--${card.suit} sk-card--art sk-card--art-num sk-card--art-${art}-${card.value}`;
+    }
     return `sk-card--${card.suit}`;
   }
   if (card.kind === 'pirate' || card.kind === 'firstmate') {
@@ -692,7 +711,14 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     badge.style.setProperty('--sk-av-color', piece.color);
     badge.innerHTML = pieceSVG(piece);
     li.appendChild(badge);
-    li.appendChild(document.createTextNode(p.nickname));
+    // Le pseudo porte la couleur de sa pièce, comme partout ailleurs (roue,
+    // courbe, récap) : sur une liste de sept lignes toutes crème, on cherchait
+    // la sienne au médaillon seul, qui est petit et sombre.
+    const nom = document.createElement('span');
+    nom.className = 'sk-lobby-nom';
+    nom.textContent = p.nickname;
+    nom.style.color = couleurJoueur(p);
+    li.appendChild(nom);
     if (p.id === hostId) li.classList.add('lobby-host');
     lobbyList.appendChild(li);
   });
@@ -1142,7 +1168,7 @@ const PIECES = [
     svg: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>',
   },
   {
-    key: 'bouteille', label: 'Bouteille', color: '#1e4629',
+    key: 'bouteille', label: 'Bouteille', color: '#141902',
     svg: '<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>',
   },
   {
@@ -2582,10 +2608,38 @@ const endBody = document.getElementById('sk-end-body');
 // Récap de fin : le classement seul ne racontait rien de la partie. On y
 // ajoute ce que l'historique des manches permet de dire — annonces tenues,
 // plis pris — puis quelques faits marquants qui font parler la table.
+// La courbe et les faits marquants ont chacun leur propre planche : ils
+// répondent à deux questions différentes (« comment ça s'est joué » et
+// « qu'est-ce qu'on retiendra »), les empiler dans le même bloc les faisait
+// lire comme une seule liste.
+const endCurveEl = document.getElementById('sk-end-curve');
 const endFactsEl = document.getElementById('sk-end-facts');
 // Rang gravé en chiffres romains, comme au registre de bord — une médaille
 // en emoji n'a rien à faire sur un tableau d'équipage.
 
+// La couleur d'un joueur, c'est celle de sa pièce — remontée en clarté pour
+// tenir sur le bois sombre (voir surFondSombre). Un seul endroit qui la
+// calcule : la roue, la courbe, le salon et le récap doivent tous tomber sur
+// la même teinte, sinon le repère ne vaut plus rien.
+function couleurJoueur(p) {
+  return surFondSombre((PIECE_BY_KEY[p && p.piece] || pieceFor(p)).color);
+}
+
+// Le pseudo porté à la couleur de sa pièce : c'est le même repère que le
+// médaillon sur le tapis, on retrouve le sien sans lire toute la liste.
+function nomColore(p) {
+  return `<span class="sk-nom" style="color:${couleurJoueur(p)}">${escapeHTML(p.nickname)}</span>`;
+}
+
+function medaillon(p) {
+  const piece = PIECE_BY_KEY[p && p.piece] || pieceFor(p);
+  return `<img class="sk-nom-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
+}
+
+// Les faits marquants ne sont plus des phrases toutes faites : chacun est
+// un couple « intitulé + joueur + détail ». C'est ce qui permet de les poser
+// dans un cadre en trois colonnes lisibles d'un coup d'œil, et de porter le
+// pseudo à la couleur de sa pièce plutôt qu'au milieu d'un paragraphe.
 function endFacts(ranking) {
   const facts = [];
   const withRounds = ranking.filter((r) => r.rounds);
@@ -2595,31 +2649,74 @@ function endFacts(ranking) {
     .filter((r) => r.bestRound)
     .reduce((b, r) => (b === null || r.bestRound.delta > b.bestRound.delta ? r : b), null);
   if (bestRound && bestRound.bestRound.delta > 0) {
-    facts.push(`Meilleure manche : ${bestRound.nickname}, +${bestRound.bestRound.delta} points à la manche ${bestRound.bestRound.round}.`);
+    facts.push({
+      label: 'Meilleure manche',
+      joueur: bestRound,
+      detail: `+${bestRound.bestRound.delta} points à la manche ${bestRound.bestRound.round}.`,
+    });
   }
 
   const worstRound = withRounds
     .filter((r) => r.worstRound)
     .reduce((b, r) => (b === null || r.worstRound.delta < b.worstRound.delta ? r : b), null);
   if (worstRound && worstRound.worstRound.delta < 0) {
-    facts.push(`Pire manche : ${worstRound.nickname}, ${worstRound.worstRound.delta} points à la manche ${worstRound.worstRound.round}.`);
+    facts.push({
+      label: 'Pire manche',
+      joueur: worstRound,
+      detail: `${worstRound.worstRound.delta} points à la manche ${worstRound.worstRound.round}.`,
+    });
   }
 
   const streak = withRounds.reduce((b, r) => (r.bestStreak > b.bestStreak ? r : b));
   if (streak.bestStreak >= 2) {
-    facts.push(`Plus longue série d'annonces tenues : ${streak.nickname}, ${streak.bestStreak} manches d'affilée.`);
+    facts.push({
+      label: 'Plus longue série',
+      joueur: streak,
+      detail: `${streak.bestStreak} annonces tenues d'affilée.`,
+    });
   }
 
   const zeros = withRounds.reduce((b, r) => (r.zeros > b.zeros ? r : b));
   if (zeros.zeros >= 2) {
-    facts.push(`Sang-froid : ${zeros.nickname} a tenu ${zeros.zeros} annonces à zéro.`);
+    facts.push({
+      label: 'Sang-froid',
+      joueur: zeros,
+      detail: `${zeros.zeros} annonces à zéro tenues.`,
+    });
   }
 
   const tricks = withRounds.reduce((b, r) => (r.tricks > b.tricks ? r : b));
   if (tricks.tricks > 0) {
-    facts.push(`Plus gros ramasseur : ${tricks.nickname}, ${tricks.tricks} plis sur la partie.`);
+    facts.push({
+      label: 'Plus gros ramasseur',
+      joueur: tricks,
+      detail: `${tricks.tricks} plis sur la partie.`,
+    });
   }
   return facts;
+}
+
+// Le cadre des faits marquants : une planche à part, avec une ligne par
+// fait — intitulé gravé au laiton, médaillon du joueur, son pseudo à sa
+// couleur, puis le détail chiffré.
+function renderFactsPanel(ranking) {
+  const facts = endFacts(ranking);
+  if (!facts.length) return '';
+  return (
+    `<p class="sk-end-panel-title">Faits marquants</p>` +
+    `<ul class="sk-fact-list">` +
+    facts
+      .map(
+        (f) =>
+          `<li class="sk-fact">` +
+          `<span class="sk-fact-label">${escapeHTML(f.label)}</span>` +
+          `<span class="sk-fact-who">${medaillon(f.joueur)}${nomColore(f.joueur)}</span>` +
+          `<span class="sk-fact-detail">${escapeHTML(f.detail)}</span>` +
+          `</li>`
+      )
+      .join('') +
+    `</ul>`
+  );
 }
 
 // Courbe des scores de la partie : une ligne par joueur, à la couleur de sa
@@ -2675,7 +2772,7 @@ function renderScoreCurve(ranking) {
   const bouts = [];
   series.forEach((r) => {
     const piece = PIECE_BY_KEY[r.piece] || pieceFor(r);
-    const couleur = surFondSombre(piece.color);
+    const couleur = couleurJoueur(r);
     const pts = r.curve.map((c, i) => `${x(i)},${y(c.total)}`).join(' ');
     const moi = r.id === myId ? ' sk-curve-line--me' : '';
     svg += `<polyline points="${pts}" class="sk-curve-line${moi}" style="stroke:${couleur}" />`;
@@ -2720,18 +2817,23 @@ function renderScoreCurve(ranking) {
 
   const legende = series
     .map((r) => {
-      const couleur = surFondSombre((PIECE_BY_KEY[r.piece] || pieceFor(r)).color);
-      return `<span class="sk-curve-key"><i style="background:${couleur}"></i>${escapeHTML(r.nickname)}</span>`;
+      const couleur = couleurJoueur(r);
+      return `<span class="sk-curve-key" style="color:${couleur}"><i style="background:${couleur}"></i>${escapeHTML(r.nickname)}</span>`;
     })
     .join('');
 
-  return `<p class="sk-end-facts-title">Évolution des scores</p><div class="sk-curve-wrap">${svg}<div class="sk-curve-legend">${legende}</div></div>`;
+  return `<p class="sk-end-panel-title">Évolution des scores</p><div class="sk-curve-wrap">${svg}<div class="sk-curve-legend">${legende}</div></div>`;
 }
 
 function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
-  endTitle.textContent = winner.id === myId ? 'Tu remportes la partie !' : `${winner.nickname} remporte la partie !`;
+  // Le vainqueur est nommé à la couleur de sa pièce jusque dans le titre :
+  // c'est la première ligne qu'on lit, autant qu'elle porte déjà le repère.
+  endTitle.innerHTML =
+    winner.id === myId
+      ? 'Tu remportes la partie !'
+      : `${nomColore(winner)} remporte la partie !`;
   endBody.innerHTML = ranking
     .map((r, i) => {
       const rang = ROMAN[i + 1] || `${i + 1}`;
@@ -2740,17 +2842,17 @@ function renderGameEnd(state) {
       const annonces = r.rounds ? `${r.exact} sur ${r.rounds}` : '—';
       const plis = r.tricks == null ? '—' : r.tricks;
       const moi = r.id === myId ? ' class="sk-end-row--me"' : '';
-      return `<tr${moi}><td>${rang}</td><td>${escapeHTML(r.nickname)}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td></tr>`;
+      const nom = `<span class="sk-end-name">${medaillon(r)}${nomColore(r)}</span>`;
+      return `<tr${moi}><td>${rang}</td><td class="sk-end-name-cell">${nom}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td></tr>`;
     })
     .join('');
 
-  const facts = endFacts(ranking);
-  endFactsEl.innerHTML =
-    renderScoreCurve(ranking) +
-    (facts.length
-      ? `<p class="sk-end-facts-title">Faits marquants</p>` +
-        facts.map((f) => `<p class="sk-end-fact">${escapeHTML(f)}</p>`).join('')
-      : '');
+  const courbe = renderScoreCurve(ranking);
+  endCurveEl.innerHTML = courbe;
+  endCurveEl.classList.toggle('hidden', !courbe);
+  const faits = renderFactsPanel(ranking);
+  endFactsEl.innerHTML = faits;
+  endFactsEl.classList.toggle('hidden', !faits);
 }
 
 document.getElementById('sk-btn-rematch').addEventListener('click', () => socket.emit('skullking-rematch'));

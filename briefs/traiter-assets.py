@@ -71,6 +71,15 @@ ASSETS = {
     'plateau-taverne':   ('boardgame-sk.png', False),
     'logo-skullking-h':  ('logo-sk-horizontal.png', False),  # alpha déjà présent
     'logo-skullking-v':  ('logo-sk.png', True),              # sur magenta
+    'dos-carte':         ('dos-cartes-sk.png', False),       # opaque, plein cadre
+}
+
+# Certains PNG bruts arrivent bien plus grands que leur usage. Le dos de carte
+# se voit au plus à 84x120 px (168x240 sur un écran à double densité) : sortir
+# ses 1024x1536 d'origine coûterait 400 Ko pour rien. Plafond en largeur, le
+# ratio est conservé.
+LARGEURS = {
+    'dos-carte': 512,
 }
 
 
@@ -88,6 +97,9 @@ def main():
             boite = im.getbbox()
             if boite:
                 im = im.crop(boite)
+        maxi = LARGEURS.get(nom)
+        if maxi and im.size[0] > maxi:
+            im = im.resize((maxi, round(im.size[1] * maxi / im.size[0])), Image.LANCZOS)
         poids = en_webp(im, OUT / f'{nom}.webp')
         print(f'  {nom + ".webp":26} {im.size[0]:>5}x{im.size[1]:<5} {im.mode:5} {poids / 1024:6.0f} Ko')
 

@@ -85,6 +85,11 @@
   --sk-gl-whale:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M4%2036c0-10%2012-18%2026-18%2012%200%2021%205%2026%2013%201%202%200%204-2%204-4%201-6%203-6%206%200%204%203%207%207%208%202%201%202%204-1%205-7%203-16%204-24%204C12%2058%204%2048%204%2036Z%27%2F%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M56%2012c3%204%205%209%205%2014%200%202-3%203-4%201-2-4-5-7-9-9-2-1-1-4%201-4%203-1%205-2%207-2Z%27%2F%3E%3Ccircle%20cx%3D%2718%27%20cy%3D%2732%27%20r%3D%273%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E");
   --sk-gl-plank:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%276.5%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M6%2040%20L48%2040%27%2F%3E%3Cpath%20d%3D%27M48%2030%20L58%2040%20L48%2050%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27black%27%3E%3Ccircle%20cx%3D%2716%27%20cy%3D%2718%27%20r%3D%277%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
   --sk-sealimg:var(--sk-rivet);      /* < 34 px : rivet ; ≥ 34 px : médaillon */
+
+  /* Le dos de carte, peint : cuir noir, cartouche d'ocre, lettrage doré.
+     Il remplace le velours bordeaux frappé du médaillon, qui était un
+     dégradé CSS — quatre endroits le dessinaient, ils tirent tous d'ici. */
+  --sk-dos:url('assets/skin/dos-carte.webp');
 }
 
 /* =====================================================================
@@ -1611,16 +1616,16 @@ h3 {
 
 /* Pile de distribution au centre de la table, et cartes volantes qui en
    sortent vers chaque siège en début de manche (voir maybeAnimateDeal) :
-   même dos de velours bordeaux que les cartes cachées. */
+   même dos peint que les cartes cachées. À 34 px de large le lettrage n'est
+   plus lisible, mais c'est la bonne matière et la bonne couleur — c'est tout
+   ce qu'on demande à une pile vue de loin. */
 .sk-deck-pile,
 .sk-flying-card {
   position: absolute;
   width: 34px;
   height: 48px;
   border-radius: 4px;
-  background:
-    var(--sk-medallion) center / 52% no-repeat,
-    radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  background: #16110d var(--sk-dos) center / cover no-repeat;
   box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.8), inset 0 0 0 2px rgba(184, 137, 53, 0.3);
 }
 
@@ -1942,16 +1947,14 @@ h3 {
   backface-visibility: hidden;
 }
 
-/* Dos de carte : velours bordeaux frappé du médaillon — même objet que
-   .sk-card--hidden, mais sur une face 3D qui ne peut pas porter d'enfant. */
+/* Dos de carte peint — même objet que .sk-card--hidden, mais sur une face 3D
+   qui ne peut pas porter d'enfant. Le dos porte déjà son propre encadrement
+   doré : plus de liseré de laiton posé par-dessus, il en faisait deux. */
 .sk-flip-card-back {
   border-radius: var(--sk-radius);
-  background:
-    var(--sk-medallion) center / 46% no-repeat,
-    radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  background: #16110d var(--sk-dos) center / cover no-repeat;
   box-shadow:
     0 0 0 1px rgba(20, 12, 5, 0.7),
-    inset 0 0 0 3px rgba(184, 137, 53, 0.35),
     0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
@@ -2351,18 +2354,16 @@ h3 {
 }
 
 /* --- Dos de carte : velours bordeaux, médaillon centré --------------- */
+/* Carte cachée : le dos peint, plein cadre. Le cartouche qu'on dessinait
+   par-dessus (un rectangle de laiton posé à 3 px du bord) doublait celui que
+   l'illustration porte déjà — on le retire plutôt que d'empiler deux cadres. */
 .sk-card--hidden {
-  background: radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  background: #16110d var(--sk-dos) center / cover no-repeat;
   cursor: default;
 }
 
 .sk-card--hidden .sk-card__field {
-  background: none;
-  box-shadow: 0 0 0 1px rgba(184, 137, 53, 0.45), inset 0 0 22px rgba(0, 0, 0, 0.5);
-  top: 3px;
-  left: 3px;
-  right: 3px;
-  bottom: 3px;
+  display: none;
 }
 
 .sk-card--hidden:hover {
@@ -2381,6 +2382,11 @@ h3 {
   font-size: calc(var(--sk-w) * 0.42);
   color: var(--sk-brass-hi);
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.7);
+  /* Le dos est maintenant une illustration dorée : un « ? » doré posé dessus
+     s'y perdait. Ce voile sombre lui rend un fond, sans cacher le dessin —
+     il s'éteint bien avant les bords de la carte. */
+  background: radial-gradient(circle at 50% 50%,
+    rgba(6, 4, 2, 0.88) 0%, rgba(6, 4, 2, 0.7) 32%, rgba(6, 4, 2, 0) 62%);
 }
 
 /* ---------------------------------------------------------------------
@@ -2426,6 +2432,72 @@ h3 {
 .sk-card--art-mams { --art: url('assets/cards/guy-mams.webp'); }
 .sk-card--art-guigui { --art: url('assets/cards/guigui.webp'); }
 .sk-card--art-pablo { --art: url('assets/cards/pablo.webp'); }
+
+/* Les trois familles peintes : le coffre (Jaune), la carte au trésor
+   (Violet), le pavillon noir (Noir, l'atout). */
+
+/* Une famille peinte n'a pas de pied : l'illustration grave déjà son chiffre
+   dans deux médaillons d'angle, et sa couleur se lit sur le cadre — un
+   cartouche de parchemin par-dessus ne fait que masquer le dessin pour
+   redire ce qu'il dit. Le pied reste dans le document, hors de l'écran :
+   c'est lui que lisent les technologies d'assistance. Les Pirates illustrés,
+   eux, le gardent visible — il porte leur nom, qui n'est pas sur l'image. */
+.sk-card--art-num .sk-card__foot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  background: none;
+  box-shadow: none;
+}
+.sk-card--art-tresor-1 { --art: url('assets/cards/tresor-1.webp'); }
+.sk-card--art-tresor-2 { --art: url('assets/cards/tresor-2.webp'); }
+.sk-card--art-tresor-3 { --art: url('assets/cards/tresor-3.webp'); }
+.sk-card--art-tresor-4 { --art: url('assets/cards/tresor-4.webp'); }
+.sk-card--art-tresor-5 { --art: url('assets/cards/tresor-5.webp'); }
+.sk-card--art-tresor-6 { --art: url('assets/cards/tresor-6.webp'); }
+.sk-card--art-tresor-7 { --art: url('assets/cards/tresor-7.webp'); }
+.sk-card--art-tresor-8 { --art: url('assets/cards/tresor-8.webp'); }
+.sk-card--art-tresor-9 { --art: url('assets/cards/tresor-9.webp'); }
+.sk-card--art-tresor-10 { --art: url('assets/cards/tresor-10.webp'); }
+.sk-card--art-tresor-11 { --art: url('assets/cards/tresor-11.webp'); }
+.sk-card--art-tresor-12 { --art: url('assets/cards/tresor-12.webp'); }
+.sk-card--art-tresor-13 { --art: url('assets/cards/tresor-13.webp'); }
+.sk-card--art-tresor-14 { --art: url('assets/cards/tresor-14.webp'); }
+
+.sk-card--art-carte-1 { --art: url('assets/cards/carte-1.webp'); }
+.sk-card--art-carte-2 { --art: url('assets/cards/carte-2.webp'); }
+.sk-card--art-carte-3 { --art: url('assets/cards/carte-3.webp'); }
+.sk-card--art-carte-4 { --art: url('assets/cards/carte-4.webp'); }
+.sk-card--art-carte-5 { --art: url('assets/cards/carte-5.webp'); }
+.sk-card--art-carte-6 { --art: url('assets/cards/carte-6.webp'); }
+.sk-card--art-carte-7 { --art: url('assets/cards/carte-7.webp'); }
+.sk-card--art-carte-8 { --art: url('assets/cards/carte-8.webp'); }
+.sk-card--art-carte-9 { --art: url('assets/cards/carte-9.webp'); }
+.sk-card--art-carte-10 { --art: url('assets/cards/carte-10.webp'); }
+.sk-card--art-carte-11 { --art: url('assets/cards/carte-11.webp'); }
+.sk-card--art-carte-12 { --art: url('assets/cards/carte-12.webp'); }
+.sk-card--art-carte-13 { --art: url('assets/cards/carte-13.webp'); }
+.sk-card--art-carte-14 { --art: url('assets/cards/carte-14.webp'); }
+
+.sk-card--art-pavillon-1 { --art: url('assets/cards/pavillon-1.webp'); }
+.sk-card--art-pavillon-2 { --art: url('assets/cards/pavillon-2.webp'); }
+.sk-card--art-pavillon-3 { --art: url('assets/cards/pavillon-3.webp'); }
+.sk-card--art-pavillon-4 { --art: url('assets/cards/pavillon-4.webp'); }
+.sk-card--art-pavillon-5 { --art: url('assets/cards/pavillon-5.webp'); }
+.sk-card--art-pavillon-6 { --art: url('assets/cards/pavillon-6.webp'); }
+.sk-card--art-pavillon-7 { --art: url('assets/cards/pavillon-7.webp'); }
+.sk-card--art-pavillon-8 { --art: url('assets/cards/pavillon-8.webp'); }
+.sk-card--art-pavillon-9 { --art: url('assets/cards/pavillon-9.webp'); }
+.sk-card--art-pavillon-10 { --art: url('assets/cards/pavillon-10.webp'); }
+.sk-card--art-pavillon-11 { --art: url('assets/cards/pavillon-11.webp'); }
+.sk-card--art-pavillon-12 { --art: url('assets/cards/pavillon-12.webp'); }
+.sk-card--art-pavillon-13 { --art: url('assets/cards/pavillon-13.webp'); }
+.sk-card--art-pavillon-14 { --art: url('assets/cards/pavillon-14.webp'); }
 
 /* --- Extension : fanion de laiton au coin coupé ---------------------- */
 .sk-card--ext::before {
@@ -2748,11 +2820,8 @@ h3 {
 }
 
 .sk-bid-card-back {
-  background:
-    var(--sk-medallion) center / 46% no-repeat,
-    radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  background: #16110d var(--sk-dos) center / cover no-repeat;
   box-shadow:
-    inset 0 0 0 3px rgba(184, 137, 53, 0.32),
     0 0 0 1px rgba(20, 12, 5, 0.7),
     0 8px 16px rgba(0, 0, 0, 0.5);
 }
@@ -3911,6 +3980,22 @@ h3 {
 
 /* --- Récap de fin de partie --- */
 
+/* Dans sa planche, le tableau prend toute la largeur disponible : le
+   plafond de 380px de .sk-score-table est celui du récap de manche, qui
+   flotte au milieu de l'écran, pas d'un panneau déjà borné. */
+.sk-end-table {
+  margin: 0;
+  max-width: none;
+}
+
+/* Cinq colonnes dans une planche : l'espacement du récap de manche, lui qui
+   dispose de toute la largeur de l'écran, poussait ici le total hors cadre
+   — sur téléphone c'est la page entière qui débordait. */
+.sk-end-table th,
+.sk-end-table td {
+  padding: 7px 6px;
+}
+
 .sk-end-table td:first-child,
 .sk-end-table th:first-child {
   width: 2.4em;
@@ -3935,36 +4020,159 @@ h3 {
   color: var(--sk-brass-hi);
 }
 
-.sk-end-facts {
-  margin: 14px auto 4px;
-  max-width: 460px;
-  text-align: left;
+/* En-tête du récap : le lettrage et le verdict tiennent sur une seule ligne
+   d'attention, le reste de l'écran est du contenu. */
+.sk-end-head {
+  margin-bottom: 10px;
 }
 
-.sk-end-facts-title {
-  margin: 0 0 6px;
+/* Une planche par bloc du récap (classement, courbe, faits marquants) :
+   même chêne cerclé de laiton que le salon et les parchemins de la table,
+   pour qu'aucun de ces trois blocs ne flotte sur le fond. */
+.sk-end-panel {
+  position: relative;
+  padding: 14px 16px 12px;
+  border-radius: 4px;
+  text-align: left;
+  background:
+    linear-gradient(180deg, rgba(255, 232, 190, 0.07), rgba(0, 0, 0, 0.34)),
+    linear-gradient(178deg, var(--sk-oak-hi) 0%, var(--sk-oak) 34%, var(--sk-oak-lo) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    0 0 0 1px var(--sk-brass-lo),
+    0 14px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Le classement est un tableau à cinq colonnes : sur une fenêtre étroite il
+   est plus large que sa planche. Il défile alors dans son cadre plutôt que
+   de pousser la page entière hors de l'écran. */
+.sk-end-panel--rank {
+  overflow-x: auto;
+}
+
+.sk-end-panel-title {
+  margin: 0 0 8px;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   color: var(--sk-brass-hi);
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
-.sk-end-fact {
-  margin: 0 0 5px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  background: rgba(232, 206, 146, 0.08);
-  border: 1px solid rgba(232, 206, 146, 0.11);
-  font-size: 0.84rem;
+/* Le récap empilé (téléphone, fenêtre étroite) : les planches se suivent. */
+.sk-end-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sk-end-actions {
+  margin-top: 16px;
+}
+
+/* --- Le cadre des faits marquants ---------------------------------
+   Une ligne par fait, en trois temps : l'intitulé gravé au laiton, le
+   joueur (médaillon + pseudo à sa couleur), puis le chiffre. Avant, tout
+   était noyé dans une phrase et rien ne ressortait. */
+.sk-fact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Deux lignes seulement : l'intitulé du fait, puis le joueur et son chiffre
+   côte à côte. Empilés sur trois lignes, l'intitulé devait rester minuscule
+   pour ne pas écraser le reste ; sur deux, il peut prendre la taille de ce
+   qu'il annonce — c'est lui qu'on lit en premier. */
+.sk-fact {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 8px 11px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 236, 196, 0.05), rgba(0, 0, 0, 0.26));
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.2);
+  border-left: 3px solid var(--sk-brass-lo);
+}
+
+.sk-fact-label {
+  grid-column: 1 / -1;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sk-brass-hi);
+}
+
+.sk-fact-who {
+  grid-column: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+/* Le médaillon suit la ligne de base du pseudo plutôt que son milieu :
+   aligné au centre, il flottait au-dessus du texte voisin. */
+.sk-fact-who .sk-nom-piece {
+  align-self: center;
+}
+
+.sk-fact-detail {
+  grid-column: 2;
+  align-self: baseline;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.8rem;
   line-height: 1.35;
+  color: var(--sk-cream-2);
+}
+
+/* --- Le pseudo à la couleur de sa pièce -----------------------------
+   Même teinte que le médaillon, remontée en clarté par surFondSombre.
+   Le liseré noir la décolle du bois quand elle en approche. */
+.sk-nom {
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+.sk-nom-piece {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+.sk-lobby-nom {
+  color: inherit;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+.sk-end-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sk-end-name-cell,
+.sk-end-table th:nth-child(2) {
+  text-align: left;
 }
 
 /* --- Courbe des scores (récap de fin) --- */
 
 .sk-curve-wrap {
-  margin: 0 0 16px;
+  margin: 0;
 }
 
 .sk-curve {
@@ -5165,4 +5373,248 @@ h3 {
 
 .sk-scene .sk-chat-form input {
   font-size: 0.82cqw;
+}
+
+/* =====================================================================
+   SALON ET RÉCAP EN PAYSAGE
+   Ces deux écrans vivaient dans la colonne de 420/760px héritée du
+   téléphone : sur un portable, le salon faisait défiler code, réglages,
+   pièces et équipage les uns sous les autres, et le récap enfilait
+   classement, courbe et faits marquants sur près de deux hauteurs
+   d'écran. On les étale ici en planches côte à côte — c'est la même
+   bascule que celle du plateau (voir le bloc min-width:1000px plus haut),
+   et sous ce seuil rien ne change : la grille redevient une colonne et
+   l'ordre du DOM est déjà le bon.
+   ===================================================================== */
+
+/* L'enseigne du salon. Le lettrage peint porte déjà son ombre et sa dorure :
+   il n'a besoin d'aucun cadre, il se pose sur la cloison. */
+.sk-waiting-logo {
+  display: block;
+  width: min(340px, 82%);
+  height: auto;
+  margin: 2px auto 16px;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.75));
+}
+
+/* Intertitres de colonne : ils ne servent qu'en paysage, où les planches
+   sont côte à côte. Empilées, l'ordre parle de lui-même. */
+.sk-lobby-col-title {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .app.sk-app:has(#sk-screen-waiting:not(.hidden)) {
+    max-width: 1080px;
+  }
+
+  .app.sk-app:has(#sk-screen-end:not(.hidden)) {
+    max-width: 1240px;
+  }
+
+  /* --- Le salon : trois planches, code / réglages / équipage --- */
+
+  #sk-screen-waiting {
+    position: relative;
+    padding-top: 4px;
+  }
+
+  /* Le « Quitter » quitte le flux : centré, il poussait les trois planches
+     vers le bas pour une commande qu'on ne cherche qu'en dernier. */
+  #sk-btn-leave-waiting {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+  }
+
+  /* `flex-start` et non `stretch` : les trois planches n'ont pas la même
+     charge (un code, quatre réglages, neuf pièces et sept matelots). Mises
+     à la même hauteur, les deux premières se terminaient sur un grand vide
+     de bois — chacune s'arrête donc où son contenu s'arrête, comme des
+     planches punaisées de tailles différentes. */
+  /* En paysage l'enseigne a la place de s'ouvrir : elle passe au-dessus des
+     trois planches et occupe la bande qui restait vide en haut de l'écran.
+     Le « Quitter » est en absolu dans le coin, elle ne le heurte pas. */
+  .sk-waiting-logo {
+    width: 460px;
+    margin: 0 auto 6px;
+  }
+
+  .sk-lobby-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
+    margin: 10px 0 0;
+  }
+
+  /* Chaque colonne est une planche punaisée, comme le bloc d'invitation :
+     celui-ci en portait déjà le décor, les deux autres le reprennent pour
+     qu'aucune ne flotte à côté des autres. */
+  .sk-lobby-col {
+    position: relative;
+    flex: 1 1 250px;
+    min-width: 0;
+    max-width: 330px;
+    margin: 0;
+    padding: 22px 16px 16px;
+    border-radius: 4px;
+    background:
+      linear-gradient(180deg, rgba(255, 232, 190, 0.09), rgba(0, 0, 0, 0.34)),
+      linear-gradient(178deg, var(--sk-oak-hi) 0%, var(--sk-oak) 34%, var(--sk-oak-lo) 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+      0 0 0 1px var(--sk-brass-lo),
+      0 16px 34px rgba(0, 0, 0, 0.55);
+  }
+
+  .sk-lobby-col::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    margin-left: -5px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 36% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(16, 9, 3, 0.6);
+  }
+
+  /* L'équipage est la planche qu'on regarde le plus (qui est là, qui a pris
+     quelle pièce) : elle a droit à plus de largeur que les deux autres. */
+  /* La rangée des dix manches fait 298px à elle seule : sous cette largeur
+     le « 10 » retombe seul sur une deuxième ligne. */
+  .sk-lobby-col--settings {
+    flex: 1.1 1 300px;
+    max-width: 350px;
+  }
+
+  .sk-lobby-col--crew {
+    flex: 1.35 1 320px;
+    max-width: 400px;
+  }
+
+  .sk-lobby-col-title {
+    display: block;
+    margin: 0 0 12px;
+  }
+
+  /* Les blocs internes perdent leurs marges de colonne : c'est la planche
+     qui borne maintenant, plus le `max-width: 300px` de chacun. */
+  .sk-lobby-col .sk-piece-picker,
+  .sk-lobby-col .lobby-players,
+  .sk-lobby-col .sk-rounds-field {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .sk-lobby-col .sk-piece-picker {
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+
+  .sk-lobby-col .lobby-players {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .sk-lobby-col .sk-rounds-field {
+    margin-top: 16px;
+    margin-bottom: 0;
+  }
+
+  .sk-lobby-col .invite-label {
+    margin-top: 0;
+  }
+
+  /* Le bouton de lancement sort des planches : c'est l'action de l'écran,
+     elle se pose sous les trois et non au bout de l'une d'elles. */
+  .sk-lobby-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .sk-lobby-actions .btn {
+    margin: 0;
+  }
+
+  .sk-lobby-actions .hint {
+    margin: 0;
+  }
+
+  /* --- Le récap : classement / courbe / faits marquants de front --- */
+
+  .sk-end-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 16px;
+  }
+
+  .sk-end-logo {
+    width: 118px;
+    margin: 0;
+  }
+
+  #sk-end-title {
+    margin: 0;
+    font-size: 1.6rem;
+  }
+
+  .sk-end-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .sk-end-panel--rank {
+    flex: 1.1 1 330px;
+    min-width: 0;
+    max-width: 450px;
+  }
+
+
+  /* La courbe garde la part la plus large : c'est un tracé, il perd sa
+     pente dès qu'on le comprime. */
+  .sk-end-panel--curve {
+    flex: 1.2 1 360px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sk-end-panel--curve .sk-curve-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .sk-end-panel--facts {
+    flex: 1 1 310px;
+    min-width: 0;
+    max-width: 420px;
+  }
+
+  .sk-end-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .sk-end-actions .btn {
+    margin: 0;
+  }
 }
