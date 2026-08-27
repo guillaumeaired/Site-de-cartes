@@ -408,10 +408,12 @@ function stateFor(room, p) {
     // Historique du chat : renvoyé avec l'état pour qu'une reconnexion ou un
     // arrivant en cours de partie retrouve la conversation.
     chat: room.chat || [],
-    dealerId: room.players[room.dealerIndex] && room.players[room.dealerIndex].id,
     // Qui mène/mènera le pli en cours (fixé dès la donne, avant même
     // l'annonce) - permet de savoir "qui commence" dès la phase d'annonce,
-    // pas seulement une fois la phase de jeu entamée.
+    // pas seulement une fois la phase de jeu entamée. C'est la seule chose
+    // que le tapis marque d'un jeton : le donneur n'en a plus, personne ne
+    // jouant en fonction de qui distribue, et room.dealerIndex ne sert donc
+    // plus qu'ici, à faire tourner l'entame d'une manche à l'autre.
     leaderPlayerId: inRound && room.players[room.leaderIndex] ? room.players[room.leaderIndex].id : null,
     roundNumber: roundNumber(room),
     totalRounds: room.roundSequence.length,

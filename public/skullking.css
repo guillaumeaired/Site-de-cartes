@@ -1553,57 +1553,48 @@ h3 {
   opacity: 0.42;
 }
 
-/* Le jeton de donneur est un frère du médaillon, jamais un enfant de
-   l'étiquette : posé sur le pseudo, il le rendait illisible. */
-/* Le donneur : au coin haut-droit du jeton, jamais sur le pseudo. Sa
-   taille suit le feutre comme le reste du siège — en pixels fixes, elle
-   devenait un grain de poussière sur un grand écran. */
-.sk-seat-dealer {
-  position: absolute;
-  top: -2%;
-  right: 4%;
-  z-index: 4;
-  width: 4.6cqw;
-  height: 4.6cqw;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, #FFF6DC, #E8CE92 34%, var(--sk-brass) 62%, #5a4318 100%);
-  color: #2a1b06;
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 2.4cqw;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 0 0 0.32cqw rgba(16, 9, 3, 0.92),
-    0 0.3cqw 0.7cqw rgba(0, 0, 0, 0.75),
-    0 0 1.4cqw rgba(232, 206, 146, 0.5);
-}
+/* Le jeton d'entame — le seul jeton du tapis. Frère du médaillon, jamais un
+   enfant de l'étiquette : posé sur le pseudo, il le rendait illisible ; au
+   coin haut-droit du médaillon, il ne recouvre rien qui se lise. Sa taille
+   suit le feutre comme le reste du siège — en pixels fixes, il devenait un
+   grain de poussière sur un grand écran.
 
-/* Frère du jeton de donneur, posé de l'autre côté du médaillon : « c'est lui
-   qui entame ». Affiché pendant l'annonce seulement, là où le halo de tour
-   servait autrefois à le dire — et se lisait à tort comme « à lui de jouer ». */
+   Il remplace la paire donneur (« D ») / entame (« 1 ») : deux pastilles au
+   même bord du même médaillon, l'une laiton l'autre étain, se lisaient l'une
+   pour l'autre, et celle du donneur ne servait à personne. Restant seul, il
+   peut être plus gros et plein laiton — c'est un repère qu'on cherche du
+   regard à chaque pli, il doit se trouver sans être cherché. Le halo doré du
+   siège, lui, ne dit toujours qu'une chose : « à lui d'agir, maintenant ». */
 .sk-seat-leader {
   position: absolute;
-  top: -2%;
-  left: 4%;
+  top: -4%;
+  right: 2%;
   z-index: 4;
-  width: 4.6cqw;
-  height: 4.6cqw;
+  width: 6.4cqw;
+  height: 6.4cqw;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, #f0f6ff, #b9c9e2 34%, #6d8099 62%, #24303f 100%);
-  color: #16202c;
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 2.4cqw;
-  font-weight: 700;
-  line-height: 1;
+  /* Plein laiton, pas ivoire : un dégradé qui n'atteignait la couleur qu'aux
+     deux tiers du disque donnait, à cette taille, une pastille d'os. Le
+     reflet tient donc dans le premier dixième, le laiton occupe le milieu, et
+     le bord se ternit comme celui d'une pièce usée. */
+  background: radial-gradient(circle at 32% 26%, #FFEFC2 0 6%, #E7C273 24%, var(--sk-brass) 52%, #8A6524 78%, #46320F 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow:
-    0 0 0 0.32cqw rgba(16, 9, 3, 0.92),
-    0 0.3cqw 0.7cqw rgba(0, 0, 0, 0.75);
+    0 0 0 0.34cqw rgba(16, 9, 3, 0.92),
+    0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.75),
+    0 0 2.4cqw rgba(255, 226, 150, 0.6);
+}
+
+/* La rose est gravée : encre très sombre, et le seul reflet passe SOUS le
+   trait — au-dessus, il délavait le dessin, comme sur les plaques de laiton
+   des boutons. */
+.sk-seat-leader svg {
+  width: 66%;
+  height: 66%;
+  fill: #1E1305;
+  filter: drop-shadow(0 0.14cqw 0 rgba(255, 246, 220, 0.55));
 }
 
 .sk-seat-cards {
@@ -3459,19 +3450,18 @@ h3 {
   .sk-seat-bid {
     font-size: 0.6rem;
   }
-  .sk-seat-dealer {
-    top: -7px;
-    right: -11px;
-    width: 15px;
-    height: 15px;
-    font-size: 0.5rem;
-  }
   .sk-seat-leader {
-    top: -7px;
-    left: -11px;
-    width: 15px;
-    height: 15px;
-    font-size: 0.5rem;
+    top: -8px;
+    right: -10px;
+    width: 19px;
+    height: 19px;
+    box-shadow:
+      0 0 0 1px rgba(16, 9, 3, 0.92),
+      0 1px 3px rgba(0, 0, 0, 0.75),
+      0 0 7px rgba(255, 226, 150, 0.6);
+  }
+  .sk-seat-leader svg {
+    filter: none;
   }
   /* Le carnet reste court : sur un écran qui défile déjà, il ne doit pas
      repousser la main hors de portée. */

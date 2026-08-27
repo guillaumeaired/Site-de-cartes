@@ -327,11 +327,12 @@ function hideCardTooltip() {
   cardTooltip.classList.add('hidden');
 }
 
-// Attache l'explication d'une carte à un élément : rien n'est fait si la
-// carte n'a pas de texte particulier (numérotées hors atout/extension).
-function attachPowerTooltip(el, card) {
-  const text = cardPowerText(card);
-  if (!text) return;
+// La bulle au survol, sur n'importe quel élément : la fiche de parchemin
+// vaut pour tout ce qui demande un mot d'explication, pas seulement pour les
+// cartes à pouvoir. Le title natif est laissé en place par les appelants qui
+// en posent un — il sert au clavier et aux technologies d'assistance, que la
+// bulle, elle, ne touche pas.
+function attachTooltip(el, text) {
   el.addEventListener('mouseenter', (e) => {
     cardTooltip.textContent = text;
     cardTooltip.classList.remove('hidden');
@@ -339,6 +340,14 @@ function attachPowerTooltip(el, card) {
   });
   el.addEventListener('mousemove', positionCardTooltip);
   el.addEventListener('mouseleave', hideCardTooltip);
+}
+
+// Attache l'explication d'une carte à un élément : rien n'est fait si la
+// carte n'a pas de texte particulier (numérotées hors atout/extension).
+function attachPowerTooltip(el, card) {
+  const text = cardPowerText(card);
+  if (!text) return;
+  attachTooltip(el, text);
 
   // Appui long : la fiche s'ouvre, la carte ne se joue pas. Le clic qui
   // suit le relâchement est avalé (voir suppressNextTap), sinon consulter
@@ -1246,6 +1255,18 @@ function surFondSombre(hex, clarteMin = 0.56) {
 // Leur cerclage émaillé porte déjà la couleur du joueur : on ne la repeint
 // donc plus par-dessus. Elle reste dans PIECES parce que le registre et les
 // étiquettes de siège s'en servent pour teinter du texte, pas une figure.
+// La marque du jeton d'entame. Ni lettre ni chiffre : un « D » ne disait que
+// la mécanique de la distribution, un « 1 » se lisait comme une annonce ou un
+// nombre de plis. Une rose des vents dit qui donne le cap, et c'est déjà la
+// langue de la maison — le gouvernail du tirage au sort, le compas des
+// parchemins. Gravée en creux : sur du laiton clair, un dessin clair ne se
+// lit pas.
+const ROSE_DES_VENTS =
+  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+  '<path d="M12 1.4 14.05 9.95 22.6 12 14.05 14.05 12 22.6 9.95 14.05 1.4 12 9.95 9.95Z"/>' +
+  '<path d="M12 12 17.6 6.4 16.2 11.1ZM12 12 6.4 17.6 7.8 12.9ZM12 12 17.6 17.6 12.9 16.2ZM12 12 6.4 6.4 11.1 7.8Z" opacity=".55"/>' +
+  '</svg>';
+
 function pieceSVG(piece) {
   return `<img class="sk-piece-img" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
 }
@@ -1356,27 +1377,33 @@ function renderSeats(state) {
       label.appendChild(bidEl);
     }
 
-    if (p.id === state.dealerId) {
-      // Accrochée au SIÈGE, pas à l'étiquette du nom : dans l'étiquette elle
-      // se posait sur les premières lettres du pseudo, qui est justement ce
-      // qu'on cherche à lire. Sur le siège, elle vient au coin du jeton.
-      const chip = document.createElement('span');
-      chip.className = 'sk-seat-dealer';
-      chip.textContent = 'D';
-      chip.title = 'Donneur — c\'est lui qui distribue';
-      seat.appendChild(chip);
-    }
-
-    // « Qui entame » reste une information utile dès l'annonce, mais ce n'est
-    // pas « à lui de jouer » : tout le monde annonce en même temps. Elle a
-    // donc son propre jeton, frère de celui du donneur (le voisin de gauche
-    // du donneur, toujours), au lieu du halo de tour qu'on lisait comme un
-    // tour de jeu qui n'existait pas encore.
-    if (state.phase === 'bidding' && p.id === state.leaderPlayerId) {
+    // Le jeton d'entame : qui ouvre le pli en cours. Posé dès la donne sur le
+    // voisin de gauche du donneur, il reste sur le tapis toute la manche et
+    // passe à qui remporte chaque pli — c'est le seul jeton permanent du jeu.
+    // Accroché au SIÈGE, pas à l'étiquette du nom : dans l'étiquette il se
+    // posait sur les premières lettres du pseudo, qui est justement ce qu'on
+    // cherche à lire. Sur le siège, il vient au coin du médaillon.
+    //
+    // Le donneur avait le sien, en face : deux pastilles au même bord du même
+    // médaillon se lisaient l'une pour l'autre, et personne ne joue en
+    // fonction de qui distribue — la rotation du donneur se lit déjà dans
+    // celle de l'entame, qui est son voisin de gauche à chaque donne.
+    //
+    // À ne pas confondre avec le halo doré du siège, qui dit « à lui d'agir,
+    // maintenant » : pendant l'annonce, tout le monde annonce à la fois et
+    // personne n'a le halo, mais le jeton, lui, désigne déjà l'entame.
+    if (p.id === state.leaderPlayerId) {
       const chip = document.createElement('span');
       chip.className = 'sk-seat-leader';
-      chip.textContent = '1';
-      chip.title = 'Entame le premier pli de la manche';
+      chip.innerHTML = ROSE_DES_VENTS;
+      // Le survol dit ce que la rose ne peut pas dire toute seule. En bulle de
+      // parchemin plutôt qu'en title natif : le title met une seconde à
+      // paraître et ne se style pas, et un jeton qu'on survole est justement
+      // un jeton dont on ne comprend pas le dessin. Le title reste posé pour
+      // le clavier et les lecteurs d'écran.
+      const message = `${p.nickname} commence à jouer ce pli.`;
+      chip.title = message;
+      attachTooltip(chip, message);
       seat.appendChild(chip);
     }
 
