@@ -301,10 +301,31 @@
           <button class="btn sk-btn-joker-color" data-suit="jaune">Jaune</button>
           <button class="btn sk-btn-joker-color" data-suit="violet">Violet</button>
         </div>
-        <div id="sk-declare-choice" class="sk-bid-choices hidden">
-          <p class="hint">Cette carte vaut-elle 0 ou 14 ?</p>
-          <button id="sk-btn-declare-0" class="btn">0 (perd toujours)</button>
-          <button id="sk-btn-declare-14" class="btn">14 (carte forte)</button>
+        <!-- Le 0/14 se déclare comme la Tigresse se choisit : la carte décide
+             de ce qu'elle EST en se posant, et rien ne le reprend. On choisit
+             donc la pastille elle-même, en grand — celle qu'on clique est
+             celle qui sera frappée sur la carte. Sa couleur est posée par
+             renderHand au moment d'ouvrir le cadre : les huit pastilles
+             existent, une par famille et par valeur. -->
+        <div id="sk-declare-choice" class="sk-declare-choice hidden" role="dialog" aria-modal="true" aria-labelledby="sk-declare-titre">
+          <div class="sk-declare-cadre">
+            <p id="sk-declare-titre" class="sk-declare-titre">Cette carte, tu la poses…</p>
+            <div class="sk-declare-duel">
+              <button id="sk-btn-declare-0" class="sk-declare-option sk-declare-option--0" type="button">
+                <i class="sk-declare-pastille" aria-hidden="true"></i>
+                <span class="sk-declare-nom">À zéro</span>
+                <span class="sk-declare-effet">la plus basse du paquet</span>
+              </button>
+              <span class="sk-declare-slash" aria-hidden="true">/</span>
+              <button id="sk-btn-declare-14" class="sk-declare-option sk-declare-option--14" type="button">
+                <i class="sk-declare-pastille" aria-hidden="true"></i>
+                <span class="sk-declare-nom">À quatorze</span>
+                <span class="sk-declare-effet">la plus haute de sa famille</span>
+              </button>
+            </div>
+            <p class="sk-declare-note">La pastille choisie est frappée sur la carte : toute la table verra ce que tu as déclaré.</p>
+            <button id="sk-btn-declare-annuler" class="sk-declare-annuler" type="button">Reposer la carte</button>
+          </div>
         </div>
         <!-- Marcher sur la Planche : le Pirate se désigne SUR LE TAPIS, pas
              dans une liste de noms. Il ne reste donc ici que la consigne et

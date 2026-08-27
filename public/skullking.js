@@ -342,6 +342,27 @@ function bonusDeQuatorze(card) {
   );
 }
 
+// Le 7 et le 8 que l'extension ajoute à chaque couleur. Ils partagent leur
+// dessin avec le 7 et le 8 de base — les planches ne peignent qu'un dessin par
+// valeur — et RIEN ne les en distinguait à l'écran : deux 8 verts côte à côte
+// dans la main, l'un rapportant cinq points au vainqueur du pli et l'autre
+// non, sans qu'on puisse dire lequel. La pièce est donc le seul signe qui les
+// sépare, et c'est celui qui compte : c'est elle qui porte la règle.
+//
+// Même mécanique que le bonus des 14, même place contre le médaillon d'angle.
+// Le 0/14 en est exclu comme là-bas : il ne vaut 7 ni 8, quoi qu'il déclare.
+function bonusDeCinq(card) {
+  if (!card.ext || card.wild14) return '';
+  if (card.value !== 7 && card.value !== 8) return '';
+  const gagne = card.value === 8;
+  return (
+    `<i class="sk-card__bonus sk-card__bonus--${gagne ? 'plus5' : 'moins5'}" aria-hidden="true"></i>` +
+    `<span class="visually-hidden">${gagne
+      ? 'rapporte 5 points à qui remporte le pli'
+      : 'coûte 5 points à qui remporte le pli'}</span>`
+  );
+}
+
 function cardShell(figure, foot) {
   return (
     '<i class="sk-card__field"></i>' +
@@ -373,10 +394,23 @@ function cardFaceHTML(card) {
         '<b class="card-emblem card-emblem--wild">0/14</b>' + suit
       );
     }
+    // 0/14 posé : la pastille de la valeur déclarée est frappée sur le dessin,
+    // comme l'emblème de la Tigresse. C'est le même objet que celui qu'on a
+    // choisi dans le cadre — on reconnaît sur le tapis ce qu'on a cliqué.
+    if (card.wild14) {
+      return (
+        cardShell(
+          `<span class="sk-card__figure">${card.value}</span>`,
+          `<b class="card-emblem">${card.value}</b>` + suit
+        ) +
+        `<i class="sk-card__declare sk-card__declare--${card.value} sk-card__declare--${card.suit}" aria-hidden="true"></i>` +
+        `<span class="visually-hidden">déclarée à ${card.value}</span>`
+      );
+    }
     return cardShell(
       `<span class="sk-card__figure">${card.value}</span>`,
       `<b class="card-emblem">${card.value}</b>` + suit
-    ) + bonusDeQuatorze(card);
+    ) + bonusDeQuatorze(card) + bonusDeCinq(card);
   }
   const info = SPECIAL_INFO[card.kind];
   let label = card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;
@@ -392,6 +426,20 @@ function cardFaceHTML(card) {
     sceau = '<i class="sk-card__tigresse" aria-hidden="true"></i>';
   }
   return cardShell('<i class="sk-card__wm"></i>', `<b class="sk-special-label">${label}</b>`) + sceau;
+}
+
+// Le nom d'une carte, en clair. Le dessin le dit à l'œil ; les lecteurs
+// d'écran, eux, n'ont que ça — et le troc de Will le Bandit demande de
+// désigner des cartes une par une, ce qui suppose de savoir laquelle.
+function cardLabel(card) {
+  if (card.kind === 'number') {
+    if (card.wild14 && card.value == null) return `0 ou 14 de ${card.suit}`;
+    return `${card.value} de ${card.suit}`;
+  }
+  if (card.kind === 'wild15') return 'Joker';
+  if (card.kind === 'pirate') return card.name || 'Pirate';
+  const info = SPECIAL_INFO[card.kind];
+  return info ? info.label : 'Carte';
 }
 
 // Texte d'infobulle (survol). Toutes les cartes en ont une, y compris celles
@@ -3116,6 +3164,21 @@ document.querySelectorAll('.sk-btn-joker-color').forEach((btn) => {
     if (pendingJokerCardId) playCard(pendingJokerCardId, { chosenSuit: btn.dataset.suit });
   });
 });
+// On peut ressortir du cadre sans avoir déclaré : un clic de travers ne doit
+// pas coûter la carte. Les trois mêmes portes de sortie que le cadre de la
+// Tigresse — le bouton, le fond, la touche d'échappement.
+function fermerChoixDeclaration() {
+  pendingDeclareCardId = null;
+  hideAllChoicePanels();
+  if (latestState) renderBidChoices(latestState);
+}
+document.getElementById('sk-btn-declare-annuler').addEventListener('click', fermerChoixDeclaration);
+declareChoiceEl.addEventListener('click', (e) => {
+  if (e.target === declareChoiceEl) fermerChoixDeclaration();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !declareChoiceEl.classList.contains('hidden')) fermerChoixDeclaration();
+});
 document.getElementById('sk-btn-declare-0').addEventListener('click', () => {
   if (pendingDeclareCardId) playCard(pendingDeclareCardId, { declaredValue: 0 });
 });
@@ -3241,6 +3304,10 @@ function renderHand(state) {
         if (card.kind === 'number' && card.wild14 && card.value == null) {
           pendingDeclareCardId = card.id;
           hideAllChoicePanels();
+          // Les pastilles du cadre prennent la couleur de LA carte qu'on
+          // pose : ce sont les huit mêmes qui seront frappées dessus, il n'y
+          // a donc rien à reconnaître entre le clic et le tapis.
+          declareChoiceEl.dataset.famille = card.suit;
           declareChoiceEl.classList.remove('hidden');
           bidChoices.classList.add('hidden');
           return;

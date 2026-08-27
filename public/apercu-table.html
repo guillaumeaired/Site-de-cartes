@@ -38,6 +38,7 @@
     ?tigresse=pirate|fuite   un adversaire pose la Tigresse, annoncée
     ?phase=baleine  la Baleine met les spéciales hors course, sans rien détruire
     ?quatorze=1     un 14 de chaque famille en main : les pièces de bonus
+    ?declare=violet le cadre de déclaration du 0/14, aux couleurs de la famille
 -->
 <script>
 const P = new URLSearchParams(location.search);
@@ -341,6 +342,15 @@ function pouvoirJuanita() {
     requestAnimationFrame(() => requestAnimationFrame(() => { figer(); setTimeout(figer, 60); }));
   }
 
+  // ?declare=violet : le cadre de déclaration du 0/14, ouvert. Il s'ouvre sur
+  // un clic de carte, qu'aucune capture ne peut faire — on l'ouvre donc à la
+  // main, avec la famille demandée.
+  const DECLARE = P.get('declare');
+  if (DECLARE) {
+    const cadre = document.getElementById('sk-declare-choice');
+    cadre.dataset.famille = DECLARE;
+    cadre.classList.remove('hidden');
+  }
   document.documentElement.dataset.apercuPret = '1';
 })();
 </script>

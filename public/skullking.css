@@ -1006,7 +1006,6 @@ h3 {
    Planche) : le texte explicatif passe sur toute la largeur, les boutons
    se répartissent en dessous — même structure que .sk-bid-choices. */
 #sk-joker-choice .hint,
-#sk-declare-choice .hint,
 #sk-plank-choice .hint {
   flex-basis: 100%;
   margin: 0 0 4px;
@@ -2778,25 +2777,43 @@ body.sk-ciblage .sk-turn-indicator {
   background: linear-gradient(154deg, var(--sk-vert) 0%, var(--sk-jaune) 34%, var(--sk-violet) 67%, var(--sk-noir) 100%);
 }
 
-/* Le 0/14 une fois DÉCLARÉ. La carte peinte reste la sienne — c'est la même
-   carte, sa pastille dit toujours ce qu'elle peut valoir — et le chiffre
-   annoncé se pose au centre, en grand. Sans lui, un 0/14 joué à 14 et un joué
-   à 0 seraient le même dessin sur le tapis, alors que l'un remporte le pli et
-   que l'autre le donne.
+/* Le 0/14 une fois DÉCLARÉ : la pastille de la valeur retenue, frappée sur le
+   dessin. La carte peinte reste la sienne — ses médaillons d'angle disent
+   toujours ce qu'elle PEUT valoir — et la pastille du centre dit ce qu'elle
+   vaut. Sans elle, un 0/14 joué à 14 et un joué à 0 seraient le même dessin
+   sur le tapis, alors que l'un remporte le pli et que l'autre le donne.
 
-   Il faut rendre visible ce que `.sk-card--art` masque : d'où la double
-   classe, qui passe devant. Le chiffre y est encré plutôt que fantôme (à 0,3
-   d'opacité il servait de filigrane sur un fond crème, il se perdrait sur une
-   illustration), et son halo sombre lui fait un fond sans cacher le dessin —
-   le même procédé que le « ? » du dos de carte. */
-.sk-card--art.sk-card--wild14-pose .sk-card__figure {
-  display: flex;
-  opacity: 1;
-  color: var(--sk-brass-hi);
-  font-size: calc(var(--sk-w) * 0.46);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
-  background: radial-gradient(circle at 50% 50%,
-    rgba(6, 4, 2, 0.86) 0%, rgba(6, 4, 2, 0.66) 34%, rgba(6, 4, 2, 0) 64%);
+   C'est le même objet que celui qu'on a choisi dans le cadre de déclaration :
+   on reconnaît sur le tapis ce qu'on vient de cliquer. Même place et même
+   taille que l'emblème de la Tigresse, pour la même raison — c'est le second
+   cas où une carte change de nature en se posant. */
+.sk-card__declare {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 61%;
+  width: 52%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: var(--sk-pastille) 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
+}
+
+.sk-card__declare--0.sk-card__declare--jaune { --sk-pastille: url('assets/skin/pastille-0-jaune.webp'); }
+.sk-card__declare--0.sk-card__declare--vert { --sk-pastille: url('assets/skin/pastille-0-vert.webp'); }
+.sk-card__declare--0.sk-card__declare--violet { --sk-pastille: url('assets/skin/pastille-0-violet.webp'); }
+.sk-card__declare--0.sk-card__declare--noir { --sk-pastille: url('assets/skin/pastille-0-noir.webp'); }
+.sk-card__declare--14.sk-card__declare--jaune { --sk-pastille: url('assets/skin/pastille-14-jaune.webp'); }
+.sk-card__declare--14.sk-card__declare--vert { --sk-pastille: url('assets/skin/pastille-14-vert.webp'); }
+.sk-card__declare--14.sk-card__declare--violet { --sk-pastille: url('assets/skin/pastille-14-violet.webp'); }
+.sk-card__declare--14.sk-card__declare--noir { --sk-pastille: url('assets/skin/pastille-14-noir.webp'); }
+
+/* Dans l'éventail, la carte est recouverte par sa voisine : la pastille
+   remonte et rétrécit pour rester dans la bande visible. */
+.sk-hand .sk-card__declare {
+  top: 46%;
+  width: 44%;
 }
 
 /* Le bonus des 14, posé CONTRE le médaillon d'angle et mordant dessus : une
@@ -5963,8 +5980,9 @@ body.sk-ciblage .sk-turn-indicator {
    Les pourcentages sont ceux du feutre, moitié de sa largeur et de sa
    hauteur ajoutées à son origine — ils suivent donc `.sk-table` si la scène
    change. */
+/* Le 0/14 a quitté cette liste : il ne précise plus un détail, il décide de
+   ce que la carte EST, et il a donc son cadre plein écran comme la Tigresse. */
 .sk-scene #sk-joker-choice:not(.hidden),
-.sk-scene #sk-declare-choice:not(.hidden),
 .sk-scene #sk-plank-choice:not(.hidden) {
   left: 42.66%;   /* 23.35 % + 38.61 % / 2 */
   top: 59.83%;    /* 41.55 % + 36.56 % / 2 */
@@ -6991,7 +7009,8 @@ body.sk-ciblage .sk-turn-indicator {
    de l'écran, et il le prend en images : les deux emblèmes peints, séparés
    d'un slash, comme sur la carte elle-même où ils cohabitent dans les
    médaillons d'angle tant que le choix reste ouvert. */
-.sk-tigress-choice {
+.sk-tigress-choice,
+.sk-declare-choice {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -7002,11 +7021,13 @@ body.sk-ciblage .sk-turn-indicator {
   background: rgba(3, 8, 10, 0.76);
 }
 
-.sk-tigress-choice.hidden {
+.sk-tigress-choice.hidden,
+.sk-declare-choice.hidden {
   display: none;
 }
 
-.sk-tigress-cadre {
+.sk-tigress-cadre,
+.sk-declare-cadre {
   position: relative;
   max-width: 560px;
   max-height: 100%;
@@ -7025,7 +7046,8 @@ body.sk-ciblage .sk-turn-indicator {
     0 18px 40px rgba(0, 0, 0, 0.65);
 }
 
-.sk-tigress-titre {
+.sk-tigress-titre,
+.sk-declare-titre {
   margin: 0 0 14px;
   font-family: 'Cinzel Decorative', Georgia, serif;
   font-weight: 700;
@@ -7033,7 +7055,8 @@ body.sk-ciblage .sk-turn-indicator {
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
 
-.sk-tigress-duel {
+.sk-tigress-duel,
+.sk-declare-duel {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7043,7 +7066,8 @@ body.sk-ciblage .sk-turn-indicator {
 /* Le slash de la maquette : c'est lui qui dit « l'un OU l'autre ». Tracé
    au trait, pas au caractère — un « / » de fonte penche selon la police et
    ne monte jamais aussi haut que les deux disques. */
-.sk-tigress-slash {
+.sk-tigress-slash,
+.sk-declare-slash {
   flex-shrink: 0;
   width: 3px;
   height: clamp(100px, 23vw, 156px);
@@ -7053,7 +7077,8 @@ body.sk-ciblage .sk-turn-indicator {
   font-size: 0; /* le « / » du DOM reste pour qui lit la page en texte brut */
 }
 
-.sk-tigress-option {
+.sk-tigress-option,
+.sk-declare-option {
   /* `auto` et pas `0` : les deux libellés doivent tenir sur une ligne, et
      « Comme Pirate » est plus long que « Comme Fuite ». À base zéro les deux
      colonnes sont strictement égales et la plus longue passe à la ligne,
@@ -7075,6 +7100,39 @@ body.sk-ciblage .sk-turn-indicator {
 
 /* L'emblème est le bouton : il grossit et s'allume au survol, le libellé
    ne fait que le nommer. */
+/* La pastille EST le bouton, comme le blason l'est pour la Tigresse : elle
+   grossit et s'allume au survol, le libellé ne fait que la nommer. Sa couleur
+   suit la famille de la carte qu'on pose — `data-famille`, posé par le clic
+   qui ouvre le cadre. C'est la même image que celle qui sera frappée sur la
+   carte : rien à reconnaître entre le clic et le tapis. */
+.sk-declare-pastille {
+  width: clamp(104px, 26vw, 168px);
+  aspect-ratio: 1 / 1;
+  background: var(--sk-pastille) 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1), filter 0.18s ease;
+}
+
+.sk-declare-choice[data-famille='jaune'] .sk-declare-option--0 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-0-jaune.webp'); }
+.sk-declare-choice[data-famille='vert'] .sk-declare-option--0 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-0-vert.webp'); }
+.sk-declare-choice[data-famille='violet'] .sk-declare-option--0 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-0-violet.webp'); }
+.sk-declare-choice[data-famille='noir'] .sk-declare-option--0 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-0-noir.webp'); }
+.sk-declare-choice[data-famille='jaune'] .sk-declare-option--14 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-14-jaune.webp'); }
+.sk-declare-choice[data-famille='vert'] .sk-declare-option--14 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-14-vert.webp'); }
+.sk-declare-choice[data-famille='violet'] .sk-declare-option--14 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-14-violet.webp'); }
+.sk-declare-choice[data-famille='noir'] .sk-declare-option--14 .sk-declare-pastille { --sk-pastille: url('assets/skin/pastille-14-noir.webp'); }
+
+.sk-declare-option:hover .sk-declare-pastille,
+.sk-declare-option:focus-visible .sk-declare-pastille {
+  transform: scale(1.06);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 14px var(--sk-halo));
+}
+
+/* Le halo dit l'enjeu : froid pour le zéro qui renonce, chaud pour le
+   quatorze qui prend. */
+.sk-declare-option--0 { --sk-halo: rgba(90, 158, 214, 0.55); }
+.sk-declare-option--14 { --sk-halo: rgba(214, 168, 74, 0.6); }
+
 .sk-tigress-embleme {
   width: clamp(104px, 26vw, 168px);
   aspect-ratio: 1 / 1;
@@ -7096,30 +7154,36 @@ body.sk-ciblage .sk-turn-indicator {
 .sk-tigress-option--pirate { --sk-halo: rgba(178, 52, 42, 0.6); }
 
 .sk-tigress-option:hover,
-.sk-tigress-option:focus-visible {
+.sk-tigress-option:focus-visible,
+.sk-declare-option:hover,
+.sk-declare-option:focus-visible {
   color: var(--sk-cream);
   background: rgba(255, 236, 196, 0.05);
 }
 
-.sk-tigress-option:focus-visible {
+.sk-tigress-option:focus-visible,
+.sk-declare-option:focus-visible {
   outline: 2px solid var(--sk-brass-hi);
   outline-offset: 2px;
 }
 
-.sk-tigress-nom {
+.sk-tigress-nom,
+.sk-declare-nom {
   white-space: nowrap;
   font-size: 0.86rem;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
 
-.sk-tigress-effet {
+.sk-tigress-effet,
+.sk-declare-effet {
   font-family: 'Spectral', Georgia, serif;
   font-size: 0.74rem;
   opacity: 0.66;
 }
 
-.sk-tigress-note {
+.sk-tigress-note,
+.sk-declare-note {
   margin: 12px 0 0;
   font-family: 'Spectral', Georgia, serif;
   font-size: 0.76rem;
@@ -7129,7 +7193,8 @@ body.sk-ciblage .sk-turn-indicator {
 
 /* Le cadre s'ouvre sur un clic de carte : il faut pouvoir en ressortir sans
    avoir choisi, sinon un clic de travers coûte la Tigresse. */
-.sk-tigress-annuler {
+.sk-tigress-annuler,
+.sk-declare-annuler {
   margin-top: 10px;
   padding: 4px 10px;
   border: 0;
@@ -7166,7 +7231,8 @@ body.sk-ciblage .sk-turn-indicator {
     background: linear-gradient(90deg, rgba(184, 137, 53, 0), var(--sk-brass) 22%, var(--sk-brass) 78%, rgba(184, 137, 53, 0));
   }
 
-  .sk-tigress-embleme {
+  .sk-tigress-embleme,
+  .sk-declare-pastille {
     width: clamp(96px, 34vw, 132px);
   }
 }
@@ -7175,16 +7241,19 @@ body.sk-ciblage .sk-turn-indicator {
    cadre doit tenir en hauteur sans ascenseur, sinon un des deux choix se
    trouve hors champ au moment de trancher. */
 @media (max-height: 560px) {
-  .sk-tigress-cadre {
+  .sk-tigress-cadre,
+  .sk-declare-cadre {
     padding: 12px 20px 10px;
   }
 
-  .sk-tigress-titre {
+  .sk-tigress-titre,
+  .sk-declare-titre {
     margin-bottom: 8px;
     font-size: 1rem;
   }
 
-  .sk-tigress-embleme {
+  .sk-tigress-embleme,
+  .sk-declare-pastille {
     width: clamp(76px, 17vh, 116px);
   }
 
