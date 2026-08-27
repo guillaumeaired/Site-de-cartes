@@ -28,12 +28,12 @@ RACINE = Path(__file__).resolve().parent.parent
 SRC = RACINE / 'public/assets/skin/src'
 OUT = RACINE / 'public/assets/cards'
 
-# planche -> préfixe des quatorze fichiers de sortie. Le vert n'a pas encore
-# sa planche : sa famille reste dessinée en CSS (voir cardClass).
+# planche -> préfixe des quatorze fichiers de sortie.
 PLANCHES = {
     'cartes-tresor-sk.png':    'tresor',
     'cartes-violettes-sk.png': 'carte',
     'cartes-atouts-sk.png':    'pavillon',
+    'cartes-perroquets-sk.png': 'perroquet',
 }
 
 RATIO = 0.7      # celui de .sk-card, height: calc(var(--sk-w) / 0.7)
@@ -57,7 +57,12 @@ def segments(v, seuil, mini):
 
 def grille(a):
     """Les quatorze rectangles, repérés par ce qui n'est PAS le plan de bois."""
-    bois = np.median(a[140:175].reshape(-1, 3), axis=0)
+    # Le bois se relève dans les marges latérales, sous le titre : le bandeau
+    # de titre n'a pas la même hauteur d'une planche à l'autre, et l'échantil-
+    # lonner en aveugle sur une bande horizontale ramenait du blanc.
+    marge = a.shape[0] // 5
+    bois = np.median(np.concatenate([a[marge:, :8].reshape(-1, 3),
+                                     a[marge:, -8:].reshape(-1, 3)]), axis=0)
     hors = np.linalg.norm(a - bois, axis=2) > 60
     lignes = segments(hors[:, 20:-20].mean(axis=1), 0.30, 100)
     lignes = [(y0, y1) for y0, y1 in lignes if y1 - y0 > 200]   # écarte le titre

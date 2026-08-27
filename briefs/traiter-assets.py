@@ -72,6 +72,10 @@ ASSETS = {
     'logo-skullking-h':  ('logo-sk-horizontal.png', False),  # alpha déjà présent
     'logo-skullking-v':  ('logo-sk.png', True),              # sur magenta
     'dos-carte':         ('dos-cartes-sk.png', False),       # opaque, plein cadre
+    # Le pointeur de la roue de tirage. À passer ensuite dans
+    # briefs/recentrer-aiguille.py, qui le recadre sur son moyeu et donne le
+    # pourcentage de pivot à reporter dans .sk-wheel-needle.
+    'aiguille-roue':     ('pointeur-fleche.png', True),       # sur magenta
 }
 
 # Certains PNG bruts arrivent bien plus grands que leur usage. Le dos de carte

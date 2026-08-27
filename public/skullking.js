@@ -148,9 +148,9 @@ const CARD_ART = {
   "Rosie D'Laney": 'pablo',
 };
 
-// Les trois familles illustrées, et le préfixe de leurs quatorze fichiers.
-// Le Vert n'a pas encore sa planche : il reste dessiné en CSS, comme avant.
+// Les quatre familles illustrées, et le préfixe de leurs quatorze fichiers.
 const SUIT_ART = {
+  vert: 'perroquet',   // l'ara sur son perchoir
   jaune: 'tresor',     // le coffre ouvert
   violet: 'carte',     // la carte au trésor
   noir: 'pavillon',    // le pavillon noir — la famille d'atout
@@ -2892,10 +2892,45 @@ function playStartReveal(players, starterId) {
   const winnerIndex = Math.max(0, players.findIndex((p) => p.id === starterId));
   const starter = players[winnerIndex];
 
-  const stops = players
-    .map((p, i) => `${pieceFor(p).color} ${(i * step).toFixed(2)}deg ${((i + 1) * step).toFixed(2)}deg`)
-    .join(', ');
-  wheel.style.background = `conic-gradient(${stops})`;
+  // Les secteurs ne sont plus des aplats de couleur mais le TAPIS de chaque
+  // joueur : le feutre de sa pièce, frappé de sa figure (voir
+  // briefs/decouper-feutres.py). Un conic-gradient ne sait porter que des
+  // couleurs, d'où ce SVG : un chemin de camembert par joueur, qui découpe
+  // l'image de son feutre. Le découpage suit le nombre de joueurs, c'est le
+  // même pas d'angle que les étiquettes et que l'arrêt de la flèche.
+  const R = 50;
+  const point = (deg) => {
+    const a = (deg * Math.PI) / 180;
+    // 0° en haut, sens horaire — la convention du conic-gradient qu'on
+    // remplace, et celle de la rotation de la flèche plus bas.
+    return `${(50 + R * Math.sin(a)).toFixed(3)},${(50 - R * Math.cos(a)).toFixed(3)}`;
+  };
+  const secteurs = players.map((p, i) => ({
+    cle: pieceFor(p).key,
+    depart: point(i * step),
+    // Un camembert se trace en un arc ; au-delà d'un demi-tour il faut le
+    // dire à SVG (large-arc), sinon il prend le petit côté.
+    d: n === 1
+      ? `M50,0A${R},${R} 0 1 1 50,100A${R},${R} 0 1 1 50,0Z`
+      : `M50,50L${point(i * step)}A${R},${R} 0 ${step > 180 ? 1 : 0} 1 ${point((i + 1) * step)}Z`,
+  }));
+  wheel.style.background = 'none';
+  wheel.innerHTML =
+    '<svg class="sk-wheel-svg" viewBox="0 0 100 100" aria-hidden="true">' +
+    '<defs>' +
+    secteurs.map((s, i) => `<clipPath id="sk-roue-s${i}"><path d="${s.d}"/></clipPath>`).join('') +
+    '</defs>' +
+    secteurs
+      .map((s, i) =>
+        `<image href="assets/skin/feutre-${s.cle}.webp" x="0" y="0" width="100" height="100"` +
+        ` preserveAspectRatio="xMidYMid slice" clip-path="url(#sk-roue-s${i})"/>`)
+      .join('') +
+    // Une couture sombre sur chaque rayon : deux feutres voisins peuvent être
+    // proches de teinte, et sans elle on ne voit plus où l'un finit.
+    (n > 1
+      ? secteurs.map((s) => `<path class="sk-wheel-seam" d="M50,50L${s.depart}"/>`).join('')
+      : '') +
+    '</svg>';
 
   // Étiquettes à l'angle du centre de leur secteur (0° = en haut, sens
   // horaire) - même convention que la rotation de la flèche ci-dessous, pour
