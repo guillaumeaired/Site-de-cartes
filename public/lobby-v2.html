@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maquette — Création de partie & Salon d'attente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* =========================================================
+       MAQUETTE — Écran de création de partie + Salon d'attente,
+       en PAYSAGE (ordinateur), pour les 4 jeux.
+       Direction artistique reprise du hub (index.html) :
+         · feutre sombre teinté par la couleur du jeu
+         · cartes à bordure noire 3px + ombre portée dure 4px
+         · Baloo 2 pour les titres, pastilles accent en majuscules
+       Autonome : aucune dépendance à style.css / *.js, fausses
+       données, aucun socket. Le jeu réel ne risque rien.
+       ========================================================= */
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #fff;
+      overflow: hidden;
+      background:
+        repeating-linear-gradient(45deg, rgba(255,255,255,.016) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgba(255,255,255,.016) 0 1px, transparent 1px 4px),
+        radial-gradient(ellipse at 50% 45%, transparent 38%, rgba(0,0,0,.55) 100%),
+        radial-gradient(circle at 50% -5%, var(--glow) 0%, transparent 58%),
+        linear-gradient(160deg, var(--felt-1), var(--felt-2));
+      transition: background .4s ease;
+    }
+    /* Lueur qui dérive lentement, comme sur le hub. */
+    body::before, body::after {
+      content: ''; position: fixed; inset: -20%; pointer-events: none; z-index: 0;
+      background: radial-gradient(circle, var(--drift) 0%, transparent 60%);
+      animation: derive 20s ease-in-out infinite;
+    }
+    body::after { animation: derive 28s ease-in-out infinite reverse;
+      background: radial-gradient(circle, rgba(251,191,36,.13) 0%, transparent 55%); }
+    @keyframes derive {
+      0%,100% { transform: translate(-6%,-8%) scale(1); }
+      50%     { transform: translate(6%,6%) scale(1.15); }
+    }
+
+    /* Palettes par jeu (identiques à celles du hub). */
+    body[data-jeu="skullking"] { --accent:#fb923c; --accent-2:#facc15; --felt-1:#5b1010; --felt-2:#160404;
+      --glow:#8a1f1f; --drift:rgba(185,48,32,.38); }
+    body[data-jeu="rami"]      { --accent:#34d399; --accent-2:#a7f3d0; --felt-1:#065f46; --felt-2:#01201a;
+      --glow:#0f9b6c; --drift:rgba(16,185,129,.30); }
+    body[data-jeu="ascenseur"] { --accent:#38bdf8; --accent-2:#bae6fd; --felt-1:#123049; --felt-2:#04101b;
+      --glow:#1c6fa5; --drift:rgba(56,189,248,.26); }
+    body[data-jeu="bataille"]  { --accent:#f87171; --accent-2:#fecaca; --felt-1:#6b1414; --felt-2:#2e0a0a;
+      --glow:#8a1f1f; --drift:rgba(185,48,32,.34); }
+
+    .hidden { display: none !important; }
+    .ecran { position: relative; z-index: 1; height: calc(100dvh - 46px); display: none; }
+    .ecran.actif { display: grid; }
+
+    /* ============ éléments de langage communs ============ */
+    .carte {
+      position: relative; overflow: hidden;
+      border: 3px solid #1a1208; border-radius: 20px;
+      background: linear-gradient(160deg, rgba(255,255,255,.085), rgba(0,0,0,.36));
+      box-shadow: 4px 4px 0 rgba(0,0,0,.5);
+    }
+    .pastille {
+      display: inline-block; font-size: .64rem; font-weight: 800; letter-spacing: .5px;
+      text-transform: uppercase; color: var(--accent);
+      background: rgba(0,0,0,.32); padding: 4px 12px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .titre-bloc {
+      font-size: .68rem; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+      color: rgba(255,255,255,.5); margin: 0 0 10px;
+    }
+    .bouton {
+      font: inherit; font-weight: 800; color: #fff; cursor: pointer;
+      border: 3px solid #1a1208; border-radius: 14px;
+      background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(0,0,0,.3));
+      box-shadow: 3px 3px 0 rgba(0,0,0,.45);
+      padding: 11px 18px;
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .bouton:hover { transform: translateY(-2px); border-color: var(--accent);
+      box-shadow: 3px 5px 0 rgba(0,0,0,.45), 0 0 20px color-mix(in srgb, var(--accent) 40%, transparent); }
+    .bouton:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 rgba(0,0,0,.45); }
+    .bouton--vedette {
+      background: linear-gradient(160deg, var(--accent-2), var(--accent));
+      color: #1a1208; font-size: 1.05rem; padding: 15px 24px;
+      text-shadow: 0 1px 0 rgba(255,255,255,.35);
+    }
+    .bouton--fantome { background: none; border-color: rgba(255,255,255,.16); box-shadow: none;
+      color: rgba(255,255,255,.75); font-weight: 700; }
+    .bouton--fantome:hover { box-shadow: none; color: #fff; background: rgba(255,255,255,.07); }
+
+    /* ============ barre du haut, commune aux deux écrans ============ */
+    .barre {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px clamp(16px,3vw,34px);
+      border-bottom: 2px solid rgba(255,255,255,.07);
+      background: rgba(0,0,0,.26);
+    }
+    .barre-retour {
+      font: inherit; font-size: .85rem; font-weight: 700; color: rgba(255,255,255,.7);
+      background: none; border: none; cursor: pointer; padding: 6px 2px;
+    }
+    .barre-retour:hover { color: #fff; }
+    .logo { display: flex; align-items: center; gap: 8px; margin-inline: auto; opacity: .92; }
+    .logo-icone { font-size: 1.15rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+    .logo-texte { font-size: .8rem; font-weight: 900; letter-spacing: 2.2px; text-transform: uppercase; color: #f5f0e6; }
+
+    /* =========================================================
+       ÉCRAN 1 — CRÉATION DE PARTIE
+       ========================================================= */
+    #ecran-creation { grid-template-rows: auto minmax(0,1fr); }
+    .cr-corps {
+      display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(30px,5vw,70px);
+      align-items: center; width: 100%; max-width: 1240px; margin: 0 auto;
+      padding: 0 clamp(20px,4vw,50px);
+    }
+
+    /* --- colonne gauche : identité du jeu --- */
+    .cr-mascotte { font-size: 3.4rem; margin: 14px 0 2px; display: block;
+      filter: drop-shadow(0 4px 5px rgba(0,0,0,.5)); animation: flotte 3.4s ease-in-out infinite; }
+    @keyframes flotte { 0%,100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-7px) rotate(5deg); } }
+    .cr-titre {
+      font-family: 'Baloo 2', sans-serif; font-size: clamp(2.8rem,5vw,4.1rem); font-weight: 800;
+      line-height: 1; margin: 0 0 12px; color: var(--accent-2);
+      text-shadow: 0 4px 0 rgba(0,0,0,.4);
+    }
+    .cr-accroche { margin: 0 0 22px; color: #dfe6ee; font-size: 1rem; max-width: 44ch; line-height: 1.5; }
+    .cr-faits { display: flex; gap: 12px; margin: 0 0 22px; flex-wrap: wrap; }
+    .cr-fait { padding: 12px 16px; min-width: 108px; }
+    .cr-fait-valeur { font-family: 'Baloo 2', sans-serif; font-size: 1.5rem; font-weight: 800; color: #fff7d6; line-height: 1; }
+    .cr-fait-label { display: block; margin-top: 4px; font-size: .63rem; font-weight: 800; letter-spacing: .9px;
+      text-transform: uppercase; color: rgba(255,255,255,.48); }
+
+    /* --- colonne droite : le panneau d'entrée --- */
+    .cr-panneau { padding: 26px 26px 24px; }
+    /* Reflet fixe qui donne du relief au panneau. */
+    .cr-panneau::before {
+      content: ''; position: absolute; inset: -60% -20% auto -20%; height: 120%;
+      background: linear-gradient(150deg, rgba(255,255,255,.10) 20%, transparent 55%);
+      pointer-events: none;
+    }
+    .cr-panneau-titre { font-family: 'Baloo 2', sans-serif; font-size: 1.45rem; font-weight: 800;
+      margin: 0 0 3px; color: #fff7d6; }
+    .cr-panneau-sous { margin: 0 0 18px; font-size: .82rem; color: rgba(255,255,255,.55); }
+
+    .champ-pseudo { display: flex; align-items: center; gap: 12px; margin: 0 0 16px;
+      padding: 8px 10px 8px 8px; border-radius: 16px;
+      background: rgba(0,0,0,.34); border: 2px solid rgba(255,255,255,.12);
+      transition: border-color .18s ease, box-shadow .18s ease; }
+    .champ-pseudo:focus-within { border-color: var(--accent);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+    .apercu-piece { width: 46px; height: 46px; flex: none; border-radius: 50%;
+      display: grid; place-items: center;
+      background: color-mix(in srgb, var(--piece-couleur,#b91c1c) 40%, #000);
+      border: 2px solid rgba(255,255,255,.28); color: #fff; }
+    .apercu-piece svg { width: 26px; height: 26px; }
+    .champ-pseudo input {
+      flex: 1; min-width: 0; font: inherit; font-size: 1.05rem; font-weight: 700; color: #fff;
+      background: none; border: none; outline: none; padding: 6px 2px;
+    }
+    .champ-pseudo input::placeholder { color: rgba(255,255,255,.35); font-weight: 600; }
+
+    .cr-creer { width: 100%; }
+    /* Rejoindre : action secondaire, sur une seule ligne discrete sous un
+       filet de separation - elle ne doit pas concurrencer "Creer une partie". */
+    .cr-rejoindre {
+      display: flex; align-items: center; gap: 10px;
+      margin: 18px 0 0; padding: 16px 0 0;
+      border-top: 2px solid rgba(255,255,255,.09);
+    }
+    .cr-rejoindre-label { flex: 1; font-size: .82rem; font-weight: 700; color: rgba(255,255,255,.5);
+      white-space: nowrap; }
+    .cr-rejoindre input {
+      width: 108px; flex: none; text-align: center; padding: 8px 4px;
+      font-family: 'Baloo 2', sans-serif; font-size: 1.1rem; font-weight: 800;
+      letter-spacing: 4px; text-indent: 4px; text-transform: uppercase; color: #fff7d6;
+      background: rgba(0,0,0,.38); border: 2px solid rgba(255,255,255,.13); border-radius: 11px;
+      outline: none; transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .cr-rejoindre input::placeholder { color: rgba(255,255,255,.26); }
+    .cr-rejoindre input:focus { border-color: var(--accent);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+    .cr-rejoindre .bouton { padding: 9px 16px; font-size: .85rem; }
+
+    /* Éventail décoratif derrière le panneau. */
+    .cr-eventail { position: absolute; right: -64px; bottom: -50px; display: flex; opacity: .09;
+      pointer-events: none; z-index: 0; }
+    .cr-panneau > *:not(.cr-eventail) { position: relative; z-index: 1; }
+    .cr-eventail span { width: 60px; height: 86px; border-radius: 8px; margin-left: -26px;
+      background: linear-gradient(160deg, #fff, #b9b2a4); border: 2px solid #1a1208;
+      transform: rotate(var(--r)); transform-origin: bottom center; }
+
+    /* =========================================================
+       ÉCRAN 2 — SALON D'ATTENTE (paysage, pleine largeur)
+       ========================================================= */
+    #ecran-salon { grid-template-rows: auto minmax(0,1fr) auto; }
+    .sa-code-inline { display: flex; align-items: center; gap: 8px; font-size: .78rem;
+      color: rgba(255,255,255,.55); font-weight: 700; }
+    .sa-code-inline b { font-family: 'Baloo 2', sans-serif; font-size: 1.15rem; letter-spacing: 3px;
+      color: var(--accent-2); }
+
+    .sa-corps {
+      display: grid; grid-template-columns: 290px minmax(0,1fr) 310px; gap: 18px;
+      padding: 18px clamp(16px,3vw,34px); min-height: 0;
+    }
+    .sa-colonne { padding: 18px 18px 16px; display: flex; flex-direction: column; min-height: 0; }
+
+    /* --- gauche : invitation --- */
+    .sa-code-grille { display: flex; gap: 8px; margin: 0 0 14px; }
+    .sa-code-case {
+      flex: 1; aspect-ratio: 1; display: grid; place-items: center;
+      font-family: 'Baloo 2', sans-serif; font-size: 2rem; font-weight: 800; color: #1a1208;
+      background: linear-gradient(160deg, var(--accent-2), var(--accent));
+      border: 3px solid #1a1208; border-radius: 12px;
+      box-shadow: 3px 3px 0 rgba(0,0,0,.45);
+      animation: apparait .45s cubic-bezier(.34,1.56,.64,1) backwards;
+      animation-delay: calc(var(--i) * .07s);
+    }
+    @keyframes apparait { from { opacity: 0; transform: translateY(12px) rotate(-6deg); } }
+    .sa-lien { display: flex; gap: 8px; align-items: center; margin: 0 0 14px;
+      padding: 9px 12px; border-radius: 12px; background: rgba(0,0,0,.34);
+      border: 2px solid rgba(255,255,255,.10); font-size: .74rem; color: rgba(255,255,255,.55);
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .sa-aide { margin: 0 0 16px; font-size: .74rem; line-height: 1.45; color: rgba(255,255,255,.45); }
+
+    /* --- chat du salon : occupe le bas de la colonne d'invitation --- */
+    .sa-chat { display: flex; flex-direction: column; min-height: 0; flex: 1;
+      border-top: 2px solid rgba(255,255,255,.08); padding-top: 14px; }
+    .sa-chat-journal { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column;
+      gap: 7px; margin: 0 0 10px; padding-right: 2px; }
+    .sa-chat-ligne { font-size: .78rem; line-height: 1.35; color: #e6e9ee; }
+    .sa-chat-ligne b { color: var(--accent-2); font-weight: 800; margin-right: 5px; }
+    .sa-chat-ligne--systeme { font-size: .72rem; color: rgba(255,255,255,.38); font-style: italic; }
+    .sa-chat-champ { display: flex; gap: 7px; align-items: center; padding: 6px 8px; border-radius: 12px;
+      background: rgba(0,0,0,.36); border: 2px solid rgba(255,255,255,.11); cursor: text;
+      transition: border-color .15s ease; }
+    .sa-chat-champ:focus-within { border-color: var(--accent); }
+    .sa-chat-champ input { flex: 1; min-width: 0; font: inherit; font-size: .82rem; color: #fff;
+      background: none; border: none; outline: none; padding: 4px 2px; }
+    .sa-chat-champ input::placeholder { color: rgba(255,255,255,.32); }
+    .sa-chat-envoi { font: inherit; font-size: .9rem; cursor: pointer; border: none; padding: 4px 6px;
+      border-radius: 8px; background: none; color: var(--accent); }
+    .sa-chat-envoi:hover { background: rgba(255,255,255,.09); }
+
+    /* --- centre : les joueurs, sur toute la largeur --- */
+    .sa-centre { min-width: 0; }
+    .sa-entete { display: flex; align-items: baseline; gap: 12px; margin: 0 0 14px; }
+    .sa-entete h2 { font-family: 'Baloo 2', sans-serif; font-size: 1.35rem; font-weight: 800;
+      margin: 0; color: #fff7d6; }
+    .sa-jauge { flex: 1; height: 8px; border-radius: 8px; background: rgba(0,0,0,.4);
+      border: 1px solid rgba(255,255,255,.09); overflow: hidden; }
+    .sa-jauge span { display: block; height: 100%; border-radius: 8px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s ease; }
+
+    /* Le nombre de colonnes est fixe par le JS selon la taille de la table,
+       pour que les places restent centrees et de taille constante. */
+    .sa-places { display: grid; gap: 13px; overflow: auto; align-content: center;
+      flex: 1; min-height: 0; padding-bottom: 4px; margin: 0 auto; width: 100%; }
+    .place {
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      padding: 15px 10px 13px; border-radius: 18px; border: 3px solid #1a1208;
+      background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(0,0,0,.34));
+      box-shadow: 4px 4px 0 rgba(0,0,0,.45);
+      animation: monte .4s cubic-bezier(.34,1.56,.64,1) backwards;
+      animation-delay: calc(var(--i) * .06s);
+    }
+    @keyframes monte { from { opacity: 0; transform: translateY(14px) scale(.94); } }
+    .place { position: relative; }
+    .place--moi { border-color: var(--accent);
+      box-shadow: 4px 4px 0 rgba(0,0,0,.45), 0 0 22px color-mix(in srgb, var(--accent) 34%, transparent); }
+
+    /* Couronne de l'hote : en pastille d'angle, pour laisser l'etiquette du
+       bas porter l'etat "pret / en attente". */
+    .place-couronne { position: absolute; top: -11px; right: -9px; width: 26px; height: 26px;
+      display: grid; place-items: center; font-size: .8rem; border-radius: 50%;
+      background: linear-gradient(160deg, var(--accent-2), var(--accent));
+      border: 2px solid #1a1208; box-shadow: 2px 2px 0 rgba(0,0,0,.4); }
+
+    /* Un joueur pret : liseré vert et pastille verte, lisible d'un coup d'oeil
+       meme sur les feutres rouge / bleu / vert. */
+    .place--pret { border-color: #34d399; }
+    .place--pret .place-piece { border-color: rgba(52,211,153,.55); }
+    .place-tag--pret { color: #052e20; background: linear-gradient(160deg, #6ee7b7, #34d399); }
+    .place-tag--attente { color: rgba(255,255,255,.5); }
+
+    .place-piece { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+      background: color-mix(in srgb, var(--c) 42%, #000);
+      border: 3px solid rgba(255,255,255,.26); color: #fff; }
+    .place-piece svg { width: 30px; height: 30px; }
+    .place-nom { font-weight: 800; font-size: .95rem; color: #fff7d6;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .place-tag { font-size: .58rem; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 20px; background: rgba(0,0,0,.34); color: rgba(255,255,255,.55); }
+    .place-tag--hote { color: #1a1208; background: linear-gradient(160deg, var(--accent-2), var(--accent)); }
+    .place--vide {
+      border-style: dashed; border-color: rgba(255,255,255,.20); background: rgba(0,0,0,.20);
+      box-shadow: none; color: rgba(255,255,255,.3);
+    }
+    .place--vide .place-piece { background: rgba(255,255,255,.05); border-style: dashed;
+      border-color: rgba(255,255,255,.18); font-size: 1.5rem; color: rgba(255,255,255,.3);
+      animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+    .place--vide .place-nom { color: rgba(255,255,255,.32); font-weight: 700; font-size: .84rem; }
+
+    /* --- droite : réglages --- */
+    .sa-reglages { display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+    .bascule { display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer;
+      background: none; border: none; font: inherit; color: #fff; padding: 0; text-align: left; }
+    .bascule-rail { width: 44px; height: 25px; flex: none; border-radius: 20px;
+      background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.15); position: relative;
+      transition: background .18s ease, border-color .18s ease; }
+    .bascule-bouton { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px;
+      border-radius: 50%; background: #fff; transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
+    .bascule[aria-pressed="true"] .bascule-rail { background: var(--accent); border-color: var(--accent-2); }
+    .bascule[aria-pressed="true"] .bascule-bouton { transform: translateX(19px); }
+    .bascule-label { font-size: .88rem; font-weight: 700; }
+    .reglage-aide { margin: 6px 0 0; font-size: .72rem; line-height: 1.45; color: rgba(255,255,255,.42); }
+
+    .pieces { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; }
+    .piece-choix { aspect-ratio: 1; display: grid; place-items: center; cursor: pointer;
+      border-radius: 12px; border: 2px solid rgba(255,255,255,.12); background: rgba(0,0,0,.3);
+      color: color-mix(in srgb, var(--c) 78%, #fff); transition: transform .15s cubic-bezier(.34,1.56,.64,1), border-color .15s ease; }
+    .piece-choix svg { width: 22px; height: 22px; }
+    .piece-choix:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.4); }
+    .piece-choix[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--c) 34%, #000);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
+    .piece-choix[disabled] { opacity: .28; cursor: not-allowed; transform: none; }
+
+    .formats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .format-btn { font: inherit; font-size: .78rem; font-weight: 700; color: rgba(255,255,255,.75);
+      padding: 9px 6px; border-radius: 11px; cursor: pointer;
+      border: 2px solid rgba(255,255,255,.12); background: rgba(0,0,0,.3);
+      transition: border-color .15s ease, color .15s ease, background .15s ease; }
+    .format-btn:hover { color: #fff; border-color: rgba(255,255,255,.34); }
+    .format-btn[aria-pressed="true"] { border-color: var(--accent); color: #fff;
+      background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+    .objectif { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+    .objectif-label { font-size: .72rem; font-weight: 800; letter-spacing: .6px;
+      text-transform: uppercase; color: rgba(255,255,255,.42); }
+    .objectif-choix { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; flex: 1; }
+    .format-btn--mini { padding: 6px 2px; font-size: .72rem; border-radius: 9px; }
+
+    .rappel { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+    .rappel li { display: flex; gap: 8px; font-size: .76rem; line-height: 1.4; color: rgba(255,255,255,.6); }
+    .rappel li::before { content: '◆'; color: var(--accent); font-size: .6rem; margin-top: 3px; }
+
+    /* --- pied : lancer la partie, pleine largeur --- */
+    .sa-pied { display: flex; align-items: center; gap: 18px;
+      padding: 13px clamp(16px,3vw,34px);
+      border-top: 2px solid rgba(255,255,255,.07); background: rgba(0,0,0,.3); }
+    .sa-pied-info { font-size: .82rem; color: rgba(255,255,255,.55); }
+    .sa-pied-info b { color: #fff7d6; }
+    /* Un seul bouton d'action, toujours au meme endroit :
+       "Lancer la partie" pour l'hote, "Je suis pret" pour les invites. */
+    .sa-action { min-width: 250px; }
+    .sa-action[disabled] { opacity: .4; cursor: not-allowed; transform: none; animation: none; }
+    .sa-action:not([disabled]) { animation: appel 2.2s ease-in-out infinite; }
+    .sa-action--pret { background: linear-gradient(160deg, #6ee7b7, #34d399);
+      color: #052e20; text-shadow: 0 1px 0 rgba(255,255,255,.3); }
+    .sa-action--annuler { background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(0,0,0,.3));
+      color: rgba(255,255,255,.8); text-shadow: none; animation: none; }
+    @keyframes appel {
+      0%,100% { box-shadow: 3px 3px 0 rgba(0,0,0,.45); }
+      50%     { box-shadow: 3px 3px 0 rgba(0,0,0,.45), 0 0 26px color-mix(in srgb, var(--accent) 65%, transparent); }
+    }
+
+    /* Compteur de prets : petites pastilles, une par joueur attendu. */
+    .sa-prets { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+    .sa-prets-points { display: flex; gap: 4px; }
+    .sa-prets-point { width: 9px; height: 9px; border-radius: 50%;
+      background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.12);
+      transition: background .2s ease; }
+    .sa-prets-point--pret { background: #34d399; border-color: #6ee7b7; }
+    .sa-prets-texte { font-size: .8rem; font-weight: 700; color: rgba(255,255,255,.6); }
+
+
+    /* =========================================================
+       Barre de maquette (n'existera pas dans le vrai site)
+       ========================================================= */
+    .mk {
+      position: fixed; z-index: 50; left: 50%; bottom: 6px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      background: rgba(8,6,6,.92); border: 2px solid rgba(255,255,255,.14); border-radius: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.55); font-size: .72rem;
+    }
+    .mk button { font: inherit; font-weight: 800; cursor: pointer; color: rgba(255,255,255,.6);
+      background: none; border: none; padding: 5px 10px; border-radius: 20px; }
+    .mk button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+    .mk-sep { width: 1px; height: 18px; background: rgba(255,255,255,.16); }
+    .mk label { color: rgba(255,255,255,.5); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .mk input[type="range"] { width: 92px; accent-color: #fbbf24; }
+    .mk-note { position: fixed; z-index: 50; left: 12px; bottom: 14px; font-size: .68rem;
+      color: rgba(255,255,255,.3); max-width: 240px; line-height: 1.4; }
+  </style>
+</head>
+<body data-jeu="skullking">
+
+  <!-- ================= ÉCRAN 1 : CRÉATION ================= -->
+  <section id="ecran-creation" class="ecran actif">
+    <header class="barre">
+      <button class="barre-retour">← Tous les jeux</button>
+      <span class="logo"><span class="logo-icone">🃏</span><span class="logo-texte">Guimams</span></span>
+      <button class="bouton bouton--fantome" style="font-size:.8rem;padding:8px 14px">📖 Règles du jeu</button>
+    </header>
+
+    <div class="cr-corps">
+      <div class="cr-hero">
+        <span class="pastille" id="cr-genre"></span>
+        <span class="cr-mascotte" id="cr-mascotte"></span>
+        <h1 class="cr-titre" id="cr-titre"></h1>
+        <p class="cr-accroche" id="cr-accroche"></p>
+        <div class="cr-faits" id="cr-faits"></div>
+      </div>
+
+      <div class="carte cr-panneau">
+        <div class="cr-eventail">
+          <span style="--r:-16deg"></span><span style="--r:-6deg"></span>
+          <span style="--r:4deg"></span><span style="--r:14deg"></span>
+        </div>
+        <h2 class="cr-panneau-titre">Prends place</h2>
+        <p class="cr-panneau-sous">Choisis ton pseudo, puis crée une table ou rejoins celle d'un ami.</p>
+
+        <div class="champ-pseudo">
+          <span class="apercu-piece" id="cr-apercu"></span>
+          <input type="text" maxlength="16" placeholder="Ton pseudo" value="Guimams" id="cr-pseudo" />
+        </div>
+
+        <button class="bouton bouton--vedette cr-creer" id="cr-creer"></button>
+
+        <div class="cr-rejoindre">
+          <span class="cr-rejoindre-label">Un ami t'a donné un code ?</span>
+          <input maxlength="4" placeholder="A1B2" aria-label="Code de la partie" />
+          <button class="bouton">Rejoindre →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ÉCRAN 2 : SALON D'ATTENTE ================= -->
+  <section id="ecran-salon" class="ecran">
+    <header class="barre">
+      <button class="barre-retour">← Quitter</button>
+      <span class="logo"><span class="logo-icone" id="sa-mascotte">💀</span><span class="logo-texte" id="sa-nom">Skull King</span></span>
+      <span class="sa-code-inline">Code <b>A1B2</b></span>
+    </header>
+
+    <div class="sa-corps">
+      <!-- gauche : invitation -->
+      <aside class="carte sa-colonne">
+        <p class="titre-bloc">Invite tes amis</p>
+        <div class="sa-code-grille">
+          <span class="sa-code-case" style="--i:0">A</span><span class="sa-code-case" style="--i:1">1</span>
+          <span class="sa-code-case" style="--i:2">B</span><span class="sa-code-case" style="--i:3">2</span>
+        </div>
+        <div class="sa-lien">🔗 guimams.onrender.com/…?c=A1B2</div>
+        <button class="bouton" style="width:100%">Copier le lien</button>
+        <p class="sa-aide">Ils arrivent directement dans ce salon. Tant que la partie n'est pas lancée, chacun peut entrer et sortir librement.</p>
+
+        <div class="sa-chat">
+          <p class="titre-bloc">Salon</p>
+          <div class="sa-chat-journal" id="sa-chat-journal"></div>
+          <div class="sa-chat-champ">
+            <input type="text" maxlength="200" placeholder="Écrire au salon…" />
+            <button class="sa-chat-envoi" title="Envoyer">➤</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- centre : joueurs sur toute la largeur -->
+      <section class="carte sa-colonne sa-centre">
+        <div class="sa-entete">
+          <h2>Joueurs</h2>
+          <span class="pastille" id="sa-compte"></span>
+          <div class="sa-jauge"><span id="sa-jauge"></span></div>
+        </div>
+        <div class="sa-places" id="sa-places"></div>
+      </section>
+
+      <!-- droite : réglages -->
+      <aside class="carte sa-colonne">
+        <div class="sa-reglages" id="sa-reglages"></div>
+      </aside>
+    </div>
+
+    <footer class="sa-pied">
+      <span class="sa-pied-info" id="sa-pied-info"></span>
+      <div class="sa-prets">
+        <div class="sa-prets-points" id="sa-prets-points"></div>
+        <span class="sa-prets-texte" id="sa-prets-texte"></span>
+      </div>
+      <button class="bouton bouton--vedette sa-action" id="sa-action"></button>
+    </footer>
+  </section>
+
+  <!-- barre de maquette -->
+  <div class="mk">
+    <button data-ecran="creation" aria-pressed="true">Création</button>
+    <button data-ecran="salon" aria-pressed="false">Salon</button>
+    <span class="mk-sep"></span>
+    <button data-jeu="skullking" aria-pressed="true">Skull King</button>
+    <button data-jeu="rami" aria-pressed="false">Rami</button>
+    <button data-jeu="ascenseur" aria-pressed="false">Ascenseur</button>
+    <button data-jeu="bataille" aria-pressed="false">Bataille</button>
+    <span class="mk-sep"></span>
+    <label>Joueurs <input type="range" id="mk-joueurs" min="1" max="9" value="4" /><b id="mk-joueurs-val">4</b></label>
+    <span class="mk-sep"></span>
+    <button id="mk-role" aria-pressed="true">Vue hôte</button>
+    <button id="mk-tous" aria-pressed="false">Tous prêts</button>
+  </div>
+  <p class="mk-note">Maquette autonome — fausses données, aucun socket. Le jeu en ligne n'est pas touché.</p>
+
+<script>
+/* ---------- les 9 pièces (identiques à celles du Skull King) ---------- */
+const PIECES = [
+  { key:'crane', label:'Crâne', color:'#b91c1c', svg:'<circle cx="12" cy="9.5" r="6.6"/><circle cx="9.6" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><circle cx="14.4" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M8.2 15.6h7.6v3a1.6 1.6 0 0 1-1.6 1.6H9.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M10.7 15.8v4.3M13.3 15.8v4.3"/>' },
+  { key:'ancre', label:'Ancre', color:'#1d4ed8', svg:'<circle cx="12" cy="4.4" r="2.3"/><path d="M12 6.7V21"/><path d="M8 10h8"/><path d="M4.8 14.3c0 3.7 3.2 6.7 7.2 6.7s7.2-3 7.2-6.7"/>' },
+  { key:'voilier', label:'Voilier', color:'#15803d', svg:'<path d="M12 2.8v12.6"/><path d="M13.3 4.6l5 10.8h-5z" fill="currentColor" stroke="none"/><path d="M10.7 6.8 6.2 15.4h4.5z"/><path d="M3.4 17.2h17.2l-2.7 3.9H6.1z"/>' },
+  { key:'sabre', label:'Sabre', color:'#a16207', svg:'<path d="M20.2 3.8 9.7 14.3"/><path d="M6.9 12.9l4.2 4.2"/><path d="M8.3 15.7 4.9 19.1"/><circle cx="3.9" cy="20.1" r="1.5"/>' },
+  { key:'boussole', label:'Boussole', color:'#0f766e', svg:'<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-2 4.8-4.8 2 2-4.8z" fill="currentColor" stroke="none"/>' },
+  { key:'coffre', label:'Coffre', color:'#c2410c', svg:'<path d="M3.6 10.6h16.8V19a1.6 1.6 0 0 1-1.6 1.6H5.2A1.6 1.6 0 0 1 3.6 19z"/><path d="M3.6 10.6A8.6 8.6 0 0 1 12 5.6a8.6 8.6 0 0 1 8.4 5"/><path d="M3.6 13.8h16.8"/><rect x="10.6" y="12.1" width="2.8" height="4" rx="0.7" fill="currentColor" stroke="none"/>' },
+  { key:'barre', label:'Barre', color:'#6d28d9', svg:'<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>' },
+  { key:'bouteille', label:'Bouteille', color:'#a21caf', svg:'<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>' },
+  { key:'crochet', label:'Crochet', color:'#be123c', svg:'<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>' },
+];
+/* Les pieces pirates ne veulent rien dire au Rami ou a la Bataille : ces
+   jeux-la partagent un jeu de pieces neutre, meme dessin au trait, meme
+   principe (une piece = un joueur, unique dans le salon). */
+const PIECES_NEUTRES = [
+  { key:'etoile', label:'Étoile', color:'#b45309', svg:'<path d="M12 3.2l2.6 5.6 6.1.8-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6-4.5-4.2 6.1-.8z"/>' },
+  { key:'lune', label:'Lune', color:'#4338ca', svg:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>' },
+  { key:'coeur', label:'Cœur', color:'#be123c', svg:'<path d="M12 20.3l-7-6.6a4.3 4.3 0 0 1 6.1-6.1l.9.9.9-.9a4.3 4.3 0 0 1 6.1 6.1z"/>' },
+  { key:'trefle', label:'Trèfle', color:'#15803d', svg:'<circle cx="12" cy="7" r="3.4"/><circle cx="7.6" cy="12.4" r="3.4"/><circle cx="16.4" cy="12.4" r="3.4"/><path d="M12 13.6V21"/>' },
+  { key:'eclair', label:'Éclair', color:'#a16207', svg:'<path d="M13.6 2.6 5.4 13.4h5.4l-1.4 8 8.2-10.8h-5.4z"/>' },
+  { key:'couronne', label:'Couronne', color:'#c2410c', svg:'<path d="M3.4 8.2l3.4 3.2 5.2-6.6 5.2 6.6 3.4-3.2-1.6 11.2H5z"/><path d="M5 19.4h14"/>' },
+  { key:'de', label:'Dé', color:'#0f766e', svg:'<rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.4"/><circle cx="8.6" cy="8.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r="1.3" fill="currentColor" stroke="none"/>' },
+  { key:'cle', label:'Clé', color:'#6d28d9', svg:'<circle cx="8.2" cy="8.2" r="4.4"/><path d="M11.4 11.4 20 20"/><path d="M16.4 15.2l2.4 2.4"/>' },
+  { key:'fleur', label:'Fleur', color:'#a21caf', svg:'<circle cx="12" cy="7.4" r="3"/><circle cx="12" cy="16.6" r="3"/><circle cx="7.4" cy="12" r="3"/><circle cx="16.6" cy="12" r="3"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>' },
+];
+
+const svgPiece = (p) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p.svg + '</svg>';
+
+/* Le jeu de pieces en vigueur depend du jeu de cartes choisi. */
+function jeuDePieces() { return jeu === 'skullking' ? PIECES : PIECES_NEUTRES; }
+
+/* Repartition des pieces autour de la table : la mienne d'abord, puis une
+   piece DIFFERENTE pour chaque autre joueur - c'est ce qui garantit qu'on ne
+   peut pas se retrouver a deux avec la meme. */
+function repartitionPieces(n) {
+  const set = jeuDePieces();
+  const mienne = set.find((x) => x.key === maPiece) || set[0];
+  const assises = [mienne];
+  let k = 0;
+  for (let i = 1; i < n; i++) {
+    while (set[k % set.length].key === mienne.key) k += 1;
+    assises.push(set[k % set.length]);
+    k += 1;
+  }
+  return assises;
+}
+
+/* ---------- fiche de chaque jeu ---------- */
+const JEUX = {
+  skullking: {
+    nom: 'Skull King', mascotte: '💀', genre: 'Jeu de plis · Pirates',
+    accroche: "Annonce le nombre de plis que tu vas remporter, puis tiens parole. Dix manches, des cartes spéciales, et des pirates qui changent tout.",
+    faits: [['3–7', 'Joueurs'], ['~25 min', 'Durée'], ['10', 'Manches']],
+    bouton: '💀 Créer une partie', min: 3, max: 7,
+    rappel: ['Atout noir : les cartes noires battent toutes les couleurs.',
+             'Annonce exacte : 20 points par pli annoncé.',
+             'Annonce 0 réussie : 10 points × le numéro de la manche.',
+             'Skull King bat les pirates… mais tombe face à la sirène.'],
+    reglages: 'skullking',
+  },
+  rami: {
+    nom: 'Rami', mascotte: '🎭', genre: 'Combinaisons · Variante maison',
+    accroche: "Pose tes suites et tes brelans, pioche, jette, et vide ta main avant l'adversaire. Notre variante maison, à deux.",
+    faits: [['2', 'Joueurs'], ['~20 min', 'Durée'], ['30 pts', 'Pour ouvrir']],
+    bouton: '🎴 Créer une partie', min: 2, max: 2,
+    rappel: ["Première pose : 30 points minimum, en une seule fois.",
+             "Le joker prend la valeur de la carte qu'il remplace.",
+             "Prendre une carte enterrée oblige à prendre tout ce qui est au-dessus."],
+    reglages: 'rami',
+  },
+  ascenseur: {
+    nom: "L'Ascenseur", mascotte: '🛗', genre: 'Jeu de plis · Annonces',
+    accroche: "Le nombre de cartes monte puis redescend. À chaque manche, annonce tes plis — juste, et seulement juste.",
+    faits: [['3–7', 'Joueurs'], ['~30 min', 'Durée'], ['1 → max → 1', 'Cartes par manche']],
+    bouton: '🛗 Créer une partie', min: 3, max: 7,
+    rappel: ["Contrat réussi : 10 points × le nombre de plis annoncés.",
+             "Contrat à 0 réussi : 5 points × le numéro de la manche.",
+             "Raté : −10 points par pli d'écart.",
+             "Le donneur annonce en dernier et ne peut pas faire coller le total au nombre de plis."],
+    reglages: 'aucun',
+  },
+  bataille: {
+    nom: 'Bataille', mascotte: '⚔️', genre: 'Le grand classique',
+    accroche: "La plus forte carte ramasse. En cas d'égalité, c'est la bataille — et tout le tas se joue sur une seule carte.",
+    faits: [['2–4', 'Joueurs'], ['~10 min', 'Durée'], ['52', 'Cartes']],
+    bouton: '⚔️ Créer une partie', min: 2, max: 4,
+    rappel: ["L'As est la carte la plus forte.",
+             "Égalité = bataille : une carte face cachée, une face visible.",
+             "Le premier qui a tout le paquet gagne."],
+    reglages: 'aucun',
+  },
+};
+
+const NOMS = ['Guimams', 'Léa', 'Tom', 'Chloé', 'Nino', 'Sarah', 'Max', 'Jules', 'Anaïs'];
+
+let jeu = 'skullking';
+let nbJoueurs = 4;
+let extension = false;
+let format = 'bo3';
+let objectif = 150;
+let maPiece = 'crane';
+let suisHote = true;
+
+/* L'hote n'a pas d'etat "pret" : lancer la partie EST son signal. Seuls les
+   invites cliquent "Je suis pret".
+   Dans la maquette : je pilote le mien quand je suis invite, les autres sont
+   prets sauf le dernier arrive. "Tous prets" force tout le monde. */
+let monPret = false;
+let toutLeMondePret = false;
+function indexHote() { return suisHote ? 0 : 1; }
+function estInvite(i) { return i !== indexHote(); }
+function estPret(i, n) {
+  if (!estInvite(i)) return true;          // l'hote est toujours pret
+  if (toutLeMondePret) return true;
+  if (i === 0) return monPret;             // moi, quand je suis invite
+  return n < 3 || i !== n - 1;             // le dernier arrive traine encore
+}
+
+/* ---------- écran 1 ---------- */
+function rendreCreation() {
+  const j = JEUX[jeu];
+  document.getElementById('cr-genre').textContent = j.genre;
+  document.getElementById('cr-mascotte').textContent = j.mascotte;
+  document.getElementById('cr-titre').textContent = j.nom;
+  document.getElementById('cr-accroche').textContent = j.accroche;
+  document.getElementById('cr-creer').textContent = j.bouton;
+  document.getElementById('cr-faits').innerHTML = j.faits
+    .map(([v, l]) => '<div class="carte cr-fait"><span class="cr-fait-valeur"></span><span class="cr-fait-label"></span></div>')
+    .join('');
+  // textContent pour ne jamais injecter de HTML (même en maquette).
+  document.querySelectorAll('#cr-faits .cr-fait').forEach((el, i) => {
+    el.querySelector('.cr-fait-valeur').textContent = j.faits[i][0];
+    el.querySelector('.cr-fait-label').textContent = j.faits[i][1];
+  });
+  const set = jeuDePieces();
+  const p = set.find((x) => x.key === maPiece) || set[0];
+  const ap = document.getElementById('cr-apercu');
+  ap.style.setProperty('--piece-couleur', p.color);
+  ap.innerHTML = svgPiece(p);
+}
+
+/* ---------- écran 2 ---------- */
+function rendreSalon() {
+  const j = JEUX[jeu];
+  const max = jeu === 'skullking' && extension ? 9 : j.max;
+  const n = Math.min(nbJoueurs, max);
+
+  document.getElementById('sa-mascotte').textContent = j.mascotte;
+  document.getElementById('sa-nom').textContent = j.nom;
+  document.getElementById('sa-compte').textContent = n + ' / ' + (j.min === max ? max : j.min + '–' + max);
+  document.getElementById('sa-jauge').style.width = Math.min(100, (n / max) * 100) + '%';
+
+  // places : grille centree, 4 colonnes au maximum par rangee
+  const places = document.getElementById('sa-places');
+  const assises = repartitionPieces(n);
+  const prises = assises.slice(1).map((x) => x.key); // pieces des autres joueurs
+  const colonnes = max <= 4 ? max : Math.min(5, Math.ceil(max / 2));
+  places.style.gridTemplateColumns = 'repeat(' + colonnes + ', minmax(0,1fr))';
+  places.style.maxWidth = colonnes * 196 + 'px';
+  places.innerHTML = '';
+  for (let i = 0; i < max; i++) {
+    const el = document.createElement('div');
+    el.style.setProperty('--i', i);
+    if (i < n) {
+      const sienne = assises[i];
+      const hote = !estInvite(i);
+      const pret = estPret(i, n);
+      el.className = 'place' + (i === 0 ? ' place--moi' : '') + (pret && !hote ? ' place--pret' : '');
+      el.style.setProperty('--c', sienne.color);
+
+      if (hote) {
+        const cour = document.createElement('span');
+        cour.className = 'place-couronne';
+        cour.textContent = '👑';
+        cour.title = 'Hôte de la partie';
+        el.appendChild(cour);
+      }
+
+      const rond = document.createElement('span');
+      rond.className = 'place-piece';
+      rond.innerHTML = svgPiece(sienne);
+      const nom = document.createElement('span');
+      nom.className = 'place-nom';
+      nom.textContent = i === 0 ? NOMS[0] + ' (toi)' : NOMS[i];
+      const tag = document.createElement('span');
+      tag.className = 'place-tag ' + (hote ? 'place-tag--hote' : pret ? 'place-tag--pret' : 'place-tag--attente');
+      tag.textContent = hote ? 'Hôte' : pret ? '✓ Prêt' : 'En attente';
+      el.append(rond, nom, tag);
+
+    } else {
+      el.className = 'place place--vide';
+      const rond = document.createElement('span');
+      rond.className = 'place-piece';
+      rond.textContent = '+';
+      const nom = document.createElement('span');
+      nom.className = 'place-nom';
+      nom.textContent = i < j.min ? 'Place à remplir' : 'Place libre';
+      const tag = document.createElement('span');
+      tag.className = 'place-tag';
+      tag.textContent = i < j.min ? 'Requis' : 'Optionnel';
+      el.append(rond, nom, tag);
+    }
+    places.appendChild(el);
+  }
+
+  // réglages
+  const r = document.getElementById('sa-reglages');
+  r.innerHTML = '';
+  const bloc = (titre) => {
+    const d = document.createElement('div');
+    const t = document.createElement('p');
+    t.className = 'titre-bloc';
+    t.textContent = titre;
+    d.appendChild(t);
+    r.appendChild(d);
+    return d;
+  };
+
+  // Selecteur de pieces, identique pour les quatre jeux (seul le jeu de
+  // pieces change). Une piece deja prise par un autre joueur est desactivee :
+  // c'est ce qui empeche deux joueurs de porter le meme signe.
+  const blocPieces = (aide) => {
+    const b = bloc('Ta pièce');
+    const grille = document.createElement('div');
+    grille.className = 'pieces';
+    jeuDePieces().forEach((piece) => {
+      const btn = document.createElement('button');
+      btn.className = 'piece-choix';
+      btn.style.setProperty('--c', piece.color);
+      const occupee = prises.includes(piece.key);
+      btn.title = occupee ? piece.label + ' — déjà prise' : piece.label;
+      btn.setAttribute('aria-pressed', String(piece.key === maPiece));
+      btn.disabled = occupee;
+      btn.innerHTML = svgPiece(piece);
+      if (!occupee) {
+        btn.addEventListener('click', () => { maPiece = piece.key; rendreSalon(); rendreCreation(); });
+      }
+      grille.appendChild(btn);
+    });
+    b.appendChild(grille);
+    if (aide) {
+      const t = document.createElement('p');
+      t.className = 'reglage-aide';
+      t.textContent = aide;
+      b.appendChild(t);
+    }
+    return b;
+  };
+
+  if (j.reglages === 'skullking') {
+    const b = bloc(suisHote ? 'Réglages de la partie' : "Réglages de l'hôte");
+    b.insertAdjacentHTML('beforeend',
+      '<button class="bascule" id="bascule-ext" aria-pressed="' + extension + '">' +
+      '<span class="bascule-rail"><span class="bascule-bouton"></span></span>' +
+      '<span class="bascule-label">🏆 Extension officielle</span></button>' +
+      '<p class="reglage-aide">Ajoute les cartes de l\'extension et ouvre la table jusqu\'à 9 joueurs.</p>');
+    const bascule = b.querySelector('#bascule-ext');
+    if (suisHote) {
+      bascule.addEventListener('click', () => { extension = !extension; rendreSalon(); });
+    } else {
+      // Seul l'hote regle la partie : les autres voient l'etat, sans pouvoir le changer.
+      bascule.disabled = true;
+      bascule.style.cursor = 'default';
+      bascule.style.opacity = '.6';
+      b.querySelector('.reglage-aide').textContent = "Réglé par l'hôte de la partie.";
+    }
+
+    blocPieces('Les pièces grisées sont déjà prises par un autre joueur.');
+  }
+
+  if (j.reglages === 'rami') {
+    const b = bloc(suisHote ? 'Format de la partie' : "Format choisi par l'hôte");
+    const g = document.createElement('div');
+    g.className = 'formats';
+    [['single', 'Partie simple'], ['bo3', 'BO3'], ['bo5', 'BO5'], ['race', 'Cumul de points']].forEach(([k, l]) => {
+      const btn = document.createElement('button');
+      btn.className = 'format-btn';
+      btn.textContent = l;
+      btn.setAttribute('aria-pressed', String(k === format));
+      if (suisHote) btn.addEventListener('click', () => { format = k; rendreSalon(); });
+      else { btn.disabled = true; btn.style.cursor = 'default'; btn.style.opacity = '.55'; }
+      g.appendChild(btn);
+    });
+    b.appendChild(g);
+    if (format === 'race') {
+      // Objectif de points : une seule rangee de 4 pastilles, pour que le
+      // "Rappel express" reste visible sous les reglages.
+      const ligne = document.createElement('div');
+      ligne.className = 'objectif';
+      const lab = document.createElement('span');
+      lab.className = 'objectif-label';
+      lab.textContent = 'Objectif';
+      ligne.appendChild(lab);
+      const g2 = document.createElement('div');
+      g2.className = 'objectif-choix';
+      [100, 150, 200, 300].forEach((v) => {
+        const btn = document.createElement('button');
+        btn.className = 'format-btn format-btn--mini';
+        btn.textContent = String(v);
+        btn.setAttribute('aria-pressed', String(v === objectif));
+        if (suisHote) btn.addEventListener('click', () => { objectif = v; rendreSalon(); });
+        else { btn.disabled = true; btn.style.cursor = 'default'; btn.style.opacity = '.55'; }
+        g2.appendChild(btn);
+      });
+      ligne.appendChild(g2);
+      b.appendChild(ligne);
+    }
+    b.insertAdjacentHTML('beforeend', '<p class="reglage-aide">' +
+      (suisHote ? 'Le format se choisit avant le lancement et vaut pour toute la partie.'
+                : "Réglé par l'hôte de la partie.") + '</p>');
+
+    blocPieces('Les pièces grisées sont déjà prises par un autre joueur.');
+  }
+
+  if (j.reglages === 'aucun') {
+    blocPieces('Aucun autre réglage pour ce jeu : la partie démarre telle quelle.');
+  }
+
+  const rap = bloc('Rappel express');
+  const ul = document.createElement('ul');
+  ul.className = 'rappel';
+  j.rappel.forEach((txt) => {
+    const li = document.createElement('li');
+    li.textContent = txt;
+    ul.appendChild(li);
+  });
+  rap.appendChild(ul);
+
+  // ---- pied de page : effectif, invites prets, bouton d'action unique ----
+  const assez = n >= j.min;
+  const invites = [];
+  for (let i = 0; i < n; i++) if (estInvite(i)) invites.push(i);
+  const nbPrets = invites.filter((i) => estPret(i, n)).length;
+  const tousPrets = nbPrets === invites.length;
+  const manquants = invites.length - nbPrets;
+
+  const info = document.getElementById('sa-pied-info');
+  info.innerHTML = '';
+  if (!assez) {
+    const b = document.createElement('b');
+    b.textContent = String(j.min - n);
+    info.append(document.createTextNode('Il manque '), b,
+      document.createTextNode(' joueur' + (j.min - n > 1 ? 's' : '') + ' pour pouvoir lancer.'));
+  } else if (!suisHote && tousPrets) {
+    // cote invite, une fois tout le monde pret, la seule info utile est
+    // qu'on attend le clic de l'hote.
+    info.textContent = "⏳ En attente du lancement par l'hôte…";
+  } else {
+    const b = document.createElement('b');
+    b.textContent = n + ' joueurs';
+    info.append(b, document.createTextNode(' à table.'));
+  }
+
+  // une pastille par invite (l'hote n'en a pas : il est pret par definition)
+  const points = document.getElementById('sa-prets-points');
+  points.innerHTML = '';
+  invites.forEach((i) => {
+    const d = document.createElement('span');
+    d.className = 'sa-prets-point' + (estPret(i, n) ? ' sa-prets-point--pret' : '');
+    d.title = NOMS[i] + (estPret(i, n) ? ' : prêt' : ' : pas encore prêt');
+    points.appendChild(d);
+  });
+  const texte = document.getElementById('sa-prets-texte');
+  texte.textContent = invites.length
+    ? nbPrets + ' / ' + invites.length + ' invité' + (invites.length > 1 ? 's' : '') + ' prêt' + (nbPrets > 1 ? 's' : '')
+    : 'Personne n\'est encore arrivé';
+
+  // bouton unique : lancer pour l'hote, pret pour les invites
+  const action = document.getElementById('sa-action');
+  action.className = 'bouton bouton--vedette sa-action';
+  action.onclick = null;
+  if (suisHote) {
+    action.disabled = !assez || !tousPrets;
+    action.textContent = !assez ? '🎮 Lancer la partie'
+      : tousPrets ? '🎮 Lancer la partie'
+      : '⏳ ' + manquants + ' invité' + (manquants > 1 ? 's' : '') + ' pas prêt' + (manquants > 1 ? 's' : '');
+  } else {
+    const jeSuisPret = estPret(0, n);
+    action.disabled = false;
+    action.classList.add(jeSuisPret ? 'sa-action--annuler' : 'sa-action--pret');
+    action.textContent = jeSuisPret ? '✓ Prêt — annuler' : 'Je suis prêt';
+    action.onclick = () => { toutLeMondePret = false; monPret = !jeSuisPret; rendreSalon(); };
+  }
+}
+
+/* ---------- chat du salon (faux messages) ---------- */
+const MESSAGES = [
+  { sys: true, texte: 'Léa a rejoint le salon.' },
+  { qui: 'Léa', texte: 'On attend Nino ou on lance ?' },
+  { qui: 'Tom', texte: 'Deux minutes, il arrive' },
+  { sys: true, texte: 'Nino a rejoint le salon.' },
+  { qui: 'Guimams', texte: "Parfait, je lance dès qu'on est 6" },
+];
+
+function rendreChat() {
+  const j = document.getElementById('sa-chat-journal');
+  if (!j) return;
+  j.innerHTML = '';
+  MESSAGES.forEach((m) => {
+    const p = document.createElement('p');
+    p.className = 'sa-chat-ligne' + (m.sys ? ' sa-chat-ligne--systeme' : '');
+    if (m.qui) {
+      const b = document.createElement('b');
+      b.textContent = m.qui;
+      p.appendChild(b);
+    }
+    p.appendChild(document.createTextNode(m.texte));
+    j.appendChild(p);
+  });
+  j.scrollTop = j.scrollHeight;
+}
+
+/* Cliquer n'importe où dans le bloc chat met le curseur dans le champ. */
+document.querySelector('.sa-chat').addEventListener('mousedown', (e) => {
+  if (e.target.closest('.sa-chat-journal') || e.target.closest('button')) return;
+  e.preventDefault();
+  document.querySelector('.sa-chat-champ input').focus();
+});
+
+/* ---------- barre de maquette ---------- */
+document.querySelectorAll('.mk [data-ecran]').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.mk [data-ecran]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    document.getElementById('ecran-creation').classList.toggle('actif', b.dataset.ecran === 'creation');
+    document.getElementById('ecran-salon').classList.toggle('actif', b.dataset.ecran === 'salon');
+  });
+});
+document.querySelectorAll('.mk [data-jeu]').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.mk [data-jeu]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    jeu = b.dataset.jeu;
+    document.body.dataset.jeu = jeu;
+    // les cles de pieces different d'un jeu a l'autre : retomber sur la premiere
+    if (!jeuDePieces().some((x) => x.key === maPiece)) maPiece = jeuDePieces()[0].key;
+    rendreCreation(); rendreSalon();
+  });
+});
+const btnRole = document.getElementById('mk-role');
+btnRole.addEventListener('click', () => {
+  suisHote = !suisHote;
+  btnRole.textContent = suisHote ? 'Vue hôte' : 'Vue joueur';
+  btnRole.setAttribute('aria-pressed', String(suisHote));
+  rendreSalon();
+});
+const btnTous = document.getElementById('mk-tous');
+btnTous.addEventListener('click', () => {
+  toutLeMondePret = !toutLeMondePret;
+  btnTous.setAttribute('aria-pressed', String(toutLeMondePret));
+  rendreSalon();
+});
+
+const curseur = document.getElementById('mk-joueurs');
+curseur.addEventListener('input', () => {
+  nbJoueurs = Number(curseur.value);
+  document.getElementById('mk-joueurs-val').textContent = nbJoueurs;
+  rendreSalon();
+});
+
+rendreCreation();
+rendreSalon();
+rendreChat();
+</script>
+</body>
+</html>
