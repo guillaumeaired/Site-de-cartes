@@ -27,6 +27,8 @@
     ?phase=playing  playing (défaut) | bidding | paused (pli remporté)
                     | fin (l'écran de fin ; &exaequo=4, &loupe=0)
                     | kraken (pli englouti, l'animation part au chargement)
+    ?planche=cible  la Planche en main, deux Pirates au tapis (désignation)
+    ?planche=avale  le même pli résolu, le Pirate poussé par-dessus bord
     ?fige=1300      fige toutes les animations à cet instant (ms), pour capturer
     ?manche=1       la manche 1 pendant l'annonce : la carte de chacun est
                     tournée vers les autres, la mienne face cachée
@@ -87,7 +89,22 @@ const joueurs = Array.from({ length: N }, (_, i) => ({
   bid: 2,
 }));
 
-const pli = Array.from({ length: JOUES }, (_, i) => ({ playerId: `p${i}`, card: carte(i) }));
+// `?planche=cible` : deux Pirates déjà posés, la Planche en main, à moi de
+// jouer — le cas qui règle la désignation de la cible sur le tapis.
+// `?planche=avale` : le même pli, résolu, avec le Pirate poussé par-dessus
+// bord — le cas qui règle l'animation.
+const PLANCHE = P.get('planche');
+
+const pli = PLANCHE
+  ? [
+      { playerId: 'p1', card: { id: 'pir1', kind: 'pirate', name: 'Harry le Géant' } },
+      { playerId: 'p2', card: { id: 'num1', kind: 'number', suit: 'vert', value: 11 } },
+      { playerId: 'p3', card: { id: 'pir2', kind: 'pirate', name: 'Juanita Jade' } },
+      ...(PLANCHE === 'avale'
+        ? [{ playerId: 'p0', card: { id: 'planche1', kind: 'plank', ext: true, removesId: 'pir2' } }]
+        : []),
+    ]
+  : Array.from({ length: JOUES }, (_, i) => ({ playerId: `p${i}`, card: carte(i) }));
 
 // Manche 1 : le serveur ne m'envoie que l'id de ma carte (kind 'hidden') et
 // donne à voir celle de chacun des autres. Voir stateFor.
@@ -113,16 +130,22 @@ const etat = {
   extensions: [],
   deckStyle: 'classique',
   lootAllies: [],
-  hand: MANCHE1 ? [{ id: 'c-moi', kind: 'hidden' }] : Array.from({ length: 6 }, (_, i) => carte(i + 10)),
+  hand: MANCHE1
+    ? [{ id: 'c-moi', kind: 'hidden' }]
+    : PLANCHE
+      ? [{ id: 'ma-planche', kind: 'plank', ext: true }, carte(11), carte(12)]
+      : Array.from({ length: 6 }, (_, i) => carte(i + 10)),
   myBid: MANCHE1 ? undefined : 2,
   currentTrick: MANCHE1 ? [] : pli,
-  turnPlayerId: `p${JOUES % N}`,
-  isMyTurn: JOUES === 0,
+  turnPlayerId: PLANCHE ? 'p0' : `p${JOUES % N}`,
+  isMyTurn: PLANCHE === 'cible' || JOUES === 0,
   trickNumber: 3,
   leadingPlayerId: 'p1',
   trickWillBeDestroyed: false,
-  trickPaused: PHASE === 'paused' || KRAKEN,
-  lastTrickResult: KRAKEN
+  trickPaused: PHASE === 'paused' || KRAKEN || PLANCHE === 'avale',
+  lastTrickResult: PLANCHE === 'avale'
+    ? { winnerId: 'p1', destroyed: false, devouredCardIds: [], plankedCardIds: ['pir2'], davyJones: null }
+    : KRAKEN
     ? { winnerId: null, destroyed: true, krakenCardId: 'c2', devouredCardIds: [], plankedCardIds: [], davyJones: null }
     : PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
   sittingOutThisTrick: false,
@@ -176,6 +199,19 @@ function classementFinal() {
   }
 
   emettre('skullking-state', etat);
+
+  // La Planche est posée en tête de main : on la clique pour entrer dans la
+  // désignation, qui est justement ce qu'on vient regarder.
+  if (PLANCHE === 'cible') {
+    requestAnimationFrame(() => {
+      // Par sa classe d'illustration : la main est triée, la Planche n'est
+      // pas forcément la première carte rendue.
+      const carte = [...document.querySelectorAll('#sk-hand .sk-card')]
+        .find((el) => el.className.includes('planche'));
+      if (carte) carte.click();
+    });
+  }
+
   // La révélation des annonces se déclenche sur la TRANSITION bidding -> le
   // reste : on sert donc deux états, l'annonce puis le jeu.
   if (P.get('annonces') === '1') {

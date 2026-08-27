@@ -347,7 +347,7 @@ function resolveTrick(cards) {
     // par le Kraken (Baleine ou Raie sur un pli sans numérotée le détruisent
     // aussi), et l'écran doit pouvoir montrer l'engloutissement sans avoir à
     // redeviner la cause depuis les cartes posées.
-    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx, krakenIdx: activeKraken };
+    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx, krakenIdx: activeKraken, destroyerIdx: activeKraken };
   }
 
   if (activeWhale !== -1 || activeStingray !== -1) {
@@ -362,7 +362,11 @@ function resolveTrick(cards) {
       if (k === 'number' && i !== monsterI && cards[i].value !== 0) numberIdx.push(i);
     });
     if (numberIdx.length === 0) {
-      return { winnerIdx: null, leaderIdx: 0, destroyed: true, monstersDestroyed, excludedIdx };
+      // Aucune numérotée dans le pli : le monstre a neutralisé tout le reste
+      // et il ne reste rien qui puisse gagner. `destroyerIdx` dit LEQUEL — un
+      // joueur qui voit son Pirate ne rien remporter cherche la cause, et la
+      // Raie posée trois cartes plus tôt n'est pas celle qu'il soupçonne.
+      return { winnerIdx: null, leaderIdx: 0, destroyed: true, monstersDestroyed, excludedIdx, destroyerIdx: monsterI };
     }
     const winnerIdx = numberIdx.reduce((best, i) => {
       const better = pickLowest ? cards[i].value < cards[best].value : cards[i].value > cards[best].value;

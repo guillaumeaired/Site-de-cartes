@@ -147,6 +147,7 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   // L'écran a besoin de savoir QUI a détruit le pli pour montrer
   // l'engloutissement : un pli détruit ne l'est pas toujours par le Kraken.
   check('kraken : krakenIdx désigne la carte qui engloutit', r.krakenIdx, 1);
+  check('kraken : destroyerIdx le désigne aussi', r.destroyerIdx, 1);
 }
 {
   // Baleine sur un pli sans aucune numérotée : détruit aussi, mais pas par
@@ -154,6 +155,25 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   const r = resolveTrick([whale(), pirate(), siren()]);
   check('baleine sans numérotée : pli détruit', r.destroyed, true);
   check('baleine sans numérotée : aucun Kraken à désigner', r.krakenIdx === undefined || r.krakenIdx === -1, true);
+  // Mais elle se nomme : c'est elle qui a détruit le pli, et l'écran doit
+  // pouvoir le dire plutôt que d'annoncer une destruction sans cause.
+  check('baleine sans numérotée : destroyerIdx la désigne', r.destroyerIdx, 0);
+}
+{
+  // Le pli rapporté en partie : Fuite, Pirate, Raie, Pirate, puis la Planche
+  // qui éjecte le premier Pirate. Le dernier Pirate posé croyait avoir gagné —
+  // il n'y avait aucune numérotée à départager, la Raie a donc tout détruit.
+  // La Planche n'y est pour rien : sans la Raie, ce même pli revient au Pirate.
+  const raie = { id: 'r', kind: 'stingray' };
+  const p1 = { id: 'p1', kind: 'pirate', name: 'Harry le Géant' };
+  const p2 = { id: 'p2', kind: 'pirate', name: 'Juanita Jade' };
+  const pli = [esc(), p1, raie, p2, { id: 'pl', kind: 'plank', removesId: 'p1' }];
+  const r = resolveTrick(pli);
+  check('Raie sans numérotée : personne ne remporte le pli', r.winnerIdx, null);
+  check('Raie sans numérotée : pli détruit', r.destroyed, true);
+  check('Raie sans numérotée : la Raie est désignée coupable', r.destroyerIdx, 2);
+  const sansRaie = resolveTrick(pli.filter((c) => c.kind !== 'stingray'));
+  check('le même pli sans la Raie : le Pirate restant le remporte', sansRaie.winnerIdx, 2);
 }
 {
   // Kraken avalé par le Coffre de Davy Jones : le pli n'est plus détruit,

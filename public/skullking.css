@@ -1827,6 +1827,79 @@ h3 {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
+/* --- MARCHER SUR LA PLANCHE : DÉSIGNER SA CIBLE ----------------------
+   Le tapis passe en mode « qui passe par-dessus bord ». Les Pirates visés
+   s'allument et se soulèvent ; tout le reste du pli s'éteint, parce qu'une
+   carte qu'on ne peut pas cliquer ne doit pas avoir l'air cliquable. C'est
+   le même vocabulaire que la main quand ce n'est pas son tour. */
+.sk-table--ciblage .sk-trick-card:not(.sk-trick-card--visee) {
+  filter: brightness(0.42) saturate(0.5);
+  transition: filter 0.18s ease-out;
+}
+
+.sk-trick-card--visee {
+  cursor: pointer;
+  z-index: 6;
+}
+
+.sk-trick-card--visee .sk-card {
+  box-shadow:
+    /* Rouge vif, pas le grenat des Pirates : c'est une MISE EN JOUE, elle ne
+       doit pas se confondre avec le bandeau de la carte qu'elle vise. */
+    0 0 0 3px #d6543d,
+    0 0 0 4px rgba(20, 12, 5, 0.85),
+    0 0 22px rgba(214, 84, 61, 0.55),
+    0 12px 26px rgba(0, 0, 0, 0.6);
+  animation: sk-visee 1.4s ease-in-out infinite;
+}
+
+/* Le liseré rouge PULSE plutôt qu'il ne brille en continu : posé fixe, il se
+   confondait avec le cerclage de laiton de la carte qui mène le pli — deux
+   liserés de la même épaisseur qui ne disent pas du tout la même chose. */
+@keyframes sk-visee {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-5px) scale(1.04); }
+}
+
+.sk-trick-card--visee:hover .sk-card,
+.sk-trick-card--visee:focus-visible .sk-card {
+  animation: none;
+  transform: translateY(-7px) scale(1.07);
+  transition: transform 0.14s ease-out;
+}
+
+.sk-trick-card--visee:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-trick-card--visee .sk-card { animation: none; }
+}
+
+/* Ce panneau se pose au milieu du feutre, là où sont justement les cartes
+   qu'il faut cliquer : il ne porte donc que la porte de sortie, la consigne
+   étant écrite au-dessus du feutre (voir appliquerCiblagePlanche). */
+.sk-plank-choice .sk-tigress-annuler {
+  margin-top: 0;
+}
+
+/* Pendant la désignation, la consigne passe DEVANT les cartes du pli. Elles
+   s'en écartent déjà (voir les bandes dans renderTrick), mais une carte du
+   fond posée au ras de la bande la mordrait encore d'un ou deux pixels — et
+   c'est la seule ligne qui dit quoi faire. */
+body.sk-ciblage .sk-turn-indicator {
+  /* Rien d'autre que l'empilement et un fond plus dense : la consigne garde
+     sa pastille et sa position (elle est en `absolute` sur la scène, la
+     repasser en `relative` la renvoyait en pleine largeur, barre noire en
+     travers de la taverne). Elle passe simplement DEVANT les cartes du pli —
+     elles s'en écartent déjà, mais une carte du fond posée au ras de la
+     bande la mordrait encore, et c'est la seule ligne qui dit quoi faire. */
+  z-index: 8;
+  background: rgba(10, 6, 3, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(232, 206, 146, 0.4);
+}
+
 /* --- LE KRAKEN ENGLOUTIT LE PLI -------------------------------------
    Le geste est piloté en JS (playKrakenAnimation) : les distances dépendent
    de la position réelle des cases, qui change à chaque pli. Il ne reste ici
@@ -5735,6 +5808,7 @@ h3 {
     transform: none;
     align-content: end;
   }
+
 }
 
 /* Les choix de POSE — le Joker qui déclare sa famille, le 0/14 qui fixe sa
@@ -5867,9 +5941,17 @@ h3 {
   .sk-scene .sk-bid-choices { animation: none; }
 }
 
+/* L'éventail est centré sous MON médaillon, donc sous le centre du feutre :
+   42,6 % de la scène (le siège du joueur est mesuré à 42,58 %, le feutre à
+   42,66 %). Il était calé à droite — 32,5 % à 79 %, soit un centre à 55,75 %
+   — parce que la pilule d'annonce occupait le coin bas-gauche et qu'il
+   fallait la contourner. Elle a déménagé au-dessus du tapis, le coin est
+   libre, et l'éventail retombe sous le joueur à qui il appartient : ses
+   cartes partaient vers le centre de la table en biais depuis la droite.
+   Largeur inchangée (46,5 %), seul le centre bouge. */
 .sk-scene > #sk-hand {
-  left: 32.5%;
-  right: 21%;
+  left: 19.35%;    /* 42,6 % - 46,5 % / 2 */
+  right: 34.15%;
   /* 3,5 % et non 1 % : la carte dépasse son conteneur d'environ 1,7 % vers
      le bas (le rehaussement au survol est prévu dans sa boîte), et à 1 %
      le pied des cartes était coupé net par le bord de la scène. Mesuré au
@@ -5877,6 +5959,17 @@ h3 {
   bottom: 3.5%;
   min-height: 0;
   padding: 0;
+}
+
+/* Scène trop basse : la pilule d'annonce est retournée dans le coin
+   bas-gauche (voir le @container qui la renvoie), l'éventail lui rend donc
+   la place et reprend son calage à droite. Ce bloc vient APRÈS la règle
+   ci-dessus, à dessein : à spécificité égale c'est le dernier qui gagne. */
+@container (max-height: 600px) {
+  .sk-scene > #sk-hand {
+    left: 32.5%;
+    right: 21%;
+  }
 }
 
 

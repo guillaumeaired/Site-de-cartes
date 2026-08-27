@@ -401,7 +401,11 @@ function cardPowerText(card) {
     case 'lastvolley':
       return "Dernière Salve — ne remporte jamais le pli. Le joueur qui la pose joue une carte de plus après tout le monde, puis passe son tour au pli suivant (sauf sur le tout dernier pli de la manche).";
     case 'plank':
-      return "Marcher sur la Planche — ne remporte jamais le pli, mais retire un Pirate présent dans le pli en cours (au choix s'il y en a plusieurs).";
+      // Trois choses que la carte ne dit pas et qu'on ne devine pas : le
+      // choix est au joueur (et pas au premier Pirate posé), le Pirate retiré
+      // ne compte plus pour RIEN (bonus du Skull King compris), et Mat le
+      // Forban n'est pas une cible.
+      return "Marcher sur la Planche — ne remporte jamais le pli. Elle envoie par-dessus bord un Pirate du pli en cours, celui que TU désignes s'il y en a plusieurs. Le Pirate retiré ne gagne plus, ne rapporte plus de bonus et son pouvoir ne se déclenche pas. Mat le Forban n'est pas une cible.";
     case 'davyjones':
       return 'Coffre de Davy Jones — ne remporte jamais le pli. Détruit tous les Monstres Marins présents (Kraken, Baleine, Raie) : +20 points par Monstre détruit.';
     case 'wild15':
@@ -1814,6 +1818,22 @@ function renderSeats(state) {
 // maison — un emoji dépend de la police du système et détonne au milieu de
 // gravures. Le nom de la couleur reste écrit à côté : la pastille ne porte
 // jamais l'information seule.
+// Ce qui a détruit le pli, en toutes lettres. « Le pli est détruit » ne dit
+// pas par quoi, et la carte fautive n'est pas celle qu'on soupçonne : une Raie
+// posée en troisième annule des Pirates joués après elle, si bien que le
+// dernier Pirate posé croit avoir gagné. C'est le cas d'un joueur qui a vu son
+// Pirate ne rien remporter et a cherché la faute dans la Planche du voisin.
+//
+// La Baleine et la Raie ne détruisent le pli que dans un cas : quand elles
+// n'ont AUCUNE carte numérotée à départager. La phrase le dit, sinon on
+// comprend qu'elles détruisent le pli par nature, ce qui est faux.
+function nomDuDestructeur(genre) {
+  if (genre === 'kraken') return 'Le Kraken engloutit le pli';
+  if (genre === 'whale') return "La Baleine blanche n'a aucune numérotée à départager : le pli est détruit";
+  if (genre === 'stingray') return "La Raie Tachetée n'a aucune numérotée à départager : le pli est détruit";
+  return 'Le pli est détruit';
+}
+
 function suitDot(suit) {
   return `<i class="sk-suit-dot sk-suit-dot--${suit}" aria-hidden="true"></i>`;
 }
@@ -2047,6 +2067,10 @@ function renderTrick(state) {
     // Skull King qui dévore les Pirates, voir playDevourAnimation).
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
+    // De qui est la carte, en clair : le ciblage de la Planche s'en sert
+    // pour annoncer sa cible à un lecteur d'écran, qui ne voit ni le tapis
+    // ni de qui la carte est voisine.
+    slot.dataset.nomCarte = `${t.card.name || (t.card.kind === 'tigress' ? 'la Tigresse' : 'le Pirate')} de ${nicknameOf(state, t.playerId)}`;
 
     const el = sieges.get(t.playerId);
     const rs = el ? el.getBoundingClientRect() : null;
@@ -2132,7 +2156,7 @@ function renderTrick(state) {
       trickCaptionEl.style.setProperty('--sk-attente', `${(1.54 + aAvaler * 0.075).toFixed(2)}s`);
       trickCaptionEl.textContent = parLeKraken
         ? 'Le pli est englouti — personne ne le remporte.'
-        : 'Le pli est détruit — personne ne le remporte.';
+        : `${nomDuDestructeur(state.lastTrickResult.destroyedBy)} — personne ne le remporte.`;
       trickCaptionEl.classList.toggle('sk-trick-caption--apres-kraken', parLeKraken);
     } else {
       // Le verdict n'est pas une consigne de plus : c'est la ligne qu'on
@@ -2147,7 +2171,7 @@ function renderTrick(state) {
   } else if (state.trickWillBeDestroyed) {
     retirerVerdict();
     trickCaptionEl.classList.remove('sk-trick-caption--apres-kraken');
-    trickCaptionEl.textContent = 'Ce pli sera détruit…';
+    trickCaptionEl.textContent = `${nomDuDestructeur(state.trickDestroyedBy)} — il ne sera remporté par personne.`;
   } else {
     retirerVerdict();
     trickCaptionEl.classList.remove('sk-trick-caption--apres-kraken');
@@ -2209,61 +2233,41 @@ function playPlankAnimation(state) {
   lastPlankedTrick = key;
 
   const planche = tableEl.querySelector('.sk-trick-card[data-kind="plank"]');
+  if (!planche) return;
 
-  ids.forEach((id, i) => {
-    const slot = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(id)}"]`);
-    if (!slot) return;
-    // On tombe en s'éloignant de la Planche : c'est elle qui pousse. Sans
-    // repère (Planche hors du tapis), on tombe tout droit.
-    const ecart = planche ? slot.offsetLeft - planche.offsetLeft : 0;
-    const sens = ecart === 0 ? 1 : Math.sign(ecart);
-    // Comme pour la dévoration : offsetTop et non getBoundingClientRect,
-    // les cases sont encore en cours d'apparition et leur boîte mesurée est
-    // décalée.
-    const chute = tableEl.clientHeight - slot.offsetTop + 160;
-    const k = parseFloat(slot.style.getPropertyValue('--sk-depth')) || 1;
-    slot.style.zIndex = '3';
-    slot.animate(
-      [
-        { transform: `translate(-50%, -50%) scale(${k})`, opacity: 1 },
-        // Le temps de bascule : la carte se redresse sur sa tranche avant de
-        // partir. Sans lui, elle glisse au lieu de tomber.
-        {
-          transform: `translate(-50%, -50%) translate(${sens * 14}px, -18px) scale(${k * 1.04}) rotate(${sens * 12}deg)`,
-          opacity: 1,
-          offset: 0.3,
-        },
-        {
-          transform: `translate(-50%, -50%) translate(${sens * 60}px, ${chute}px) scale(${k * 0.7}) rotate(${sens * 82}deg)`,
-          opacity: 0,
-        },
-      ],
-      { duration: 1000, delay: 140 + i * 110, easing: 'cubic-bezier(0.42, -0.2, 0.85, 0.9)', fill: 'forwards' }
-    );
-  });
+  // Le Pirate tombe DANS la Planche, comme les Pirates tombent dans le Skull
+  // King : c'est le même geste pour la même chose — une carte qui en retire
+  // une autre du pli. Il partait auparavant en chute libre hors du tapis, ce
+  // qui racontait bien la planche mais ne rattachait le départ à rien : on
+  // voyait une carte tomber, jamais qui l'avait poussée.
+  //
+  // Plus lentement que le Skull King et avec un demi-tour complet : le Skull
+  // King dévore, la Planche fait marcher — la carte bascule en chemin.
+  const avalees = avalerCartes(planche, ids, { duree: 980, retard: 160, pas: 140, tour: 190 });
+  pulsationAvaleuse(planche, avalees, { duree: 620, retard: 900, pas: 140, ampleur: 1.12, eclat: 1.3 });
 
   // La Planche accuse le coup : une secousse, au moment où elle pousse.
-  if (planche) {
-    const carte = planche.querySelector('.sk-card');
-    if (carte) {
-      carte.animate(
-        [
-          { transform: 'translateX(0) rotate(0deg)' },
-          { transform: 'translateX(-3px) rotate(-2.5deg)', offset: 0.3 },
-          { transform: 'translateX(3px) rotate(2deg)', offset: 0.62 },
-          { transform: 'translateX(0) rotate(0deg)' },
-        ],
-        { duration: 520, delay: 140, easing: 'ease-out' }
-      );
-    }
+  const carte = planche.querySelector('.sk-card');
+  if (carte) {
+    carte.animate(
+      [
+        { transform: 'translateX(0) rotate(0deg)' },
+        { transform: 'translateX(-3px) rotate(-2.5deg)', offset: 0.3 },
+        { transform: 'translateX(3px) rotate(2deg)', offset: 0.62 },
+        { transform: 'translateX(0) rotate(0deg)' },
+      ],
+      { duration: 520, delay: 160, easing: 'ease-out' }
+    );
   }
 }
 
 // --- AVALER UNE CARTE ---
-// Le même geste sert trois fois : le Skull King qui dévore les Pirates, le
-// Coffre de Davy Jones qui engloutit les Monstres Marins, et le vainqueur qui
-// ramasse le pli. La carte part vers celle qui la prend, grossit d'un temps
-// en chemin puis s'écrase dedans.
+// Le même geste sert quatre fois : le Skull King qui dévore les Pirates, le
+// Coffre de Davy Jones qui engloutit les Monstres Marins, Marcher sur la
+// Planche qui pousse son Pirate par-dessus bord, et le vainqueur qui ramasse
+// le pli. La carte part vers celle qui la prend, grossit d'un temps en chemin
+// puis s'écrase dedans. Ce qui change d'un cas à l'autre, ce sont les
+// réglages — une durée, un tour, un éclat — pas le geste.
 //
 // Pilotée par l'API Web Animations plutôt qu'en CSS : la distance dépend de
 // la position réelle des cases sur le tapis, qui change à chaque pli et à
@@ -2625,6 +2629,16 @@ function renderTurnIndicator(state) {
     }
     return;
   }
+  // Marcher sur la Planche : tant qu'on désigne sa cible, la consigne est
+  // celle-là et rien d'autre. Écrite ICI plutôt que dans appliquerCiblage-
+  // Planche parce que renderTurnIndicator passe AVANT renderTrick : les
+  // cartes du pli s'écartent des bandes de texte qu'elles trouvent en place,
+  // et une consigne posée après coup se serait retrouvée sous l'une d'elles.
+  // Courte pour la même raison : la bande ne doit pas s'élargir de moitié.
+  if (ciblagePlanche) {
+    turnIndicator.textContent = 'Clique le Pirate à jeter par-dessus bord.';
+    return;
+  }
   if (state.trickPaused) {
     // La consigne est écrite sur le bois, au-dessus du feutre : c'est le seul
     // endroit que l'engloutissement ne traverse pas. Elle dit ce qui est en
@@ -2634,7 +2648,7 @@ function renderTurnIndicator(state) {
     if (res && res.destroyed) {
       turnIndicator.textContent = res.krakenCardId
         ? 'Le Kraken s\'empare du pli…'
-        : 'Le pli se défait…';
+        : `${nomDuDestructeur(res.destroyedBy)}…`;
       return;
     }
     turnIndicator.textContent = 'Le pli se ramasse…';
@@ -2665,6 +2679,12 @@ function hideAllChoicePanels() {
   jokerChoiceEl.classList.add('hidden');
   declareChoiceEl.classList.add('hidden');
   plankChoiceEl.classList.add('hidden');
+  // Le ciblage de la Planche vit sur le tapis, pas dans le panneau : le
+  // cacher ne suffit pas à éteindre les cartes qu'il a allumées.
+  if (ciblagePlanche) {
+    ciblagePlanche = null;
+    appliquerCiblagePlanche();
+  }
 }
 
 function playCard(cardId, extra) {
@@ -2673,7 +2693,6 @@ function playCard(cardId, extra) {
   pendingTigressCardId = null;
   pendingJokerCardId = null;
   pendingDeclareCardId = null;
-  pendingPlankCardId = null;
   hideAllChoicePanels();
 }
 
@@ -2705,10 +2724,81 @@ document.addEventListener('keydown', (e) => {
 const jokerChoiceEl = document.getElementById('sk-joker-choice');
 const declareChoiceEl = document.getElementById('sk-declare-choice');
 const plankChoiceEl = document.getElementById('sk-plank-choice');
-const plankOptionsEl = document.getElementById('sk-plank-options');
+
+// --- MARCHER SUR LA PLANCHE : on désigne le Pirate SUR LE TAPIS ---------
+//
+// C'était une rangée de boutons portant des noms — « Harry le Géant »,
+// « Tigresse ». Il fallait donc se rappeler qui avait joué quoi, alors que
+// les cartes sont posées devant leur joueur, à l'écran, au même instant. On
+// clique maintenant la carte elle-même : la question « qui passe par-dessus
+// bord » se répond en regardant le tapis, pas en lisant une liste.
+//
+// Le ciblage est un état LOCAL : rien n'est envoyé au serveur tant que la
+// cible n'est pas choisie. Comme le pli est redessiné à chaque état reçu
+// (un message de discussion suffit), la décoration est réappliquée après
+// chaque rendu plutôt que posée une fois pour toutes.
+let ciblagePlanche = null;
+
+function appliquerCiblagePlanche() {
+  tableEl.classList.toggle('sk-table--ciblage', !!ciblagePlanche);
+  // La consigne, elle, s'écrit sur le bois au-dessus du feutre (voir
+  // renderTurnIndicator) : posée sur le feutre, elle formait un pavé au
+  // milieu des cartes qu'elle demande justement de cliquer. Le panneau ne
+  // porte plus que la porte de sortie, qui n'a pas besoin de place.
+  document.body.classList.toggle('sk-ciblage', !!ciblagePlanche);
+
+  tableEl.querySelectorAll('.sk-trick-card').forEach((slot) => {
+    const visee = !!ciblagePlanche && ciblagePlanche.cibles.has(slot.dataset.cardId);
+    slot.classList.toggle('sk-trick-card--visee', visee);
+    if (visee) {
+      slot.setAttribute('role', 'button');
+      slot.setAttribute('tabindex', '0');
+      slot.setAttribute('aria-label', `Envoyer ${slot.dataset.nomCarte || 'ce Pirate'} par-dessus bord`);
+    } else {
+      slot.removeAttribute('role');
+      slot.removeAttribute('tabindex');
+      slot.removeAttribute('aria-label');
+    }
+  });
+}
+
+function annulerCiblagePlanche() {
+  ciblagePlanche = null;
+  plankChoiceEl.classList.add('hidden');
+  appliquerCiblagePlanche();
+  // La consigne reprend celle du tour : on a repris la carte en main.
+  if (dernierEtatJeu) renderTurnIndicator(dernierEtatJeu);
+}
+
+function choisirCiblePlanche(slot) {
+  if (!ciblagePlanche || !slot) return;
+  const removesId = slot.dataset.cardId;
+  if (!ciblagePlanche.cibles.has(removesId)) return;
+  const carteId = ciblagePlanche.carteId;
+  ciblagePlanche = null;
+  playCard(carteId, { removesId });
+}
+
+// Un seul écouteur, posé sur le tapis : les cases du pli sont recréées à
+// chaque rendu, leur en attacher un chacune les perdrait au premier état
+// reçu pendant qu'on hésite.
+tableEl.addEventListener('click', (e) => {
+  if (!ciblagePlanche) return;
+  choisirCiblePlanche(e.target.closest('.sk-trick-card--visee'));
+});
+tableEl.addEventListener('keydown', (e) => {
+  if (!ciblagePlanche || (e.key !== 'Enter' && e.key !== ' ')) return;
+  const slot = e.target.closest('.sk-trick-card--visee');
+  if (!slot) return;
+  e.preventDefault();
+  choisirCiblePlanche(slot);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && ciblagePlanche) annulerCiblagePlanche();
+});
+document.getElementById('sk-btn-plank-cancel').addEventListener('click', annulerCiblagePlanche);
 let pendingJokerCardId = null;
 let pendingDeclareCardId = null;
-let pendingPlankCardId = null;
 
 document.querySelectorAll('.sk-btn-joker-color').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -2860,18 +2950,13 @@ function renderHand(state) {
             (t) => t.card.kind === 'pirate' || t.card.kind === 'tigress'
           );
           if (piratesInTrick.length > 1) {
-            pendingPlankCardId = card.id;
             hideAllChoicePanels();
-            plankOptionsEl.innerHTML = '';
-            piratesInTrick.forEach((t) => {
-              const btn = document.createElement('button');
-              btn.className = 'btn';
-              btn.textContent = t.card.name || (t.card.kind === 'tigress' ? 'Tigresse' : 'Pirate');
-              btn.addEventListener('click', () => {
-                if (pendingPlankCardId) playCard(pendingPlankCardId, { removesId: t.card.id });
-              });
-              plankOptionsEl.appendChild(btn);
-            });
+            ciblagePlanche = {
+              carteId: card.id,
+              cibles: new Set(piratesInTrick.map((t) => t.card.id)),
+            };
+            appliquerCiblagePlanche();
+            renderTurnIndicator(state);
             plankChoiceEl.classList.remove('hidden');
             bidChoices.classList.add('hidden');
             return;
@@ -3560,6 +3645,9 @@ function renderGame(state) {
   playDavyAnimation(state);
   playKrakenAnimation(state);
   playTrickWinAnimation(state);
+  // Les cases du pli viennent d'être recréées : si on est en train de
+  // désigner un Pirate, elles doivent se rallumer.
+  appliquerCiblagePlanche();
   renderBidChoices(state);
   renderHand(state);
   renderScoreboard(state);
@@ -4294,7 +4382,13 @@ function playStartReveal(players, starterId) {
 
 // --- Dispatch d'état ---
 
+// Le dernier état reçu, gardé de côté : quand on sort du ciblage de la
+// Planche sans rien jouer, rien n'arrive du serveur et il faut pourtant
+// réécrire la consigne du tour.
+let dernierEtatJeu = null;
+
 function applyState(state) {
+  dernierEtatJeu = state;
   const previousPhase = lastPhase;
   lastPhase = state.phase;
   myId = state.myId;
@@ -4309,7 +4403,6 @@ function applyState(state) {
   pendingTigressCardId = null;
   pendingJokerCardId = null;
   pendingDeclareCardId = null;
-  pendingPlankCardId = null;
 
   if (state.phase === 'bidding' || state.phase === 'playing' || state.phase === 'power') {
     hideRoundPopup();

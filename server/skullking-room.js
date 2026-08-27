@@ -407,7 +407,15 @@ function currentTrickPreview(room) {
   const cards = room.currentTrick.map((t) => t.card);
   const result = resolveTrick(cards);
   const entry = room.currentTrick[result.leaderIdx];
-  return { leaderId: entry ? entry.playerId : null, destroyed: result.destroyed };
+  // `destroyedBy` accompagne l'annonce « ce pli sera détruit » : elle se lit
+  // pendant que le pli se joue, c'est là qu'il est le plus utile de savoir
+  // quelle carte l'a condamné — on joue encore.
+  const destroyerIdx = result.destroyerIdx;
+  return {
+    leaderId: entry ? entry.playerId : null,
+    destroyed: result.destroyed,
+    destroyedBy: destroyerIdx != null && destroyerIdx !== -1 ? effectiveKind(cards[destroyerIdx]) : null,
+  };
 }
 
 function allBidsIn(room) {
@@ -565,6 +573,7 @@ function stateFor(room, p) {
     const preview = currentTrickPreview(room);
     base.leadingPlayerId = preview.leaderId;
     base.trickWillBeDestroyed = preview.destroyed;
+    base.trickDestroyedBy = preview.destroyedBy;
     base.trickPaused = Boolean(room.trickPaused);
     base.lastTrickResult = room.trickPaused ? room.lastTrickResult : null;
     // Dernière Salve : ce joueur n'a tout simplement pas de carte à jouer
@@ -1440,6 +1449,12 @@ function registerSkullKingHandlers(io, socket) {
       // La carte qui engloutit le pli, quand c'est le Kraken : l'écran s'en
       // sert pour faire converger les autres cartes dessus.
       krakenCardId: result.krakenIdx != null && result.krakenIdx !== -1 ? cards[result.krakenIdx].id : null,
+      // Le genre de la carte qui a détruit le pli, Kraken compris : c'est ce
+      // que l'écran NOMME. « Le pli est détruit » sans dire par quoi laisse
+      // chercher la cause dans les mauvaises cartes.
+      destroyedBy: result.destroyerIdx != null && result.destroyerIdx !== -1
+        ? effectiveKind(cards[result.destroyerIdx])
+        : null,
     };
     room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
     room.trickPaused = true;
