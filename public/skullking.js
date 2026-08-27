@@ -167,8 +167,8 @@ function cardClass(card) {
   if (card.kind === 'number') {
     if (card.wild14 && card.value == null) return 'sk-card--wild14';
     // Familles peintes : une planche d'illustrations par couleur, quatorze
-    // valeurs (briefs/decouper-planche-numerotees.py, et pour le Vert
-    // briefs/decouper-cartes-perroquet.py). Même mécanique que les Pirates
+    // valeurs, découpées par briefs/decouper-planche-numerotees.py. Même
+    // mécanique que les Pirates
     // illustrés, à ceci près que le pied ne se surimpose que là où
     // l'illustration ne dit pas déjà son chiffre lisiblement (voir SUIT_ART) :
     // sur un Pirate il porte le nom, absent de l'illustration ; sur un Trésor
