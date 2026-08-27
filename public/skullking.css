@@ -1720,6 +1720,9 @@ h3 {
 }
 
 .sk-score-row-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-family: 'Cinzel', Georgia, serif;
   font-weight: 600;
   font-size: 0.68rem;
@@ -1727,6 +1730,22 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Le médaillon tient la place du pseudo. Assez grand pour qu'on distingue la
+   figure gravée (une ancre d'un gouvernail) et pas seulement l'émail, assez
+   petit pour ne pas creuser la ligne du registre. */
+.sk-score-row-piece {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: block;
+  filter: drop-shadow(0 1px 1px rgba(53, 33, 8, 0.45));
+}
+
+.sk-score-row--me .sk-score-row-piece {
+  width: 25px;
+  height: 25px;
 }
 
 .sk-score-row-total {
@@ -3845,9 +3864,17 @@ h3 {
   opacity: 1;
 }
 
-.sk-curve-dot {
-  stroke: var(--sk-oak-lo);
-  stroke-width: 1.5;
+/* Le bout de chaque ligne porte le médaillon du joueur. L'ombre portée le
+   décolle des lignes qui passent derrière ; sans elle il se confond avec la
+   polyligne quand deux joueurs finissent au même score. */
+.sk-curve-piece {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+}
+
+/* Le sien est déjà plus gros (voir renderScoreCurve) ; on le cercle en plus
+   d'un halo clair, pour le retrouver d'un coup d'œil dans un peloton. */
+.sk-curve-piece--me {
+  filter: drop-shadow(0 0 3px rgba(232, 206, 146, 0.75)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
 }
 
 .sk-curve-zero {
