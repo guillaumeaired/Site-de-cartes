@@ -28,6 +28,17 @@ const {
 const { likelyServerRestart } = require('./server-start');
 const { recordGameStarted } = require('./play-counts');
 
+// Les deux paquets proposés dans le salon. Réglage purement visuel : il ne
+// touche ni au deck, ni aux règles, ni au score — seul l'habillage des
+// cartes change côté client. Le serveur ne fait que le garder et le
+// diffuser, pour que tout le monde autour du tapis voie le même jeu.
+const DECK_STYLES = ['classique', 'perso'];
+const DEFAULT_DECK_STYLE = 'classique';
+
+function sanitizeDeckStyle(style) {
+  return DECK_STYLES.includes(style) ? style : DEFAULT_DECK_STYLE;
+}
+
 // Salon d'attente uniquement (voir handleDisconnecting) : délai de grâce
 // avant de considérer le joueur vraiment parti.
 const DISCONNECT_GRACE_MS = 45_000;
@@ -283,6 +294,10 @@ function broadcastLobby(io, room) {
       // serveur dans le handler dédié) ; tous les autres le voient en
       // lecture seule via ce même champ.
       extensionEnabled: Boolean(room.extensionEnabled),
+      // Le paquet : même régime que le switch d'extension — choisi par
+      // l'hôte, vu en lecture seule par les autres.
+      deckStyle: sanitizeDeckStyle(room.deckStyle),
+      deckStyles: DECK_STYLES,
       totalRounds: room.totalRounds || MAX_ROUNDS,
       minRounds: MIN_ROUNDS,
       maxRounds: MAX_ROUNDS,
@@ -420,6 +435,10 @@ function stateFor(room, p) {
     cardsInRound: room.cardsInRound,
     scoreboard: scoreboard(room),
     extensionEnabled: Boolean(room.extensionEnabled),
+    // Le paquet retenu dans le salon : il habille les cartes jusqu'à la fin
+    // de la partie, y compris pour un joueur qui se reconnecte en cours de
+    // route et n'a jamais vu le salon.
+    deckStyle: sanitizeDeckStyle(room.deckStyle),
     // Joueurs actuellement liés par une alliance Butin sur cette manche :
     // remonté en direct (et plus seulement dans le résumé de fin de manche)
     // pour qu'un pictogramme reste affiché à côté des alliés jusqu'au bout
@@ -918,6 +937,7 @@ function registerSkullKingHandlers(io, socket) {
       phase: 'lobby',
       hostId: socket.id,
       extensionEnabled: false,
+      deckStyle: DEFAULT_DECK_STYLE,
       totalRounds: MAX_ROUNDS,
       players: [
         {
@@ -994,6 +1014,23 @@ function registerSkullKingHandlers(io, socket) {
     // Si l'extension vient d'être désactivée et que la salle dépassait déjà
     // le plafond de base, on laisse l'hôte constater l'incompatibilité via
     // canStart plutôt que d'expulser qui que ce soit.
+    broadcastLobby(io, room);
+  });
+
+  // Le paquet de cartes : hôte seulement, lobby seulement. Une fois la
+  // partie lancée, room.deckStyle n'est plus modifié — il part avec chaque
+  // état de jeu, ce qui suffit à habiller les cartes sans rien renégocier.
+  socket.on('skullking-set-deck', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    // Une valeur inconnue est ignorée, pas ramenée au paquet par défaut :
+    // un message malformé ne doit pas changer le réglage sous les yeux de
+    // l'hôte. sanitizeDeckStyle reste la garde de lecture (broadcastLobby,
+    // stateFor), pour un salon d'avant ce réglage.
+    const style = payload && payload.deckStyle;
+    if (!DECK_STYLES.includes(style) || style === room.deckStyle) return;
+    room.deckStyle = style;
     broadcastLobby(io, room);
   });
 

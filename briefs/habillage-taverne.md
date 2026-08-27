@@ -169,7 +169,20 @@ Format 1× : **84 × 118 px** → générer en 3×, soit ~252 × 354.
 |---|---|---|
 | `dos-cartes-sk.png` | 1 ✅ | Dos de carte, motif symétrique. Sort à 512 px de large : il ne se voit jamais à plus de 84 px |
 | `cartes-{tresor,violettes,atouts,perroquets}-sk.png` | 4 ✅ | Les quatre familles numérotées, **une planche de 14 cartes chacune** : Trésor (jaune), Carte au trésor (violet), Pavillon noir (l'atout) et Perroquets (vert). Le chiffre est peint dans les médaillons, donc pas de cadre vide possible. Découpées par `briefs/decouper-planche-numerotees.py` |
-| illustrations spéciales | ~20 | Skull King, 2 Sirènes, 5 Pirates *(4 déjà faits)*, 5 Fuites, Tigresse, Butin, Kraken, Baleine blanche, + 6 de l'extension |
+| `extra-cards-sk.png` | 1 ✅ | **Planche des spéciales classiques**, dix cases en deux rangées de cinq : Fuite, Skull King, les deux Sirènes, puis Will, Harry, Rosie, Rascal — et deux doublons sans emploi (une seconde Rosie, un second Will). Découpée par `briefs/decouper-planche-speciales.py`, qui réutilise la grille des familles numérotées |
+| illustrations spéciales restantes | ~12 | Juanita Jade, Mary Thorne, Tigresse, Butin, Kraken, Baleine blanche, + 5 de l'extension |
+
+**Les huit cases retenues peignent leur nom** dans un cartouche de parchemin —
+une deuxième entorse à R1, du même genre que les chiffres des familles
+numérotées et payée du même prix : la Fuite existe en cinq exemplaires et se
+contente d'un fichier, mais chaque personnage en demande un, et une Rosie
+peinte « Rosie la Douce » ne peut plus servir de Juanita Jade. Et le nom peint
+ne remplace pas le pied : mesuré à 84 px, la largeur d'une carte en main, il
+tombe sous les 6 px de haut et n'est plus qu'un gribouillis. Le pied reste donc
+visible par-dessus, comme sur les portraits perso — c'est lui qui porte le nom
+officiel, net à tout zoom. Les familles numérotées restent la seule exception
+(`sk-card--art-num`), parce que leur chiffre est gravé en gros dans les
+médaillons.
 
 Les planches se génèrent d'un coup, les 14 cartes ensemble, en deux rangées de
 sept sur un plan de travail en bois : c'est ce qui leur donne le même cadre et
@@ -195,7 +208,14 @@ neuf médaillons mal numérotés ; elle a été régénérée plutôt que rattra
 ### Lot 5 — les portraits
 
 En place : `anto-coco`, `guy-mams`, `guigui`, `pablo`. Manque le 5ᵉ Pirate
-(Will le Bandit).
+(Will le Bandit), qui emprunte pour l'instant le Will de la planche classique.
+
+Ces quatre-là ne sont plus un habillage parmi d'autres mais **un paquet à
+part**, choisi par l'hôte dans le salon (« Classiques » / « Perso »). Le paquet
+perso ne redéfinit que des Pirates : tout ce qu'il ne dit pas retombe sur le
+classique, ce qui permet de le proposer sans avoir peint les 74 cartes. Le
+réglage voyage avec l'état de jeu et jamais en préférence locale — deux
+joueurs doivent voir la même carte posée sur le tapis.
 
 ---
 

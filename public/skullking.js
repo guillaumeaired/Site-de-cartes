@@ -137,16 +137,79 @@ function isCardPlayable(card, hand, trick) {
 // l'autre au choix, est coupée en deux — et une fois son choix connu elle
 // bascule dans la couleur correspondante (voir stateFor côté serveur : le
 // choix n'est révélé aux autres qu'une fois le pli résolu).
-// Les 4 illustrations disponibles, rattachées à un Pirate nommé. Les cartes
-// gardent leur nom officiel Skull King : l'illustration habille la carte,
-// elle ne la renomme pas. Le reste du paquet recevra le même traitement au
-// fur et à mesure — d'où la table plutôt qu'une suite de conditions.
-const CARD_ART = {
-  'Harry le Géant': 'anto',
-  'Juanita Jade': 'mams',
-  'Rascal le Flambeur': 'guigui',
-  "Rosie D'Laney": 'pablo',
+// LES DEUX PAQUETS. Choisis par l'hôte dans le salon, purement visuels :
+// aucune règle, aucun score, aucune carte n'en dépend — seul l'habillage
+// change, et il change pour tout le monde en même temps (le réglage voyage
+// avec l'état de jeu, pas en préférence locale, sinon deux joueurs ne
+// verraient pas la même carte posée sur le tapis).
+//
+// Le paquet perso ne redéfinit QUE des Pirates : ce sont les seules
+// illustrations maison qui existent. Tout ce qu'il ne dit pas retombe sur le
+// classique — d'où un paquet perso complet dès le premier visage, sans avoir
+// à peindre les 74 cartes avant de pouvoir le proposer.
+//
+// Les cartes gardent leur nom officiel Skull King : l'illustration habille
+// la carte, elle ne la renomme pas.
+const PIRATE_ART = {
+  classique: {
+    'Will le Bandit': 'classique-will',
+    'Harry le Géant': 'classique-harry',
+    "Rosie D'Laney": 'classique-rosie',
+    'Rascal le Flambeur': 'classique-rascal',
+    // Juanita Jade et Mary Thorne n'ont pas encore leur planche : elles
+    // restent en carte dessinée, comme avant.
+  },
+  perso: {
+    'Harry le Géant': 'anto',
+    'Juanita Jade': 'mams',
+    'Rascal le Flambeur': 'guigui',
+    "Rosie D'Laney": 'pablo',
+  },
 };
+
+// Les spéciales peintes de la planche classique. Le paquet perso n'en a
+// aucune : elles habillent donc les deux paquets.
+const SPECIAL_ART = {
+  skullking: 'classique-skullking',
+  escape: 'classique-fuite',
+};
+
+// Les deux Sirènes sont identiques en règle et distinctes en peinture. Le
+// serveur numérote la variante à la construction du deck (voir
+// skullking.js) ; sans ce numéro, la même sirène tomberait deux fois.
+const SIREN_ART = ['classique-sirene-1', 'classique-sirene-2'];
+
+// Le paquet en cours. Tenu à jour par le salon ET par l'état de jeu : un
+// joueur qui se reconnecte en pleine manche n'est jamais repassé par le
+// salon.
+let deckStyle = 'classique';
+
+function setDeckStyle(style) {
+  deckStyle = style === 'perso' ? 'perso' : 'classique';
+}
+
+// L'illustration d'une carte dans le paquet courant, ou null si elle n'en a
+// pas (elle est alors dessinée en CSS, comme au premier jour).
+function artFor(card) {
+  if (card.kind === 'pirate') {
+    return (PIRATE_ART[deckStyle] && PIRATE_ART[deckStyle][card.name])
+      || PIRATE_ART.classique[card.name]
+      || null;
+  }
+  if (card.kind === 'siren') return SIREN_ART[(card.variant || 1) - 1] || SIREN_ART[0];
+  return SPECIAL_ART[card.kind] || null;
+}
+
+// Les classes d'une carte illustrée. Le pied de parchemin reste VISIBLE, y
+// compris sur les planches classiques qui peignent déjà leur nom dans un
+// cartouche : mesuré à 84 px, la largeur d'une carte en main, le nom peint
+// tombe sous les 6 px de haut et n'est plus qu'un gribouillis, quand le pied
+// reste net. Il redit donc le nom, en plus petit et en plus lisible — c'est
+// exactement le marché de R1. Seules les familles numérotées s'en passent
+// (sk-card--art-num) : leur chiffre est gravé en gros dans les médaillons.
+function artClasses(cle) {
+  return `sk-card--art sk-card--art-${cle}`;
+}
 
 // Les quatre familles illustrées, et le préfixe de leurs quatorze fichiers.
 // Trois d'entre elles gravent leur chiffre dans l'illustration assez gros
@@ -187,16 +250,22 @@ function cardClass(card) {
     // Une carte illustrée EST son illustration : le cadre CSS est neutralisé
     // (les PNG portent déjà leur bord crème, leur bande peinte et leurs
     // médaillons d'angle), seul le cartouche de nom se surimpose.
-    const art = card.kind === 'pirate' && CARD_ART[card.name];
-    return art ? `sk-card--pirate sk-card--art sk-card--art-${art}` : 'sk-card--pirate';
+    const art = card.kind === 'pirate' && artFor(card);
+    return art ? `sk-card--pirate ${artClasses(art)}` : 'sk-card--pirate';
   }
-  if (card.kind === 'escape') return 'sk-card--escape';
+  // La Tigresse passe AVANT la Fuite : une fois annoncée en Fuite, elle
+  // reste une Tigresse à l'écran, pas un navire qui s'éloigne.
   if (card.kind === 'tigress') {
     if (card.chosenAs === 'pirate') return 'sk-card--tigress sk-card--tigress-pirate';
     if (card.chosenAs === 'escape') return 'sk-card--tigress sk-card--tigress-escape';
     return 'sk-card--tigress';
   }
-  return `sk-card--special sk-card--k-${card.kind}`;
+  const art = artFor(card);
+  // Les classes de couleur restent posées sous l'illustration : elles ne
+  // servent plus au recto (masqué), mais le halo du Skull King et la teinte
+  // du dos y sont encore accrochés.
+  const base = card.kind === 'escape' ? 'sk-card--escape' : `sk-card--special sk-card--k-${card.kind}`;
+  return art ? `${base} ${artClasses(art)}` : base;
 }
 
 // Anatomie d'une carte : papier crème vieilli, fenêtre de couleur cerclée
@@ -583,6 +652,8 @@ const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
 const roundsGrid = document.getElementById('sk-rounds-grid');
 const roundsHint = document.getElementById('sk-rounds-hint');
+const deckGrid = document.getElementById('sk-deck-grid');
+const deckHint = document.getElementById('sk-deck-hint');
 
 const joinModal = document.getElementById('sk-join-modal');
 const joinModalNickname = document.getElementById('sk-join-modal-nickname');
@@ -684,6 +755,46 @@ function renderPiecePicker(players) {
   });
 }
 
+// Le paquet, réglé par l'hôte. Deux vignettes plutôt que deux libellés : ce
+// qu'on choisit ici, ce sont des images — les nommer sans les montrer
+// obligerait à lancer une partie pour savoir ce qu'on vient de prendre. La
+// vignette est une vraie carte du paquet, à l'échelle.
+const DECK_CHOICES = [
+  {
+    key: 'classique',
+    label: 'Classiques',
+    apercu: 'classique-will',
+    hint: 'Les cartes peintes : capitaines, sirènes et navire en fuite.',
+  },
+  {
+    key: 'perso',
+    label: 'Perso',
+    apercu: 'pablo',
+    hint: "L'équipage maison sur les Pirates ; le reste du paquet reste classique.",
+  },
+];
+
+function renderDeckPicker(style, isHost) {
+  const choisi = style === 'perso' ? 'perso' : 'classique';
+  deckGrid.innerHTML = '';
+  DECK_CHOICES.forEach((deck) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sk-deck-choice' + (deck.key === choisi ? ' is-on' : '');
+    b.disabled = !isHost;
+    b.setAttribute('aria-pressed', String(deck.key === choisi));
+    b.innerHTML =
+      `<span class="sk-deck-vignette sk-card--art-${deck.apercu}"></span>` +
+      `<span class="sk-deck-nom">${deck.label}</span>`;
+    if (isHost) {
+      b.addEventListener('click', () => socket.emit('skullking-set-deck', { deckStyle: deck.key }));
+    }
+    deckGrid.appendChild(b);
+  });
+  const actif = DECK_CHOICES.find((d) => d.key === choisi);
+  deckHint.textContent = actif ? actif.hint : '';
+}
+
 // Le nombre de manches, réglé par l'hôte. Un bouton par valeur plutôt qu'un
 // menu déroulant : l'écart est de huit valeurs, et un jeton par manche dit
 // directement de quoi il s'agit — c'est la même piste que celle du bandeau.
@@ -712,7 +823,7 @@ function renderRoundsPicker(total, mini, maxi, isHost) {
     : `${choisi} manches.`;
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, totalRounds, minRounds, maxRounds, myId: id }) => {
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, deckStyle: deck, totalRounds, minRounds, maxRounds, myId: id }) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
@@ -756,6 +867,11 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     : isHost
       ? "Active l'extension officielle pour plus de cartes et jusqu'à 9 joueurs."
       : '';
+
+  // Le paquet est appliqué tout de suite, pas seulement au lancement : les
+  // vignettes du salon en sont déjà tirées.
+  setDeckStyle(deck);
+  renderDeckPicker(deck, isHost);
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
 
@@ -3009,6 +3125,10 @@ function applyState(state) {
   lastPhase = state.phase;
   myId = state.myId;
   myIsHost = state.isHost;
+  // Le paquet arrive avec chaque état : une reconnexion en pleine manche ne
+  // repasse pas par le salon et n'aurait sinon jamais appris lequel est en
+  // jeu.
+  setDeckStyle(state.deckStyle);
   showReconnectingOverlay(false);
   joinModal.classList.add('hidden');
   hideAllChoicePanels();

@@ -67,6 +67,15 @@
         <div class="sk-lobby-col sk-lobby-col--settings">
           <p class="invite-label sk-lobby-col-title">Réglages</p>
 
+          <!-- Le paquet, en premier : c'est le seul réglage qui se voit dès
+               la donne, et il se choisit sur pièce — deux cartes posées
+               côte à côte plutôt que deux libellés. -->
+          <div id="sk-deck-field" class="sk-deck-field">
+            <p class="invite-label">Paquet de cartes</p>
+            <div id="sk-deck-grid" class="sk-deck-grid" role="group" aria-label="Paquet de cartes"></div>
+            <p id="sk-deck-hint" class="hint sk-deck-hint"></p>
+          </div>
+
           <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
             <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
             <span class="sk-extension-toggle-label">Jouer avec l'extension</span>

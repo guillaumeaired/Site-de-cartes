@@ -2419,10 +2419,24 @@ h3 {
     0 2px 6px rgba(0, 0, 0, 0.7);
 }
 
+/* Le paquet perso : quatre Pirates, quatre visages de l'équipage. Ils ne
+   portent pas leur nom peint — leur pied de parchemin reste visible. */
 .sk-card--art-anto { --art: url('assets/cards/anto-coco.webp'); }
 .sk-card--art-mams { --art: url('assets/cards/guy-mams.webp'); }
 .sk-card--art-guigui { --art: url('assets/cards/guigui.webp'); }
 .sk-card--art-pablo { --art: url('assets/cards/pablo.webp'); }
+
+/* Le paquet classique : la planche des spéciales. Elles peignent leur nom
+   dans un cartouche, mais gardent quand même leur pied — à la taille d'une
+   carte en main, le nom peint n'est plus lisible (voir artClasses). */
+.sk-card--art-classique-skullking { --art: url('assets/cards/classique-skullking.webp'); }
+.sk-card--art-classique-fuite { --art: url('assets/cards/classique-fuite.webp'); }
+.sk-card--art-classique-sirene-1 { --art: url('assets/cards/classique-sirene-1.webp'); }
+.sk-card--art-classique-sirene-2 { --art: url('assets/cards/classique-sirene-2.webp'); }
+.sk-card--art-classique-will { --art: url('assets/cards/classique-will.webp'); }
+.sk-card--art-classique-harry { --art: url('assets/cards/classique-harry.webp'); }
+.sk-card--art-classique-rosie { --art: url('assets/cards/classique-rosie.webp'); }
+.sk-card--art-classique-rascal { --art: url('assets/cards/classique-rascal.webp'); }
 
 /* Les quatre familles peintes : le coffre (Jaune), la carte au trésor
    (Violet), le pavillon noir (Noir, l'atout) et les Perroquets (Vert). Les
@@ -4651,6 +4665,84 @@ h3 {
    valeur plutôt qu'un menu : huit choix seulement, et la rangée dit
    d'elle-même de quoi il s'agit — c'est la piste du bandeau en petit.
    ===================================================================== */
+
+/* LE PAQUET — deux vignettes à choisir. Ce sont de vraies cartes du paquet,
+   au même rapport 7:10 que sur le tapis : on reconnaît ce qu'on prend. Le
+   choix retenu est frappé en laiton, comme le nombre de manches juste en
+   dessous. */
+.sk-deck-field {
+  margin: 4px auto 2px;
+  max-width: 320px;
+}
+
+.sk-deck-grid {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 7px;
+}
+
+.sk-deck-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 5px 4px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(10, 6, 3, 0.5);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(232, 206, 146, 0.07);
+  transition: transform 0.1s, filter 0.12s;
+}
+
+.sk-deck-choice:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.sk-deck-choice:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.sk-deck-choice:disabled {
+  cursor: default;
+}
+
+.sk-deck-vignette {
+  display: block;
+  width: 54px;
+  height: calc(54px / 0.7);
+  border-radius: 3px;
+  background: #1a0e06 var(--art) 50% 50% / cover no-repeat;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.sk-deck-nom {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--sk-cream-3);
+}
+
+.sk-deck-choice.is-on {
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.2), rgba(0, 0, 0, 0.2) 60%),
+    linear-gradient(160deg, var(--sk-brass), var(--sk-brass-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 226, 0.5),
+    0 0 0 2px rgba(184, 137, 53, 0.35),
+    0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.sk-deck-choice.is-on .sk-deck-nom {
+  color: #2a1b06;
+}
+
+.sk-deck-hint {
+  margin-top: 7px;
+}
 
 .sk-rounds-field {
   margin: 10px auto 4px;

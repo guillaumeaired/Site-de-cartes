@@ -67,7 +67,10 @@ function createDeck(extensionEnabled) {
       deck.push({ id: `s${uid++}`, kind: 'number', suit, value });
     }
   }
-  for (let i = 0; i < 2; i++) deck.push({ id: `s${uid++}`, kind: 'siren' });
+  // Les deux Sirènes sont interchangeables en règle ; elles ne diffèrent
+  // que par leur illustration, d'où ce numéro de variante — sans lui, le
+  // paquet classique poserait deux fois la même sirène sur le tapis.
+  for (let i = 0; i < 2; i++) deck.push({ id: `s${uid++}`, kind: 'siren', variant: i + 1 });
   const pirateNames = extensionEnabled ? [...PIRATE_NAMES, EXTENSION_PIRATE_NAME] : PIRATE_NAMES;
   for (const name of pirateNames) deck.push({ id: `s${uid++}`, kind: 'pirate', name });
   deck.push({ id: `s${uid++}`, kind: 'skullking' });
