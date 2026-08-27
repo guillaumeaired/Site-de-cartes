@@ -180,7 +180,8 @@ dessinée, sa fenêtre est coupée en deux — rouge Pirate d'un côté, étain 
 de l'autre — et bascule franchement dans la couleur retenue une fois son choix
 révélé. Le cadre peint, lui, est rouge : juste tant que le choix est ouvert,
 menteur dès qu'elle est annoncée en Fuite. D'où un liseré de 3 px posé autour
-de la carte illustrée, de la couleur retenue. C'est l'un des deux cas où le
+de la carte illustrée, de la couleur retenue, et — depuis les emblèmes du
+lot 3 — le **sceau** frappé sur le dessin. C'est l'un des deux cas où le
 liseré remplace le pied plutôt que de s'y ajouter — voir plus bas.
 
 **Les cases à personnage peignent leur nom** dans un cartouche de parchemin —
@@ -207,8 +208,18 @@ règle dessous, ouverte par le « ? » de chaque ligne.
 Deux cartes changent d'état en cours de pli et le disaient dans ce pied : il
 fallait le **remplacer**, pas seulement l'enlever. La Tigresse annoncée en
 Pirate ou en Fuite, et le Joker une fois posé, qui a déclaré une famille.
-Toutes deux portent maintenant un liseré de 3 px de la couleur retenue. Rien
-n'est posé sur le dessin, et le signal se lit d'aussi loin qu'avant.
+Toutes deux portent un liseré de 3 px de la couleur retenue.
+
+Pour le Joker, le liseré suffit : la famille qu'il déclare EST une couleur, et
+les quatre couleurs sont partout ailleurs à l'écran. Pour la Tigresse, non — le
+liseré suppose qu'on sache que rouge veut dire Pirate, et sur une carte posée
+au fond du tapis les 3 px disparaissent. Elle est donc la **seule exception**
+à « rien n'est posé sur le dessin » : l'emblème retenu y est frappé comme un
+sceau, à 62 % de la largeur, bas sur le buste — le visage reste dégagé, et
+c'est l'endroit le moins recouvert quand les cartes du pli se chevauchent. Ce
+qu'il dit n'est pas une couleur mais une fonction, et il le dit avec l'image
+exacte que le joueur a cliquée pour choisir : le même pavillon, les mêmes
+sabres.
 
 Les planches se génèrent d'un coup, les 14 cartes ensemble, en deux rangées de
 sept sur un plan de travail en bois : c'est ce qui leur donne le même cadre et
@@ -351,3 +362,35 @@ Deux écarts à la commande, tous deux absorbés :
 
 Les états de survol et d'enfoncement des boutons se font en CSS (luminosité +
 ombre interne) — un seul asset par bouton, pas trois.
+
+### Lot 3 — 27/08/2026 ✅ les deux emblèmes de la Tigresse
+
+| brut (`skin/src/`) | sortie (`skin/`) | dimensions | poids |
+|---|---|---|---|
+| `fuite-pirate-sk.png` | `embleme-fuite.webp` | 478×512 | 81 Ko |
+| ” | `embleme-pirate.webp` | 531×512 | 102 Ko |
+
+Une seule planche, les deux disques côte à côte, livrée déjà détourée.
+`briefs/decouper-emblemes.py` relève les colonnes entièrement transparentes,
+coupe au milieu du plus large couloir (jamais une valeur en dur : la planche
+peut être regénérée décalée), recadre chaque moitié sur sa boîte englobante et
+les ramène à 512 px de haut — les deux blasons doivent peser pareil dans le
+cadre de choix.
+
+**Deux emplois, une seule paire de fichiers :**
+
+- **le cadre de choix**, au centre de l'écran, quand on pose la Tigresse. Les
+  autres choix de pose (Joker, 0/14, Marcher sur la Planche) tiennent dans la
+  barre d'actions parce qu'ils précisent une carte ; celui-ci décide de ce
+  qu'elle est, et rien ne le reprend. Les deux blasons en grand, séparés du
+  slash de la maquette — tracé au trait, pas au caractère : un « / » de fonte
+  penche selon la police et ne monte jamais aussi haut que les disques. Sortie
+  possible sans choisir (clic hors du cadre, Échap, « Reposer la carte ») :
+  le cadre couvre tout l'écran, sans porte un clic de travers bloquerait le
+  tour ;
+- **le sceau sur la carte**, une fois le choix révélé (voir le lot 4).
+
+Sous 420 px de large les disques s'empilent et le slash devient horizontal ;
+sous 560 px de **haut** — téléphone couché, la position de jeu la plus
+courante — ils restent côte à côte et rapetissent, sinon un des deux choix
+tombe hors champ au moment de trancher.

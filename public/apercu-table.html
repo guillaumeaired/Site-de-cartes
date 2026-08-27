@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aperçu du tapis — Skull King</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;600;700&family=Bitter:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="skullking.css" />
+</head>
+<body>
+<!--
+  Banc d'essai du tapis. Il monte le VRAI écran de jeu — le balisage de
+  skullking.html, la vraie feuille de style, le vrai skullking.js — et lui
+  sert un état fabriqué à la place du serveur. C'est le seul moyen de
+  regarder une disposition de sièges et de cartes sans ouvrir sept
+  navigateurs et jouer une manche à la main.
+
+  Le socket est remplacé par un bouchon : skullking.js appelle `io()` à sa
+  première ligne, il suffit donc de définir `io` avant de le charger. Rien
+  n'est envoyé, rien n'est reçu — l'état est poussé à la main.
+
+    ?n=5            nombre de joueurs (2 à 9)
+    ?joues=3        combien ont déjà posé leur carte (défaut : tous)
+    ?scene=2        la seconde scène peinte
+    ?phase=playing  playing (défaut) | bidding | paused (pli remporté)
+-->
+<script>
+const P = new URLSearchParams(location.search);
+const N = Math.max(2, Math.min(9, Number(P.get('n') || 5)));
+const PHASE = P.get('phase') || 'playing';
+const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
+
+// --- Le bouchon de socket ---------------------------------------------
+const auditeurs = new Map();
+window.io = () => ({
+  connected: true,
+  id: 'apercu',
+  on(evt, cb) { (auditeurs.get(evt) || auditeurs.set(evt, []).get(evt) || auditeurs.get(evt)).push(cb); },
+  emit() {},
+});
+function emettre(evt, payload) { (auditeurs.get(evt) || []).forEach((cb) => cb(payload)); }
+
+// --- L'état fabriqué ---------------------------------------------------
+const PSEUDOS = ['Moi', 'Bérénice', 'Long John', 'Guigui', 'Pablo', 'Anto', 'Mams', 'Rackham', 'Surcouf'];
+const JETONS  = ['crane', 'ancre', 'voilier', 'sabre', 'boussole', 'coffre', 'barre', 'crochet', 'bouteille'];
+const COULEURS = ['tresor', 'violet', 'vert'];
+
+function carte(i) {
+  // Un peu de tout : des numérotées, un Pirate, une Fuite, le Skull King.
+  if (i === 1) return { id: `c${i}`, kind: 'pirate', name: 'Harry le Géant' };
+  if (i === 3) return { id: `c${i}`, kind: 'escape' };
+  if (i === 5) return { id: `c${i}`, kind: 'skullking' };
+  return { id: `c${i}`, kind: 'number', suit: COULEURS[i % 3], value: 3 + ((i * 5) % 11) };
+}
+
+const joueurs = Array.from({ length: N }, (_, i) => ({
+  id: `p${i}`,
+  nickname: PSEUDOS[i],
+  piece: JETONS[i],
+  connected: true,
+  handCount: 6,
+  tricksWon: i % 3,
+  hasBid: true,
+  bid: 2,
+}));
+
+const pli = Array.from({ length: JOUES }, (_, i) => ({ playerId: `p${i}`, card: carte(i) }));
+
+const etat = {
+  phase: PHASE === 'bidding' ? 'bidding' : 'playing',
+  myId: 'p0',
+  isHost: true,
+  players: joueurs,
+  chat: [],
+  leaderPlayerId: 'p1',
+  roundNumber: 6,
+  totalRounds: 10,
+  cardsInRound: 6,
+  scoreboard: joueurs.map((p, i) => ({ id: p.id, nickname: p.nickname, score: 90 - i * 17, piece: p.piece })),
+  extensions: [],
+  deckStyle: 'classique',
+  lootAllies: [],
+  hand: Array.from({ length: 6 }, (_, i) => carte(i + 10)),
+  myBid: 2,
+  currentTrick: pli,
+  turnPlayerId: `p${JOUES % N}`,
+  isMyTurn: JOUES === 0,
+  trickNumber: 3,
+  leadingPlayerId: 'p1',
+  trickWillBeDestroyed: false,
+  trickPaused: PHASE === 'paused',
+  lastTrickResult: PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
+  sittingOutThisTrick: false,
+};
+
+// --- Montage ------------------------------------------------------------
+(async () => {
+  const html = await (await fetch('skullking.html')).text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.body.querySelectorAll('script').forEach((s) => s.remove());
+  document.body.insertAdjacentHTML('beforeend', doc.body.innerHTML);
+
+  await new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = 'skullking.js';
+    s.onload = ok; s.onerror = ko;
+    document.body.appendChild(s);
+  });
+
+  emettre('skullking-state', etat);
+  document.documentElement.dataset.apercuPret = '1';
+})();
+</script>
+</body>
+</html>

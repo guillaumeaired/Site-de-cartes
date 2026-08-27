@@ -234,9 +234,30 @@
         <div id="sk-power-panel" class="sk-power-panel hidden"></div>
 
         <div id="sk-bid-choices" class="sk-bid-choices"></div>
-        <div id="sk-tigress-choice" class="sk-bid-choices hidden">
-          <button id="sk-btn-tigress-pirate" class="btn">Comme Pirate</button>
-          <button id="sk-btn-tigress-escape" class="btn">Comme Fuite</button>
+        <!-- La Tigresse ne se pose pas dans la barre d'actions comme les
+             autres choix : elle décide de ce qu'est la carte, et le geste est
+             irréversible. Un cadre au centre, les deux emblèmes peints en
+             grand de part et d'autre d'un slash — c'est le blason de la Fuite
+             ou celui du Pirate, pas deux libellés dans une pilule. -->
+        <div id="sk-tigress-choice" class="sk-tigress-choice hidden" role="dialog" aria-modal="true" aria-labelledby="sk-tigress-titre">
+          <div class="sk-tigress-cadre">
+            <p id="sk-tigress-titre" class="sk-tigress-titre">La Tigresse, tu la joues…</p>
+            <div class="sk-tigress-duel">
+              <button id="sk-btn-tigress-escape" class="sk-tigress-option sk-tigress-option--fuite" type="button">
+                <i class="sk-tigress-embleme" aria-hidden="true"></i>
+                <span class="sk-tigress-nom">Comme Fuite</span>
+                <span class="sk-tigress-effet">elle renonce au pli</span>
+              </button>
+              <span class="sk-tigress-slash" aria-hidden="true">/</span>
+              <button id="sk-btn-tigress-pirate" class="sk-tigress-option sk-tigress-option--pirate" type="button">
+                <i class="sk-tigress-embleme" aria-hidden="true"></i>
+                <span class="sk-tigress-nom">Comme Pirate</span>
+                <span class="sk-tigress-effet">elle prend le pli</span>
+              </button>
+            </div>
+            <p class="sk-tigress-note">Les autres joueurs ne verront ton choix qu'une fois le pli résolu.</p>
+            <button id="sk-btn-tigress-annuler" class="sk-tigress-annuler" type="button">Reposer la carte</button>
+          </div>
         </div>
         <div id="sk-joker-choice" class="sk-bid-choices hidden">
           <p class="hint">Le Joker prend quelle couleur ?</p>
@@ -336,12 +357,13 @@
         <li><strong>Obligation de suivre :</strong> la couleur demandée est celle de la première carte <em>numérotée</em> du pli. Si tu as encore une numérotée de cette couleur, tu dois en jouer une ; sinon tu joues ce que tu veux. Les cartes spéciales (Pirate, Sirène, Fuite, Skull King, Butin…) restent jouables à tout moment, et une Fuite en tête de pli n'impose aucune couleur.</li>
         <li>Résolution d'un pli : Fuite/Butin ne gagnent jamais face à une autre carte (sauf si le pli n'est composé que de Fuites/Butin, auquel cas un Butin l'emporte, ou à défaut la première Fuite jouée). Numérotées : la plus haute de la couleur menée gagne, sauf noir présent (atout, gagne quel que soit le chiffre). Pirate bat numérotées et Sirènes (entre pirates, le premier joué gagne). Skull King bat les Pirates. Sirène bat le Skull King mais perd contre un Pirate — sauf si Pirate + Skull King + Sirène sont réunis dans le même pli : la Sirène gagne alors toujours.</li>
         <li>Score — annonce 0 réussie : +10×manche, ratée : -10×manche. Annonce ≥1 réussie exactement : +20 par pli. Annonce ≥1 ratée : -10 par pli d'écart.</li>
-        <li>Bonus (uniquement si l'annonce de la manche est réussie exactement) : capturer un 14 de couleur +10, le 14 noir +20, un Pirate avec le Skull King +30 chacun, le Skull King avec une Sirène +40.</li>
+        <li>Bonus (uniquement si l'annonce de la manche est réussie exactement) : capturer un 14 de couleur +10, le 14 noir +20, un Pirate avec le Skull King +30 chacun, le Skull King avec une Sirène +40. <strong>Aucune autre capture ne rapporte</strong> : un Pirate qui prend une Sirène, une Sirène qui prend un Pirate, un Pirate qui en bat quatre autres — ça ne vaut que le pli.</li>
         <li><strong>Butin :</strong> agit comme une Fuite. Si un autre joueur remporte le pli, vous formez une alliance : +20 points chacun si vous réussissez tous les deux votre annonce.</li>
         <li><strong>Kraken :</strong> détruit le pli, personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.</li>
         <li><strong>Baleine blanche :</strong> annule l'effet de toutes les cartes spéciales du pli — seule la valeur numérique compte (le noir perd son atout). Si le pli n'a que des spéciales, il est détruit et c'est le joueur qui a entamé le pli qui mène le suivant.</li>
         <li><strong>Pouvoirs des 5 pirates</strong> (déclenchés s'ils remportent le pli avec leur propre carte — ou si le Skull King les capture, il hérite alors du pouvoir ; survole une carte Pirate pour voir son pouvoir) : Rosie D'Laney choisit qui entame le pli suivant, Will le Bandit pioche 2 cartes et en défausse 2, Rascal le Flambeur peut miser 10 ou 20 points de plus sur son annonce, Juanita Jade regarde les cartes non distribuées, Harry le Géant modifie sa propre annonce de ±1. Sur le tout dernier pli d'une manche, seul le pouvoir de Harry se déclenche encore ; les 4 autres sont désactivés.</li>
         <li><strong>Extension officielle (facultative, réglée par l'hôte dans le salon d'attente) :</strong> 12 numérotées de plus (7/8/0-14 par couleur), un Joker/Wild 15, et 6 nouvelles cartes spéciales (Mary Thorne, Mat le Forban, Raie Tachetée, Dernière Salve, Marcher sur la Planche, Coffre de Davy Jones) — survole chaque carte en jeu pour voir son effet en détail. Chacune s'active séparément : on peut prendre les monstres sans les numérotées, ou l'inverse. Le nombre de joueurs suit le paquet — 7 sans rien, jusqu'à 9 avec tout.</li>
+        <li><strong>Mat le Forban</strong> (extension) : il bat tous les Pirates, mais perd contre le Skull King <em>et</em> contre une Sirène — même seule, là où un vrai Pirate l'emporterait. S'il remporte le pli, il hérite du/des pouvoir(s) du/des Pirate(s) capturé(s), mais <strong>ne gagne aucun bonus</strong> pour eux : capturer des Pirates ne rapporte des points qu'au Skull King. En revanche il en vaut à qui le capture — <strong>+30 pour le Skull King comme pour une Sirène</strong>, seul cas où une Sirène touche un bonus de capture autre que celui du Skull King. Et s'il se retrouve dans le même pli qu'une Sirène et un Pirate, c'est la Sirène qui ferme la boucle, comme avec le Skull King.</li>
         <li>La partie peut s'arrêter avant la fin des 10 manches, à la discrétion de l'hôte : classement sur le score accumulé jusque-là.</li>
       </ol>
       <button id="sk-btn-close-rules" class="btn btn-primary">Compris !</button>

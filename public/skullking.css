@@ -1613,10 +1613,15 @@ h3 {
   }
 }
 
+/* Le bandeau du centre a quitté le milieu du feutre : depuis que les cartes
+   se posent contre leur joueur, ma carte à moi monte du bas et vient
+   justement s'arrêter au centre. Il se cale donc dans le tiers haut, la
+   seule bande que la couronne laisse libre quel que soit l'effectif — sous
+   le siège du haut quand il y en a un, au-dessus de ma carte toujours. */
 .sk-table-center {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 27%;
   transform: translate(-50%, -50%);
   width: 84%;
   z-index: 1;
@@ -1634,9 +1639,13 @@ h3 {
    sans quoi elle paraît deux fois plus grosse que celle du premier plan. */
 .sk-trick-card {
   position: absolute;
-  transform: translate(-50%, -50%) scale(var(--sk-depth, 1));
+  /* --sk-depth : la profondeur, posée par renderTrick. --sk-gagne : le cran
+     de hauteur de la carte qui mène. Les deux se multiplient — une carte du
+     fond qui mène reste une carte du fond. */
+  transform: translate(-50%, -50%) scale(calc(var(--sk-depth, 1) * var(--sk-gagne, 1)));
   z-index: 3;
   animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @keyframes sk-card-drop {
@@ -1645,16 +1654,62 @@ h3 {
     opacity: 0;
   }
   to {
-    transform: translate(-50%, -50%) scale(var(--sk-depth, 1));
+    transform: translate(-50%, -50%) scale(calc(var(--sk-depth, 1) * var(--sk-gagne, 1)));
     opacity: 1;
   }
 }
 
-/* Halo chaud autour de la carte qui mène le pli — assez pour confirmer un
-   coup d'œil volontaire, pas assez pour spoiler le pli avant d'avoir joué. */
+/* Qui mène le pli. Le halo seul suffisait quand les cartes se rejoignaient
+   au centre : à cinq cartes voisines, un liseré un peu plus clair se
+   remarquait. Réparties chacune contre son joueur, elles occupent maintenant
+   toute la scène, et ce halo-là se cherchait. Il lui faut un cerclage de
+   laiton et un cran de hauteur — c'est la question qu'on se pose à chaque
+   carte posée (« est-ce que ça passe devant ? »), elle mérite de se lire de
+   loin. */
 .sk-trick-card--leading {
   z-index: 4;
-  filter: drop-shadow(0 0 16px rgba(232, 206, 146, 0.34));
+  --sk-gagne: 1.07;
+  filter: drop-shadow(0 0 18px rgba(232, 206, 146, 0.5));
+}
+
+.sk-trick-card--leading .sk-card {
+  box-shadow:
+    0 0 0 3px var(--sk-brass),
+    0 0 0 4px rgba(20, 12, 5, 0.85),
+    0 10px 22px rgba(0, 0, 0, 0.6);
+}
+
+/* Le pli est tombé. La carte qui l'emporte se hausse d'un cran de plus et
+   son laiton respire : le bandeau du centre nomme le vainqueur, la carte dit
+   laquelle c'était. Les deux ensemble, parce qu'un nom ne désigne pas une
+   carte et qu'une carte qui brille ne se rattache pas à un joueur. */
+.sk-trick-card--gagnante {
+  z-index: 5;
+  --sk-gagne: 1.16;
+}
+
+.sk-trick-card--gagnante .sk-card {
+  animation: sk-carte-gagnante 1.5s ease-in-out infinite;
+}
+
+@keyframes sk-carte-gagnante {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px var(--sk-brass),
+      0 0 0 4px rgba(20, 12, 5, 0.85),
+      0 10px 22px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px var(--sk-brass-hi),
+      0 0 0 5px rgba(20, 12, 5, 0.85),
+      0 0 26px rgba(255, 226, 150, 0.7),
+      0 10px 22px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-trick-card--gagnante .sk-card { animation: none; }
 }
 
 /* Le commentaire du pli est un ruban de parchemin posé sur le feutre. */
@@ -2646,6 +2701,40 @@ h3 {
 .sk-card--art.sk-card--tigress-pirate { --sk-tigresse-liser: var(--sk-pirate); }
 .sk-card--art.sk-card--tigress-escape { --sk-tigresse-liser: var(--sk-fuite); }
 
+/* Le sceau de la Tigresse : l'emblème retenu, frappé sur le dessin dès que
+   le choix est connu. Le liseré ci-dessus dit la couleur, mais il se lit de
+   près et suppose qu'on sache que rouge = Pirate ; sur la table, à trois
+   sièges de distance, il ne se voit pas. L'emblème, lui, dit la fonction :
+   le pavillon blanc ou les sabres croisés, les mêmes qu'au moment du choix.
+   Posé bas, sur le buste et la banderole — le visage reste dégagé, et c'est
+   à cet endroit que la carte est le moins recouverte dans le pli. */
+.sk-card__tigresse {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 61%;
+  width: 62%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: var(--sk-embleme) 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.75));
+}
+
+.sk-card--tigress-pirate .sk-card__tigresse { --sk-embleme: url('assets/skin/embleme-pirate.webp'); }
+.sk-card--tigress-escape .sk-card__tigresse { --sk-embleme: url('assets/skin/embleme-fuite.webp'); }
+
+/* Dans l'éventail, les cartes se recouvrent par la droite : un sceau centré
+   passerait sous la voisine. Il glisse alors vers la bande gauche, la seule
+   qui reste toujours visible — c'est la règle de toute la carte (voir
+   cardShell). Ta Tigresse à toi porte son choix dès la pose, elle n'est donc
+   plus en main : ce cas ne se produit que si un paquet la remet en main. */
+.sk-hand .sk-card__tigresse {
+  left: 34%;
+  top: 64%;
+  width: 54%;
+}
+
 /* Le Joker posé : même dispositif, même raison. Son 15 est peint, la famille
    qu'il vient de déclarer ne l'est pas — elle ne peut pas l'être, elle change
    à chaque partie. `--band` est déjà la couleur de la famille, posée par la
@@ -2862,15 +2951,17 @@ h3 {
   }
 }
 
-/* Compteur de plis posé au-dessus du jeton (paysage) : plis remportés sur
-   plis annoncés. Le siège est en position absolue et centré par
-   translate(-50%, -50%) ; le compteur se cale donc au-dessus de lui en
-   valeur absolue plutôt que dans le flux. */
+/* Compteur de plis (paysage) : plis remportés sur plis annoncés, en pilule
+   sous le pseudo — la place que la maquette donne à l'annonce.
+   Il était posé hors du flux, tantôt au-dessus tantôt en dessous du siège,
+   pour esquiver la carte du pli. Depuis que les cartes se posent en couronne
+   à l'extérieur des sièges, ce jeu de côtés ne tenait plus : à neuf joueurs,
+   le compteur d'un siège du haut et celui de son voisin du bas se
+   rejoignaient dans le même trou. Dans le flux, il fait simplement partie du
+   siège — et la carte, qui se dégage du RECTANGLE mesuré du siège, l'évite
+   sans qu'on ait à y penser. */
 .sk-seat-tally {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
+  order: 3;
   padding: 1px 8px 2px;
   border-radius: 2px;
   background: rgba(6, 14, 11, 0.85);
@@ -2883,13 +2974,6 @@ h3 {
   color: var(--sk-cream);
   white-space: nowrap;
   pointer-events: none;
-}
-
-/* Sièges du bas : le compteur passe sous le pseudo, pour ne pas dépasser
-   vers le centre du tapis où se pose la carte du pli. */
-.sk-seat-tally--below {
-  bottom: auto;
-  top: calc(100% + 4px);
 }
 
 /* Annonce tenue pile / dépassée. La couleur ne fait que redoubler : le
@@ -6039,9 +6123,54 @@ h3 {
     max-width: 360px;
   }
 
+  /* L'équipage passe à gauche : c'est la planche qu'on regarde en premier
+     en arrivant (qui est là, qui manque), et elle était au bout de la
+     rangée. `order` plutôt qu'un déplacement dans le HTML — sous 1000px la
+     grille redevient une colonne et c'est l'ordre du DOM qui empile, où le
+     code de la partie doit rester en tête. */
   .sk-lobby-col--crew {
-    flex: 1.35 1 320px;
-    max-width: 400px;
+    order: -1;
+    flex: 1.6 1 356px;
+    max-width: 440px;
+  }
+
+  /* Le rôle d'équipage sur deux colonnes. Une seule, il grandissait de 51 px
+     par matelot : au cinquième, l'équipage devenait la planche la plus haute
+     et « Lancer la partie », qui suit la grille, descendait sous le pli à
+     chaque arrivée. Sur deux colonnes il grandit deux fois moins vite, et
+     un plafond (posé en JS, voir ajusterHauteurEquipage) l'empêche de
+     dépasser ses voisines dans tous les cas. */
+  .sk-lobby-col .lobby-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    /* Le plafond ne borne que la hauteur : en largeur la liste ne déborde
+       jamais, et `auto` sur les deux axes lui donnait une barre horizontale
+       vide en pied de planche. */
+    overflow: hidden auto;
+  }
+
+  /* Deux fois moins large : le pseudo se coupe plutôt que de pousser la
+     barre du capitaine hors de la ligne. */
+  /* Serrées : neuf matelots sur deux colonnes tiennent alors dans ce que
+     les planches voisines laissent, et la liste ne défile jamais d'une
+     partie complète. */
+  .sk-lobby-col .lobby-list li {
+    min-width: 0;
+    padding: 4px 10px;
+  }
+
+  .sk-lobby-col .lobby-list .sk-lobby-nom {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* La barre du capitaine se resserre : sur une demi-largeur, elle prenait
+     assez de place pour couper le pseudo de celui qu'elle désigne. */
+  .sk-lobby-col .lobby-list li.lobby-host::after {
+    padding-left: 6px;
+    letter-spacing: 0.1em;
   }
 
   .sk-lobby-col-title,
@@ -6172,5 +6301,218 @@ h3 {
 
   .sk-end-actions .btn {
     margin: 0;
+  }
+}
+
+/* --- Le choix de la Tigresse ----------------------------------------
+   Les autres choix de pose (Joker, 0/14, Marcher sur la Planche) tiennent
+   dans la barre d'actions : ils précisent une carte. Celui-ci décide de ce
+   qu'elle EST, et une fois posé rien ne le reprend. Il prend donc le centre
+   de l'écran, et il le prend en images : les deux emblèmes peints, séparés
+   d'un slash, comme sur la carte elle-même où ils cohabitent dans les
+   médaillons d'angle tant que le choix reste ouvert. */
+.sk-tigress-choice {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 8, 10, 0.76);
+}
+
+.sk-tigress-choice.hidden {
+  display: none;
+}
+
+.sk-tigress-cadre {
+  position: relative;
+  max-width: 560px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px 26px 18px;
+  border-radius: 5px;
+  text-align: center;
+  color: var(--sk-cream);
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 18px 40px rgba(0, 0, 0, 0.65);
+}
+
+.sk-tigress-titre {
+  margin: 0 0 14px;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.16rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.sk-tigress-duel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Le slash de la maquette : c'est lui qui dit « l'un OU l'autre ». Tracé
+   au trait, pas au caractère — un « / » de fonte penche selon la police et
+   ne monte jamais aussi haut que les deux disques. */
+.sk-tigress-slash {
+  flex-shrink: 0;
+  width: 3px;
+  height: clamp(100px, 23vw, 156px);
+  border-radius: 2px;
+  transform: rotate(16deg);
+  background: linear-gradient(180deg, rgba(184, 137, 53, 0), var(--sk-brass) 22%, var(--sk-brass) 78%, rgba(184, 137, 53, 0));
+  font-size: 0; /* le « / » du DOM reste pour qui lit la page en texte brut */
+}
+
+.sk-tigress-option {
+  /* `auto` et pas `0` : les deux libellés doivent tenir sur une ligne, et
+     « Comme Pirate » est plus long que « Comme Fuite ». À base zéro les deux
+     colonnes sont strictement égales et la plus longue passe à la ligne,
+     ce qui décale son blason par rapport à l'autre. */
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 12px;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+  color: var(--sk-cream-2);
+  font-family: 'Cinzel', Georgia, serif;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+/* L'emblème est le bouton : il grossit et s'allume au survol, le libellé
+   ne fait que le nommer. */
+.sk-tigress-embleme {
+  width: clamp(104px, 26vw, 168px);
+  aspect-ratio: 1 / 1;
+  background: var(--sk-embleme) 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1), filter 0.18s ease;
+}
+
+.sk-tigress-option--fuite .sk-tigress-embleme { --sk-embleme: url('assets/skin/embleme-fuite.webp'); }
+.sk-tigress-option--pirate .sk-tigress-embleme { --sk-embleme: url('assets/skin/embleme-pirate.webp'); }
+
+.sk-tigress-option:hover .sk-tigress-embleme,
+.sk-tigress-option:focus-visible .sk-tigress-embleme {
+  transform: scale(1.06);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 14px var(--sk-halo));
+}
+
+.sk-tigress-option--fuite { --sk-halo: rgba(90, 158, 214, 0.55); }
+.sk-tigress-option--pirate { --sk-halo: rgba(178, 52, 42, 0.6); }
+
+.sk-tigress-option:hover,
+.sk-tigress-option:focus-visible {
+  color: var(--sk-cream);
+  background: rgba(255, 236, 196, 0.05);
+}
+
+.sk-tigress-option:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: 2px;
+}
+
+.sk-tigress-nom {
+  white-space: nowrap;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.sk-tigress-effet {
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.74rem;
+  opacity: 0.66;
+}
+
+.sk-tigress-note {
+  margin: 12px 0 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.76rem;
+  color: var(--sk-cream-2);
+  opacity: 0.68;
+}
+
+/* Le cadre s'ouvre sur un clic de carte : il faut pouvoir en ressortir sans
+   avoir choisi, sinon un clic de travers coûte la Tigresse. */
+.sk-tigress-annuler {
+  margin-top: 10px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+  color: var(--sk-cream-2);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.76rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 0.6;
+}
+
+.sk-tigress-annuler:hover {
+  opacity: 1;
+}
+
+/* Téléphone en portrait : les deux disques côte à côte tombent sous 100 px
+   et l'ordre du duel se perd. On les empile, le slash devient la barre
+   horizontale qui les sépare. La hauteur est dans la condition : empilés,
+   les deux blasons demandent ~550 px, qu'un téléphone couché n'a pas — il
+   les garde alors côte à côte, quitte à les rapetisser (bloc suivant). */
+@media (max-width: 420px) and (min-height: 620px) {
+  .sk-tigress-duel {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sk-tigress-slash {
+    width: clamp(120px, 52vw, 200px);
+    height: 2px;
+    transform: none;
+    background: linear-gradient(90deg, rgba(184, 137, 53, 0), var(--sk-brass) 22%, var(--sk-brass) 78%, rgba(184, 137, 53, 0));
+  }
+
+  .sk-tigress-embleme {
+    width: clamp(96px, 34vw, 132px);
+  }
+}
+
+/* Écran bas (téléphone couché, la position de jeu la plus courante) : le
+   cadre doit tenir en hauteur sans ascenseur, sinon un des deux choix se
+   trouve hors champ au moment de trancher. */
+@media (max-height: 560px) {
+  .sk-tigress-cadre {
+    padding: 12px 20px 10px;
+  }
+
+  .sk-tigress-titre {
+    margin-bottom: 8px;
+    font-size: 1rem;
+  }
+
+  .sk-tigress-embleme {
+    width: clamp(76px, 17vh, 116px);
+  }
+
+  .sk-tigress-slash {
+    height: clamp(64px, 14vh, 96px);
+  }
+
+  .sk-tigress-note {
+    margin-top: 8px;
   }
 }

@@ -349,10 +349,16 @@ function cardFaceHTML(card) {
   let label = card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;
   // Une fois la décision de la Tigresse connue, la carte le dit : sans ça on
   // voyait bien qu'elle avait été jouée, jamais en quoi elle s'était changée.
+  // Le pied le dit pour les lecteurs d'écran ; à l'œil, c'est l'emblème
+  // retenu — le même que celui du cadre de choix — frappé sur le dessin. Le
+  // liseré de couleur seul ne suffisait pas : il faut savoir que rouge veut
+  // dire Pirate, et à la taille d'une carte posée sur le tapis il disparaît.
+  let sceau = '';
   if (card.kind === 'tigress' && card.chosenAs) {
     label = card.chosenAs === 'pirate' ? 'Tigresse Pirate' : 'Tigresse Fuite';
+    sceau = '<i class="sk-card__tigresse" aria-hidden="true"></i>';
   }
-  return cardShell('<i class="sk-card__wm"></i>', `<b class="sk-special-label">${label}</b>`);
+  return cardShell('<i class="sk-card__wm"></i>', `<b class="sk-special-label">${label}</b>`) + sceau;
 }
 
 // Texte d'infobulle (survol). Toutes les cartes en ont une, y compris celles
@@ -381,7 +387,11 @@ function cardPowerText(card) {
     case 'whale':
       return "Baleine blanche — annule l'effet de toutes les cartes spéciales du pli : seule la valeur numérique compte, le noir perd son statut d'atout. La plus haute valeur l'emporte, et à égalité le premier à l'avoir posée.";
     case 'firstmate':
-      return "Mat le Forban — se comporte comme un Pirate, et s'il remporte le pli il hérite du/des pouvoir(s) du/des Pirate(s) capturé(s).";
+      // Trois précisions qui manquaient et qu'on ne peut pas deviner de la
+      // carte : il perd contre une Sirène SEULE (un vrai Pirate la bat),
+      // capturer des Pirates ne lui rapporte aucun bonus (ce privilège est
+      // au seul Skull King), et il vaut +30 à qui le prend — Sirène comprise.
+      return "Mat le Forban — bat tous les Pirates, perd contre le Skull King et contre une Sirène (même seule). S'il remporte le pli, il hérite du/des pouvoir(s) du/des Pirate(s) capturé(s), sans aucun bonus de points. Le Skull King ou une Sirène qui le capturent gagnent +30.";
     case 'stingray':
       return "Raie Tachetée — comme la Baleine blanche, mais c'est la carte la PLUS BASSE qui remporte le pli (à égalité, la première posée).";
     case 'lastvolley':
@@ -808,6 +818,53 @@ function renderPiecePicker(players) {
   });
 }
 
+// LES BOUTONS DU BAS NE BOUGENT PLUS. « Lancer la partie » et « Ajouter un
+// bot » suivent la grille du salon, dont la hauteur est celle de sa planche
+// la plus haute. Passé quatre matelots c'était l'équipage : chaque arrivée
+// poussait les boutons d'une ligne, et au septième il fallait défiler pour
+// lancer la partie — au moment précis où tout le monde attend.
+//
+// La liste se borne donc à ce que les autres planches laissent : mesuré, pas
+// codé en dur. La planche des extensions a déjà changé de hauteur deux fois
+// (huit lignes, puis des libellés sur deux lignes), un plafond en pixels
+// aurait vieilli avec elle. Avec le rôle sur deux colonnes, le plafond n'est
+// atteint qu'au-delà de huit joueurs — et là, la liste défile toute seule
+// plutôt que d'emporter le salon avec elle.
+const GRILLE_EN_RANGEE = '(min-width: 1000px)';
+
+function ajusterHauteurEquipage() {
+  const grille = document.querySelector('.sk-lobby-grid');
+  const equipage = grille && grille.querySelector('.sk-lobby-col--crew');
+  if (!equipage) return;
+  lobbyList.style.maxHeight = '';
+  // Sous 1000px les planches sont empilées : la grille fait leur somme, il
+  // n'y a plus de « planche la plus haute » à ne pas dépasser.
+  if (!window.matchMedia(GRILLE_EN_RANGEE).matches) return;
+  const planches = [...grille.children].filter((c) => !c.classList.contains('hidden'));
+  // Fenêtre trop étroite pour les quatre planches : elles s'enroulent sur
+  // deux rangées, et il n'y a plus de « planche la plus haute » à ne pas
+  // dépasser — borner la liste ne ferait que cacher des matelots pour rien.
+  if (new Set(planches.map((c) => c.offsetTop)).size > 1) return;
+  const voisines = planches.filter((c) => c !== equipage).map((c) => c.offsetHeight);
+  if (!voisines.length) return;
+  // Ce que la planche mesure en dehors de la liste (les pièces, le titre) :
+  // c'est ce qu'il faut retrancher du plafond pour obtenir celui de la liste.
+  const autour = equipage.offsetHeight - lobbyList.offsetHeight;
+  let plafond = Math.max(...voisines) - autour;
+  // Le plafond tombe sur un nombre entier de rangées. Au pixel près, il
+  // coupait la suivante en deux et le liseré qui dépassait se lisait comme
+  // une barre de défilement collée en pied de planche.
+  const ligne = lobbyList.querySelector('li');
+  if (ligne) {
+    const ecart = parseFloat(getComputedStyle(lobbyList).rowGap) || 0;
+    const pas = ligne.offsetHeight + ecart;
+    if (pas > 0) plafond = Math.max(2, Math.floor((plafond + ecart) / pas)) * pas - ecart;
+  }
+  // Sous deux rangées de matelots, mieux vaut une planche un peu plus haute
+  // qu'une liste réduite à une fente.
+  if (plafond > 120) lobbyList.style.maxHeight = `${plafond}px`;
+}
+
 // Le paquet, réglé par l'hôte. Deux vignettes plutôt que deux libellés : ce
 // qu'on choisit ici, ce sont des images — les nommer sans les montrer
 // obligerait à lancer une partie pour savoir ce qu'on vient de prendre. La
@@ -1040,6 +1097,10 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
 
+  // Après tout le reste : le plafond se déduit de la hauteur des voisines,
+  // qui dépendent du paquet, des manches et des lignes d'extension.
+  ajusterHauteurEquipage();
+
   btnStartGame.classList.toggle('hidden', !isHost);
   // Outil de test : jamais proposé aux vrais joueurs (voir DEV_TOOLS).
   btnAddBot.classList.toggle('hidden', !(DEV_TOOLS && isHost && players.length < maxPlayers));
@@ -1059,6 +1120,8 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   lastDevouredTrick = null;
   lastPlankedTrick = null;
 });
+
+window.addEventListener('resize', ajusterHauteurEquipage);
 
 btnExtension.addEventListener('click', () => {
   if (!myIsHost) return;
@@ -1269,13 +1332,6 @@ function surFeutre(u, v) {
 // du tapis paraît une fois et demie celle du premier plan.
 function echelleProfondeur(v) {
   return 0.72 + 0.38 * v;
-}
-
-// Hauteur du feutre en pixels : c'est l'unité dans laquelle se comptent les
-// écarts verticaux du plan de jeu.
-function hauteurFeutre() {
-  const h = tableEl.getBoundingClientRect().height || 1;
-  return (FEUTRE.bas - FEUTRE.haut) * h;
 }
 
 function seatLayout(state) {
@@ -1565,6 +1621,10 @@ function renderSeats(state) {
     const pos = surFeutre(left / 100, v);
     const seat = document.createElement('div');
     seat.className = 'sk-seat' + (p.id === myId ? ' sk-seat--me' : '');
+    // renderTrick vient chercher le siège par son joueur : la carte du pli se
+    // pose à côté du médaillon RÉELLEMENT rendu, mesuré, et pas à côté d'une
+    // taille supposée.
+    seat.dataset.player = p.id;
     seat.style.left = pos.x + '%';
     seat.style.top = pos.y + '%';
     seat.style.transform = `translate(-50%, -50%) scale(${echelleProfondeur(v).toFixed(3)})`;
@@ -1612,11 +1672,9 @@ function renderSeats(state) {
     // annonces sont encore secrètes.
     if (landscapeTable.matches && state.phase !== 'bidding' && p.bid != null) {
       const tally = document.createElement('div');
-      // Le compteur se pose du côté OPPOSÉ au centre du tapis : au-dessus
-      // pour les sièges du haut, en dessous pour ceux du bas. Posé toujours
-      // au-dessus, il dépassait vers le centre sur le siège du bas et la
-      // carte du pli venait le recouvrir.
-      tally.className = 'sk-seat-tally' + (top > 50 ? ' sk-seat-tally--below' : '');
+      // En pilule sous le pseudo, dans le flux du siège : c'est ce que la
+      // carte du pli mesure quand elle cherche à se dégager (voir renderTrick).
+      tally.className = 'sk-seat-tally';
       const won = p.tricksWon || 0;
       tally.textContent = `${won} sur ${p.bid}`;
       // Vert tant que l'annonce reste tenable, rouge dès qu'elle est dépassée.
@@ -1715,74 +1773,162 @@ function suitDot(suit) {
   return `<i class="sk-suit-dot sk-suit-dot--${suit}" aria-hidden="true"></i>`;
 }
 
-// Chaque carte du pli est posée devant le siège de qui l'a jouée (interpolée
-// entre le siège et le centre) : le pli dessine un cercle et on lit d'un coup
-// d'œil à qui appartient chaque carte, sans avoir besoin d'étiquette de nom.
+// Largeur d'une carte du pli à l'échelle 1, mesurée sur une carte réellement
+// posée dans le tapis puis retirée. `--sk-trick-scale` est neutralisé le
+// temps de la mesure : c'est la largeur PLEINE qu'on cherche, celle sur
+// laquelle l'échelle va justement se calculer.
+function largeurCarteDuPli() {
+  tableEl.style.setProperty('--sk-trick-scale', '1');
+  const sonde = document.createElement('div');
+  sonde.className = 'sk-trick-card';
+  sonde.style.visibility = 'hidden';
+  sonde.style.animation = 'none';
+  const carte = document.createElement('div');
+  carte.className = 'sk-card';
+  sonde.appendChild(carte);
+  tableEl.appendChild(sonde);
+  const l = carte.offsetWidth;
+  sonde.remove();
+  return l || 84;
+}
+
+// Le rectangle d'un élément, ramené aux coordonnées du tapis. `null` s'il
+// n'est pas affiché — un élément masqué mesure 0 et bornerait tout.
+function rectDansLeTapis(el, boite) {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  return { x0: r.left - boite.left, x1: r.right - boite.left, y0: r.top - boite.top, y1: r.bottom - boite.top };
+}
+
+// Sort la carte d'une bande de texte qu'elle recouvrirait, du côté vers
+// lequel elle penchait déjà — vers le haut si son centre est au-dessus de
+// celui de la bande, vers le bas sinon. Rien à faire si les deux ne se
+// touchent pas, ce qui est le cas le plus fréquent.
+function ecarterDe(x, y, demiL, demiH, bande, marge) {
+  if (x + demiL <= bande.x0 || x - demiL >= bande.x1) return y;
+  if (y + demiH <= bande.y0 || y - demiH >= bande.y1) return y;
+  return y < (bande.y0 + bande.y1) / 2 ? bande.y0 - demiH - marge : bande.y1 + demiH + marge;
+}
+
+function borner(v, min, max) {
+  return max < min ? (min + max) / 2 : Math.min(Math.max(v, min), max);
+}
+
+// Les cartes se posent à l'extérieur des sièges : elles débordent donc
+// forcément du feutre sur le bois peint. Ce qu'elles n'ont pas le droit de
+// recouvrir, c'est ce qui porte du texte — le bandeau du haut et le panneau
+// de droite. On rend le rectangle qui reste libre, en coordonnées du tapis.
+function zoneDesCartes(boite) {
+  const scene = document.querySelector('.sk-scene');
+  const r = scene ? scene.getBoundingClientRect() : boite;
+  const marge = Math.max(8, r.width * 0.008);
+  let x0 = r.left + marge;
+  let x1 = r.right - marge;
+  let y0 = r.top + marge;
+  const y1 = r.bottom - marge;
+
+  const bandeau = document.querySelector('.sk-game-header');
+  if (bandeau) {
+    const b = bandeau.getBoundingClientRect();
+    if (b.height) y0 = Math.max(y0, b.bottom + marge);
+  }
+  // En scène le panneau de droite est en `display: contents` : il n'a pas de
+  // boîte à lui, ce sont ses parchemins qui en ont une.
+  document.querySelectorAll('.sk-objective, .sk-carnet, .sk-chat-livre').forEach((n) => {
+    const b = n.getBoundingClientRect();
+    if (b.width && b.left > r.left + r.width * 0.5) x1 = Math.min(x1, b.left - marge);
+  });
+
+  return { x0: x0 - boite.left, x1: x1 - boite.left, y0: y0 - boite.top, y1: y1 - boite.top };
+}
+
+// Deux bornes, et on garde la plus basse.
+//
+// La hauteur d'abord : une carte du pli ne doit pas dépasser 45 % de la
+// hauteur du feutre. À la taille d'avant (les cartes se rejoignaient au
+// centre, où l'on pouvait empiler) une seule carte couvrait les deux tiers
+// du tapis ; posée contre un nom, elle recouvrait la moitié de la scène.
+//
+// La couronne ensuite : chaque carte a besoin d'un arc à elle sur le tour du
+// feutre. Jusqu'à six joueurs il y en a de reste ; à neuf, les voisines se
+// toucheraient. Jamais en deçà de 55 %, où les chiffres deviennent illisibles.
+function echelleCouronne(effectif, largeurPleine, L, H) {
+  const hauteur = (0.45 * H * 0.7) / largeurPleine;
+  const a = 0.47 * L;
+  const b = 0.45 * H;
+  // Périmètre d'ellipse, approximation de Ramanujan.
+  const tour = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
+  const arc = tour / Math.max(1, effectif) / (largeurPleine * 1.25);
+  return Math.max(0.55, Math.min(1, hauteur, arc));
+}
+
+// La couronne : chaque carte du pli se pose CONTRE le nom de qui l'a jouée,
+// du côté extérieur au tapis — au-dessus des sièges du haut, à gauche de
+// ceux de gauche, à droite de ceux de droite. Seule la mienne fait l'inverse
+// et monte vers le feutre : à l'extérieur, elle tomberait dans ma main.
+//
+// Les cartes convergeaient jusqu'ici vers le centre. À cinq joueurs elles y
+// formaient un tas de cartes jointives où plus personne ne retrouvait la
+// sienne : la carte n'était plus rattachée à son joueur que par une
+// direction, et cette direction se perdait dès que deux cartes se
+// chevauchaient. Posée contre le nom, la carte n'a plus besoin d'être lue
+// pour qu'on sache à qui elle est.
+//
+// Ce que la couronne coûte : les cartes débordent du feutre sur le bois
+// peint, puisque les sièges sont déjà au bord. C'est voulu — le tapis est le
+// plateau, le bois est la table. Ce qu'elle rend : le centre du feutre reste
+// vide, et c'est là que s'écrit l'issue du pli.
 function renderTrick(state) {
   tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
   const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
-  // Horizontalement, un tirage en pourcentage suffit : le tapis est large et
-  // les sièges de gauche/droite sont loin du centre. Sur téléphone le tapis
-  // fait 390 px de large : la carte des sièges latéraux venait mordre leur
-  // étiquette, on la tire donc plus franchement vers le centre.
-  const PULL_X = narrowTable.matches ? 0.62 : 0.34;
 
-  // Verticalement, non : un pourcentage vaut de moins en moins de pixels à
-  // mesure que la fenêtre raccourcit, et la carte finissait par recouvrir le
-  // siège (21 px mesurés à 4 joueurs sur une fenêtre de 700 px, en haut comme
-  // en bas). On pose donc la carte à une distance FIXE du siège, mesurée sur
-  // les éléments réellement rendus plutôt que codée en dur — et quand le
-  // tapis est trop court pour tout loger, ce sont les cartes qui rétrécissent,
-  // jamais le dégagement autour des sièges. Cette distance se compte dans le
-  // plan de jeu, dont l'unité verticale est la hauteur du feutre.
-  const H_PLAN = hauteurFeutre();
-  // La carte du pli est indexée sur la largeur du feutre (--sk-w vaut
-  // 22.5cqw côté CSS), pas sur une taille en pixels : sur la nouvelle scène
-  // le feutre fait toute la fenêtre, une carte de 76 px y était minuscule.
-  // Sa hauteur nominale doit suivre la même règle, sinon ce calcul
-  // d'encombrement les croirait plus petites qu'elles ne sont et les
-  // laisserait se chevaucher.
-  const CARTE_LARGEUR_FRAC = 0.225;
-  const CARTE_H = Math.max(96, tableEl.clientWidth * CARTE_LARGEUR_FRAC * (118 / 84));
+  const boite = tableEl.getBoundingClientRect();
+  const L = boite.width || 1;
+  const H = boite.height || 1;
+
   const MARGE = 8;
 
-  const sieges = [...tableEl.querySelectorAll('.sk-seat')];
-  // offsetHeight est la hauteur de mise en page, insensible au scale de
-  // profondeur posé par renderSeats : on le remet donc à la main.
-  const hSiege = sieges.length ? sieges[0].offsetHeight : 76;
-  const places = [...map.values()];
-  const hauteurs = places.map(([, top]) => top);
-  const vHaut = Math.min(...hauteurs, 50) / 100;
-  const vBas = Math.max(...hauteurs, 50) / 100;
+  // Une carte du pli ne fait pas la même largeur selon la mise en page — 76 px
+  // en portrait, 86 en paysage, 22,5 % du feutre sur la scène peinte. Plutôt
+  // que de recopier ces trois valeurs ici (où elles se seraient désaccordées
+  // au premier réglage de CSS), on en pose une à blanc et on la mesure.
+  const largeurPleine = largeurCarteDuPli();
 
-  // Deux cartes ne se gênent que si elles partagent la même COLONNE : une
-  // carte du haut et une du bas ne se croisent pas si elles sont décalées
-  // horizontalement. L'ancienne version imposait deux rangées dès qu'il y
-  // avait un siège de chaque côté du centre — à 3 joueurs, où les deux
-  // adversaires sont aux coins opposés du feutre, ça bridait les cartes à
-  // leur plancher pour rien.
-  const COLONNE = 26; // en % de la largeur du plan : en deçà, elles se croisent
-  const hautes = places.filter(([, v]) => v < 50);
-  const basses = places.filter(([, v]) => v > 50);
-  const seChevauchent = hautes.some(([uh]) => basses.some(([ub]) => Math.abs(uh - ub) < COLONNE));
-
-  // Bande libre entre le siège le plus haut et le plus bas.
-  const bande =
-    (vBas - vHaut) * H_PLAN -
-    (hSiege * echelleProfondeur(vHaut)) / 2 -
-    (hSiege * echelleProfondeur(vBas)) / 2 -
-    2 * MARGE;
-  const hDispo = seChevauchent ? (bande - MARGE) / 2 : bande;
-  const echelle = Math.max(0.82, Math.min(1, hDispo / (CARTE_H * echelleProfondeur(0.5))));
+  // L'échelle se calcule sur l'EFFECTIF, pas sur le nombre de cartes déjà
+  // posées : indexée sur le pli en cours, elle rapetissait toutes les cartes
+  // à chaque nouvelle venue, et le tapis tressautait à chaque tour.
+  const echelle = echelleCouronne(map.size, largeurPleine, L, H);
   tableEl.style.setProperty('--sk-trick-scale', echelle.toFixed(3));
+  const CARTE_L = largeurPleine * echelle;
+  const CARTE_H = CARTE_L / 0.7;
+
+  // Le centre du plan de jeu, projeté sur le feutre : c'est de lui que part
+  // la direction « vers l'extérieur ».
+  const centre = surFeutre(0.5, 0.5);
+  const cxTapis = (centre.x / 100) * L;
+  const cyTapis = (centre.y / 100) * H;
+  const cadre = zoneDesCartes(boite);
+  // Trois bandes de texte traversent la scène sans en border un côté : la
+  // consigne du tour et la bannière de pouvoir au-dessus du feutre, ma main
+  // en dessous. Un rectangle de cadrage ne sait pas les éviter — elles se
+  // traitent carte par carte.
+  const bandes = ['sk-turn-indicator', 'sk-power-banner', 'sk-hand']
+    .map((id) => rectDansLeTapis(document.getElementById(id), boite))
+    .filter(Boolean);
+
+  // Les sièges viennent d'être rendus : on les mesure plutôt que de les
+  // supposer. Un pseudo long, un compteur de plis, le jeton d'entame — la
+  // hauteur d'un siège n'est pas une constante.
+  const sieges = new Map();
+  tableEl.querySelectorAll('.sk-seat').forEach((el) => sieges.set(el.dataset.player, el));
 
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
     if (!seatPos) return;
-    const [seatLeft, seatTop] = seatPos;
-    const uSiege = seatLeft / 100;
-    const vSiege = seatTop / 100;
+    const vSiege = seatPos[1] / 100;
+    const k = echelleProfondeur(vSiege);
 
     const slot = document.createElement('div');
     slot.className = 'sk-trick-card';
@@ -1791,21 +1937,56 @@ function renderTrick(state) {
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
 
-    // La carte avance vers le centre du feutre, juste assez pour dégager
-    // l'étiquette du siège — et jamais au-delà du centre. Ce garde-fou est
-    // le seul de la fonction : à cinq joueurs les sièges latéraux ne sont
-    // qu'à un dixième du centre, et sans lui leur carte ressortait de
-    // l'autre côté, en plein sur les sièges du fond.
-    const sens = vSiege < 0.5 ? 1 : vSiege > 0.5 ? -1 : 0;
-    const k = echelleProfondeur(vSiege);
-    const ecart = (hSiege * k) / 2 + (CARTE_H * echelle * k) / 2 + MARGE;
-    const dv = Math.min(ecart / H_PLAN, Math.abs(0.5 - vSiege));
-    const v = vSiege + sens * dv;
-    const pos = surFeutre(uSiege + (0.5 - uSiege) * PULL_X, v);
-    slot.style.left = `${pos.x}%`;
-    slot.style.top = `${pos.y}%`;
-    slot.style.setProperty('--sk-depth', echelleProfondeur(v).toFixed(3));
-    if (t.playerId === state.leadingPlayerId) slot.classList.add('sk-trick-card--leading');
+    const el = sieges.get(t.playerId);
+    const rs = el ? el.getBoundingClientRect() : null;
+    const posSiege = surFeutre(seatPos[0] / 100, vSiege);
+    const sx = rs ? rs.left + rs.width / 2 - boite.left : (posSiege.x / 100) * L;
+    const sy = rs ? rs.top + rs.height / 2 - boite.top : (posSiege.y / 100) * H;
+    const demiSiegeL = rs ? rs.width / 2 : 52 * k;
+    const demiSiegeH = rs ? rs.height / 2 : 40 * k;
+
+    // Vers l'extérieur pour les autres, vers le tapis pour moi.
+    let dx = sx - cxTapis;
+    let dy = sy - cyTapis;
+    const norme = Math.hypot(dx, dy) || 1;
+    dx /= norme;
+    dy /= norme;
+    if (t.playerId === myId) {
+      dx = -dx;
+      dy = -dy;
+    }
+
+    // Distance minimale à laquelle les deux rectangles — le siège et la
+    // carte — cessent de se recouvrir. Se séparer sur UN seul axe suffit,
+    // d'où le minimum : sur une diagonale, exiger le dégagement complet des
+    // deux axes enverrait la carte trois fois trop loin.
+    const demiCarteL = (CARTE_L * k) / 2;
+    const demiCarteH = (CARTE_H * k) / 2;
+    const EPS = 0.02;
+    const ecart = Math.min(
+      Math.abs(dx) > EPS ? (demiSiegeL + demiCarteL + MARGE) / Math.abs(dx) : Infinity,
+      Math.abs(dy) > EPS ? (demiSiegeH + demiCarteH + MARGE) / Math.abs(dy) : Infinity
+    );
+
+    const x = borner(sx + dx * ecart, cadre.x0 + demiCarteL, cadre.x1 - demiCarteL);
+    let y = borner(sy + dy * ecart, cadre.y0 + demiCarteH, cadre.y1 - demiCarteH);
+    bandes.forEach((bande) => {
+      y = ecarterDe(x, y, demiCarteL, demiCarteH, bande, MARGE);
+    });
+    slot.style.left = `${(x / L) * 100}%`;
+    slot.style.top = `${(y / H) * 100}%`;
+    // La profondeur reste celle du SIÈGE : la carte appartient à sa place
+    // autour de la table, pas à la ligne où elle a fini par se poser.
+    slot.style.setProperty('--sk-depth', k.toFixed(3));
+    if (t.playerId === state.leadingPlayerId) {
+      slot.classList.add('sk-trick-card--leading');
+      // Le pli est tombé : ce n'est plus « celle qui mène », c'est celle qui
+      // emporte. Elle passe au premier plan et respire, pour qu'on la trouve
+      // sans relire les cinq autres.
+      if (state.trickPaused && !(state.lastTrickResult && state.lastTrickResult.destroyed)) {
+        slot.classList.add('sk-trick-card--gagnante');
+      }
+    }
 
     const cardEl = document.createElement('div');
     cardEl.className = `sk-card ${cardClass(t.card)}`;
@@ -2091,6 +2272,22 @@ btnTigressPirate.addEventListener('click', () => {
 });
 btnTigressEscape.addEventListener('click', () => {
   if (pendingTigressCardId) playCard(pendingTigressCardId, { chosenAs: 'escape' });
+});
+
+// Le cadre couvre tout l'écran : sans porte de sortie, un clic de travers sur
+// la Tigresse bloquerait le tour. Fermer ne joue rien — la carte retourne
+// simplement dans l'éventail.
+function fermerChoixTigresse() {
+  pendingTigressCardId = null;
+  tigressChoiceEl.classList.add('hidden');
+}
+
+document.getElementById('sk-btn-tigress-annuler').addEventListener('click', fermerChoixTigresse);
+tigressChoiceEl.addEventListener('click', (e) => {
+  if (e.target === tigressChoiceEl) fermerChoixTigresse();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !tigressChoiceEl.classList.contains('hidden')) fermerChoixTigresse();
 });
 
 // --- Extension : choix au moment de la pose (Joker, 0/14, Marcher sur la Planche) ---
@@ -2881,6 +3078,13 @@ function renderGame(state) {
   renderMine(state);
   btnEndGame.classList.toggle('hidden', !state.isHost);
   maybeAnimateDeal(state);
+  // AVANT renderTrick : les cartes du pli se posent en couronne autour du
+  // feutre et doivent contourner les bandes de texte qui le traversent — la
+  // consigne du tour et la bannière de pouvoir. Rendues après, elles étaient
+  // encore vides au moment de la mesure, donc hautes de zéro pixel, et la
+  // première carte du haut venait se poser dessus.
+  renderPower(state);
+  renderTurnIndicator(state);
   renderSeats(state);
   renderTrick(state);
   // Après renderTrick : l'animation mesure la position réelle des cases du
@@ -2888,8 +3092,6 @@ function renderGame(state) {
   playPlankAnimation(state);
   playDevourAnimation(state);
   renderBidChoices(state);
-  renderPower(state);
-  renderTurnIndicator(state);
   renderHand(state);
   renderScoreboard(state);
 }

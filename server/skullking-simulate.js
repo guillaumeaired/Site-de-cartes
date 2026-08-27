@@ -353,6 +353,32 @@ check(
   trickBonusForWinner([pirate(), siren()], 1, resolveTrick([pirate(), siren()]).excludedIdx),
   0
 );
+{
+  // Le sens INVERSE de la capture, celui qu'on croit toujours symétrique :
+  // Mat rafle les Pirates du pli et n'en tire rien. Le bonus de +30 par
+  // Pirate appartient au seul Skull King ; Mat n'hérite que des pouvoirs.
+  const cards = [pirate(), pirate(), firstmate()];
+  const r = resolveTrick(cards);
+  check('Mat le Forban capturant des Pirates : il gagne le pli', r.winnerIdx, 2);
+  check(
+    "Mat le Forban capturant des Pirates : aucun bonus (le +30 est au Skull King seul)",
+    trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx),
+    0
+  );
+}
+{
+  // Sans Skull King, la boucle Mat > Pirate > Sirène > Mat se ferme comme
+  // celle du jeu de base : la Sirène l'emporte. Elle touche les 30 de Mat,
+  // et rien pour le Pirate qu'elle emporte au passage.
+  const cards = [pirate(), firstmate(), siren()];
+  const r = resolveTrick(cards);
+  check('Mat + Pirate + Sirène (sans Skull King) : la Sirène ferme la boucle', r.winnerIdx, 2);
+  check(
+    'Mat + Pirate + Sirène : la Sirène touche 30 pour Mat, rien pour le Pirate',
+    trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx),
+    30
+  );
+}
 
 // --- Raie Tachetée (Spotted Stingray) : miroir de la Baleine, la plus basse gagne ---
 check('Raie Tachetée : la plus basse valeur gagne (vert 3 < vert 9)', winnerIdx([num('vert', 9), stingray(), num('vert', 3)]), 2);
