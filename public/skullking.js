@@ -417,7 +417,11 @@ function cardPowerText(card) {
       return "Joker — tu choisis sa couleur au moment de la poser (sauf si une couleur est déjà imposée). Il vaut alors 15, la plus haute valeur du jeu.";
     case 'number': {
       if (card.wild14 && card.value == null) {
-        return "0 ou 14 — au moment de la poser, tu décides si elle vaut 0 (elle perd toujours) ou 14 (carte forte, qui rapporte un bonus si tu remportes le pli).";
+        // « perd toujours » était faux : un 0 reste une carte numérotée, la
+        // plus basse du paquet. Il perd contre toute autre numérotée de la
+        // couleur demandée et contre l'atout noir — mais il bat les Fuites,
+        // et sous la Raie Tachetée il gagne à coup sûr. C'est ça, le risque.
+        return "0 ou 14 — au moment de la poser, tu décides si elle vaut 0 ou 14. À 14 c'est une carte forte (mais elle ne rapporte aucun bonus à qui la capture). À 0 c'est la carte la plus basse du paquet : elle perd contre toutes les autres numérotées, mais elle bat les Fuites — et sous la Raie Tachetée, où la plus basse l'emporte, elle remporte le pli à coup sûr.";
       }
       const noir = card.suit === 'noir';
       const base = noir
@@ -973,7 +977,7 @@ const EXTENSION_APERCU = {
   // qui montre les trois d'un coup, chacune dans une famille différente
   // pour dire qu'elles arrivent dans les quatre.
   numerotees: {
-    texte: "Ajoute à chaque couleur un 7, un 8 et une carte 0/14. Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5, et le 0/14 se déclare au moment de la pose : 0 perd toujours, 14 est une carte forte.",
+    texte: "Ajoute à chaque couleur un 7, un 8 et une carte 0/14. Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5, et le 0/14 se déclare au moment de la pose : 14 est une carte forte, 0 est la plus basse du paquet — elle bat quand même les Fuites.",
     cartes: [
       { kind: 'number', suit: 'vert', value: 7, ext: true },
       { kind: 'number', suit: 'jaune', value: 8, ext: true },

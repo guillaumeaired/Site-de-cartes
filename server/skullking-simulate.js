@@ -195,15 +195,18 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   check('Baleine : Skull King et Sirène hors course, pas la Baleine', r.neutralisedIdx, [0, 4]);
 }
 {
-  // Un 0/14 déclaré à 0 est hors course sous la Raie — c'est le seul endroit
-  // où il gagnerait sans l'exclusion, puisque c'est la plus basse qui prend.
+  // Un 0/14 déclaré à 0 est une numérotée comme une autre : sous la Raie,
+  // c'est la plus basse qui prend, donc c'est LUI, à coup sûr — rien ne
+  // descend plus bas que zéro. C'est le risque que la déclaration fait
+  // courir, et l'intérêt de la carte. On l'écartait auparavant du champ de
+  // la Raie « par convention » ; aucune règle ne le demande.
   const r = resolveTrick([
     { id: 'z', kind: 'number', suit: 'vert', value: 0, wild14: true },
     { id: 'ra', kind: 'stingray' },
     { id: 'v5', kind: 'number', suit: 'vert', value: 5 },
   ]);
-  check('Raie : le 0/14 déclaré à 0 ne prend pas le pli', r.winnerIdx, 2);
-  check('Raie : et il est marqué hors course', r.neutralisedIdx, [0]);
+  check('Raie : le 0/14 déclaré à 0 prend le pli, c\'est la plus basse', r.winnerIdx, 0);
+  check('Raie : il est en lice, donc pas marqué hors course', r.neutralisedIdx, []);
 }
 {
   // Kraken avalé par le Coffre de Davy Jones : le pli n'est plus détruit,
@@ -538,12 +541,17 @@ check('Butin reste exceptionnel même mélangé aux nouvelles cartes non-gagnant
 check('Joker (couleur prise = vert) bat une autre numérotée vert', winnerIdx([num('vert', 14), wild15('vert')]), 1);
 check('Joker perd face à l\'atout noir', winnerIdx([num('noir', 5), wild15('vert')]), 0);
 check('0/14 déclaré à 14 se comporte comme un vrai 14 (bonus couleur)', trickBonusForWinner([declared014('vert', 14), num('jaune', 3)], 0), 10);
-// Le 0/14 déclaré à 0 ne gagne jamais, « exactement comme une Fuite » : face
-// à une vraie Fuite et à rien d'autre, c'est donc la Fuite posée en premier
-// qui ramasse, comme entre deux Fuites. Le pli n'est plus défaussé.
-check('0/14 déclaré à 0 face à une Fuite : la Fuite, posée en premier, ramasse', winnerIdx([esc(), declared014('vert', 0)]), 0);
-check('0/14 déclaré à 0 posé en premier : la Fuite ramasse quand même', winnerIdx([declared014('vert', 0), esc()]), 1);
-check('0/14 déclaré à 0 + Butin (rien d\'autre) : le Butin gagne quand même exceptionnellement', winnerIdx([declared014('vert', 0), loot()]), 1);
+// Le 0/14 déclaré à 0 est une carte NUMÉROTÉE, la plus basse du paquet, pas
+// une Fuite déguisée. Livret de base, p. 10 : « Les cartes Fuite sont jouées
+// pour ne pas gagner. Elles perdent contre TOUTES les autres cartes. » Un 0
+// en est une autre — et le Butin, qui se comporte comme une Fuite, ne gagne
+// que faute de mieux : face à un 0, il y a mieux.
+check('0/14 déclaré à 0 bat une Fuite', winnerIdx([esc(), declared014('vert', 0)]), 1);
+check('0/14 déclaré à 0 posé en premier bat quand même la Fuite', winnerIdx([declared014('vert', 0), esc()]), 0);
+check('0/14 déclaré à 0 bat un Butin', winnerIdx([declared014('vert', 0), loot()]), 0);
+check('0/14 déclaré à 0 perd contre n\'importe quelle autre numérotée de la couleur', winnerIdx([declared014('vert', 0), num('vert', 1)]), 1);
+check('0/14 déclaré à 0 perd contre l\'atout noir', winnerIdx([declared014('vert', 0), num('noir', 1)]), 1);
+check('0/14 déclaré à 0 perd contre un Pirate', winnerIdx([declared014('vert', 0), pirate()]), 1);
 check('7 d\'extension capturé : bonus -5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 7, ext: true }, num('jaune', 3)], 0), -5);
 check('8 d\'extension capturé : bonus +5', trickBonusForWinner([{ kind: 'number', suit: 'vert', value: 8, ext: true }, num('jaune', 3)], 0), 5);
 check('un 7 de base (non-extension) ne donne aucun bonus', trickBonusForWinner([num('vert', 7), num('jaune', 3)], 0), 0);

@@ -221,11 +221,21 @@ const MONSTER_KINDS = ['kraken', 'whale', 'stingray'];
 // resolveTrick s'en est déjà chargé) : Fuite/Butin, Pirates/Mat le Forban,
 // Sirènes, Skull King, numérotées.
 function resolveHierarchy(cards, kinds) {
-  // Un 0/14 déclaré à 0 ne remporte jamais le pli, exactement comme une
-  // Fuite (mais il garde kind:'number' pour l'obligation de couleur) - donc
-  // pris en compte ici aussi pour repérer "que des cartes qui ne gagnent
-  // jamais".
-  const neverWinning = (i) => NEVER_WINS.has(kinds[i]) || (kinds[i] === 'number' && cards[i].value === 0);
+  // Un 0/14 déclaré à 0 est une carte NUMÉROTÉE ORDINAIRE, la plus basse du
+  // paquet - pas une Fuite déguisée. Le livret de base est sans réserve sur
+  // les Fuites : « Les cartes Fuite sont jouées pour ne pas gagner. Elles
+  // perdent contre TOUTES les autres cartes. » Un 0 en est une autre. Et le
+  // livret de l'extension range le 0/14 sous « Additional Number Cards »,
+  // avec les 7 et les 8 qui « play as normal suited cards » ; la puce « not
+  // escape cards, and don't act like one in a trick » nomme quatre cartes
+  // (Coffre, Salve, Raie, Planche) et pas le 0/14.
+  //
+  // On a longtemps fait l'inverse ici, « par convention », faute de règle
+  // trouvée. Elle existe : un 0 bat une Fuite, perd contre toute autre
+  // numérotée de la couleur demandée, et remporte le pli sous la Raie
+  // Tachetée puisqu'il est le plus bas. C'est ce qui rend la déclaration
+  // risquée, et c'est tout l'intérêt de la carte.
+  const neverWinning = (i) => NEVER_WINS.has(kinds[i]);
 
   // Un pli où plus rien ne peut gagner. Trois issues, dans cet ordre :
   //
@@ -277,7 +287,7 @@ function resolveHierarchy(cards, kinds) {
   if (sirenIdx.length) return { winnerIdx: sirenIdx[0] };
 
   const numberIdx = [];
-  kinds.forEach((k, i) => { if (k === 'number' && cards[i].value !== 0) numberIdx.push(i); });
+  kinds.forEach((k, i) => { if (k === 'number') numberIdx.push(i); });
   if (numberIdx.length === 0) return { winnerIdx: null, allNeverWin: true };
   const blackIdx = numberIdx.filter((i) => cards[i].suit === 'noir');
   const pool = blackIdx.length ? blackIdx : numberIdx.filter((i) => cards[i].suit === cards[numberIdx[0]].suit);
@@ -365,12 +375,13 @@ function resolveTrick(cards) {
     // Neutralise toutes les cartes spéciales : seule la valeur numérique
     // des numérotées compte, sans distinction de couleur ni statut d'atout
     // pour le noir. La Baleine fait gagner la plus haute valeur, la Raie
-    // Tachetée la plus basse (jamais un 0/14 déclaré à 0).
+    // Tachetée la plus basse — un 0/14 déclaré à 0 compris, et c'est même
+    // le cas où il gagne à coup sûr : rien ne descend plus bas que zéro.
     const monsterI = activeWhale !== -1 ? activeWhale : activeStingray;
     const pickLowest = activeWhale === -1;
     const numberIdx = [];
     kinds.forEach((k, i) => {
-      if (k === 'number' && i !== monsterI && cards[i].value !== 0) numberIdx.push(i);
+      if (k === 'number' && i !== monsterI) numberIdx.push(i);
     });
     // Ce que le monstre a mis hors course : tout ce qui n'est pas une
     // numérotée en lice, sauf lui-même — il est la cause, pas une victime —
