@@ -172,7 +172,15 @@ const etat = {
   roundNumber: MANCHE1 ? 1 : 6,
   totalRounds: 10,
   cardsInRound: MANCHE1 ? 1 : 6,
-  scoreboard: joueurs.map((p, i) => ({ id: p.id, nickname: p.nickname, score: 90 - i * 17, piece: p.piece })),
+  // Des totaux volontairement DANS LE DÉSORDRE du tour de table, avec deux
+  // ex æquo : c'est ce qui prouve que le registre classe, et qu'il fait
+  // partager leur rang aux égalités.
+  scoreboard: joueurs.map((p, i) => ({
+    id: p.id,
+    nickname: p.nickname,
+    total: [40, 115, 70, 115, 20, 95, 55, 10, 80][i] ?? 0,
+    lastDelta: null,
+  })),
   extensions: [],
   deckStyle: 'classique',
   lootAllies: [],

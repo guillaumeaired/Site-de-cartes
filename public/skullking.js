@@ -3509,16 +3509,35 @@ function renderScoreboard(state) {
   renderChat(state);
   scoreboardRows.innerHTML = '';
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  // Rang calculé à part : c'est lui qui bouge, jamais la place de la ligne.
-  const ranks = new Map();
-  [...state.scoreboard]
-    .sort((a, b) => b.total - a.total)
-    .forEach((s, i) => ranks.set(s.id, i + 1));
-  // L'ordre affiché est celui du tour de table, figé pour toute la partie.
-  const byPlayerOrder = state.players
+  // Le registre est CLASSÉ, le meilleur en haut. Il portait l'ordre du tour de
+  // table, figé pour la partie, et seul le rang gravé bougeait : il fallait
+  // parcourir les neuf lignes et comparer les chiffres romains pour savoir qui
+  // menait, alors que c'est la première question qu'on pose à un tableau des
+  // scores. Ma propre ligne reste trouvable sans la chercher, elle est marquée.
+  //
+  // L'ordre ne bouge qu'entre deux manches : les totaux ne changent qu'au
+  // décompte, jamais pendant qu'on joue. Aucune ligne ne saute sous les yeux
+  // au milieu d'un pli.
+  //
+  // Le tri part de l'ordre du tour de table et `sort` est stable : deux
+  // joueurs à égalité restent donc dans cet ordre-là, et non dans celui,
+  // arbitraire, où le serveur les a énumérés.
+  const classement = state.players
     .map((p) => state.scoreboard.find((s) => s.id === p.id))
-    .filter(Boolean);
-  byPlayerOrder
+    .filter(Boolean)
+    .sort((a, b) => b.total - a.total);
+  // Les ex æquo PARTAGENT leur rang, comme au récap de fin : deux joueurs au
+  // même score ne sont pas premier et deuxième, ils sont premiers. Le rang
+  // suivant saute d'autant. Tant que la place de la ligne était fixe, la
+  // différence ne se voyait pas ; maintenant que le classement décide de
+  // l'ordre, deux I l'un sur l'autre disent ce que I puis II laissait croire
+  // faux.
+  const ranks = new Map();
+  classement.forEach((s, i) => {
+    const precedent = classement[i - 1];
+    ranks.set(s.id, precedent && precedent.total === s.total ? ranks.get(precedent.id) : i + 1);
+  });
+  classement
     .forEach((s) => {
       const row = document.createElement('div');
       row.className = 'sk-score-row' + (s.id === myId ? ' sk-score-row--me' : '');
