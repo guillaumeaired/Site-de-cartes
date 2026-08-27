@@ -2778,6 +2778,27 @@ body.sk-ciblage .sk-turn-indicator {
   background: linear-gradient(154deg, var(--sk-vert) 0%, var(--sk-jaune) 34%, var(--sk-violet) 67%, var(--sk-noir) 100%);
 }
 
+/* Le 0/14 une fois DÉCLARÉ. La carte peinte reste la sienne — c'est la même
+   carte, sa pastille dit toujours ce qu'elle peut valoir — et le chiffre
+   annoncé se pose au centre, en grand. Sans lui, un 0/14 joué à 14 et un joué
+   à 0 seraient le même dessin sur le tapis, alors que l'un remporte le pli et
+   que l'autre le donne.
+
+   Il faut rendre visible ce que `.sk-card--art` masque : d'où la double
+   classe, qui passe devant. Le chiffre y est encré plutôt que fantôme (à 0,3
+   d'opacité il servait de filigrane sur un fond crème, il se perdrait sur une
+   illustration), et son halo sombre lui fait un fond sans cacher le dessin —
+   le même procédé que le « ? » du dos de carte. */
+.sk-card--art.sk-card--wild14-pose .sk-card__figure {
+  display: flex;
+  opacity: 1;
+  color: var(--sk-brass-hi);
+  font-size: calc(var(--sk-w) * 0.46);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+  background: radial-gradient(circle at 50% 50%,
+    rgba(6, 4, 2, 0.86) 0%, rgba(6, 4, 2, 0.66) 34%, rgba(6, 4, 2, 0) 64%);
+}
+
 /* Le bonus des 14, posé CONTRE le médaillon d'angle et mordant dessus : une
    pièce qui repose sur le chiffre, pas une pastille flottante. Les positions
    se déduisent du médaillon relevé sur les planches peintes (centré à
@@ -3078,6 +3099,15 @@ body.sk-ciblage .sk-turn-indicator {
 .sk-card--art-tresor-12 { --art: url('assets/cards/tresor-12.webp'); }
 .sk-card--art-tresor-13 { --art: url('assets/cards/tresor-13.webp'); }
 .sk-card--art-tresor-14 { --art: url('assets/cards/tresor-14.webp'); }
+
+/* Les 0/14 de l'extension : le dessin du 5 de chaque famille, ses deux
+   médaillons remplacés par la pastille 0/14 de sa couleur. Ils n'ont pas de
+   planche à eux — les planches numérotées vont de 1 à 14 — ils sont composés
+   par briefs/composer-cartes-0-14.py. */
+.sk-card--art-tresor-014 { --art: url('assets/cards/tresor-014.webp'); }
+.sk-card--art-perroquet-014 { --art: url('assets/cards/perroquet-014.webp'); }
+.sk-card--art-carte-014 { --art: url('assets/cards/carte-014.webp'); }
+.sk-card--art-pavillon-014 { --art: url('assets/cards/pavillon-014.webp'); }
 
 .sk-card--art-carte-1 { --art: url('assets/cards/carte-1.webp'); }
 .sk-card--art-carte-2 { --art: url('assets/cards/carte-2.webp'); }

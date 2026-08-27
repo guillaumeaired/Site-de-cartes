@@ -259,7 +259,17 @@ function cardClass(card) {
     return `sk-card--wild15${famille}${art}`;
   }
   if (card.kind === 'number') {
-    if (card.wild14 && card.value == null) return 'sk-card--wild14';
+    // Le 0/14 a maintenant sa carte peinte, une par famille : le dessin d'une
+    // carte de sa couleur dont les deux médaillons d'angle ont été remplacés
+    // par la pastille 0/14 (briefs/composer-cartes-0-14.py). Elle vaut avant
+    // comme après la déclaration — c'est la même carte, et ce que le joueur a
+    // annoncé se lit au centre, posé par-dessus (sk-card--wild14-pose).
+    if (card.wild14) {
+      const planche = SUIT_ART[card.suit];
+      const art = planche ? ` ${artClasses(`${planche}-014`)}` : '';
+      const pose = card.value == null ? '' : ' sk-card--wild14-pose';
+      return `sk-card--wild14 sk-card--${card.suit}${art}${pose}`;
+    }
     // Familles peintes : une planche d'illustrations par couleur, quatorze
     // valeurs, découpées par briefs/decouper-planche-numerotees.py. Même
     // mécanique que les Pirates
@@ -271,7 +281,7 @@ function cardClass(card) {
     // valeur peut valoir 0, qui n'existe dans aucune planche, et il a déjà
     // son habillage.
     const prefixe = SUIT_ART[card.suit];
-    if (prefixe && !card.wild14 && card.value >= 1 && card.value <= 14) {
+    if (prefixe && card.value >= 1 && card.value <= 14) {
       return `sk-card--${card.suit} ${artClasses(`${prefixe}-${card.value}`)}`;
     }
     return `sk-card--${card.suit}`;
@@ -319,10 +329,12 @@ function cardClass(card) {
 // et on laissait filer un 14 adverse sans savoir ce qu'on offrait. La pièce
 // le dit sur la carte, à l'endroit où le chiffre se lit déjà.
 //
-// Le 0/14 déclaré à 14 la porte aussi : le bonus se lit sur la VALEUR, pas
-// sur la planche d'où vient le dessin, et le serveur la compte pareil.
+// Le 0/14 ne la porte JAMAIS, même déclaré à 14 : ce n'est pas un 14, c'est
+// une carte qui peut en valoir un. Sa pastille dit déjà ce qu'elle est, et
+// une pièce de bonus posée à côté ferait d'une valeur annoncée une valeur
+// acquise.
 function bonusDeQuatorze(card) {
-  if (card.value !== 14) return '';
+  if (card.value !== 14 || card.wild14) return '';
   const valeur = card.suit === 'noir' ? 20 : 10;
   return (
     `<i class="sk-card__bonus sk-card__bonus--${valeur}" aria-hidden="true"></i>` +
