@@ -2822,14 +2822,24 @@ h3 {
   position: relative;
   width: 320px;
   height: 320px;
+  /* Le centre du trou n'est PAS le centre du fichier : relevé au masque, il
+     tombe à 49,9 % / 50,7 %. Tout ce qui gravite dans la roue s'accroche à
+     ces deux nombres — le camembert, la barre, les étiquettes — sinon rien
+     n'est d'aplomb et la barre tourne autour d'un axe décalé. */
+  --sk-roue-cx: 49.9%;
+  --sk-roue-cy: 50.7%;
+  /* Rayon des étiquettes, posé par playStartReveal : elles sont sur le bois
+     tant que la table est petite, et s'écartent au-delà quand il y a trop
+     de monde pour qu'elles y tiennent côte à côte. */
+  --sk-roue-etiquettes: 124px;
   background: url('assets/skin/roue-gouvernail.webp') 50% 50% / 100% 100% no-repeat;
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.7));
 }
 
 .sk-wheel {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: var(--sk-roue-cx);
+  top: var(--sk-roue-cy);
   transform: translate(-50%, -50%);
   /* 50 % du cadre : un cheveu de moins que le trou (52,1 %), pour que le
      bois du gouvernail recouvre le bord du camembert au lieu de laisser
@@ -2842,27 +2852,25 @@ h3 {
 
 /* La barre rouge pivote sur le centre du gouvernail. Elle pointe vers le
    HAUT au repos, comme l'ancienne flèche SVG : la rotation calculée par
-   revealStarter reste donc valable telle quelle. Son moyeu est tronqué par
-   le bord de son image — c'est le clou de laiton du centre qui masque la
-   coupure. */
+   playStartReveal reste donc valable telle quelle. */
 .sk-wheel-needle {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  /* Le pointeur porte son propre moyeu de laiton, dont le centre tombe à
-     74 % de la hauteur de l'image (mesuré : c'est le milieu de sa partie
-     la plus large). C'est LUI le pivot, pas le bas de l'image — d'où
-     l'origine et la marge ci-dessous, calculées depuis ces 74 %.
+  left: var(--sk-roue-cx);
+  top: var(--sk-roue-cy);
+  /* Le pivot est le centre du moyeu de laiton que la barre porte à son pied,
+     pas le milieu de l'image. briefs/recentrer-aiguille.py recadre le
+     fichier sur ce moyeu (il tombe donc à 50 % en largeur) et imprime sa
+     hauteur : 74,3 %. C'est le seul nombre à reporter ici — la LARGEUR est
+     laissée au rapport du fichier (width: auto), il n'y a donc plus de
+     proportion à garder en phase avec l'image.
 
-     Longueur : 0,74 x 32,4 % = 24 % du cadre entre le pivot et la pointe,
-     soit un cheveu de moins que le rayon du trou (26 %), pour que la
-     barre ne vienne pas taper dans le bois du gouvernail. */
-  width: 23.3%;
-  height: 32.4%;
-  margin-left: -11.65%;
-  margin-top: -24%;
-  object-fit: contain;
-  transform-origin: 50% 74%;
+     Longueur : 0,743 x 32,3 % = 24 % du cadre entre le pivot et la pointe,
+     soit un cheveu de moins que le rayon du trou (26 %), pour que la barre
+     ne vienne pas taper dans le bois du gouvernail. */
+  height: 32.3%;
+  width: auto;
+  translate: -50% -74.3%;
+  transform-origin: 50% 74.3%;
   transform: rotate(0deg);
   /* Départ vif puis très longue traîne : la barre part d'un coup et n'arrête
      plus vraiment de ralentir. La durée vient de --sk-roue-duree, posée par
@@ -2872,22 +2880,42 @@ h3 {
   z-index: 3;
 }
 
-.sk-wheel-needle-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-
-
 .sk-wheel-labels {
   position: absolute;
   inset: 0;
 }
 
+/* Une étiquette par joueur : sa pièce au-dessus de son nom, pour qu'on
+   reconnaisse son secteur à la figure autant qu'à la couleur. Le placement
+   est polaire et tient entièrement ici : JS ne pose que l'angle. Les deux
+   rotations s'annulent — la première emmène l'étiquette sur son rayon, la
+   seconde la remet d'aplomb, sinon les noms du bas se liraient la tête en
+   bas. */
 .sk-wheel-tag {
   position: absolute;
-  transform: translate(-50%, -50%);
+  left: var(--sk-roue-cx);
+  top: var(--sk-roue-cy);
+  translate: -50% -50%;
+  transform: rotate(var(--sk-tag-angle, 0deg))
+    translateY(calc(-1 * var(--sk-roue-etiquettes)))
+    rotate(calc(-1 * var(--sk-tag-angle, 0deg)));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Le médaillon est posé au-dessus de la plaque, pas dessus : son cerclage
+   émaillé porte déjà la couleur du secteur, sur le parchemin il aurait l'air
+   collé. */
+.sk-wheel-tag-piece {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75));
+  transition: filter 0.25s;
+}
+
+.sk-wheel-tag-name {
   padding: 4px 12px 5px;
   border-radius: 2px;
   background: linear-gradient(178deg, var(--sk-parch-hi), var(--sk-parch) 60%, var(--sk-parch-lo));
@@ -2898,13 +2926,29 @@ h3 {
   letter-spacing: 0.05em;
   color: var(--sk-parch-ink);
   white-space: nowrap;
-  transition: all 0.25s;
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.25s, box-shadow 0.25s, color 0.25s;
 }
 
-.sk-wheel-tag--winner {
+.sk-wheel-tag--winner .sk-wheel-tag-name {
   background: linear-gradient(180deg, #eedca8, var(--sk-brass) 56%, var(--sk-brass-lo));
   box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.85), 0 0 18px rgba(232, 206, 146, 0.55);
   color: #2a1b06;
+}
+
+.sk-wheel-tag--winner .sk-wheel-tag-piece {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 10px rgba(232, 206, 146, 0.9));
+}
+
+/* Neuf étiquettes autour d'un cadre de 320 px débordent d'un téléphone : on
+   rapetisse toute la roue d'un bloc plutôt que de reprendre chaque nombre —
+   les étiquettes qui dépassent du cadre suivent. */
+@media (max-width: 560px), (max-height: 600px) {
+  .sk-wheel-frame {
+    scale: 0.74;
+  }
 }
 
 .sk-start-reveal-text {
