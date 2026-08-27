@@ -1818,20 +1818,40 @@ function renderSeats(state) {
 // maison — un emoji dépend de la police du système et détonne au milieu de
 // gravures. Le nom de la couleur reste écrit à côté : la pastille ne porte
 // jamais l'information seule.
-// Ce qui a détruit le pli, en toutes lettres. « Le pli est détruit » ne dit
-// pas par quoi, et la carte fautive n'est pas celle qu'on soupçonne : une Raie
-// posée en troisième annule des Pirates joués après elle, si bien que le
-// dernier Pirate posé croit avoir gagné. C'est le cas d'un joueur qui a vu son
-// Pirate ne rien remporter et a cherché la faute dans la Planche du voisin.
+// Ce qui détruit le pli, nommé. « Le pli est détruit » ne dit pas par quoi, et
+// la carte fautive n'est pas celle qu'on soupçonne : une Raie posée en
+// troisième annule des Pirates joués APRÈS elle, si bien que le dernier Pirate
+// posé croit avoir gagné. Un joueur a cherché la faute dans la Planche du
+// voisin, qui n'y était pour rien.
 //
 // La Baleine et la Raie ne détruisent le pli que dans un cas : quand elles
-// n'ont AUCUNE carte numérotée à départager. La phrase le dit, sinon on
-// comprend qu'elles détruisent le pli par nature, ce qui est faux.
-function nomDuDestructeur(genre) {
-  if (genre === 'kraken') return 'Le Kraken engloutit le pli';
-  if (genre === 'whale') return "La Baleine blanche n'a aucune numérotée à départager : le pli est détruit";
-  if (genre === 'stingray') return "La Raie Tachetée n'a aucune numérotée à départager : le pli est détruit";
-  return 'Le pli est détruit';
+// n'ont AUCUNE numérotée à départager. La phrase le dit, sinon on comprend
+// qu'elles le détruisent par nature, ce qui est faux.
+//
+// Deux formes, parce qu'il y a deux places et qu'elles n'ont pas la même
+// largeur. `cause` s'écrit sur le bois au-dessus du feutre, où une ligne
+// entière tient ; `annonce` se pose au centre du feutre pendant qu'on joue
+// encore, dans une bande de 84 % de la largeur du tapis — au-delà d'une
+// ligne elle retombe sur les sièges du haut.
+const PLI_DETRUIT = {
+  kraken: {
+    cause: 'Le Kraken s\'empare du pli…',
+    annonce: 'Le Kraken détruira ce pli.',
+  },
+  whale: {
+    cause: "La Baleine blanche n'a aucune numérotée à départager : le pli se défait…",
+    annonce: 'La Baleine blanche détruira ce pli.',
+  },
+  stingray: {
+    cause: "La Raie Tachetée n'a aucune numérotée à départager : le pli se défait…",
+    annonce: 'La Raie Tachetée détruira ce pli.',
+  },
+};
+
+function pliDetruit(genre, forme) {
+  const dit = PLI_DETRUIT[genre];
+  if (dit) return dit[forme];
+  return forme === 'cause' ? 'Le pli se défait…' : 'Ce pli sera détruit.';
 }
 
 function suitDot(suit) {
@@ -2154,9 +2174,11 @@ function renderTrick(state) {
       // pixel près à l'endroit qu'elle est censée attendre.
       const aAvaler = Math.max(0, (state.currentTrick || []).length - 1);
       trickCaptionEl.style.setProperty('--sk-attente', `${(1.54 + aAvaler * 0.075).toFixed(2)}s`);
+      // Le centre ne porte que la conséquence, et courte : la cause est
+      // nommée au-dessus du feutre, où il y a la place de l'écrire.
       trickCaptionEl.textContent = parLeKraken
         ? 'Le pli est englouti — personne ne le remporte.'
-        : `${nomDuDestructeur(state.lastTrickResult.destroyedBy)} — personne ne le remporte.`;
+        : 'Le pli est détruit — personne ne le remporte.';
       trickCaptionEl.classList.toggle('sk-trick-caption--apres-kraken', parLeKraken);
     } else {
       // Le verdict n'est pas une consigne de plus : c'est la ligne qu'on
@@ -2171,7 +2193,7 @@ function renderTrick(state) {
   } else if (state.trickWillBeDestroyed) {
     retirerVerdict();
     trickCaptionEl.classList.remove('sk-trick-caption--apres-kraken');
-    trickCaptionEl.textContent = `${nomDuDestructeur(state.trickDestroyedBy)} — il ne sera remporté par personne.`;
+    trickCaptionEl.textContent = pliDetruit(state.trickDestroyedBy, 'annonce');
   } else {
     retirerVerdict();
     trickCaptionEl.classList.remove('sk-trick-caption--apres-kraken');
@@ -2646,9 +2668,7 @@ function renderTurnIndicator(state) {
     // n'écrit la conséquence qu'une fois le tas effacé.
     const res = state.lastTrickResult;
     if (res && res.destroyed) {
-      turnIndicator.textContent = res.krakenCardId
-        ? 'Le Kraken s\'empare du pli…'
-        : `${nomDuDestructeur(res.destroyedBy)}…`;
+      turnIndicator.textContent = pliDetruit(res.krakenCardId ? 'kraken' : res.destroyedBy, 'cause');
       return;
     }
     turnIndicator.textContent = 'Le pli se ramasse…';

@@ -41,6 +41,10 @@ const N = Math.max(2, Math.min(9, Number(P.get('n') || 5)));
 const PHASE = P.get('phase') || 'playing';
 // ?phase=kraken : le pli est posé, le Kraken l'a détruit, la pause court.
 const KRAKEN = PHASE === 'kraken';
+// ?phase=raie : la Raie Tachetée sans aucune numérotée à départager. Elle
+// détruit alors le pli, et c'est le cas où l'écran doit NOMMER la coupable —
+// des Pirates posés APRÈS elle croient l'emporter (voir PLI_DETRUIT).
+const RAIE = PHASE === 'raie';
 const TIGRESSE = P.get('tigresse');
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
 const MANCHE1 = P.get('manche') === '1';
@@ -68,6 +72,7 @@ function carte(i) {
   // une planche vient d'être redécoupée.
   // En mode kraken, le 3e joueur pose le Kraken : c'est lui qui engloutit.
   if (KRAKEN && i === 2) return { id: `c${i}`, kind: 'kraken' };
+  if (RAIE) return i === 2 ? { id: `c${i}`, kind: 'stingray' } : { id: `c${i}`, kind: 'pirate', name: PIRATES[i % PIRATES.length] };
   // ?tigresse=pirate|fuite : le 5e joueur pose la Tigresse, annoncée dans un
   // sens ou dans l'autre. C'est la seule carte qui change de nature en se
   // posant, donc la seule dont l'annonce doit se voir depuis les autres sièges.
@@ -142,11 +147,13 @@ const etat = {
   trickNumber: 3,
   leadingPlayerId: 'p1',
   trickWillBeDestroyed: false,
-  trickPaused: PHASE === 'paused' || KRAKEN || PLANCHE === 'avale',
+  trickPaused: PHASE === 'paused' || KRAKEN || RAIE || PLANCHE === 'avale',
   lastTrickResult: PLANCHE === 'avale'
     ? { winnerId: 'p1', destroyed: false, devouredCardIds: [], plankedCardIds: ['pir2'], davyJones: null }
     : KRAKEN
     ? { winnerId: null, destroyed: true, krakenCardId: 'c2', devouredCardIds: [], plankedCardIds: [], davyJones: null }
+    : RAIE
+    ? { winnerId: null, destroyed: true, krakenCardId: null, destroyedBy: 'stingray', devouredCardIds: [], plankedCardIds: [], davyJones: null }
     : PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
   sittingOutThisTrick: false,
 };
