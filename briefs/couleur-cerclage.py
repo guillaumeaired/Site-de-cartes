@@ -13,9 +13,11 @@ MÉDIANE et pas la moyenne : les clous de laiton et les reflets spéculaires
 tireraient une moyenne vers l'or, la médiane les ignore tant qu'ils occupent
 moins de la moitié de la couronne (c'est le cas partout).
 
-Exception : la Bouteille porte un cerclage d'acier, donc gris. Sur celui-là
-la médiane brute attrape les clous dorés et sort un brun qui n'existe nulle
-part sur l'image. On y filtre donc les pixels saturés avant de mesurer.
+Les neuf cerclages sont désormais des émaux colorés, ce qui suffit à la
+médiane brute. La Bouteille faisait exception tant qu'elle portait un
+cerclage d'acier : sur un anneau gris, la médiane attrapait les clous dorés
+et sortait un brun absent de l'image. Elle est repeinte en vert bouteille
+depuis briefs/composer-piece-bouteille.py — l'exception est tombée avec.
 
 Usage :
     python3 briefs/couleur-cerclage.py          # relève et compare au JS
@@ -32,10 +34,6 @@ RACINE = Path(__file__).resolve().parent.parent
 SKIN = RACINE / 'public/assets/skin'
 JS = RACINE / 'public/skullking.js'
 
-# Les cerclages gris : la médiane brute y attrape le laiton des clous.
-ACIER = {'bouteille'}
-
-
 def couronne(im, r0=0.78, r1=0.94):
     """Les pixels opaques de l'anneau, en RGB."""
     a = np.asarray(im).astype(np.float32)
@@ -47,10 +45,6 @@ def couronne(im, r0=0.78, r1=0.94):
 
 def cerclage(chemin):
     px = couronne(Image.open(chemin).convert('RGBA'))
-    if chemin.stem[len('piece-'):] in ACIER:
-        mx, mn = px.max(1), px.min(1)
-        sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1), 0)
-        px = px[sat < 0.25]
     return '#%02x%02x%02x' % tuple(np.median(px, axis=0).astype(int))
 
 
