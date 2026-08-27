@@ -1576,6 +1576,31 @@ h3 {
     0 0 1.4cqw rgba(232, 206, 146, 0.5);
 }
 
+/* Frère du jeton de donneur, posé de l'autre côté du médaillon : « c'est lui
+   qui entame ». Affiché pendant l'annonce seulement, là où le halo de tour
+   servait autrefois à le dire — et se lisait à tort comme « à lui de jouer ». */
+.sk-seat-leader {
+  position: absolute;
+  top: -2%;
+  left: 4%;
+  z-index: 4;
+  width: 4.6cqw;
+  height: 4.6cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #f0f6ff, #b9c9e2 34%, #6d8099 62%, #24303f 100%);
+  color: #16202c;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 2.4cqw;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 0 0.32cqw rgba(16, 9, 3, 0.92),
+    0 0.3cqw 0.7cqw rgba(0, 0, 0, 0.75);
+}
+
 .sk-seat-cards {
   display: flex;
   align-items: center;
@@ -1824,21 +1849,60 @@ h3 {
 }
 
 /* --- Pouvoir de Juanita Jade : cartes retournées une à une, au survol ou au
-   tap - pas de minuteur imposé, le rythme est donné par le joueur lui-même. --- */
+   tap - pas de minuteur imposé, le rythme est donné par le joueur lui-même.
+   La grille n'emprunte plus la classe .sk-hand : elle en héritait le
+   défilement horizontal, la hauteur minimale de l'éventail et le survol qui
+   soulève la carte, trois choses qui n'ont aucun sens pour une planche de
+   cartes posées à plat. --sk-flip-w est posée par ajusterGrilleJuanita :
+   c'est la largeur qui fait tenir les 85 cartes possibles sans défilement. */
 .sk-juanita-row {
-  gap: 10px;
-  min-height: 0;
-  padding: 6px 0 4px;
+  --sk-flip-w: 84px;
+  --sk-flip-k: 1;
+  display: flex;
   flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
 }
 
 .sk-flip-card {
   position: relative;
-  width: 84px;
-  height: 120px;
+  width: var(--sk-flip-w, 84px);
+  height: calc(var(--sk-flip-w, 84px) / 0.7);
   flex-shrink: 0;
   cursor: pointer;
   perspective: 600px;
+}
+
+/* Toute la carte est mise à l'échelle, pas seulement sa boîte : sans ça une
+   carte de 30 px gardait un pied de 30 px et un chiffre de 2,9 rem. */
+.sk-juanita-row .sk-flip-card-face.sk-card {
+  --sk-w: var(--sk-flip-w);
+  --sk-pad: calc(4px * var(--sk-flip-k));
+  --sk-foot: calc(30px * var(--sk-flip-k));
+  --sk-fig: calc(2.9rem * var(--sk-flip-k));
+  --sk-corner: calc(16px * var(--sk-flip-k));
+  --sk-seal: calc(13px * var(--sk-flip-k));
+  --sk-radius: calc(8px * var(--sk-flip-k));
+}
+
+/* Le survol découvre la carte, il ne la referme jamais. Seul le cadre reçoit
+   le pointeur : les deux faces sont hors d'atteinte, donc plus aucune règle
+   de survol ne peut venir écraser leur rotation — c'est exactement ce que
+   faisait .sk-hand .sk-card:hover, qui remettait la face avant à plat et la
+   rendait invisible (backface-visibility) tant que le curseur restait
+   dessus. La rotation ne dépend plus que de la classe --flipped, qui, elle,
+   ne se retire jamais. */
+.sk-juanita-row .sk-flip-card-face {
+  pointer-events: none;
+}
+
+.sk-flip-card--flipped {
+  cursor: default;
 }
 
 .sk-flip-card-inner {
@@ -3237,6 +3301,13 @@ h3 {
     height: 15px;
     font-size: 0.5rem;
   }
+  .sk-seat-leader {
+    top: -7px;
+    left: -11px;
+    width: 15px;
+    height: 15px;
+    font-size: 0.5rem;
+  }
   /* Le carnet reste court : sur un écran qui défile déjà, il ne doit pas
      repousser la main hors de portée. */
   .sk-chat-log {
@@ -4450,6 +4521,49 @@ h3 {
   flex-wrap: wrap;
 }
 
+/* La barre est passée AU-DESSUS de la main : à égalité de plan, c'est
+   l'éventail qui gagnait (il vient plus tard dans le document) et il
+   avalait les clics destinés au bouton « Confirmer ». */
+.sk-scene .sk-bid-choices:not(.hidden):not(:empty) {
+  left: 4%;
+  right: auto;
+  width: 26%;
+  max-width: 26%;
+  margin: 0;
+  z-index: 8;
+}
+
+/* À partir de la manche 7, les onze jetons d'annonce + « Confirmer » +
+   le rappel formaient une pilule de 620 px qui débordait jusque sous les
+   cartes : le bouton de confirmation se retrouvait sous la main, donc
+   impossible à cliquer. Les jetons passent en grille dans une colonne qui
+   s'arrête à 30 % de la scène, la main commençant à 32,5 % — les deux ne
+   peuvent plus se croiser, quel que soit le nombre de manches. */
+.sk-scene #sk-bid-choices:not(.hidden):not(:empty) {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  align-content: end;
+}
+
+.sk-scene #sk-bid-choices .btn {
+  min-width: 0;
+  padding: 7px 2px 8px;
+}
+
+.sk-scene #sk-bid-choices .sk-bid-confirm {
+  grid-column: 1 / -1;
+  margin-left: 0;
+  padding: 7px 10px 8px;
+}
+
+.sk-scene #sk-bid-choices .sk-bar-hint {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 0;
+  line-height: 1.25;
+}
+
 /* Le panneau de pouvoir est le seul bloc dont le contenu est imprévisible :
    un simple bouton pour Harry, une grille d'une douzaine de cartes pour
    Juanita. Il est donc large, centré sous le feutre, et BORNÉ en hauteur —
@@ -4471,7 +4585,6 @@ h3 {
 
 /* Ses rangées de cartes restent dans le flux : elles se replient au lieu
    de s'échapper du panneau. */
-.sk-scene .sk-juanita-row,
 .sk-scene .sk-will-drawn-row {
   position: static;
   display: flex;
@@ -4481,6 +4594,54 @@ h3 {
   width: 100%;
   min-height: 0;
   padding: 0;
+}
+
+/* Juanita Jade est le seul pouvoir qui montre le reste du paquet — jusqu'à
+   85 cartes. Dans la barre du bas, bornée à 30 % de hauteur, il fallait
+   descendre puis faire défiler pour en voir la moitié : c'est justement ce
+   qu'on demande au joueur de LIRE, en une fois. Le panneau passe donc au
+   centre de l'écran, avec un fond qui éteint la table derrière lui, et les
+   cartes rétrécissent jusqu'à tenir entièrement (ajusterGrilleJuanita). */
+.sk-scene .sk-power-panel--juanita {
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 88%;
+  max-width: 88%;
+  height: 86%;
+  max-height: 86%;
+  overflow: hidden;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  border-radius: 8px;
+  background: rgba(8, 5, 2, 0.94);
+  box-shadow:
+    0 0 0 1px var(--sk-brass-lo),
+    0 0 0 100vmax rgba(4, 2, 1, 0.66),
+    0 18px 44px rgba(0, 0, 0, 0.7);
+  z-index: 40;
+}
+
+.sk-scene .sk-power-panel--juanita .hint {
+  flex-shrink: 0;
+  text-align: center;
+}
+
+/* Le défilement reste possible en dernier recours (écran minuscule, où même
+   la carte la plus petite ne rentrerait pas) : mieux vaut faire défiler que
+   rogner des cartes sur lesquelles on ne pourrait plus cliquer. Sur un écran
+   d'ordinateur il ne sert jamais — les 85 cartes tiennent. */
+.sk-scene .sk-power-panel--juanita .sk-juanita-row {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sk-juanita-done {
+  flex-shrink: 0;
 }
 
 /* Tant que l'annonce n'est pas partie, le bloc appelle. Le repère est le

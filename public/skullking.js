@@ -1183,11 +1183,22 @@ function renderSeats(state) {
     seat.style.top = pos.y + '%';
     seat.style.transform = `translate(-50%, -50%) scale(${echelleProfondeur(v).toFixed(3)})`;
     if (!p.connected) seat.classList.add('sk-seat--disconnected');
-    // Pendant l'annonce (simultanée, pas de "tour" à proprement parler), on
-    // met déjà en avant qui mènera le pli - sinon rien n'indique "qui
-    // commence" avant que la phase de jeu ne soit entamée.
-    const activeId = state.phase === 'playing' ? state.turnPlayerId : state.leaderPlayerId;
-    if (activeId && p.id === activeId) seat.classList.add('sk-seat--turn');
+    // Le halo doré ne dit plus qu'une seule chose : « c'est à lui d'agir,
+    // maintenant ». Il suivait jusqu'ici leaderPlayerId dès qu'on n'était pas
+    // en phase de jeu, c'est-à-dire le meneur du pli PRÉCÉDENT pendant un
+    // pouvoir de Pirate : le halo se posait alors sur un siège qui n'avait
+    // rien à faire, et celui qui l'avait se croyait au trait alors que le
+    // jeton de donneur et le pouvoir en cours désignaient quelqu'un d'autre.
+    const activeId =
+      state.phase === 'playing'
+        ? state.turnPlayerId
+        : state.phase === 'power' && state.pendingPower
+          ? state.pendingPower.playerId
+          : null;
+    if (activeId && p.id === activeId) {
+      seat.classList.add('sk-seat--turn');
+      seat.title = p.id === myId ? "C'est à toi d'agir" : `C'est à ${p.nickname} d'agir`;
+    }
 
     if (p.id !== myId) {
       const cards = document.createElement('div');
@@ -1270,6 +1281,19 @@ function renderSeats(state) {
       chip.className = 'sk-seat-dealer';
       chip.textContent = 'D';
       chip.title = 'Donneur — c\'est lui qui distribue';
+      seat.appendChild(chip);
+    }
+
+    // « Qui entame » reste une information utile dès l'annonce, mais ce n'est
+    // pas « à lui de jouer » : tout le monde annonce en même temps. Elle a
+    // donc son propre jeton, frère de celui du donneur (le voisin de gauche
+    // du donneur, toujours), au lieu du halo de tour qu'on lisait comme un
+    // tour de jeu qui n'existait pas encore.
+    if (state.phase === 'bidding' && p.id === state.leaderPlayerId) {
+      const chip = document.createElement('span');
+      chip.className = 'sk-seat-leader';
+      chip.textContent = '1';
+      chip.title = 'Entame le premier pli de la manche';
       seat.appendChild(chip);
     }
 
@@ -1826,8 +1850,51 @@ function layoutHand() {
 let handLayoutTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(handLayoutTimer);
-  handLayoutTimer = setTimeout(layoutHand, 120);
+  handLayoutTimer = setTimeout(() => {
+    layoutHand();
+    const row = powerPanel.querySelector('.sk-juanita-row');
+    if (row) ajusterGrilleJuanita(row, row.childElementCount);
+  }, 120);
 });
+
+// Grille de Juanita Jade : on cherche la plus grande carte telle que les
+// `n` cartes tiennent ENTIÈREMENT dans le panneau, sans une seule ligne de
+// défilement. La hauteur suit la largeur (ratio 7:10, celui de toutes les
+// cartes du jeu) et le reste de l'habillage — pied, chiffre, sceau, équerre —
+// est mis à la même échelle par --sk-flip-k, sinon une carte de 30 px se
+// retrouve avec un pied de 30 px.
+const JUANITA_GAP = 6;
+function ajusterGrilleJuanita(row, n) {
+  if (!n) return;
+  requestAnimationFrame(() => {
+    if (!row.isConnected) return;
+    const dispo = row.getBoundingClientRect();
+    const panneau = powerPanel.getBoundingClientRect();
+    const styles = getComputedStyle(powerPanel);
+    // Hauteur laissée à la grille : le panneau moins ce qui l'accompagne
+    // (la consigne au-dessus, le bouton de sortie en dessous).
+    let occupe = parseFloat(styles.paddingTop || 0) + parseFloat(styles.paddingBottom || 0);
+    [...powerPanel.children].forEach((el) => {
+      if (el !== row) occupe += el.getBoundingClientRect().height + JUANITA_GAP;
+    });
+    const largeurDispo = dispo.width || panneau.width;
+    const hauteurDispo = panneau.height - occupe;
+    if (largeurDispo <= 0 || hauteurDispo <= 0) return;
+
+    let choisie = 26;
+    for (let w = 96; w >= 26; w -= 1) {
+      const h = w / 0.7;
+      const colonnes = Math.max(1, Math.floor((largeurDispo + JUANITA_GAP) / (w + JUANITA_GAP)));
+      const lignes = Math.ceil(n / colonnes);
+      if (lignes * h + (lignes - 1) * JUANITA_GAP <= hauteurDispo) {
+        choisie = w;
+        break;
+      }
+    }
+    row.style.setProperty('--sk-flip-w', choisie + 'px');
+    row.style.setProperty('--sk-flip-k', (choisie / 84).toFixed(3));
+  });
+}
 
 // « Ce qu'il te reste à faire » : la phrase qu'on se répète en jouant et qui
 // n'était écrite nulle part. Réécrite à chaque pli, elle dit combien de plis
@@ -2024,6 +2091,7 @@ const POWER_LABEL = {
 function renderPower(state) {
   powerBanner.classList.add('hidden');
   powerPanel.classList.add('hidden');
+  powerPanel.classList.remove('sk-power-panel--juanita');
   powerPanel.innerHTML = '';
   willConfirmBtn = null;
 
@@ -2101,9 +2169,24 @@ function renderPower(state) {
       juanitaFlipped.clear();
       clearTimeout(juanitaDoneTimer);
     }
-    hint.textContent = `Cartes non distribuées ce tour-ci — survole (ou touche) chacune pour la retourner (${juanitaFlipped.size}/${cards.length}).`;
+    // Le pouvoir montre TOUT le reste du paquet : jusqu'à 85 cartes aux
+    // premières manches. Dans la barre du bas de l'écran, elles débordaient
+    // et il fallait descendre puis faire défiler le panneau pour en voir la
+    // moitié. La grille passe donc au centre de l'écran, et les cartes sont
+    // taillées à la volée pour tenir d'un seul tenant (voir ajusterGrilleJuanita).
+    powerPanel.classList.add('sk-power-panel--juanita');
+    const majHint = () => {
+      hint.textContent =
+        juanitaFlipped.size === cards.length
+          ? 'Toutes retournées — la partie reprend dans un instant…'
+          : `Cartes non distribuées ce tour-ci — survole (ou touche) chacune pour la retourner (${juanitaFlipped.size}/${cards.length}).`;
+    };
+    majHint();
     const row = document.createElement('div');
-    row.className = 'sk-hand sk-juanita-row';
+    // Plus de classe .sk-hand ici : elle apportait tout l'habillage de
+    // l'éventail (défilement horizontal, hauteur minimale, survol qui
+    // soulève la carte) à une grille qui n'en est pas un.
+    row.className = 'sk-juanita-row';
     cards.forEach((card) => {
       const flip = document.createElement('div');
       flip.className = 'sk-flip-card' + (juanitaFlipped.has(card.id) ? ' sk-flip-card--flipped' : '');
@@ -2118,13 +2201,15 @@ function renderPower(state) {
       inner.appendChild(back);
       inner.appendChild(front);
       flip.appendChild(inner);
+      // Une carte retournée le reste : le survol ne fait que la découvrir,
+      // il ne la referme jamais (ni en repassant dessus, ni en s'en allant).
       const reveal = () => {
         if (juanitaFlipped.has(card.id)) return;
         juanitaFlipped.add(card.id);
         flip.classList.add('sk-flip-card--flipped');
-        hint.textContent = `Cartes non distribuées ce tour-ci — survole (ou touche) chacune pour la retourner (${juanitaFlipped.size}/${cards.length}).`;
+        flip.title = 'Déjà retournée — elle reste face visible';
+        majHint();
         if (juanitaFlipped.size === cards.length) {
-          hint.textContent = 'Toutes retournées — la partie reprend dans un instant…';
           clearTimeout(juanitaDoneTimer);
           juanitaDoneTimer = setTimeout(() => socket.emit('skullking-power-juanita-done'), 2000);
         }
@@ -2134,6 +2219,19 @@ function renderPower(state) {
       row.appendChild(flip);
     });
     powerPanel.appendChild(row);
+
+    // Le panneau couvre maintenant l'écran : il lui faut une sortie, sinon on
+    // attend les 25 s du minuteur serveur sans rien pouvoir faire.
+    const doneBtn = document.createElement('button');
+    doneBtn.className = 'btn sk-juanita-done';
+    doneBtn.textContent = "J'ai fini de regarder";
+    doneBtn.addEventListener('click', () => {
+      clearTimeout(juanitaDoneTimer);
+      socket.emit('skullking-power-juanita-done');
+    });
+    powerPanel.appendChild(doneBtn);
+
+    ajusterGrilleJuanita(row, cards.length);
   } else if (pending.kind === 'will') {
     hint.textContent = 'Tu piochais 2 cartes non distribuées, les voici — elles ont rejoint ta main. Choisis 2 cartes à défausser ci-dessous (parmi toute ta main, pas forcément celles-ci).';
     const drawnIds = new Set(pending.drawnCardIds || []);
