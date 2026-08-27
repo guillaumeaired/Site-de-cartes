@@ -57,11 +57,34 @@
            droite. Sous 1000px la grille redevient une simple colonne et
            l'ordre du DOM suffit — c'est exactement l'empilement d'avant. -->
       <div class="sk-lobby-grid">
-        <div id="sk-share-block" class="invite-card sk-lobby-col hidden">
-          <p class="invite-label">Code de la partie</p>
-          <div class="code-badge" id="sk-share-code"></div>
-          <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
-          <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+        <!-- Le code et la discussion partagent une colonne : le bloc
+             d'invitation est court (un code, un bouton) et laissait sous lui
+             la moitié de la hauteur des planches voisines en bois nu. La
+             discussion vient l'occuper, et la colonne tombe à la hauteur des
+             autres — c'est la seule place où le chat ne fait grandir ni la
+             grille ni la page. -->
+        <div class="sk-lobby-pile">
+          <div id="sk-share-block" class="invite-card sk-lobby-col hidden">
+            <p class="invite-label sk-lobby-col-title">Code de la partie</p>
+            <div class="code-badge" id="sk-share-code"></div>
+            <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
+            <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+          </div>
+
+          <!-- Même discussion qu'en jeu, même historique : le serveur la
+               diffusait déjà au salon (broadcastLobby), il n'y avait
+               simplement aucun endroit pour l'écrire ni la lire avant que la
+               partie commence — le moment où l'on se dit justement qui
+               attend qui. -->
+          <div class="sk-lobby-col sk-lobby-chat">
+            <p class="invite-label sk-lobby-col-title">Discussion</p>
+            <div id="sk-lobby-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
+            <form id="sk-lobby-chat-form" class="sk-chat-form" autocomplete="off">
+              <label for="sk-lobby-chat-input" class="visually-hidden">Message</label>
+              <input id="sk-lobby-chat-input" type="text" maxlength="200" placeholder="Écrire à l'équipage…" />
+              <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
+            </form>
+          </div>
         </div>
 
         <div class="sk-lobby-col sk-lobby-col--settings">
@@ -107,7 +130,7 @@
 
         <div class="sk-lobby-col sk-lobby-col--crew">
           <div id="sk-piece-picker" class="sk-piece-picker hidden">
-            <p class="invite-label">Ta pièce</p>
+            <p class="invite-label sk-lobby-col-title">Ta pièce</p>
             <div id="sk-piece-grid" class="sk-piece-grid"></div>
           </div>
 

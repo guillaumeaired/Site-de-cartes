@@ -171,6 +171,16 @@ function decide(state) {
   return null;
 }
 
+// Retire un bot précis : son minuteur de réflexion en cours et son faux
+// socket. Sans ça, un bot supprimé du salon continuait de se réveiller une
+// fois (le minuteur ne connaît pas la salle) et son id restait connu de
+// isBot, qui sert à décider si une salle n'a plus que des bots.
+function removeBot(playerId) {
+  clearTimeout(pending.get(playerId));
+  pending.delete(playerId);
+  return botSockets.delete(playerId);
+}
+
 function forgetRoom(room) {
   if (!room || !room.players) return;
   for (const p of room.players) {
@@ -180,4 +190,4 @@ function forgetRoom(room) {
   }
 }
 
-module.exports = { addBot, driveBots, isBot, forgetRoom };
+module.exports = { addBot, removeBot, driveBots, isBot, forgetRoom };

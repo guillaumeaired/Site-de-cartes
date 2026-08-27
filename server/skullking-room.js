@@ -322,7 +322,14 @@ function broadcastLobby(io, room) {
       // sait pas quelle case est la sienne (myId n'arrive qu'avec l'état de
       // jeu, donc trop tard).
       myId: p.id,
-      players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, piece: pp.piece || null })),
+      // isBot : l'hôte peut retirer un bot du salon, pas un joueur — le
+      // client a donc besoin de savoir lesquels en sont.
+      players: room.players.map((pp) => ({
+        id: pp.id,
+        nickname: pp.nickname,
+        piece: pp.piece || null,
+        isBot: Boolean(bots && bots.isBot(pp.id)),
+      })),
       pieceKeys: PIECE_KEYS,
       chat: room.chat || [],
       hostId: room.hostId,
@@ -1181,6 +1188,23 @@ function registerSkullKingHandlers(io, socket) {
     if (socket.id !== room.hostId) return;
     if (room.players.length >= maxPlayersFor(extensionsOf(room))) return;
     if (bots.addBot(io, room, registerSkullKingHandlers)) broadcastLobby(io, room);
+  });
+
+  // OUTIL DE TEST, pendant du précédent : retire un bot du salon. Un bot
+  // ajouté par erreur bloquait la partie jusqu'au bout — la salle était
+  // pleine, ou le compte de joueurs faussait le nombre de cartes de la
+  // dernière manche, et il n'y avait aucun moyen de revenir en arrière sans
+  // refaire le salon. La garde isBot est la seule qui compte ici : ce point
+  // d'entrée ne doit jamais pouvoir expulser un humain.
+  socket.on('skullking-remove-bot', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby' || !bots) return;
+    if (socket.id !== room.hostId) return;
+    const playerId = payload && payload.playerId;
+    if (!playerId || !bots.isBot(playerId)) return;
+    if (!findPlayer(room, playerId)) return;
+    bots.removeBot(playerId);
+    removeFromLobby(io, room, playerId);
   });
 
   socket.on('skullking-start-game', () => {

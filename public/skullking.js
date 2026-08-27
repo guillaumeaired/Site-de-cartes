@@ -715,6 +715,7 @@ document.addEventListener('keydown', (e) => {
 });
 const roundsGrid = document.getElementById('sk-rounds-grid');
 const roundsHint = document.getElementById('sk-rounds-hint');
+const lobbyChatLog = document.getElementById('sk-lobby-chat-log');
 const deckGrid = document.getElementById('sk-deck-grid');
 const deckHint = document.getElementById('sk-deck-hint');
 
@@ -832,37 +833,63 @@ function renderPiecePicker(players) {
 // plutôt que d'emporter le salon avec elle.
 const GRILLE_EN_RANGEE = '(min-width: 1000px)';
 
-function ajusterHauteurEquipage() {
+// La place qu'un bloc réglable peut prendre pour que SA colonne s'arrête à
+// la hauteur visée : la cible, moins tout ce que la colonne mesure en dehors
+// de lui (titres, pièces, code, formulaire).
+function placeDisponible(bloc, colonne, cible) {
+  return cible - (colonne.offsetHeight - bloc.offsetHeight);
+}
+
+function ajusterHauteurSalon() {
   const grille = document.querySelector('.sk-lobby-grid');
-  const equipage = grille && grille.querySelector('.sk-lobby-col--crew');
-  if (!equipage) return;
+  if (!grille) return;
+  const equipage = grille.querySelector('.sk-lobby-col--crew');
+  const pile = grille.querySelector('.sk-lobby-pile');
+
+  // Toujours remettre à zéro d'abord : les hauteurs se mesurent sur la mise
+  // en page naturelle, pas sur celle du dernier passage.
   lobbyList.style.maxHeight = '';
+  if (lobbyChatLog) lobbyChatLog.style.height = '';
+
   // Sous 1000px les planches sont empilées : la grille fait leur somme, il
   // n'y a plus de « planche la plus haute » à ne pas dépasser.
   if (!window.matchMedia(GRILLE_EN_RANGEE).matches) return;
   const planches = [...grille.children].filter((c) => !c.classList.contains('hidden'));
-  // Fenêtre trop étroite pour les quatre planches : elles s'enroulent sur
-  // deux rangées, et il n'y a plus de « planche la plus haute » à ne pas
-  // dépasser — borner la liste ne ferait que cacher des matelots pour rien.
+  // Fenêtre trop étroite pour les quatre colonnes : elles s'enroulent sur
+  // deux rangées, et il n'y a plus de hauteur commune à viser — borner les
+  // blocs ne ferait que cacher des matelots et des messages pour rien.
   if (new Set(planches.map((c) => c.offsetTop)).size > 1) return;
-  const voisines = planches.filter((c) => c !== equipage).map((c) => c.offsetHeight);
-  if (!voisines.length) return;
-  // Ce que la planche mesure en dehors de la liste (les pièces, le titre) :
-  // c'est ce qu'il faut retrancher du plafond pour obtenir celui de la liste.
-  const autour = equipage.offsetHeight - lobbyList.offsetHeight;
-  let plafond = Math.max(...voisines) - autour;
-  // Le plafond tombe sur un nombre entier de rangées. Au pixel près, il
-  // coupait la suivante en deux et le liseré qui dépassait se lisait comme
-  // une barre de défilement collée en pied de planche.
-  const ligne = lobbyList.querySelector('li');
-  if (ligne) {
-    const ecart = parseFloat(getComputedStyle(lobbyList).rowGap) || 0;
-    const pas = ligne.offsetHeight + ecart;
-    if (pas > 0) plafond = Math.max(2, Math.floor((plafond + ecart) / pas)) * pas - ecart;
+
+  // La hauteur visée est celle des colonnes qu'on NE règle pas (réglages,
+  // extension) : ce sont elles qui fixent la taille du salon, les deux
+  // autres s'y ajustent.
+  const fixes = planches.filter((c) => c !== equipage && c !== pile).map((c) => c.offsetHeight);
+  if (!fixes.length) return;
+  const cible = Math.max(...fixes);
+
+  if (equipage) {
+    let plafond = placeDisponible(lobbyList, equipage, cible);
+    // Le plafond tombe sur un nombre entier de rangées. Au pixel près, il
+    // coupait la suivante en deux et le liseré qui dépassait se lisait comme
+    // une barre de défilement collée en pied de planche.
+    const ligne = lobbyList.querySelector('li');
+    if (ligne) {
+      const ecart = parseFloat(getComputedStyle(lobbyList).rowGap) || 0;
+      const pas = ligne.offsetHeight + ecart;
+      if (pas > 0) plafond = Math.max(2, Math.floor((plafond + ecart) / pas)) * pas - ecart;
+    }
+    // Sous deux rangées de matelots, mieux vaut une planche un peu plus haute
+    // qu'une liste réduite à une fente.
+    if (plafond > 120) lobbyList.style.maxHeight = `${plafond}px`;
   }
-  // Sous deux rangées de matelots, mieux vaut une planche un peu plus haute
-  // qu'une liste réduite à une fente.
-  if (plafond > 120) lobbyList.style.maxHeight = `${plafond}px`;
+
+  // La discussion, elle, REMPLIT ce qui reste sous le code plutôt que de s'y
+  // borner : c'est ce qui met la colonne à la hauteur des autres au lieu de
+  // laisser du bois nu en dessous.
+  if (lobbyChatLog && pile) {
+    const place = placeDisponible(lobbyChatLog, pile, cible);
+    if (place > 90) lobbyChatLog.style.height = `${place}px`;
+  }
 }
 
 // Le paquet, réglé par l'hôte. Deux vignettes plutôt que deux libellés : ce
@@ -1053,7 +1080,7 @@ function renderRoundsPicker(total, mini, maxi, isHost) {
     : `${choisi} manches.`;
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, myId: id }) => {
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, chat, myId: id }) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
@@ -1079,6 +1106,24 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     nom.style.color = couleurJoueur(p);
     li.appendChild(nom);
     if (p.id === hostId) li.classList.add('lobby-host');
+    // Renvoyer un bot au port. Même régime que le bouton qui les ajoute :
+    // outil de test, hôte seulement — et jamais sur un joueur humain, ce que
+    // le serveur revérifie de son côté. Sans ça, un bot ajouté en trop
+    // bloquait le salon jusqu'à ce qu'on le refasse.
+    if (DEV_TOOLS && isHost && p.isBot) {
+      const vire = document.createElement('button');
+      vire.type = 'button';
+      // Pas de classe sk-dev-tool ici : elle porte le cadre en pointillés du
+      // bouton « Ajouter un bot », qui ferait de cette croix une case à
+      // cocher géante au milieu du rôle. La condition DEV_TOOLS juste
+      // au-dessus suffit à la réserver aux tests.
+      vire.className = 'sk-lobby-vire';
+      vire.textContent = '✕';
+      vire.title = `Retirer ${p.nickname}`;
+      vire.setAttribute('aria-label', `Retirer ${p.nickname}`);
+      vire.addEventListener('click', () => socket.emit('skullking-remove-bot', { playerId: p.id }));
+      li.appendChild(vire);
+    }
     lobbyList.appendChild(li);
   });
   renderPiecePicker(players);
@@ -1097,9 +1142,13 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
 
+  // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
+  // ajouterMessage écarte tout seul ce qui a déjà été posé.
+  renderChat({ chat });
+
   // Après tout le reste : le plafond se déduit de la hauteur des voisines,
   // qui dépendent du paquet, des manches et des lignes d'extension.
-  ajusterHauteurEquipage();
+  ajusterHauteurSalon();
 
   btnStartGame.classList.toggle('hidden', !isHost);
   // Outil de test : jamais proposé aux vrais joueurs (voir DEV_TOOLS).
@@ -1121,7 +1170,7 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   lastPlankedTrick = null;
 });
 
-window.addEventListener('resize', ajusterHauteurEquipage);
+window.addEventListener('resize', ajusterHauteurSalon);
 
 btnExtension.addEventListener('click', () => {
   if (!myIsHost) return;
@@ -2636,27 +2685,40 @@ function renderObjective(state) {
 // borner la longueur et écraser les espaces). C'est ici, au rendu, que se
 // joue la sécurité — deux failles XSS ont déjà été trouvées dans ce projet
 // par ce chemin exact.
-const chatLogEl = document.getElementById('sk-chat-log');
-const chatFormEl = document.getElementById('sk-chat-form');
-const chatInputEl = document.getElementById('sk-chat-input');
+// Deux endroits où la discussion s'écrit et se lit : la planche du salon et
+// le carnet de la table. Ce sont deux vues du MÊME fil — le serveur n'en
+// connaît qu'un, et l'historique arrive avec l'état comme avant. D'où une
+// liste de vues plutôt qu'un couple de variables : chaque message est posé
+// dans toutes, une seule fois (chatSeen est commun).
 const chatSeen = new Set();
+const CHAT_VUES = [
+  {
+    log: document.getElementById('sk-chat-log'),
+    form: document.getElementById('sk-chat-form'),
+    input: document.getElementById('sk-chat-input'),
+  },
+  {
+    log: document.getElementById('sk-lobby-chat-log'),
+    form: document.getElementById('sk-lobby-chat-form'),
+    input: document.getElementById('sk-lobby-chat-input'),
+  },
+].filter((v) => v.log && v.form && v.input);
+
 
 function chatHeure(at) {
   const d = new Date(at);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function chatAuBas() {
+function chatAuBas(log) {
   // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
   // quelqu'un en train de remonter l'historique.
-  return chatLogEl.scrollHeight - chatLogEl.scrollTop - chatLogEl.clientHeight < 40;
+  return log.scrollHeight - log.scrollTop - log.clientHeight < 40;
 }
 
-function ajouterMessage(m) {
-  if (!m || chatSeen.has(m.id)) return;
-  chatSeen.add(m.id);
-  const colle = chatAuBas();
-
+// Une ligne neuve à chaque vue : un même nœud ne peut pas être dans deux
+// endroits du document à la fois.
+function ligneChat(m) {
   const ligne = document.createElement('div');
   ligne.className = 'sk-chat-line' + (m.playerId === myId ? ' sk-chat-line--me' : '');
 
@@ -2673,9 +2735,18 @@ function ajouterMessage(m) {
   corps.textContent = m.text;
 
   ligne.append(tete, corps);
-  chatLogEl.appendChild(ligne);
-  while (chatLogEl.childElementCount > 80) chatLogEl.removeChild(chatLogEl.firstChild);
-  if (colle) chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  return ligne;
+}
+
+function ajouterMessage(m) {
+  if (!m || chatSeen.has(m.id)) return;
+  chatSeen.add(m.id);
+  CHAT_VUES.forEach((vue) => {
+    const colle = chatAuBas(vue.log);
+    vue.log.appendChild(ligneChat(m));
+    while (vue.log.childElementCount > 80) vue.log.removeChild(vue.log.firstChild);
+    if (colle) vue.log.scrollTop = vue.log.scrollHeight;
+  });
 }
 
 function renderChat(state) {
@@ -2684,12 +2755,14 @@ function renderChat(state) {
 
 socket.on('skullking-chat-message', ajouterMessage);
 
-chatFormEl.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const text = chatInputEl.value.trim();
-  if (!text) return;
-  socket.emit('skullking-chat', { text });
-  chatInputEl.value = '';
+CHAT_VUES.forEach((vue) => {
+  vue.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = vue.input.value.trim();
+    if (!text) return;
+    socket.emit('skullking-chat', { text });
+    vue.input.value = '';
+  });
 });
 
 function renderScoreboard(state) {

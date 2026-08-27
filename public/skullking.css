@@ -1009,6 +1009,16 @@ h3 {
   max-width: 300px;
 }
 
+/* La discussion du salon, en colonne étroite (téléphone) : même gabarit que
+   les autres blocs du salon. En paysage elle devient une planche, sous le
+   code de la partie — voir plus bas. */
+.sk-lobby-chat {
+  display: flex;
+  flex-direction: column;
+  margin: 24px auto;
+  max-width: 300px;
+}
+
 .lobby-list {
   list-style: none;
   margin: 0;
@@ -1052,6 +1062,29 @@ h3 {
   font-weight: 700;
   letter-spacing: 0.16em;
   color: var(--sk-brass);
+}
+
+/* Le renvoi d'un bot : discret tant qu'on ne le cherche pas, franc au
+   survol. Il ne s'affiche que pour l'hôte, et seulement sur les lignes de
+   bots (voir DEV_TOOLS côté client). */
+.sk-lobby-vire {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--sk-brass-lo);
+  opacity: 0.65;
+  transition: color 0.12s, opacity 0.12s;
+}
+
+.sk-lobby-vire:hover {
+  color: #d4574a;
+  opacity: 1;
 }
 
 .lobby-list li:nth-child(1) { animation-delay: 0.03s; }
@@ -6029,6 +6062,19 @@ h3 {
   display: none;
 }
 
+/* Sauf ceux qui sont le SEUL libellé de leur bloc. Trois d'entre eux le sont
+   devenus en passant intertitres de planche — le code de la partie, la
+   pièce, la discussion : empilés sur un téléphone, les masquer laissait un
+   badge de code, une grille de médaillons et un fil de messages sans un mot
+   pour dire ce qu'ils sont. Ils gardent en revanche le petit corps du
+   téléphone : le filet et le corps d'intertitre ne valent qu'en paysage,
+   où ils coiffent une planche. */
+#sk-share-block .sk-lobby-col-title,
+.sk-piece-picker .sk-lobby-col-title,
+.sk-lobby-chat .sk-lobby-col-title {
+  display: block;
+}
+
 /* Sauf sur la planche des extensions. Les autres intertitres nomment une
    COLONNE, et une colonne n'existe qu'en paysage — empilés, ils redisaient
    ce que la page montre déjà. Celui-ci nomme un RÉGLAGE, comme « Nombre de
@@ -6142,6 +6188,51 @@ h3 {
      rangée. `order` plutôt qu'un déplacement dans le HTML — sous 1000px la
      grille redevient une colonne et c'est l'ordre du DOM qui empile, où le
      code de la partie doit rester en tête. */
+  /* La pile porte la largeur et l'écart ; ses deux planches, elles, ne
+     grandissent pas d'elles-mêmes. Sans ce `flex: none`, elles héritaient du
+     `flex: 1 1 250px` de .sk-lobby-col — qui, dans une colonne, se lit en
+     HAUTEUR : le code et la discussion se partageaient la pile à parts
+     égales, chacun étiré sur 250 px de vide. */
+  .sk-lobby-pile {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1 1 250px;
+    min-width: 0;
+    max-width: 330px;
+  }
+
+  .sk-lobby-pile > .sk-lobby-col {
+    flex: none;
+    max-width: none;
+  }
+
+  /* Plus serrée que les autres planches : tout ce qu'on lui prend en marges,
+     la discussion le rend en lignes lisibles. Elle n'a droit qu'à ce que le
+     code de la partie laisse au-dessus d'elle. */
+  .sk-lobby-chat {
+    margin: 0;
+    max-width: none;
+    padding: 15px 13px 11px;
+  }
+
+  .sk-lobby-chat .sk-lobby-col-title {
+    margin-bottom: 9px;
+    padding-bottom: 6px;
+  }
+
+  .sk-lobby-chat .sk-chat-form {
+    margin-top: 8px;
+  }
+
+  /* Réglée en JS pour que la pile tombe à la hauteur des planches voisines
+     (voir ajusterHauteurSalon) ; ce plancher n'est là que pour le premier
+     rendu, avant la mesure. */
+  .sk-lobby-chat .sk-chat-log {
+    flex: none;
+    height: 150px;
+  }
+
   .sk-lobby-col--crew {
     order: -1;
     flex: 1.6 1 356px;
@@ -6187,13 +6278,25 @@ h3 {
     letter-spacing: 0.1em;
   }
 
+  /* L'enseigne de la planche. Au corps des autres libellés (0,62 rem, la
+     taille d'une mention de champ), les quatre titres se lisaient comme des
+     étiquettes posées dessus plutôt que comme le nom de la planche : on
+     cherchait ce qu'on avait sous les yeux. Ils passent au corps d'un vrai
+     intertitre, en laiton clair, sur un filet qui court sur toute la
+     largeur — c'est le filet, plus que le corps, qui dit « ceci coiffe tout
+     ce qui suit ». Les libellés internes (paquet, manches, joueurs) gardent
+     leur petit corps : la hiérarchie ne tient que par l'écart entre les
+     deux. */
   .sk-lobby-col-title,
-  /* En paysage, l'intertitre de l'extension redevient un intertitre de
-     planche comme les trois autres : même marge, sinon son titre pendrait
-     plus bas que ses voisins. */
   .sk-ext-card .sk-lobby-col-title {
     display: block;
-    margin: 0 0 12px;
+    margin: 0 0 13px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(184, 137, 53, 0.28);
+    font-size: 0.88rem;
+    letter-spacing: 0.12em;
+    color: var(--sk-brass-hi);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
   }
 
   /* Les blocs internes perdent leurs marges de colonne : c'est la planche
