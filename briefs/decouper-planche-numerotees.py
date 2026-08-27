@@ -23,6 +23,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 RACINE = Path(__file__).resolve().parent.parent
 SRC = RACINE / 'public/assets/skin/src'
@@ -105,12 +106,26 @@ def carte(a, x0, y0, x1, y1, bois):
     c = rogner_ombre(a[y0:y1, x0:x1].copy())
     h, w = c.shape[:2]
 
-    # Coins arrondis : le bois qui s'y voit passe au blanc du liseré. On ne
-    # regarde que la couronne extérieure — le coffre au centre est lui aussi
-    # un brun de bois, il ne doit pas y passer.
+    # Coins arrondis : le fond de planche qui s'y voit passe au blanc du
+    # liseré. On ne blanchit que ce qui TOUCHE le bord de la découpe et tient
+    # d'un seul tenant jusqu'à lui — les quatre coins, et rien d'autre.
+    #
+    # La ressemblance de couleur ne suffit pas : elle ne dit pas si le pixel
+    # est dehors ou dedans. Sur un plan de bois ça passait (rien de brun ne
+    # touche le liseré), la couronne extérieure suffisait à écarter le coffre
+    # du centre. Sur le drap bleu de la planche d'extension, non — la Raie
+    # Tachetée est une carte bleue, du même bleu que le drap, et la règle lui
+    # mangeait des morceaux de cadre doré et de fond, jusqu'au milieu de ses
+    # bords. Le liseré blanc, lui, fait le tour complet de chaque carte : par
+    # construction, aucun pixel de l'illustration n'est relié au dehors.
     yy, xx = np.mgrid[0:h, 0:w]
     bord = (xx < w * BORD) | (xx > w * (1 - BORD)) | (yy < h * BORD) | (yy > h * (1 - BORD))
-    c[bord & (np.linalg.norm(c - bois, axis=2) < 70)] = 255
+    proche = bord & (np.linalg.norm(c - bois, axis=2) < 70)
+    lab, n = ndimage.label(proche)
+    dehors = set(lab[0].tolist()) | set(lab[-1].tolist()) | set(lab[:, 0].tolist()) | set(lab[:, -1].tolist())
+    dehors.discard(0)
+    if dehors:
+        c[np.isin(lab, list(dehors))] = 255
     return Image.fromarray(c.astype(np.uint8), 'RGB')
 
 

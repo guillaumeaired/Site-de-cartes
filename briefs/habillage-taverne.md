@@ -169,8 +169,8 @@ Format 1× : **84 × 118 px** → générer en 3×, soit ~252 × 354.
 | `dos-cartes-sk.png` | 1 ✅ | Dos de carte, motif symétrique. Sort à 512 px de large : il ne se voit jamais à plus de 84 px |
 | `cartes-{tresor,violettes,atouts,perroquets}-sk.png` | 4 ✅ | Les quatre familles numérotées, **une planche de 14 cartes chacune** : Trésor (jaune), Carte au trésor (violet), Pavillon noir (l'atout) et Perroquets (vert). Le chiffre est peint dans les médaillons, donc pas de cadre vide possible. Découpées par `briefs/decouper-planche-numerotees.py` |
 | `extra-cards-sk.png` | 1 ✅ | **Planche des spéciales classiques**, dix cases en deux rangées de cinq : Fuite, Skull King, les deux Sirènes, puis Will, Harry, Rosie, Rascal — et deux doublons sans emploi (une seconde Rosie, un second Will). Découpée par `briefs/decouper-planche-speciales.py`, qui réutilise la grille des familles numérotées |
-| `extras-extras.png` | 1 ✅ | **Seconde planche**, cinq cases en une rangée, sur drap bleu : Kraken, Butin, Baleine blanche, Raie Tachetée, Tigresse. Même script — le repérage isole ce qui n'est pas le fond, échantillonné dans les marges, et se moque que le fond soit du bois ou du drap |
-| `extension-sk.png` | 1 ✅ | **L'extension**, dix cases en deux rangées de cinq. Une seule en sort : la Dernière Salve (la bordée tirée du navire) et le Joker (le singe couronné). Le reste est soit déjà peint ailleurs (la Raie), soit repris en mieux par la planche suivante, soit une variante non retenue |
+| `extras-extras.png` | 1 ✅ | **Seconde planche**, cinq cases en une rangée, sur drap bleu : Kraken, Butin, Baleine blanche, Raie Tachetée, Tigresse. Même script — le repérage isole ce qui n'est pas le fond, échantillonné dans les marges, et se moque que le fond soit du bois ou du drap. Quatre cases en sortent : la Raie est reprise sur `extension-sk` |
+| `extension-sk.png` | 1 ✅ | **L'extension**, dix cases en deux rangées de cinq. Trois en sortent : la Dernière Salve (la bordée tirée du navire), le Joker (le singe couronné) et la **Raie Tachetée** au cerf-volant. Le reste est soit repris en mieux par la planche suivante, soit une variante non retenue |
 | `extension-2-sk.png` | 1 ✅ | Les quatre sujets du haut de la planche précédente, repeints : Coffre de Davy Jones, Mat le Forban, Mary Thorne, Marcher sur la Planche. Ce sont ceux-là qui entrent dans le jeu |
 | `mary-thorne.png` | 1 ✅ | Mary Thorne repeinte, livrée **carte seule** sur un carré de couleur. Le script recadre d'abord sur ce carré (`CARTE_SEULE`) : la grille échantillonne le fond dans les marges et y trouverait sinon le blanc de la page, ramenant le carré entier comme une carte |
 | illustrations spéciales restantes | 1 | Juanita Jade |
@@ -220,6 +220,24 @@ c'est l'endroit le moins recouvert quand les cartes du pli se chevauchent. Ce
 qu'il dit n'est pas une couleur mais une fonction, et il le dit avec l'image
 exacte que le joueur a cliquée pour choisir : le même pavillon, les mêmes
 sabres.
+
+**Blanchir les coins ne se fait pas sur la couleur.** Les coins des cartes sont
+arrondis dans la planche, et c'est le fond qui s'y voit : on le repeint du
+blanc du liseré, `border-radius` refaisant l'arrondi à l'écran. La règle
+d'origine blanchissait, dans la couronne extérieure de la découpe, tout ce qui
+ressemblait au fond. Sur un plan de bois elle passait — rien de brun ne touche
+le liseré. Sur le drap bleu de la planche d'extension, non : la Raie Tachetée
+est une carte bleue du même bleu que le drap, et la règle lui mangeait des
+morceaux de cadre doré jusqu'au milieu de ses bords.
+
+La ressemblance de couleur ne dit pas si un pixel est dehors ou dedans. C'est
+la **connexité** qui le dit : on ne blanchit que ce qui touche le bord de la
+découpe et tient d'un seul tenant jusqu'à lui. Le liseré blanc fait le tour
+complet de chaque carte, donc par construction aucun pixel d'illustration
+n'est relié au dehors. Corrigé dans `briefs/decouper-planche-numerotees.py`,
+d'où toutes les découpes tirent leur `carte()`. Les cartes du plan de bois y
+gagnent aussi : elles perdaient des entames de bannière et de chevelure, du
+brun trop proche de celui de la planche.
 
 Les planches se génèrent d'un coup, les 14 cartes ensemble, en deux rangées de
 sept sur un plan de travail en bois : c'est ce qui leur donne le même cadre et

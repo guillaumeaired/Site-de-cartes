@@ -49,17 +49,17 @@ PLANCHES = {
         None,                   # seconde Rosie — aucune carte où l'employer
         None,                   # Will en double
     ],
-    # L'extension, deux rangées de cinq sur drap bleu. Une seule case en
-    # sort : le reste de la planche est soit déjà peint ailleurs (la Raie),
-    # soit repris en mieux par extension-2-sk (les quatre du haut), soit une
-    # variante non retenue (l'autre singe, les deux autres canons).
+    # L'extension, deux rangées de cinq sur drap bleu. Trois cases en
+    # sortent : le reste est soit repris en mieux par extension-2-sk (les
+    # quatre du haut), soit une variante non retenue (l'autre singe, les deux
+    # autres canons).
     'extension-sk.png': [
         None,                   # Coffre de Davy Jones — repris sur la planche 2
         None,                   # Mat le Forban — repris sur la planche 2
         None,                   # Mary Thorne — reprise sur la planche 2
         None,                   # Marcher sur la Planche — repris sur la planche 2
         'classique-salve',      # Dernière Salve : la bordée tirée du navire
-        None,                   # la Raie Tachetée, déjà peinte sur extras-extras
+        'classique-raie',       # la Raie Tachetée et son cerf-volant
         'classique-joker',      # Joker/Wild 15 : le singe couronné, son 15 peint
         None,                   # canon dans la cale — variante non retenue
         None,                   # canon au ras de l'eau — variante non retenue
@@ -81,7 +81,7 @@ PLANCHES = {
         'classique-kraken',     # les tentacules sur le navire
         'classique-butin',      # les piles de doublons dans la cale
         'classique-baleine',    # la Baleine blanche
-        'classique-raie',       # la Raie Tachetée et son cerf-volant
+        None,                   # la Raie Tachetée — on prend celle d'extension-sk
         'classique-tigresse',   # La Tigresse
     ],
 }
