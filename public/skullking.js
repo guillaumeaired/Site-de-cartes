@@ -313,6 +313,23 @@ function cardClass(card) {
 // dont la lisibilité est garantie : dans l'éventail, les cartes se
 // recouvrent et il ne reste que leur bande gauche. Tout ce qui identifie
 // une carte vit donc en bas à gauche, jamais au centre.
+// Les 14 rapportent 10 points à qui remporte le pli — 20 pour le noir, la
+// famille d'atout. C'était une règle à connaître, écrite nulle part sur le
+// tapis : on gagnait le pli sans savoir qu'on venait d'empocher vingt points,
+// et on laissait filer un 14 adverse sans savoir ce qu'on offrait. La pièce
+// le dit sur la carte, à l'endroit où le chiffre se lit déjà.
+//
+// Le 0/14 déclaré à 14 la porte aussi : le bonus se lit sur la VALEUR, pas
+// sur la planche d'où vient le dessin, et le serveur la compte pareil.
+function bonusDeQuatorze(card) {
+  if (card.value !== 14) return '';
+  const valeur = card.suit === 'noir' ? 20 : 10;
+  return (
+    `<i class="sk-card__bonus sk-card__bonus--${valeur}" aria-hidden="true"></i>` +
+    `<span class="visually-hidden">rapporte ${valeur} points à qui remporte le pli</span>`
+  );
+}
+
 function cardShell(figure, foot) {
   return (
     '<i class="sk-card__field"></i>' +
@@ -347,7 +364,7 @@ function cardFaceHTML(card) {
     return cardShell(
       `<span class="sk-card__figure">${card.value}</span>`,
       `<b class="card-emblem">${card.value}</b>` + suit
-    );
+    ) + bonusDeQuatorze(card);
   }
   const info = SPECIAL_INFO[card.kind];
   let label = card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;

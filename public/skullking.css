@@ -2778,6 +2778,39 @@ body.sk-ciblage .sk-turn-indicator {
   background: linear-gradient(154deg, var(--sk-vert) 0%, var(--sk-jaune) 34%, var(--sk-violet) 67%, var(--sk-noir) 100%);
 }
 
+/* Le bonus des 14, posé CONTRE le médaillon d'angle et mordant dessus : une
+   pièce qui repose sur le chiffre, pas une pastille flottante. Les positions
+   se déduisent du médaillon relevé sur les planches peintes (centré à
+   17,5 % / 10,6 %, large comme 26 % de la carte) : la pièce fait 22 % et son
+   centre est posé à 20 % de là, en diagonale — de quoi mordre le médaillon
+   sur quatre points de large. Elles valent aussi pour le cadre dessiné, qui
+   place son chiffre au même endroit.
+
+   22 % et pas 16 % : à 16, sur une carte de la main large de 88 px, la pièce
+   tombait à quatorze pixels et « +10 » n'y était plus qu'un grain d'or.
+
+   Coin haut-gauche et pas bas-droit : c'est la bande que l'éventail laisse
+   voir quand les cartes se recouvrent. Une pièce au pied de la carte ne se
+   verrait qu'une fois la carte posée, c'est-à-dire trop tard pour décider.
+
+   Tout est en pourcentage de la carte : la pièce suit donc le feutre, la
+   main, la fiche agrandie et la planche du salon sans une valeur à régler. */
+.sk-card__bonus {
+  position: absolute;
+  left: 31%;
+  top: 20.5%;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: var(--sk-bonus) 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 0.4% 3% rgba(0, 0, 0, 0.85));
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sk-card__bonus--10 { --sk-bonus: url('assets/skin/bonus-10.webp'); }
+.sk-card__bonus--20 { --sk-bonus: url('assets/skin/bonus-20.webp'); }
+
 /* --- Cartes spéciales ------------------------------------------------
    .sk-card--special est le fourre-tout : il vient EN PREMIER pour que les
    classes de genre ci-dessous le remplacent (spécificité égale, c'est

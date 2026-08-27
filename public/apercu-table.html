@@ -37,6 +37,7 @@
     ?annonces=1     la révélation des annonces, plaques peintes retournées
     ?tigresse=pirate|fuite   un adversaire pose la Tigresse, annoncée
     ?phase=baleine  la Baleine met les spéciales hors course, sans rien détruire
+    ?quatorze=1     un 14 de chaque famille en main : les pièces de bonus
 -->
 <script>
 const P = new URLSearchParams(location.search);
@@ -52,6 +53,10 @@ const RAIE = PHASE === 'raie';
 // détruit alors rien — elle met simplement hors course toutes les spéciales,
 // et c'est le cas qui règle le voile.
 const BALEINE = PHASE === 'baleine';
+// ?quatorze=1 : les quatre 14 en main, plus le 0/14. C'est la seule
+// disposition qui montre côte à côte la pièce +10, la pièce +20 du noir, et
+// une carte de valeur voisine qui n'en porte aucune.
+const QUATORZE = P.get('quatorze') === '1';
 const TIGRESSE = P.get('tigresse');
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
 const MANCHE1 = P.get('manche') === '1';
@@ -184,7 +189,16 @@ const etat = {
   extensions: [],
   deckStyle: 'classique',
   lootAllies: [],
-  hand: MANCHE1_EN_JEU
+  hand: QUATORZE
+    ? [
+        { id: 'q1', kind: 'number', suit: 'vert', value: 14 },
+        { id: 'q2', kind: 'number', suit: 'jaune', value: 14 },
+        { id: 'q3', kind: 'number', suit: 'violet', value: 14 },
+        { id: 'q4', kind: 'number', suit: 'noir', value: 14 },
+        { id: 'q5', kind: 'number', suit: 'noir', value: 13 },
+        { id: 'q6', kind: 'number', suit: 'jaune', value: 14, ext: true, wild14: true },
+      ]
+    : MANCHE1_EN_JEU
     ? (JOUES > 0 ? [] : [carte(0)])
     : MANCHE1
     ? [{ id: 'c-moi', kind: 'hidden' }]
