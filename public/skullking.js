@@ -1104,41 +1104,49 @@ function bidStateSuffix(state, p) {
 //
 // Tracé commun : boîte 24x24, trait de 2, bouts arrondis, couleur héritée -
 // une seule silhouette lisible à 30px comme à 60px.
+//
+// `color` n'est PAS une teinte choisie à la main : c'est la couleur du
+// cerclage émaillé du médaillon peint, relevée sur le .webp lui-même
+// (briefs/couleur-cerclage.py, médiane de la couronne r=0.78..0.94). C'est ce
+// qui fait qu'un joueur porte la même couleur partout — son secteur de roue,
+// sa ligne de score, sa pastille de légende — et que cette couleur est
+// exactement celle de la pièce qu'il a prise. Toucher au .webp sans relancer
+// le script, c'est désaccorder les deux.
 const PIECES = [
   {
-    key: 'crane', label: 'Crâne', color: '#7d1a15',
+    key: 'crane', label: 'Crâne', color: '#890e05',
     svg: '<circle cx="12" cy="9.5" r="6.6"/><circle cx="9.6" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><circle cx="14.4" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M8.2 15.6h7.6v3a1.6 1.6 0 0 1-1.6 1.6H9.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M10.7 15.8v4.3M13.3 15.8v4.3"/>',
   },
   {
-    key: 'ancre', label: 'Ancre', color: '#1e3a63',
+    key: 'ancre', label: 'Ancre', color: '#1c3044',
     svg: '<circle cx="12" cy="4.4" r="2.3"/><path d="M12 6.7V21"/><path d="M8 10h8"/><path d="M4.8 14.3c0 3.7 3.2 6.7 7.2 6.7s7.2-3 7.2-6.7"/>',
   },
   {
-    key: 'voilier', label: 'Voilier', color: '#1c5a46',
+    key: 'voilier', label: 'Voilier', color: '#2b4807',
     svg: '<path d="M12 2.8v12.6"/><path d="M13.3 4.6l5 10.8h-5z" fill="currentColor" stroke="none"/><path d="M10.7 6.8 6.2 15.4h4.5z"/><path d="M3.4 17.2h17.2l-2.7 3.9H6.1z"/>',
   },
   {
-    key: 'sabre', label: 'Sabre', color: '#8a6420',
+    key: 'sabre', label: 'Sabre', color: '#5d1740',
     svg: '<path d="M20.2 3.8 9.7 14.3"/><path d="M6.9 12.9l4.2 4.2"/><path d="M8.3 15.7 4.9 19.1"/><circle cx="3.9" cy="20.1" r="1.5"/>',
   },
   {
-    key: 'boussole', label: 'Boussole', color: '#17434a',
+    key: 'boussole', label: 'Boussole', color: '#ab6006',
     svg: '<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-2 4.8-4.8 2 2-4.8z" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'coffre', label: 'Coffre', color: '#9a5423',
+    key: 'coffre', label: 'Coffre', color: '#115746',
     svg: '<path d="M3.6 10.6h16.8V19a1.6 1.6 0 0 1-1.6 1.6H5.2A1.6 1.6 0 0 1 3.6 19z"/><path d="M3.6 10.6A8.6 8.6 0 0 1 12 5.6a8.6 8.6 0 0 1 8.4 5"/><path d="M3.6 13.8h16.8"/><rect x="10.6" y="12.1" width="2.8" height="4" rx="0.7" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'barre', label: 'Barre', color: '#4a2a63',
+    key: 'barre', label: 'Barre', color: '#b33706',
     svg: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>',
   },
   {
-    key: 'bouteille', label: 'Bouteille', color: '#5b2340',
+    key: 'bouteille', label: 'Bouteille', color: '#746961',
     svg: '<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>',
   },
   {
-    key: 'crochet', label: 'Crochet', color: '#6d1730',
+    key: 'crochet', label: 'Crochet', color: '#900d2f',
     svg: '<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>',
   },
 ];
@@ -1155,6 +1163,46 @@ function pieceFor(player) {
   let hash = 0;
   for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
   return PIECES[hash % PIECES.length];
+}
+
+// L'émail des médaillons est peint sombre — c'est ce qui lui donne son
+// épaisseur sur le bois clair du plateau. Sur le fond noir du récap de fin,
+// ces mêmes couleurs disparaissent : #1c3044 sur #000, on ne voit plus la
+// ligne. On garde donc la TEINTE de la pièce (c'est elle qui identifie le
+// joueur) et on remonte seulement sa clarté au-dessus d'un plancher lisible.
+// La saturation est encadrée des deux côtés : un plancher, sinon le cerclage
+// d'acier de la Bouteille remonte en gris fade indistinct du texte crème ; un
+// plafond, sinon l'émail vire au fluo et la courbe ne ressemble plus au reste
+// du jeu (le plateau est peint, pas néon).
+function surFondSombre(hex, clarteMin = 0.56) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const v = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const mx = Math.max(r, v, b);
+  const mn = Math.min(r, v, b);
+  const l = (mx + mn) / 2;
+  const d = mx - mn;
+  let t = 0;
+  if (d !== 0) {
+    if (mx === r) t = ((v - b) / d) % 6;
+    else if (mx === v) t = (b - r) / d + 2;
+    else t = (r - v) / d + 4;
+    t *= 60;
+    if (t < 0) t += 360;
+  }
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  const L = Math.max(l, clarteMin);
+  const S = Math.min(Math.max(sat, 0.24), 0.58);
+  // HSL -> RGB
+  const c = (1 - Math.abs(2 * L - 1)) * S;
+  const x = c * (1 - Math.abs(((t / 60) % 2) - 1));
+  const m = L - c / 2;
+  const [r2, v2, b2] =
+    t < 60 ? [c, x, 0] : t < 120 ? [x, c, 0] : t < 180 ? [0, c, x] :
+    t < 240 ? [0, x, c] : t < 300 ? [x, 0, c] : [c, 0, x];
+  const oct = (u) => Math.round((u + m) * 255).toString(16).padStart(2, '0');
+  return `#${oct(r2)}${oct(v2)}${oct(b2)}`;
 }
 
 // Le SVG porte la couleur de la pièce sur son trait ; le rond du siège prend
@@ -1976,13 +2024,27 @@ function renderScoreboard(state) {
     .forEach((s) => {
       const row = document.createElement('div');
       row.className = 'sk-score-row' + (s.id === myId ? ' sk-score-row--me' : '');
+      // Le registre porte la PIÈCE du joueur, pas son pseudo : à 9 joueurs les
+      // noms étaient tronqués à trois lettres et ne servaient plus à rien,
+      // alors que le médaillon est le même repère que sur le tapis, dans la
+      // roue et au bout de la courbe. Le pseudo reste lisible au survol et
+      // pour un lecteur d'écran — il n'a pas disparu, il a quitté l'aplomb.
       const name = document.createElement('span');
       name.className = 'sk-score-row-name';
+      name.title = s.nickname;
       const rank = document.createElement('i');
       rank.className = 'sk-rank';
       rank.textContent = ROMAN[ranks.get(s.id)] || '';
       name.appendChild(rank);
-      name.appendChild(document.createTextNode(s.nickname));
+      const piece = pieceFor(byId.get(s.id) || s);
+      const medaillon = document.createElement('span');
+      medaillon.className = 'sk-score-row-piece';
+      medaillon.innerHTML = pieceSVG(piece);
+      name.appendChild(medaillon);
+      const nom = document.createElement('span');
+      nom.className = 'visually-hidden';
+      nom.textContent = s.nickname;
+      name.appendChild(nom);
       const total = document.createElement('span');
       total.className = 'sk-score-row-total';
       total.textContent = s.total;
@@ -2473,7 +2535,9 @@ function renderScoreCurve(ranking) {
   const W = 460;
   const H = 190;
   const PAD_L = 38;
-  const PAD_R = 10;
+  // Assez de marge à droite pour que le médaillon posé sur le dernier point
+  // tienne entier dans le cadre : il déborderait avec l'ancienne valeur (10).
+  const PAD_R = 16;
   const PAD_T = 12;
   const PAD_B = 22;
 
@@ -2503,19 +2567,62 @@ function renderScoreCurve(ranking) {
     svg += `<text x="${x(i)}" y="${H - 6}" class="sk-curve-round">${i + 1}</text>`;
   }
 
+  // Les médaillons se posent APRÈS toutes les lignes, dans une seconde passe :
+  // sinon la ligne d'un joueur tracée ensuite passerait par-dessus le
+  // médaillon d'un autre (SVG n'a pas de z-index, seul l'ordre compte).
+  // Taille du médaillon de bout de ligne : il doit rester lisible, mais à 9
+  // joueurs neuf médaillons pleine taille ne tiennent pas dans les 156 px
+  // utiles du cadre. On les rétrécit donc à mesure que la table se remplit.
+  const dBase = series.length <= 5 ? 22 : series.length <= 7 ? 18 : 15;
+  const bouts = [];
   series.forEach((r) => {
-    const couleur = (PIECE_BY_KEY[r.piece] || pieceFor(r)).color;
+    const piece = PIECE_BY_KEY[r.piece] || pieceFor(r);
+    const couleur = surFondSombre(piece.color);
     const pts = r.curve.map((c, i) => `${x(i)},${y(c.total)}`).join(' ');
     const moi = r.id === myId ? ' sk-curve-line--me' : '';
     svg += `<polyline points="${pts}" class="sk-curve-line${moi}" style="stroke:${couleur}" />`;
     const dernier = r.curve[r.curve.length - 1];
-    svg += `<circle cx="${x(r.curve.length - 1)}" cy="${y(dernier.total)}" r="${r.id === myId ? 4.5 : 3.2}" style="fill:${couleur}" class="sk-curve-dot" />`;
+    // Le bout de ligne porte la pièce du joueur plutôt qu'un point de
+    // couleur : la couleur seule ne suffisait pas à trois rouges voisins, et
+    // c'est le même repère que sur le tapis et dans le registre.
+    const d = r.id === myId ? dBase + 4 : dBase;
+    bouts.push({
+      cle: piece.key, d, moi: !!moi,
+      cx: x(r.curve.length - 1),
+      cy: y(dernier.total),
+      titre: `${escapeHTML(r.nickname)} — ${dernier.total}`,
+    });
   });
+
+  // Deux joueurs qui finissent au même score verraient leurs médaillons
+  // empilés, donc illisibles tous les deux. On les écarte verticalement du
+  // strict nécessaire, du haut vers le bas : le médaillon quitte un peu son
+  // point, mais la ligne qui y mène reste sous lui et le rattache.
+  bouts.sort((a, b) => a.cy - b.cy);
+  // Le plus haut ne doit pas déborder par le haut du cadre avant même qu'on
+  // écarte les autres — sinon un peloton en tête sort du SVG.
+  if (bouts.length) bouts[0].cy = Math.max(bouts[0].cy, PAD_T - 4 + bouts[0].d / 2);
+  for (let i = 1; i < bouts.length; i++) {
+    const mini = (bouts[i - 1].d + bouts[i].d) / 2 * 0.82;
+    if (bouts[i].cy - bouts[i - 1].cy < mini) bouts[i].cy = bouts[i - 1].cy + mini;
+  }
+  // Le tas peut alors dépasser par le bas : on le remonte en bloc, ce qui
+  // conserve les écarts qu'on vient d'établir.
+  const debord = bouts.length ? bouts[bouts.length - 1].cy + bouts[bouts.length - 1].d / 2 - (H - PAD_B + 4) : 0;
+  if (debord > 0) bouts.forEach((b) => { b.cy -= debord; });
+
+  svg += bouts
+    .map((b) =>
+      `<image href="assets/skin/piece-${b.cle}.webp" x="${(b.cx - b.d / 2).toFixed(1)}" y="${(b.cy - b.d / 2).toFixed(1)}"` +
+      ` width="${b.d}" height="${b.d}" class="sk-curve-piece${b.moi ? ' sk-curve-piece--me' : ''}">` +
+      `<title>${b.titre}</title></image>`
+    )
+    .join('');
   svg += '</svg>';
 
   const legende = series
     .map((r) => {
-      const couleur = (PIECE_BY_KEY[r.piece] || pieceFor(r)).color;
+      const couleur = surFondSombre((PIECE_BY_KEY[r.piece] || pieceFor(r)).color);
       return `<span class="sk-curve-key"><i style="background:${couleur}"></i>${escapeHTML(r.nickname)}</span>`;
     })
     .join('');
@@ -2556,12 +2663,12 @@ document.getElementById('sk-btn-rematch').addEventListener('click', () => socket
 // l'extérieur de la roue. Ne joue qu'une fois par partie, sur la toute
 // première annonce de la manche 1 (voir applyState) - startRevealPlayed est
 // réarmé à chaque retour au salon (nouvelle partie ou revanche).
-// Secteurs peints dans les couleurs de la maison : les quatre familles de
-// plis, puis les teintes des cartes spéciales. Plus de fluo — la roue est un
-// disque de bois peint, pas une roue de kermesse.
-const START_WHEEL_COLORS = [
-  '#1c5a46', '#a8792c', '#5b2340', '#131c2e', '#741a16', '#17434a', '#9a6432', '#6e6a5e', '#3c2a12',
-];
+// Chaque secteur est peint à la couleur de la pièce de SON joueur — l'émail
+// du médaillon qu'il a choisi, pas une teinte de rang. On lit donc la roue
+// sans rien déchiffrer : on cherche sa propre couleur. Plus de palette fixe
+// indexée sur la position, qui repeignait un joueur d'une partie à l'autre.
+// Le serveur attribue une pièce libre à qui n'en a pas choisi (voir
+// skullking-room.js), deux secteurs ne peuvent donc pas se confondre.
 
 function playStartReveal(players, starterId) {
   const overlay = document.getElementById('sk-start-reveal');
@@ -2577,7 +2684,7 @@ function playStartReveal(players, starterId) {
   const starter = players[winnerIndex];
 
   const stops = players
-    .map((_, i) => `${START_WHEEL_COLORS[i % START_WHEEL_COLORS.length]} ${(i * step).toFixed(2)}deg ${((i + 1) * step).toFixed(2)}deg`)
+    .map((p, i) => `${pieceFor(p).color} ${(i * step).toFixed(2)}deg ${((i + 1) * step).toFixed(2)}deg`)
     .join(', ');
   wheel.style.background = `conic-gradient(${stops})`;
 
