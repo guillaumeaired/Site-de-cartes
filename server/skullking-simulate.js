@@ -14,6 +14,9 @@ const {
   computeRoundScore,
   computeRoundScoreBreakdown,
   maxPlayersFor,
+  clampRounds,
+  MIN_ROUNDS,
+  MAX_ROUNDS,
 } = require('./skullking');
 
 let passed = 0;
@@ -430,6 +433,20 @@ check(
   resolveTrick([nb('a', 3), { id: 'r', kind: 'stingray' }, nb('b', 3), nb('c', 9)]).winnerIdx,
   0
 );
+
+// --- Nombre de manches réglable ------------------------------------------
+// La manche N se joue à N cartes : c'est la DERNIÈRE manche qui dimensionne
+// le paquet. À 10 manches et 7 joueurs il faut 70 cartes sur 74 ; une 11e en
+// demanderait 77. Le plafond n'est donc pas cosmétique, il est matériel.
+check('4 manches : la suite va de 1 à 4', buildRoundSequence(4), [1, 2, 3, 4]);
+check('par défaut : la partie complète', buildRoundSequence().length, MAX_ROUNDS);
+check('au-dessus du plafond : ramené au maximum', buildRoundSequence(99).length, MAX_ROUNDS);
+check('en dessous du plancher : ramené au minimum', buildRoundSequence(1).length, MIN_ROUNDS);
+check('valeur absente : partie complète', clampRounds(undefined), MAX_ROUNDS);
+check('valeur non numérique : partie complète', clampRounds('abc'), MAX_ROUNDS);
+check('valeur décimale : arrondie', clampRounds(6.4), 6);
+check('la dernière manche vaut le nombre de manches', buildRoundSequence(7).at(-1), 7);
+check('aucune manche à 0 carte', buildRoundSequence(5).includes(0), false);
 
 console.log(`\n${passed} test(s) OK, ${failed} échec(s).`);
 process.exit(failed > 0 ? 1 : 0);

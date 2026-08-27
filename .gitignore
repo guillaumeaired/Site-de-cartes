@@ -3,3 +3,7 @@ node_modules/
 *.log
 .env
 data/
+
+# Sources brutes des illustrations : elles ne servent qu'à regénérer les
+# .webp (briefs/traiter-assets.py). Inutiles au runtime, et lourdes.
+public/assets/skin/src/

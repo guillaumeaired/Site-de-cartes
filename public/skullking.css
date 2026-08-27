@@ -1,5 +1,97 @@
-/* --- Base partagée avec les autres jeux (dupliquée volontairement, voir
-   rami.css pour le raisonnement) --- */
+/* =====================================================================
+   SKULL KING — « TAVERNE DES PIRATES »
+   Table de taverne nocturne : chêne, cordage, laiton patiné, feutre vert
+   bouteille et parchemins. Les cartes sont du papier crème vieilli à
+   dorure éraflée ; l'or n'est jamais jaune vif, et rien de décoratif ne
+   passe devant une zone de lecture.
+   ===================================================================== */
+
+:root{
+  /* ---------- SOCLE : les 7 valeurs de la charte ---------- */
+  --sk-night:#07171B;        /* fond, noir bleuté très profond           */
+  --sk-oak:#24170D;          /* noyer sombre, bois de la table           */
+  --sk-felt:#123C32;         /* feutre vert bouteille                    */
+  --sk-brass:#B88935;        /* laiton ancien — JAMAIS jaune vif         */
+  --sk-parch:#E6D2A0;        /* parchemin, ivoire chaud                  */
+  --sk-wine:#741A16;         /* bordeaux / velours, accent               */
+  --sk-cream:#F2D69A;        /* texte, crème dorée                       */
+
+  /* ---------- dérivées ---------- */
+  --sk-night-2:#0B2126;      --sk-night-3:#041013;
+  --sk-oak-lo:#160D06;       --sk-oak-hi:#3A2513;   --sk-oak-edge:#0D0703;
+  --sk-felt-lo:#08211B;      --sk-felt-hi:#154438;
+  --sk-brass-hi:#E8CE92;     --sk-brass-lo:#7A5A20; --sk-brass-dead:#4A3512;
+  --sk-copper:#9A6432;       --sk-copper-lo:#5A3418;
+  --sk-parch-hi:#F6E9C6;     --sk-parch-lo:#C7AE79; --sk-parch-ink:#2A1B0C;
+  --sk-wine-hi:#9C2A22;      --sk-wine-lo:#3E0B08;
+  --sk-cream-2:#CBB183;      --sk-cream-3:#96805C;
+
+  /* ---------- familles de plis (validées au rendu, cf. planche) -------
+     Noms de règle inchangés : vert / jaune / violet / noir.             */
+  --sk-vert:#237B5C;    --sk-vert-d:#0C3427;    /* vert bouteille éclairci : le feutre est
+                                                    lui aussi vert bouteille, il a fallu
+                                                    écarter les deux valeurs pour qu'une carte
+                                                    verte ne s'y dissolve pas */
+  --sk-jaune:#A8792C;   --sk-jaune-d:#4C3210;   /* ocre parchemin          */
+  --sk-violet:#5B2340;  --sk-violet-d:#280E1C;  /* prune de velours        */
+  --sk-noir:#131C2E;    --sk-noir-d:#05080F;    /* bleu nuit — atout       */
+
+  /* ---------- cartes spéciales ---------- */
+  --sk-pirate:#741A16;  --sk-pirate-d:#380A07;
+  --sk-sirene:#17434A;  --sk-sirene-d:#082126;
+  --sk-fuite:#6E6A5E;   --sk-fuite-d:#33302A;   /* étain chaud : elle renonce */
+  --sk-butin:#8A6A2E;   --sk-butin-d:#3E2E0E;
+  --sk-kraken:#0E2A2A;  --sk-kraken-d:#041111;
+  --sk-baleine:#D3C39C; --sk-baleine-d:#7E7051;
+  --sk-sk:#14100C;      --sk-sk-d:#050302;
+
+  /* ---------- sémantique ---------- */
+  --sk-kept:#4E8A4A;    --sk-failed:#9C2A22;
+
+  /* ---------- anatomie de carte, échelle « main » ---------- */
+  --sk-w:84px;                       /* largeur de référence            */
+  --sk-edge:3px;                     /* liseré de papier crème          */
+  --sk-band:8px;                     /* bande peinte                    */
+  --sk-fillet:1px;                   /* dorure éraflée                  */
+  --sk-radius:8px;
+  --sk-seal:13px;                    /* sceau d'angle                   */
+  --sk-tagw:62%;                     /* cartouche : 48 px sur 84        */
+  --sk-num:1.30rem;
+  --sk-corner:16px;                  /* équerre de cordage              */
+
+  /* ---------- matières ---------- */
+  --sk-grain:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27140%27 height=%27140%27%3E%3Cfilter id=%27n%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.85%27 numOctaves=%274%27 stitchTiles=%27stitch%27/%3E%3CfeColorMatrix type=%27saturate%27 values=%270%27/%3E%3C/filter%3E%3Crect width=%27140%27 height=%27140%27 filter=%27url(%23n)%27 opacity=%27.55%27/%3E%3C/svg%3E');
+  --sk-oakgrain:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%27120%27%3E%3Cfilter id=%27w%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.012 0.44%27 numOctaves=%274%27 seed=%277%27/%3E%3CfeColorMatrix type=%27saturate%27 values=%270%27/%3E%3CfeComponentTransfer%3E%3CfeFuncA type=%27linear%27 slope=%27.7%27/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=%27300%27 height=%27120%27 filter=%27url(%23w)%27/%3E%3C/svg%3E');
+  --sk-medallion:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E %3Cdefs%3E %3ClinearGradient id=%27ring%27 x1=%27.12%27 y1=%270%27 x2=%27.88%27 y2=%271%27%3E %3Cstop offset=%270%27 stop-color=%27%23FBF0D2%27/%3E%3Cstop offset=%27.22%27 stop-color=%27%23DDB05C%27/%3E %3Cstop offset=%27.46%27 stop-color=%27%23B8862F%27/%3E%3Cstop offset=%27.62%27 stop-color=%27%23EFD79B%27/%3E %3Cstop offset=%27.82%27 stop-color=%27%239C7226%27/%3E%3Cstop offset=%271%27 stop-color=%27%235E4212%27/%3E%3C/linearGradient%3E %3CradialGradient id=%27disc%27 cx=%27.38%27 cy=%27.28%27 r=%27.88%27%3E %3Cstop offset=%270%27 stop-color=%27%23C4291A%27/%3E%3Cstop offset=%27.55%27 stop-color=%27%238E150A%27/%3E %3Cstop offset=%271%27 stop-color=%27%234E0703%27/%3E%3C/radialGradient%3E %3ClinearGradient id=%27stA%27 x1=%27.18%27 y1=%27.10%27 x2=%27.82%27 y2=%27.90%27%3E %3Cstop offset=%270%27 stop-color=%27%23FFFFFF%27/%3E%3Cstop offset=%27.34%27 stop-color=%27%23F4F2EC%27/%3E %3Cstop offset=%27.70%27 stop-color=%27%23CBC9C2%27/%3E%3Cstop offset=%271%27 stop-color=%27%238E8C86%27/%3E%3C/linearGradient%3E %3ClinearGradient id=%27stB%27 x1=%27.82%27 y1=%27.10%27 x2=%27.18%27 y2=%27.90%27%3E %3Cstop offset=%270%27 stop-color=%27%23FFFFFF%27/%3E%3Cstop offset=%27.34%27 stop-color=%27%23EFEDE7%27/%3E %3Cstop offset=%27.70%27 stop-color=%27%23C2C0B9%27/%3E%3Cstop offset=%271%27 stop-color=%27%2386847E%27/%3E%3C/linearGradient%3E %3ClinearGradient id=%27grip%27 x1=%270%27 y1=%270%27 x2=%271%27 y2=%271%27%3E %3Cstop offset=%270%27 stop-color=%27%23F3DFA8%27/%3E%3Cstop offset=%27.5%27 stop-color=%27%23C9973F%27/%3E %3Cstop offset=%271%27 stop-color=%27%236E4C13%27/%3E%3C/linearGradient%3E %3C/defs%3E %3Ccircle cx=%2732%27 cy=%2730%27 r=%2724%27 fill=%27url(%23ring)%27/%3E %3Ccircle cx=%2732%27 cy=%2730%27 r=%2724%27 fill=%27none%27 stroke=%27%233A280B%27 stroke-width=%271.6%27/%3E %3Ccircle cx=%2732%27 cy=%2730%27 r=%2720.6%27 fill=%27none%27 stroke=%27%23FBF0D2%27 stroke-width=%27.9%27 opacity=%27.45%27/%3E %3Ccircle cx=%2732%27 cy=%2730%27 r=%2717%27 fill=%27url(%23disc)%27/%3E %3Ccircle cx=%2732%27 cy=%2730%27 r=%2717%27 fill=%27none%27 stroke=%27%233A0A05%27 stroke-width=%271.5%27/%3E %3Cg stroke=%27%23171009%27 stroke-width=%27.9%27 stroke-linejoin=%27round%27 stroke-linecap=%27round%27%3E %3Cpath d=%27M45.5 55.5 L37.5 46%27 stroke=%27%233A280B%27 stroke-width=%275%27/%3E %3Cpath d=%27M45.5 55.5 L37.5 46%27 stroke=%27url(%23grip)%27 stroke-width=%273.2%27/%3E %3Cpath d=%27M41.59 44.78 L35.61 49.82%27 stroke=%27%233A280B%27 stroke-width=%274.4%27/%3E %3Cpath d=%27M41.59 44.78 L35.61 49.82%27 stroke=%27url(%23grip)%27 stroke-width=%272.6%27/%3E %3Cpath d=%27M40.11 43.98 Q35.1 25.12 15.5 17.5 Q26.62 31.66 34.89 48.02 Z%27 fill=%27url(%23stB)%27/%3E %3C/g%3E %3Cg stroke=%27%23171009%27 stroke-width=%27.9%27 stroke-linejoin=%27round%27 stroke-linecap=%27round%27%3E %3Cpath d=%27M18.5 55.5 L26.5 46%27 stroke=%27%233A280B%27 stroke-width=%275%27/%3E %3Cpath d=%27M18.5 55.5 L26.5 46%27 stroke=%27url(%23grip)%27 stroke-width=%273.2%27/%3E %3Cpath d=%27M22.41 44.78 L28.39 49.82%27 stroke=%27%233A280B%27 stroke-width=%274.4%27/%3E %3Cpath d=%27M22.41 44.78 L28.39 49.82%27 stroke=%27url(%23grip)%27 stroke-width=%272.6%27/%3E %3Cpath d=%27M23.89 43.98 Q28.9 25.12 48.5 17.5 Q37.38 31.66 29.11 48.02 Z%27 fill=%27url(%23stA)%27/%3E %3C/g%3E %3Cg stroke=%27%233A280B%27 stroke-width=%271.1%27%3E %3Ccircle cx=%2717.4%27 cy=%2756.8%27 r=%273.2%27 fill=%27url(%23grip)%27/%3E %3Ccircle cx=%2746.6%27 cy=%2756.8%27 r=%273.2%27 fill=%27url(%23grip)%27/%3E %3C/g%3E%3C/svg%3E');
+  --sk-rivet:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E %3Cdefs%3E%3CradialGradient id=%27d%27 cx=%27.34%27 cy=%27.28%27 r=%27.82%27%3E %3Cstop offset=%270%27 stop-color=%27%23FBF0D2%27/%3E%3Cstop offset=%27.34%27 stop-color=%27%23DDB05C%27/%3E %3Cstop offset=%27.72%27 stop-color=%27%23B8862F%27/%3E%3Cstop offset=%271%27 stop-color=%27%235E4212%27/%3E %3C/radialGradient%3E%3C/defs%3E %3Ccircle cx=%2732%27 cy=%2732%27 r=%2729%27 fill=%27url(%23d)%27 stroke=%27%232B1D07%27 stroke-width=%273.5%27/%3E %3Ccircle cx=%2732%27 cy=%2732%27 r=%2721%27 fill=%27none%27 stroke=%27%23FBF0D2%27 stroke-width=%272.4%27 opacity=%27.30%27/%3E %3Cellipse cx=%2724%27 cy=%2723%27 rx=%277.5%27 ry=%275.5%27 fill=%27%23FFF8E2%27 opacity=%27.45%27 transform=%27rotate(-32 24 23)%27/%3E %3C/svg%3E');
+  --sk-ropecorner:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 40 40%27%3E%3Cdefs%3E%3ClinearGradient id=%27b%27 x1=%270%27 y1=%270%27 x2=%271%27 y2=%271%27%3E%3Cstop offset=%270%27 stop-color=%27%23E8CE92%27/%3E%3Cstop offset=%27.45%27 stop-color=%27%23B88935%27/%3E%3Cstop offset=%271%27 stop-color=%27%235C4318%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d=%27M4 38 L4 14 A10 10 0 0 1 14 4 L38 4%27 fill=%27none%27 stroke=%27%232A1B0C%27 stroke-width=%277%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M4 38 L4 14 A10 10 0 0 1 14 4 L38 4%27 fill=%27none%27 stroke=%27url(%23b)%27 stroke-width=%274.6%27 stroke-linecap=%27round%27/%3E%3Cg stroke=%27%232A1B0C%27 stroke-width=%271.1%27 opacity=%27.55%27%3E%3Cpath d=%27M2 30 L6.6 27%27/%3E%3Cpath d=%27M2 23 L6.6 20%27/%3E%3Cpath d=%27M2.6 16 L7 12.6%27/%3E%3Cpath d=%27M7 8 L10.4 12%27/%3E%3Cpath d=%27M13 5 L16 9.2%27/%3E%3Cpath d=%27M20 2.2 L23 6.6%27/%3E%3Cpath d=%27M27 2.2 L30 6.6%27/%3E%3Cpath d=%27M34 2.2 L37 6.6%27/%3E%3C/g%3E%3C/svg%3E');
+  --sk-arrow:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath d=%27M4 12 L18 12 M12.5 6 L18.5 12 L12.5 18%27 fill=%27none%27 stroke=%27%23F3E9D6%27 stroke-width=%272.4%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E');
+  --sk-back:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath d=%27M20 12 L6 12 M11.5 6 L5.5 12 L11.5 18%27 fill=%27none%27 stroke=%27%23C9B694%27 stroke-width=%272.2%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E');
+  /* Sabre gravé seul : le médaillon complet devient illisible sous 34 px,
+     ce motif le remplace partout où la place manque (enseigne, boutons). */
+  --sk-sabre:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Cdefs%3E%3ClinearGradient id=%27b%27 x1=%27.2%27 y1=%270%27 x2=%27.8%27 y2=%271%27%3E%3Cstop offset=%270%27 stop-color=%27%23F0DCA8%27/%3E%3Cstop offset=%27.42%27 stop-color=%27%23B88935%27/%3E%3Cstop offset=%271%27 stop-color=%27%234A3213%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill=%27url(%23b)%27 fill-rule=%27evenodd%27 stroke=%27%2314100A%27 stroke-width=%271.4%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M23.89 45 Q29 24 52 14 Q39 30 30 49 Z%27/%3E%3Cpath d=%27M17 57 L27.5 45.5 L31.5 48.6 L21.5 60 Z%27/%3E%3Cpath d=%27M20.6 42.4 L29.2 49.2 L26.4 52.6 L17.8 45.8 Z%27/%3E%3Ccircle cx=%2716.5%27 cy=%2758.5%27 r=%274%27/%3E%3C/g%3E%3C/svg%3E');
+  /* Motifs marins : un par famille de plis, plus les gravures des cartes
+     spéciales. La couleur n'est jamais le seul canal — quatre silhouettes
+     franchement différentes (boucle fermée, axe vertical, forme radiale,
+     diagonale) restent lisibles en dichromatie et à 12 px. */
+  --sk-gl-rope:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%278%27%20stroke-linecap%3D%27round%27%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2738%27%20r%3D%2717%27%2F%3E%3Cpath%20d%3D%27M21%2026%20C24%2010%2040%2010%2043%2026%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --sk-gl-anchor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%276.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2711%27%20r%3D%276%27%2F%3E%3Cpath%20d%3D%27M32%2018%20L32%2056%27%2F%3E%3Cpath%20d%3D%27M18%2027%20L46%2027%27%2F%3E%3Cpath%20d%3D%27M11%2039%20C11%2052%2021%2058%2032%2058%20C43%2058%2053%2052%2053%2039%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --sk-gl-wheel:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%276%27%20stroke-linecap%3D%27round%27%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2719%27%2F%3E%3Cpath%20d%3D%27M32%205%20L32%2059%20M5%2032%20L59%2032%20M13%2013%20L51%2051%20M51%2013%20L13%2051%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --sk-gl-skull:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27black%27%20fill-rule%3D%27evenodd%27%20d%3D%27M32%206C18%206%209%2016%209%2029c0%208%204%2013%208%2016v7c0%203%202%205%205%205h20c3%200%205-2%205-5v-7c4-3%208-8%208-16C55%2016%2046%206%2032%206Zm-9%2017a6.5%206.5%200%201%200%200%2013%206.5%206.5%200%200%200%200-13Zm18%200a6.5%206.5%200%201%200%200%2013%206.5%206.5%200%200%200%200-13Zm-9%2020h6l1%208h-8Z%27%2F%3E%3C%2Fsvg%3E");
+  --sk-gl-flag:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%277%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M17%207%20L17%2058%27%2F%3E%3C%2Fg%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M22%2010%20C34%203%2044%2016%2057%209%20L57%2032%20C44%2039%2034%2026%2022%2033%20Z%27%2F%3E%3C%2Fsvg%3E");
+  --sk-gl-coins:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27black%27%3E%3Cellipse%20cx%3D%2725%27%20cy%3D%2748%27%20rx%3D%2719%27%20ry%3D%278%27%2F%3E%3Cellipse%20cx%3D%2723%27%20cy%3D%2739%27%20rx%3D%2719%27%20ry%3D%278%27%2F%3E%3Cellipse%20cx%3D%2727%27%20cy%3D%2730%27%20rx%3D%2715%27%20ry%3D%277%27%2F%3E%3Cellipse%20cx%3D%2747%27%20cy%3D%2752%27%20rx%3D%2713%27%20ry%3D%276%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --sk-gl-fin:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M8%2054c14-2%2022-9%2027-19%203-6%204-13%204-21%200-3%204-4%206-2%208%208%2013%2019%2013%2030%200%203-3%205-6%204-6-2-11-2-16%200-9%204-17%208-25%2012-3%201-5-3-3-4Z%27%2F%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%2040c6%201%2011%204%2015%209%201%202-1%204-3%203-5-2-9-3-14-3-2%200-3-3-1-4Z%27%2F%3E%3C%2Fsvg%3E");
+  --sk-gl-tentacle:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%277%27%20stroke-linecap%3D%27round%27%20d%3D%27M14%208c0%2014%206%2022%2016%2026%2010%204%2016%2011%2016%2022%27%2F%3E%3Cpath%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%276%27%20stroke-linecap%3D%27round%27%20d%3D%27M46%2056c-6%200-9-4-9-9s3-8%208-8%27%2F%3E%3Cg%20fill%3D%27black%27%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2724%27%20r%3D%274%27%2F%3E%3Ccircle%20cx%3D%2728%27%20cy%3D%2734%27%20r%3D%274%27%2F%3E%3Ccircle%20cx%3D%2738%27%20cy%3D%2742%27%20r%3D%274%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --sk-gl-whale:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M4%2036c0-10%2012-18%2026-18%2012%200%2021%205%2026%2013%201%202%200%204-2%204-4%201-6%203-6%206%200%204%203%207%207%208%202%201%202%204-1%205-7%203-16%204-24%204C12%2058%204%2048%204%2036Z%27%2F%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M56%2012c3%204%205%209%205%2014%200%202-3%203-4%201-2-4-5-7-9-9-2-1-1-4%201-4%203-1%205-2%207-2Z%27%2F%3E%3Ccircle%20cx%3D%2718%27%20cy%3D%2732%27%20r%3D%273%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E");
+  --sk-gl-plank:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%276.5%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M6%2040%20L48%2040%27%2F%3E%3Cpath%20d%3D%27M48%2030%20L58%2040%20L48%2050%27%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%27black%27%3E%3Ccircle%20cx%3D%2716%27%20cy%3D%2718%27%20r%3D%277%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --sk-sealimg:var(--sk-rivet);      /* < 34 px : rivet ; ≥ 34 px : médaillon */
+}
+
+/* =====================================================================
+   LA SALLE — nuit bleutée, halo ambré de lanterne au centre.
+   Le fond ne bouge pas : dans cette charte, une seule chose est
+   lumineuse à la fois, et c'est toujours l'action en cours.
+   ===================================================================== */
 
 * {
   box-sizing: border-box;
@@ -11,43 +103,35 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
-    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%),
-    radial-gradient(circle at 50% 0%, #5c1010 0%, transparent 60%),
-    linear-gradient(160deg, #2b0a0a, #0a0303);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #fff;
+  /* La cloison de bois, jamais le bleu nuit. `cover` plutôt qu'un carrelage :
+     une texture répétée trahit sa couture en damier sur un grand écran, et
+     les modèles d'image ne produisent pas de raccord invisible. L'image est
+     donc unique et recadrée — aucune répétition, donc aucune couture. */
+  background: #140d07 url('assets/skin/fond-bois.webp') 50% 50% / cover no-repeat fixed;
+  font-family: 'Spectral', Georgia, serif;
+  color: var(--sk-cream);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Grain de la salle, puis vignette : deux voiles fixes, jamais animés. */
 body::before {
   content: '';
   position: fixed;
-  inset: -20%;
-  background: radial-gradient(circle, #f8717166 0%, transparent 60%);
-  animation: felt-drift 18s ease-in-out infinite;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
+  background-image: var(--sk-grain);
+  opacity: 0.07;
+  mix-blend-mode: overlay;
 }
 
 body::after {
   content: '';
   position: fixed;
-  inset: -20%;
-  background: radial-gradient(circle, #fbbf2422 0%, transparent 55%);
-  animation: felt-drift 26s ease-in-out infinite reverse;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
-}
-
-@keyframes felt-drift {
-  0%, 100% {
-    transform: translate(-6%, -8%) scale(1);
-  }
-  50% {
-    transform: translate(6%, 6%) scale(1.15);
-  }
+  background: radial-gradient(78% 62% at 50% 44%, transparent 38%, rgba(2, 7, 9, 0.8) 100%);
 }
 
 .app {
@@ -60,48 +144,134 @@ body::after {
 }
 
 .sk-app {
-  max-width: 720px;
+  max-width: 760px;
 }
 
+/* --- Titres : Cinzel Decorative gravé, dorure en dégradé ------------- */
 h1 {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 2.6rem;
-  margin: 4px auto 10px;
-  letter-spacing: 0;
-  font-weight: 700;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-size: 3.4rem;
+  line-height: 1.02;
+  margin: 6px auto 4px;
+  letter-spacing: 0.02em;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #facc15;
-  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  background: linear-gradient(178deg, #fbf0d2 6%, var(--sk-brass-hi) 34%, var(--sk-brass) 62%, var(--sk-brass-lo) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.75)) drop-shadow(0 0 22px rgba(184, 137, 53, 0.26));
 }
 
-.mascot {
-  font-size: 2rem;
-  margin: 0 0 -6px;
-  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45));
-  animation: mascot-idle 3s ease-in-out infinite;
+h2,
+h3 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--sk-cream);
 }
 
-@keyframes mascot-idle {
-  0%, 100% {
-    transform: rotate(-4deg);
-  }
-  50% {
-    transform: rotate(4deg);
-  }
+/* --- Le bandeau peint de l'accueil ----------------------------------
+   La scène de taverne remonte jusqu'aux bords de la page (d'où les marges
+   négatives qui annulent le padding de .app) et s'éteint vers le bas : le
+   logo se pose sur cette pénombre sans qu'aucun trait ne les sépare. */
+/* =====================================================================
+   L'ACCUEIL — la taverne occupe l'écran entier. Le logo est posé en haut,
+   les commandes tombent en bas : entre les deux, la scène respire.
+
+   L'écran sort de `.app` (420 px) par un `position: fixed` — c'est la
+   seule façon de dépasser la colonne sans démonter la mise en page des
+   trois autres écrans, qui eux y restent. D'où le `:not(.hidden)` : sans
+   lui, l'identifiant l'emporterait sur `.hidden` et l'accueil resterait
+   affiché par-dessus la partie.
+   ===================================================================== */
+
+#sk-screen-home:not(.hidden) {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 18px 30px;
+  overflow-y: auto;
+  max-width: none;
 }
 
-.suit {
-  font-size: 1.5rem;
-  opacity: 0.9;
+.sk-hero {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sk-hero-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 32%;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* Un voile qui s'épaissit vers le bas : les commandes s'y posent et se
+   lisent, sans qu'on ait à leur donner un cadre qui masquerait la scène. */
+.sk-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(8, 5, 2, 0.62) 0%, rgba(8, 5, 2, 0.12) 26%,
+    rgba(8, 5, 2, 0.34) 56%, rgba(8, 5, 2, 0.88) 100%);
+}
+
+.sk-hero-back {
+  position: fixed;
+  left: 18px;
+  top: 14px;
+  margin: 0;
+  z-index: 2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.sk-home-title {
+  display: block;
+  margin: -12px auto 0;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.85));
+  background: none;
+  -webkit-text-fill-color: initial;
+}
+
+/* Tout ce qui suit le logo est repoussé en bas de l'écran : c'est cette
+   seule marge automatique qui sépare le titre des commandes. */
+#sk-screen-home:not(.hidden) .tagline {
+  margin-top: auto;
+}
+
+.sk-home-title img {
+  display: block;
+  width: 100%;
+  max-width: min(620px, 78vw);
+  height: auto;
+  margin: 0 auto;
 }
 
 .tagline {
-  margin: 0 0 14px;
-  color: #cbd5e1;
-  font-size: 0.95rem;
+  margin: 8px auto 18px;
+  max-width: 46ch;
+  color: var(--sk-cream-2);
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .hidden {
@@ -109,25 +279,42 @@ h1 {
 }
 
 .hint {
-  color: #cbd5e1;
-  font-size: 0.9rem;
+  color: var(--sk-cream-2);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+/* Petit intertitre gravé, réutilisé dans tous les panneaux. */
+.invite-label,
+.sk-side-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sk-brass);
 }
 
 /* Bulle d'explication au survol des cartes à pouvoir : remplace le title
    natif du navigateur (lent, non stylable). Suit la souris, ne capte jamais
-   le clic (pointer-events: none) pour ne pas gêner la pose de la carte. */
+   le clic (pointer-events: none) pour ne pas gêner la pose de la carte.
+   Devenue une fiche de parchemin, comme les panneaux du panneau de droite. */
 .sk-card-tooltip {
   position: fixed;
   z-index: 90;
-  max-width: 250px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: #1a1208f2;
-  border: 2px solid #facc1566;
-  color: #f5f0e6;
-  font-size: 0.76rem;
-  line-height: 1.4;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  max-width: 264px;
+  padding: 9px 12px 10px;
+  border-radius: 2px;
+  background: linear-gradient(176deg, var(--sk-parch-hi), var(--sk-parch) 58%, var(--sk-parch-lo));
+  box-shadow:
+    0 0 0 1px var(--sk-brass),
+    0 0 0 2px rgba(30, 18, 6, 0.8),
+    0 8px 20px rgba(0, 0, 0, 0.6);
+  color: var(--sk-parch-ink);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.8rem;
+  line-height: 1.48;
   pointer-events: none;
 }
 
@@ -136,130 +323,272 @@ h1 {
   margin: 0 0 10px;
 }
 
+/* =====================================================================
+   BOIS, LAITON, CIRE — boutons, champs, panneaux, modales.
+   Trois matières et trois seulement : le bois pour les objets qu'on
+   manipule, le laiton pour ce qui appelle l'action, la cire rouge pour
+   ce qui ferme ou termine.
+   ===================================================================== */
+
+/* Planche de noyer, réutilisée par tous les panneaux et bandeaux. */
+.sk-wood {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 232, 190, 0.09), rgba(0, 0, 0, 0.34)),
+    linear-gradient(178deg, var(--sk-oak-hi) 0%, var(--sk-oak) 34%, var(--sk-oak-lo) 100%);
+}
+
+.sk-wood::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: var(--sk-oakgrain);
+  background-size: 300px 120px;
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+
+/* Éraflures du bois : trois traits fixes, jamais animés. */
+.sk-wood::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(92deg, transparent 12%, rgba(255, 236, 196, 0.05) 12.4%, transparent 12.8%),
+    linear-gradient(88deg, transparent 47%, rgba(0, 0, 0, 0.28) 47.3%, transparent 47.7%),
+    linear-gradient(91deg, transparent 71%, rgba(255, 236, 196, 0.04) 71.3%, transparent 71.7%);
+}
+
 .btn {
   display: inline-block;
-  padding: 12px 20px;
-  border: 3px solid #1a1a1a;
-  border-radius: 12px;
-  background: linear-gradient(160deg, #991b1b, #5c1010);
-  color: #fff;
+  padding: 10px 22px;
+  border: 1px solid var(--sk-brass-lo);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.1), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #33200f, #170d05);
+  color: var(--sk-cream);
+  font-family: 'Cinzel', Georgia, serif;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background 0.15s ease;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.24),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.5);
+  transition: transform 0.14s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 .btn:hover {
-  background: linear-gradient(160deg, #b91c1c, #7a1414);
-  transform: translateY(-2px);
-  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4), 0 0 16px rgba(248, 113, 113, 0.4);
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.16), rgba(0, 0, 0, 0.26)),
+    linear-gradient(180deg, #432b14, #1e1108);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.34),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 8px 18px rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(184, 137, 53, 0.24);
 }
 
 .btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.42;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(232, 206, 146, 0.12), 0 2px 0 rgba(0, 0, 0, 0.5);
 }
 
 .btn-link {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0 0 16px;
   padding: 4px 0;
   border: none;
   background: none;
-  color: #cbd5e1;
-  font-size: 0.9rem;
+  color: var(--sk-cream-2);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
   cursor: pointer;
   text-align: left;
   text-decoration: none;
 }
 
 .btn-link:hover {
-  color: #fff;
-  text-decoration: underline;
+  color: var(--sk-cream);
+  text-decoration: none;
+  text-shadow: 0 0 10px rgba(232, 206, 146, 0.4);
 }
 
 .btn-rules-link {
   display: inline-block;
-  margin: 0 0 32px;
-  padding: 5px 14px;
-  border: 2px solid #ffffff33;
-  border-radius: 20px;
-  background: #ffffff14;
-  color: #cbd5e1;
-  font-size: 0.8rem;
+  margin: 0 0 30px;
+  padding: 7px 16px;
+  border: 1px solid rgba(184, 137, 53, 0.34);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--sk-cream-2);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.68rem;
   font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .btn-rules-link:hover {
-  background: #ffffff28;
-  color: #fff;
+  background: rgba(184, 137, 53, 0.12);
+  color: var(--sk-cream);
 }
 
+/* Le laiton n'appelle qu'une action à la fois : c'est le seul plein or
+   de l'écran, il ne doit jamais y en avoir deux visibles ensemble. */
+/* Les actions principales portent la plaque de laiton peinte. Le libellé y
+   est GRAVÉ : encre très sombre, et le seul reflet passe SOUS la lettre.
+   Un reflet au-dessus délavait le trait — sur du laiton clair, un brun
+   clair ne se lit pas.
+
+   Les états ne coûtent aucune image de plus : le survol monte d'un cran de
+   luminosité, l'appui l'assombrit et enfonce le bouton d'un pixel. */
 .btn-primary {
-  background: linear-gradient(160deg, #fde047, #facc15);
-  color: #1a1a1a;
-  border-color: #1a1208;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  border-style: solid;
+  border-width: 14px 16px;
+  border-image: url('assets/skin/btn-laiton.webp') 130 150 fill / 14px 16px stretch;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #170E03;
+  text-shadow: 0 1px 0 rgba(255, 241, 205, 0.55), 0 -1px 1px rgba(0, 0, 0, 0.35);
+  padding: 4px 10px 6px;
+  min-height: 54px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
 }
 
-.btn-primary:hover {
-  background: linear-gradient(160deg, #fef08a, #fde047);
-  transform: translateY(-2px);
-  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(250, 204, 21, 0.45);
+.btn-rouge {
+  border-style: solid;
+  border-width: 13px 15px;
+  border-image: url('assets/skin/btn-rouge.webp') 125 145 fill / 13px 15px stretch;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #F6E9C6;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  padding: 4px 10px 6px;
+  min-height: 52px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
 }
 
-.btn-primary:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+.btn-primary:hover,
+.btn-rouge:hover {
+  background: none;
+  box-shadow: none;
+  transform: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55)) brightness(1.14) saturate(1.05);
 }
+
+.btn-primary:active,
+.btn-rouge:active {
+  background: none;
+  box-shadow: none;
+  transform: translateY(1px);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)) brightness(0.86);
+}
+
+.btn-primary:disabled,
+.btn-rouge:disabled {
+  filter: grayscale(0.65) brightness(0.62);
+  cursor: default;
+}
+
+
 
 .btn-create {
   width: 100%;
-  max-width: 280px;
+  max-width: 300px;
   margin: 0 auto;
-  padding: 18px 24px;
-  font-size: 1.15rem;
-  font-weight: 800;
-  border-radius: 16px;
+  padding: 6px 18px 8px;
+  min-height: 62px;
+  font-size: 1.18rem;
+  letter-spacing: 0.12em;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  animation: create-btn-breathe 2.6s ease-in-out infinite;
+  text-align: center;
+  gap: 0;
+  animation: create-btn-breathe 3.2s ease-in-out infinite;
 }
 
 @keyframes create-btn-breathe {
   0%, 100% {
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 248, 226, 0.65),
+      inset 0 -2px 0 rgba(60, 42, 12, 0.5),
+      0 3px 0 #33240a,
+      0 8px 18px rgba(0, 0, 0, 0.55);
   }
   50% {
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 21, 0.5);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 248, 226, 0.65),
+      inset 0 -2px 0 rgba(60, 42, 12, 0.5),
+      0 3px 0 #33240a,
+      0 8px 18px rgba(0, 0, 0, 0.55),
+      0 0 26px rgba(232, 206, 146, 0.45);
   }
 }
 
+/* L'emoji des boutons cède la place au sabre gravé du logotype. */
 .btn-icon {
-  font-size: 1.3rem;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  font-size: 0;
+  background: var(--sk-sabre) center / contain no-repeat;
+  filter: brightness(0) saturate(0) invert(9%) sepia(30%) saturate(1200%) hue-rotate(350deg);
+  opacity: 0.85;
 }
 
 .btn-small {
-  padding: 6px 12px;
-  font-size: 0.85rem;
+  padding: 7px 14px;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
 }
 
 .divider {
-  margin: 20px 0;
-  opacity: 0.55;
-  font-size: 0.85rem;
+  position: relative;
+  margin: 22px auto;
+  max-width: 300px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sk-cream-3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--sk-brass-lo), transparent);
 }
 
 #sk-form-join {
@@ -269,45 +598,65 @@ h1 {
 }
 
 #sk-input-code {
-  width: 120px;
-  padding: 12px;
-  border-radius: 10px;
-  border: 3px solid #1a1a1a;
+  width: 132px;
+  padding: 11px 12px;
+  border-radius: 2px;
+  border: 0;
+  background: linear-gradient(180deg, #1a120b, #241a12);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.34), inset 0 2px 5px rgba(0, 0, 0, 0.65);
+  color: var(--sk-cream);
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  font-size: 1rem;
-  font-weight: 800;
+  letter-spacing: 0.28em;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .error {
-  color: #fca5a5;
+  color: #e09a90;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
   min-height: 1.2em;
   margin-top: 12px;
 }
 
 .nickname-field {
-  max-width: 260px;
-  margin: 0 auto 20px;
+  max-width: 300px;
+  margin: 0 auto 18px;
 }
 
 .nickname-field input,
 .join-modal-content input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 2px solid #ffffff33;
-  background: #ffffff11;
-  color: #fff;
-  font-size: 0.95rem;
+  padding: 11px 13px;
+  border-radius: 2px;
+  border: 0;
+  background: linear-gradient(180deg, #1a120b, #241a12);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.65);
+  color: var(--sk-cream);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.98rem;
   text-align: center;
-  transition: border-color 0.15s ease;
+  transition: box-shadow 0.15s ease;
+}
+
+.nickname-field input::placeholder,
+.join-modal-content input::placeholder,
+#sk-input-code::placeholder {
+  color: #6e5c42;
+  font-style: italic;
+  letter-spacing: normal;
 }
 
 .nickname-field input:focus,
-.join-modal-content input:focus {
+.join-modal-content input:focus,
+#sk-input-code:focus {
   outline: none;
-  border-color: #facc15;
+  box-shadow:
+    inset 0 0 0 1px var(--sk-brass),
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(184, 137, 53, 0.28);
 }
 
 .visually-hidden {
@@ -322,109 +671,152 @@ h1 {
   border: 0;
 }
 
+/* Le bloc d'invitation est une planche punaisée : même objet que les
+   parchemins du panneau de droite, pour que le salon et la table
+   appartiennent visiblement au même monde. */
 .invite-card {
+  position: relative;
   margin: 24px auto 0;
-  padding: 24px 20px;
-  max-width: 280px;
-  background: #ffffff0d;
-  border: 3px solid #1a1208;
-  border-radius: 18px;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  padding: 22px 20px 20px;
+  max-width: 300px;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 232, 190, 0.09), rgba(0, 0, 0, 0.34)),
+    linear-gradient(178deg, var(--sk-oak-hi) 0%, var(--sk-oak) 34%, var(--sk-oak-lo) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    0 0 0 1px var(--sk-brass-lo),
+    0 16px 34px rgba(0, 0, 0, 0.55);
+}
+
+.invite-card::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  margin-left: -5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(16, 9, 3, 0.6);
 }
 
 .invite-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  opacity: 0.7;
-  margin: 0 0 12px;
+  margin: 6px 0 12px;
 }
 
 .invite-card .code-badge {
   display: block;
   margin: 0 auto 18px;
-  font-size: 2.1rem;
+  font-size: 1.9rem;
 }
 
+/* Le code de partie est une plaque de laiton gravée. */
 .code-badge {
-  font-weight: 800;
-  letter-spacing: 5px;
-  border-radius: 12px;
-  border: 3px solid #1a1208;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
-  padding: 10px;
-  background: #facc15;
-  color: #1a1208;
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  border-radius: 2px;
+  padding: 11px 10px;
+  color: #241505;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 226, 0.34), rgba(255, 255, 255, 0) 48%),
+    linear-gradient(180deg, #dcbe7e, var(--sk-brass) 52%, #7a5a20);
+  text-shadow: 0 1px 0 rgba(255, 244, 214, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 226, 0.6),
+    inset 0 -2px 0 rgba(60, 42, 12, 0.5),
+    0 0 0 1px rgba(24, 14, 5, 0.85),
+    0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .btn-copy-link {
   width: 100%;
 }
 
-/* Switch "Jouer avec l'extension" : cliquable pour l'hôte (fond doré actif,
-   piste grise inactive), lecture seule pour les autres (curseur normal, un
-   peu grisé mais pas au point de sembler cassé - c'est un vrai état, pas un
-   bouton désactivé par erreur). */
+/* Switch « Jouer avec l'extension » : cliquable pour l'hôte (piste en
+   laiton quand il est actif), lecture seule pour les autres — un vrai
+   état, pas un bouton cassé. */
 .sk-extension-toggle {
   display: flex;
   align-items: center;
   gap: 10px;
   margin: 18px auto 4px;
-  padding: 10px 16px;
-  border: 3px solid #1a1208;
-  border-radius: 14px;
-  background: #ffffff0d;
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.9rem;
+  padding: 9px 16px;
+  border: 1px solid var(--sk-brass-lo);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.08), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  color: var(--sk-cream);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(232, 206, 146, 0.18), 0 2px 0 rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.15s ease;
 }
+
 .sk-extension-toggle:not(:disabled):hover {
-  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.35), 0 0 14px rgba(251, 146, 60, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.28),
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    0 0 14px rgba(184, 137, 53, 0.3);
 }
+
 .sk-extension-toggle:disabled {
   cursor: default;
 }
+
 .sk-extension-toggle--readonly {
-  opacity: 0.75;
+  opacity: 0.72;
 }
+
 .sk-extension-toggle-track {
   position: relative;
   width: 38px;
-  height: 22px;
-  border-radius: 12px;
-  background: #ffffff2a;
-  border: 2px solid #1a1208;
+  height: 20px;
+  border-radius: 10px;
+  background: #150c06;
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.8);
   flex-shrink: 0;
   transition: background 0.2s ease;
 }
+
 .sk-extension-toggle-knob {
   position: absolute;
-  top: 1px;
-  left: 1px;
+  top: 2px;
+  left: 2px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: radial-gradient(circle at 36% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
+
 .sk-extension-toggle--on .sk-extension-toggle-track {
-  background: #fb923c;
+  background: #3a2513;
+  box-shadow: inset 0 0 0 1px var(--sk-brass), inset 0 2px 4px rgba(0, 0, 0, 0.6);
 }
+
 .sk-extension-toggle--on .sk-extension-toggle-knob {
-  transform: translateX(16px);
+  transform: translateX(18px);
 }
+
 .sk-extension-hint {
-  max-width: 280px;
+  max-width: 300px;
   margin: 0 auto 6px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
 }
 
 /* Panneaux de choix au moment de la pose (Joker, 0/14, Marcher sur la
    Planche) : le texte explicatif passe sur toute la largeur, les boutons
-   se répartissent en dessous - même structure que .sk-bid-choices. */
+   se répartissent en dessous — même structure que .sk-bid-choices. */
 #sk-joker-choice .hint,
 #sk-declare-choice .hint,
 #sk-plank-choice .hint {
@@ -434,7 +826,7 @@ h1 {
 
 .lobby-players {
   margin: 24px auto;
-  max-width: 280px;
+  max-width: 300px;
 }
 
 .lobby-list {
@@ -443,26 +835,52 @@ h1 {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
+/* Le rôle d'équipage : une ligne de bois par matelot, marquée au laiton. */
 .lobby-list li {
-  padding: 10px 14px;
-  background: #ffffff11;
-  border: 2px solid #ffffff33;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  padding: 9px 13px;
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.28)),
+    linear-gradient(180deg, #2a1b0f, #170e07);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.22), 0 2px 0 rgba(0, 0, 0, 0.45);
+  border-left: 3px solid var(--sk-brass-lo);
+  font-family: 'Cinzel', Georgia, serif;
   font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: var(--sk-cream);
   text-align: left;
+  animation: menu-pop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* L'hôte porte la barre du capitaine, pas une couronne d'emoji. */
+.lobby-list li.lobby-host {
+  border-left-color: var(--sk-brass-hi);
 }
 
 .lobby-list li.lobby-host::after {
-  content: ' 👑';
+  content: 'CAPITAINE';
+  margin-left: auto;
+  padding-left: 10px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--sk-brass);
 }
 
-/* --- Modernisation des menus créer/rejoindre (2026-07-30) : mêmes ajouts
-   dupliqués dans les 4 fichiers CSS, seule la couleur d'accent change —
-   reprend directement --accent défini pour ce jeu sur la grille du hub
-   (style.css), pour que l'identité visuelle se retrouve du hub jusqu'ici. --- */
+.lobby-list li:nth-child(1) { animation-delay: 0.03s; }
+.lobby-list li:nth-child(2) { animation-delay: 0.08s; }
+.lobby-list li:nth-child(3) { animation-delay: 0.13s; }
+.lobby-list li:nth-child(4) { animation-delay: 0.18s; }
+.lobby-list li:nth-child(5) { animation-delay: 0.23s; }
+.lobby-list li:nth-child(6) { animation-delay: 0.28s; }
+.lobby-list li:nth-child(7) { animation-delay: 0.33s; }
 
 @keyframes menu-pop-in {
   from {
@@ -479,49 +897,6 @@ h1 {
   animation: menu-pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.nickname-field input,
-.join-modal-content input {
-  background: linear-gradient(160deg, #ffffff18, #ffffff0a);
-}
-
-.nickname-field input:focus,
-.join-modal-content input:focus {
-  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.4);
-}
-
-.invite-card {
-  background: linear-gradient(160deg, #ffffff16, #ffffff08);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35), 0 0 24px rgba(251, 146, 60, 0.4);
-  animation: menu-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.invite-card .code-badge {
-  animation: code-badge-glow 2.4s ease-in-out infinite;
-}
-
-@keyframes code-badge-glow {
-  0%, 100% {
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
-  }
-  50% {
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45), 0 0 18px rgba(251, 146, 60, 0.4);
-  }
-}
-
-.lobby-list li {
-  background: linear-gradient(160deg, #ffffff16, #ffffff08);
-  border-left: 4px solid #fb923c;
-  animation: menu-pop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-
-.lobby-list li:nth-child(1) { animation-delay: 0.03s; }
-.lobby-list li:nth-child(2) { animation-delay: 0.08s; }
-.lobby-list li:nth-child(3) { animation-delay: 0.13s; }
-.lobby-list li:nth-child(4) { animation-delay: 0.18s; }
-.lobby-list li:nth-child(5) { animation-delay: 0.23s; }
-.lobby-list li:nth-child(6) { animation-delay: 0.28s; }
-.lobby-list li:nth-child(7) { animation-delay: 0.33s; }
-
 .join-modal-content {
   text-align: center;
 }
@@ -533,7 +908,7 @@ h1 {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(3, 8, 10, 0.74);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -545,28 +920,71 @@ h1 {
   display: none;
 }
 
+/* Les modales sont des panneaux de bois cerclés de laiton, avec le léger
+   flottement d'un objet suspendu à la lumière des flammes. */
 .modal-content {
-  background: #200606;
-  border: 3px solid #1a1208;
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 380px;
+  position: relative;
+  border-radius: 5px;
+  padding: 24px 26px;
+  max-width: 420px;
   text-align: left;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35), 0 0 0 2px #F5C24C;
+  color: var(--sk-cream);
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 18px 40px rgba(0, 0, 0, 0.65);
+}
+
+/* Fin de partie : le lettrage peint annonce l'écran, en petit — le verdict
+   qui le suit doit rester la première chose qu'on lit. */
+.sk-end-logo {
+  display: block;
+  width: 156px;
+  height: auto;
+  margin: 0 auto 6px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7));
 }
 
 .modal-content h2,
 #sk-end-title {
   margin-top: 0;
+  margin-bottom: 14px;
   text-align: center;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.34rem;
+  color: var(--sk-cream);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
 
 .modal-content ol {
   padding-left: 20px;
-  line-height: 1.6;
-  font-size: 0.9rem;
+  line-height: 1.62;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.92rem;
+  color: var(--sk-cream-2);
+}
+
+.modal-content ol li {
+  margin-bottom: 9px;
+  padding-left: 4px;
+}
+
+.modal-content ol li::marker {
+  color: var(--sk-brass);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+}
+
+.modal-content strong {
+  color: var(--sk-cream);
+  font-weight: 600;
 }
 
 .modal-content .btn {
@@ -580,22 +998,69 @@ h1 {
   left: 50%;
   transform: translateX(-50%);
   z-index: 70;
-  background: #1a1208;
-  border: 2px solid #facc15;
-  border-radius: 20px;
-  padding: 6px 16px;
-  font-size: 0.85rem;
-  font-weight: 700;
+  background: linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow: 0 0 0 1px var(--sk-brass-lo), 0 6px 16px rgba(0, 0, 0, 0.6);
+  border-radius: 3px;
+  padding: 7px 18px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--sk-cream);
 }
 
 /* --- Écran de jeu : table ovale façon poker --- */
 
+/* =====================================================================
+   LE BANDEAU DU HAUT — bois bordé de laiton, enseigne de taverne, et la
+   progression des manches en rangée de doublons.
+
+   C'est le seul endroit permanent de l'écran : il porte donc ce qui doit
+   être vrai à chaque instant — où on en est dans la partie, et où on en
+   est de son propre contrat. La pastille « Manche 1/10 » a disparu :
+   elle doublonnait la rangée.
+   ===================================================================== */
+
 .sk-game-header {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px 10px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.14),
+    0 0 0 1px var(--sk-brass-lo),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 12px 26px rgba(0, 0, 0, 0.5);
+}
+
+/* Clous de laiton du bandeau, sur toute sa longueur. */
+.sk-game-header::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 5px;
+  z-index: 3;
+  background-image: radial-gradient(circle, var(--sk-brass-hi) 0 22%, var(--sk-brass-lo) 34%, transparent 44%);
+  background-size: 52px 5px;
+  background-repeat: repeat-x;
+  opacity: 0.45;
+}
+
+.sk-topbar-side {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sk-topbar-side--end {
+  justify-content: flex-end;
 }
 
 .sk-game-header .btn-link {
@@ -603,28 +1068,367 @@ h1 {
   flex-shrink: 0;
 }
 
+/* La consigne de manche reste dans le DOM pour les lecteurs d'écran (elle
+   est en aria-live) : la rangée de doublons la dit visuellement. */
 .sk-round-indicator {
-  font-weight: 800;
-  color: #facc15;
-  margin: 0;
-  font-size: 0.95rem;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* --- Enseigne de taverne : le lettrage peint, sur une ligne ----------
+   Hauteur fixe, largeur déduite du ratio (2.75) : 30 px de haut, 82 de
+   large, la barre garde sa hauteur d'origine. */
+.sk-sign {
+  display: block;
+  height: 30px;
+  width: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+
+/* --- La rangée de doublons ------------------------------------------ */
+/* --- Cartouche de la manche en cours : cartes + encoches de plis ------ */
+/* Le cartouche de la manche : la banderole peinte, aux deux bouts taillés
+   en pointe. Tranches 0/154 : seuls les biseaux restent à taille fixe, le
+   corps s'étire avec le libellé. Le biseau a été mesuré sur l'image (la
+   hauteur opaque cesse de grimper à 148 px), pas estimé à l'oeil. */
+.sk-round-scroll {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border-style: solid;
+  border-width: 0 17px;
+  border-image: url('assets/skin/plaque-manche.webp') 0 154 fill / 0 17px stretch;
+  padding: 5px 4px 6px;
+  justify-self: center;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
+}
+
+.sk-round-scroll .sk-scroll-t {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--sk-parch-ink);
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* --- Encoches : une par pli. La forme porte le sens, pas la couleur --- */
+.sk-notches {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  align-items: center;
+}
+
+.sk-notches i {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  background: rgba(42, 27, 12, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(42, 27, 12, 0.38);
+}
+
+.sk-notches i.is-won {
+  background: linear-gradient(160deg, var(--sk-brass-hi), var(--sk-brass-lo));
+  box-shadow: inset 0 0 0 1px rgba(42, 27, 6, 0.6);
+}
+
+.sk-notches i.is-now {
+  background: var(--sk-parch-hi);
+  box-shadow: 0 0 0 1px var(--sk-wine), 0 0 7px rgba(156, 42, 34, 0.6);
+}
+
+/* Un pli en trop : l'encoche est barrée. Un contrat perdu doit se voir
+   sans percevoir la teinte. */
+.sk-notches i.is-over {
+  position: relative;
+  background: var(--sk-wine);
+  box-shadow: inset 0 0 0 1px rgba(42, 27, 12, 0.5);
+}
+
+.sk-notches i.is-over::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: var(--sk-parch-hi);
+}
+
+/* Sur bois plutôt que sur parchemin, les encoches s'inversent. */
+.sk-notches--dark i {
+  background: rgba(232, 206, 146, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(232, 206, 146, 0.5);
+}
+
+.sk-notches--dark i.is-won {
+  background: linear-gradient(160deg, var(--sk-brass-hi), var(--sk-brass-lo));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Mon contrat, mon score ------------------------------------------ */
+.sk-mine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 11px 5px;
+  border-radius: 3px;
+  background: rgba(10, 6, 2, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.28);
+}
+
+.sk-mine-k {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sk-brass);
+  white-space: nowrap;
+}
+
+/* Jamais « 1/0 » : le même glyphe voulait dire « annonce/plis » dans
+   l'historique et « plis/annonce » sur la table. On écrit la phrase. */
+.sk-mine-v {
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--sk-cream);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-mine--exact .sk-mine-v {
+  color: #9bd79e;
+}
+
+.sk-mine--over .sk-mine-v {
+  color: #e09a90;
+}
+
+.sk-mine-score {
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.12rem;
+  color: var(--sk-brass-hi);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+/* --- Paliers de dégradation -----------------------------------------
+   Budget mesuré à 1000 px : gauche 262 + rangée 389 + droite 300 + 64 de
+   gouttières et de marges. L'enseigne écrite tombe donc la première. */
+@media (max-width: 1239px) {
+  .sk-sign {
+    height: 22px;
+  }
+}
+
+/* Sous 1000 px la barre n'a plus la place du lettrage : les 60 px qu'il
+   occupe débordait de sa colonne. Restent le bouton Quitter, le cartouche
+   de la manche et le contrat. */
+@media (max-width: 999px) {
+  .sk-sign {
+    display: none;
+  }
+}
+
+@media (max-width: 1099px) {
+  .sk-chain { height: 28px; }
+  .sk-chain-bout--g  { width: calc(28px * 99 / 171); }
+  .sk-chain-bout--d  { width: calc(28px * 95 / 171); }
+  .sk-chain-alveole  { width: calc(28px * 147 / 171); }
+  .sk-round-scroll .sk-scroll-t {
+    font-size: 0.52rem;
+    letter-spacing: 0.06em;
+  }
+  .sk-round-scroll {
+    padding: 3px 8px 4px;
+  }
+}
+
+@media (max-width: 899px) {
+  .sk-mine-k {
+    display: none;
+  }
+  .sk-mine {
+    gap: 8px;
+    padding: 4px 9px;
+  }
+}
+
+/* Sous 760 px, la rangée devient une règle d'encoches : on garde le
+   chemin parcouru, on abandonne les chiffres. */
+@media (max-width: 759px) {
+  .sk-game-header {
+    grid-template-columns: auto 1fr;
+    gap: 6px 8px;
+    padding: 6px 10px 9px;
+  }
+  .sk-topbar-side {
+    grid-row: 1;
+  }
+  .sk-topbar-side--end {
+    grid-column: 2;
+  }
+  /* Sur téléphone la piste passe sur sa propre ligne. */
+  .sk-chain {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 24px;
+  }
+  .sk-chain-bout--g  { width: calc(24px * 99 / 171); }
+  .sk-chain-bout--d  { width: calc(24px * 95 / 171); }
+  .sk-chain-alveole  { width: calc(24px * 147 / 171); }
+  .sk-round-scroll {
+    padding: 2px 6px 3px;
+  }
+  .sk-round-scroll .sk-scroll-t {
+    display: none;
+  }
+  .sk-mine-score {
+    font-size: 0.95rem;
+  }
 }
 
 .sk-play-area {
   display: flex;
   gap: 14px;
-  align-items: flex-start;
+  align-items: stretch;
 }
+
+/* =====================================================================
+   LA PISTE DES MANCHES — deux embouts et une alvéole par manche. La barre
+   peinte a été débitée en trois pièces parce que son dessin portait dix
+   alvéoles gravées : une partie en 5 manches en aurait laissé cinq vides.
+   Chaque pièce garde son propre rapport, donc rien ne se déforme, quelle
+   que soit la longueur de la partie.
+   ===================================================================== */
+
+.sk-chain {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 0;
+  height: 34px;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+}
+
+.sk-chain-bout,
+.sk-chain-alveole {
+  display: block;
+  flex: 0 0 auto;
+  height: 100%;
+  background: center / 100% 100% no-repeat;
+}
+
+/* Les rapports viennent des découpes : 99x171, 147x171, 95x171. */
+.sk-chain-bout--g {
+  width: calc(34px * 99 / 171);
+  background-image: url('assets/skin/barre-bout-g.webp');
+}
+
+.sk-chain-bout--d {
+  width: calc(34px * 95 / 171);
+  background-image: url('assets/skin/barre-bout-d.webp');
+}
+
+.sk-chain-alveole {
+  position: relative;
+  width: calc(34px * 147 / 171);
+  background-image: url('assets/skin/barre-cellule.webp');
+}
+
+/* Le doublon s'assied dans son creux : 72 % de la largeur de l'alvéole. */
+.sk-dbl {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  transform: translate(-50%, -50%);
+  display: block;
+}
+
+/* La manche en cours respire — la seule chose qui bouge dans la piste. */
+.sk-dbl--now {
+  width: 88%;
+  animation: sk-dbl-now 2.6s ease-in-out infinite;
+}
+
+@keyframes sk-dbl-now {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(232, 206, 146, 0.34)); }
+  50%      { filter: drop-shadow(0 0 8px rgba(232, 206, 146, 0.72)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-dbl--now { animation: none; }
+}
+
+/* =====================================================================
+   LA TABLE DE TAVERNE — une seule image peinte, vue en légère plongée :
+   le feutre, le cordage, les planches ferrées et le décor de bord y sont
+   déjà. Le CSS ne fabrique plus la matière, il tient le cadre.
+
+   D'où le ratio figé et le fond posé en `100% 100%` : l'image épouse
+   exactement la boîte, et les fractions du trapèze du feutre (surFeutre()
+   dans skullking.js) restent vraies à toutes les tailles. Un `cover`
+   recadrerait, et toute la géométrie des sièges tomberait à côté.
+   ===================================================================== */
 
 .sk-table {
   position: relative;
-  flex: 1;
+  flex: 0 1 auto;
+  width: 100%;
   min-width: 0;
-  height: 340px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 40%, #17323d 0%, #0c1520 70%, #050a10 100%);
-  border: 6px solid #0a0505;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5), 0 6px 0 rgba(0, 0, 0, 0.35);
+  max-width: 760px;
+  margin-inline: auto;
+  aspect-ratio: 1369 / 1149;
+  border-radius: 10px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6);
+}
+
+/* Mon tour : la bougie monte sur le feutre. Un halo, pas un cerclage —
+   un rectangle inscrit trahirait la plongée. C'est le plus grand objet de
+   l'écran, on le voit en vision périphérique sans lire la consigne. */
+.sk-table::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(46% 30% at 50% 48%,
+    rgba(232, 206, 146, 0.26) 0%, rgba(232, 206, 146, 0.1) 46%, transparent 76%);
+}
+
+.sk-table--mine::after {
+  opacity: 1;
+  animation: sk-breathe-table 2.4s ease-in-out infinite;
+}
+
+@keyframes sk-breathe-table {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .sk-table-center {
@@ -633,6 +1437,7 @@ h1 {
   top: 50%;
   transform: translate(-50%, -50%);
   width: 84%;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -642,44 +1447,47 @@ h1 {
 /* Chaque carte du pli est posée devant son joueur (position calculée en JS
    entre son siège et le centre) : le pli forme un cercle, on voit donc
    immédiatement à qui appartient la carte gagnante. */
+/* --sk-depth : la mise à l'échelle selon la profondeur, posée par
+   renderTrick. Une carte du fond du tapis est plus loin, donc plus petite —
+   sans quoi elle paraît deux fois plus grosse que celle du premier plan. */
 .sk-trick-card {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--sk-depth, 1));
   z-index: 3;
-  animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @keyframes sk-card-drop {
   from {
-    transform: translate(-50%, -20%) scale(0.7);
+    transform: translate(-50%, -20%) scale(calc(var(--sk-depth, 1) * 0.7));
     opacity: 0;
   }
   to {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) scale(var(--sk-depth, 1));
     opacity: 1;
   }
 }
 
+/* Halo chaud autour de la carte qui mène le pli — assez pour confirmer un
+   coup d'œil volontaire, pas assez pour spoiler le pli avant d'avoir joué. */
 .sk-trick-card--leading {
   z-index: 4;
+  filter: drop-shadow(0 0 16px rgba(232, 206, 146, 0.34));
 }
 
-/* Discret à dessein : juste assez pour confirmer un coup d'œil volontaire,
-   pas un halo qui saute aux yeux et spoile le pli avant qu'on ait joué. */
-.sk-trick-card--leading .sk-card {
-  border-color: #4ade8099;
-  box-shadow: 0 0 0 1px #4ade8055, 3px 3px 0 rgba(0, 0, 0, 0.35);
-}
-
+/* Le commentaire du pli est un ruban de parchemin posé sur le feutre. */
 .sk-trick-caption {
   margin: 0;
-  font-size: 0.78rem;
-  color: #cbd5e1;
   min-height: 1.1em;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--sk-cream-2);
   text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* --- Sièges --- */
+/* --- Sièges : médaillons de capitaine en laiton --------------------- */
 
 .sk-seat {
   position: absolute;
@@ -687,7 +1495,7 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   width: 96px;
   z-index: 2;
 }
@@ -696,59 +1504,76 @@ h1 {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid #ffffff26;
+  gap: 5px;
+  padding: 2px 9px 3px;
+  border-radius: 2px;
+  background: rgba(6, 14, 11, 0.8);
+  box-shadow: 0 0 0 1px rgba(184, 137, 53, 0.4);
   max-width: 100%;
 }
 
 .sk-seat-name {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--sk-cream);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sk-seat-bid {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #facc15;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-brass-hi);
   flex-shrink: 0;
 }
 
+/* Qui a la main : le laiton s'allume sur son étiquette. */
 .sk-seat--turn .sk-seat-label {
-  border-color: #facc15;
-  background: #facc15;
-  color: #1a1208;
-  box-shadow: 0 0 14px #facc1599;
+  background: linear-gradient(180deg, #eedca8, var(--sk-brass) 56%, var(--sk-brass-lo));
+  box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.85), 0 0 16px rgba(232, 206, 146, 0.5);
 }
 
+.sk-seat--turn .sk-seat-name,
 .sk-seat--turn .sk-seat-bid {
-  color: #7c5a00;
+  color: #2a1b06;
+  text-shadow: 0 1px 0 rgba(255, 244, 214, 0.4);
 }
 
 .sk-seat--disconnected {
-  opacity: 0.45;
+  opacity: 0.42;
 }
 
+/* Le jeton de donneur est un frère du médaillon, jamais un enfant de
+   l'étiquette : posé sur le pseudo, il le rendait illisible. */
+/* Le donneur : au coin haut-droit du jeton, jamais sur le pseudo. Sa
+   taille suit le feutre comme le reste du siège — en pixels fixes, elle
+   devenait un grain de poussière sur un grand écran. */
 .sk-seat-dealer {
   position: absolute;
-  top: -9px;
-  right: -9px;
-  width: 18px;
-  height: 18px;
+  top: -2%;
+  right: 4%;
+  z-index: 4;
+  width: 4.6cqw;
+  height: 4.6cqw;
   border-radius: 50%;
-  background: #f5f0e6;
-  color: #1a1208;
-  font-size: 0.6rem;
-  font-weight: 900;
+  background: radial-gradient(circle at 34% 28%, #FFF6DC, #E8CE92 34%, var(--sk-brass) 62%, #5a4318 100%);
+  color: #2a1b06;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 2.4cqw;
+  font-weight: 700;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #1a1208;
+  box-shadow:
+    0 0 0 0.32cqw rgba(16, 9, 3, 0.92),
+    0 0.3cqw 0.7cqw rgba(0, 0, 0, 0.75),
+    0 0 1.4cqw rgba(232, 206, 146, 0.5);
 }
 
 .sk-seat-cards {
@@ -759,143 +1584,115 @@ h1 {
   height: 34px;
 }
 
-/* Carte adverse révélée pendant l'annonce de la manche 1 : elle remplace le
-   dos de carte habituel sur le siège, avec un liseré doré et une légère
-   inclinaison pour qu'on comprenne que c'est une carte posée face visible et
-   pas un simple pictogramme. Sélecteur composé pour primer sur la taille par
-   défaut de .sk-card, déclarée plus loin dans la feuille. */
-.sk-card.sk-seat-reveal-card {
-  width: 38px;
-  height: 54px;
-  font-size: 0.6rem;
-  border-width: 2px;
-  border-radius: 7px;
-  cursor: default;
-  transform: rotate(-4deg);
-  box-shadow: 0 0 0 2px #facc1566, 2px 3px 0 rgba(0, 0, 0, 0.45);
-  animation: sk-reveal-drop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.sk-seat-reveal-card .card-emblem {
-  font-size: 1.35rem;
-}
-
-/* Carte isolée (pas dans l'éventail) : le libellé peut occuper toute la
-   largeur et se centrer, contrairement aux cartes de la main. */
-.sk-seat-reveal-card .sk-special-label {
-  position: static;
-  width: auto;
-  padding: 0 3px;
-  font-size: 0.52rem;
-  text-align: center;
-}
-
-@keyframes sk-reveal-drop {
-  from {
-    opacity: 0;
-    transform: rotate(-4deg) translateY(-10px) scale(0.7);
-  }
-  to {
-    opacity: 1;
-    transform: rotate(-4deg);
-  }
-}
-
 /* Pile de distribution au centre de la table, et cartes volantes qui en
-   sortent vers chaque siège en début de manche (voir maybeAnimateDeal). */
-.sk-deck-pile {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 34px;
-  height: 48px;
-  border-radius: 5px;
-  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
-  border: 2px solid #1a0505;
-  transform: translate(-50%, -50%);
-  box-shadow: 2px 2px 0 #1a0505, 4px 4px 0 #12030399;
-  z-index: 5;
-  animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
+   sortent vers chaque siège en début de manche (voir maybeAnimateDeal) :
+   même dos de velours bordeaux que les cartes cachées. */
+.sk-deck-pile,
 .sk-flying-card {
   position: absolute;
   width: 34px;
   height: 48px;
-  border-radius: 5px;
-  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
-  border: 2px solid #1a0505;
+  border-radius: 4px;
+  background:
+    var(--sk-medallion) center / 52% no-repeat,
+    radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.8), inset 0 0 0 2px rgba(184, 137, 53, 0.3);
+}
+
+.sk-deck-pile {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  animation: sk-card-drop 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.sk-flying-card {
   z-index: 6;
   pointer-events: none;
 }
 
 .sk-seat-count {
+  font-family: 'Bitter', Georgia, serif;
   font-size: 0.62rem;
-  font-weight: 800;
-  color: #cbd5e1;
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 8px;
+  font-weight: 600;
+  color: var(--sk-cream-2);
+  background: rgba(6, 14, 11, 0.7);
+  box-shadow: 0 0 0 1px rgba(184, 137, 53, 0.3);
+  border-radius: 2px;
   padding: 0 5px;
   flex-shrink: 0;
 }
 
-/* --- Tableau de score discret + piste de progression des manches --- */
+/* =====================================================================
+   LE PANNEAU DE DROITE — une planche de noyer portant trois parchemins
+   punaisés : l'objectif scellé à la cire, le registre de bord réglé, et
+   le carnet du capitaine où l'on discute.
+
+   Il ne porte plus la progression des manches (remontée dans le bandeau) :
+   la place libérée va au carnet, qui grandit désormais au lieu de
+   rétrécir quand la table est petite.
+   ===================================================================== */
+
+/* =====================================================================
+   LA PLANCHE LATÉRALE — la colonne de droite est une planche de bois
+   ferrée, posée contre la cloison. C'est elle qui fait frontière avec le
+   plateau peint : sans elle, les deux images se touchaient sans qu'on
+   sache où l'une finissait. Le parchemin y est cloué, le carnet posé
+   dessus, le carré du chat accroché en bas.
+
+   En 9 tranches : elle s'allonge avec le nombre de joueurs, et seuls ses
+   quatre coins ferrés restent à taille fixe.
+   ===================================================================== */
 
 .sk-scoreboard {
-  width: 168px;
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.28);
-  border: 2px solid #ffffff1f;
-  border-radius: 12px;
-  padding: 10px;
-}
-
-.sk-round-track {
   position: relative;
-  height: 7px;
-  border-radius: 4px;
-  background: #ffffff1a;
-  overflow: visible;
-  margin: 0 12px 8px;
+  width: 322px;
+  flex-shrink: 0;
+  padding: 0 2px 2px;
+  filter: drop-shadow(0 16px 34px rgba(0, 0, 0, 0.6));
 }
 
-.sk-round-track-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #f87171, #facc15);
-  transition: width 0.5s ease;
-}
-
-.sk-round-track-knob {
+/* Punaise de laiton en haut de la planche. */
+.sk-scoreboard::after {
+  content: '';
   position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 11px;
-  background: #facc15;
-  color: #1a1208;
-  border: 2px solid #1a1208;
-  font-size: 0.68rem;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: left 0.5s ease;
+  top: 6px;
+  left: 50%;
+  margin-left: -5px;
+  width: 11px;
+  height: 11px;
+  z-index: 4;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(16, 9, 3, 0.6);
 }
 
-.sk-round-track-label {
-  margin: 8px 0 10px;
-  font-size: 0.68rem;
-  color: #cbd5e1;
+/* Le registre de bord : lignes fines réglées, chiffres alignés à la plume. */
+/* Le carnet peint : reliure de cuir en haut (tranche de 255 px), papier
+   ligné au centre. Le titre s'écrit SUR la reliure — d'où la marge
+   négative qui le remonte dans la bordure. */
+.sk-carnet {
+  position: relative;
+  margin: 4px 0 14px;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+  transform: rotate(0.3deg);
+}
+
+.sk-carnet .sk-side-title {
+  position: absolute;
+  position: static;
+  margin: 0 0 5px;
   text-align: center;
+  color: #5A3E19;
+  text-shadow: none;
 }
 
 .sk-scoreboard-rows {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0;
+  padding: 0;
 }
 
 .sk-score-row {
@@ -903,35 +1700,93 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 3px 6px;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-family: 'Inter', sans-serif;
+  padding: 5px 3px 4px;
+  border-bottom: 1px solid rgba(90, 67, 24, 0.22);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: #33240f;
 }
 
+.sk-score-row:last-child {
+  border-bottom: 0;
+}
+
+/* Ma ligne est marquée à l'encre rouge du registre, pas par un fond plein :
+   sur un parchemin, un aplat lirait comme une rature. */
 .sk-score-row--me {
-  background: #ffffff14;
-  font-weight: 800;
+  color: #5a1512;
+  font-weight: 700;
 }
 
 .sk-score-row-name {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sk-score-row-total {
-  font-weight: 800;
-  color: #facc15;
+  font-weight: 700;
+  color: #33240f;
   flex-shrink: 0;
 }
 
+.sk-score-row--me .sk-score-row-total {
+  color: #5a1512;
+}
+
+
 /* --- Annonces, indicateur de tour, main en éventail --- */
 
+/* La consigne du tour : une phrase, pas un signal. Ce qui prévient qu'on
+   doit jouer, c'est le cerclage de la table et le liseré sous la main —
+   cette ligne dit seulement QUOI faire, une fois le regard revenu. */
+/* Posées sur le feutre, en haut, là où rien n'est joué : les cartes du pli
+   descendent au centre et les sièges tiennent les bords. Le fond sombre
+   n'est pas décoratif — sans lui le texte crème se perd dans le vert. */
 .sk-turn-indicator {
-  margin: 10px 0 6px;
-  font-weight: 700;
-  min-height: 1.2em;
+  position: absolute;
+  top: 34.4%;
+  left: 43%;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  max-width: 76%;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: rgba(6, 4, 2, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.4);
+  color: var(--sk-cream);
+  font-size: 0.9rem;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+#sk-power-banner {
+  position: absolute;
+  top: 27.6%;
+  left: 43%;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  max-width: 76%;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(6, 4, 2, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3);
+  text-align: center;
+  pointer-events: none;
+}
+
+.sk-turn-indicator b,
+.sk-turn-indicator strong {
+  color: var(--sk-cream);
+  font-weight: 600;
 }
 
 .sk-bid-choices {
@@ -955,8 +1810,8 @@ h1 {
   gap: 8px;
   margin-bottom: 4px;
   padding: 10px;
-  background: #ffffff0d;
-  border: 2px solid #ffffff26;
+  background: rgba(232, 206, 146, 0.07);
+  border: 2px solid rgba(232, 206, 146, 0.21);
   border-radius: 12px;
 }
 
@@ -979,7 +1834,7 @@ h1 {
 
 .sk-flip-card {
   position: relative;
-  width: 82px;
+  width: 84px;
   height: 120px;
   flex-shrink: 0;
   cursor: pointer;
@@ -1004,11 +1859,17 @@ h1 {
   backface-visibility: hidden;
 }
 
+/* Dos de carte : velours bordeaux frappé du médaillon — même objet que
+   .sk-card--hidden, mais sur une face 3D qui ne peut pas porter d'enfant. */
 .sk-flip-card-back {
-  border-radius: 12px;
-  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
-  border: 3px solid #1a1208;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+  border-radius: var(--sk-radius);
+  background:
+    var(--sk-medallion) center / 46% no-repeat,
+    radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  box-shadow:
+    0 0 0 1px rgba(20, 12, 5, 0.7),
+    inset 0 0 0 3px rgba(184, 137, 53, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 .sk-flip-card-face.sk-card {
@@ -1016,28 +1877,26 @@ h1 {
   cursor: default;
 }
 
+/* --- LA MAIN — éventail à chevauchement adaptatif ---------------------
+   --lap est négatif par défaut : les cartes ont une gouttière et ne se
+   recouvrent pas. Il ne devient positif que si la rangée déborde, et il
+   est plafonné (voir layoutHand côté JS) pour que la bande visible ne
+   descende jamais sous la largeur du pied, seul porteur de l'indice.
+   Se recouvrir quand la place existe ne sert à rien et coûte la lecture. */
 .sk-hand {
+  --lap: -8px;
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding: 28px 20px 4px;
-  min-height: 148px;
+  padding: 28px 16px 6px;
+  min-height: 158px;
   overflow-x: auto;
-  /* Largeur réellement visible d'une carte dans l'éventail (largeur de carte
-     moins le chevauchement de la suivante) : c'est la seule bande où un
-     libellé est lisible. Redéfinie à chaque palier où la taille des cartes
-     ou le chevauchement changent. */
-  --sk-fan-visible: 52px;
-}
-
-.sk-hand .sk-special-label {
-  right: auto;
-  width: calc(var(--sk-fan-visible) - 12px);
 }
 
 .sk-card-arc {
+  position: relative;
   transform-origin: bottom center;
-  margin-left: -30px;
+  margin-left: calc(var(--lap) * -1);
   flex-shrink: 0;
 }
 
@@ -1045,63 +1904,517 @@ h1 {
   margin-left: 0;
 }
 
+/* Mon tour : le liseré sous la main s'allume et respire. C'est le plus
+   grand objet de la zone où l'on doit agir — on le voit sans le lire. */
+.sk-hand--mine::before {
+  content: '';
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--sk-brass-hi), transparent);
+  box-shadow: 0 0 18px rgba(232, 206, 146, 0.7);
+  animation: sk-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes sk-breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* =====================================================================
+   LA CARTE — papier crème vieilli, fenêtre de couleur, dorure éraflée.
+
+   Anatomie, de l'extérieur vers l'intérieur :
+     1. le papier              : c'est la carte elle-même, et c'est lui qui
+                                 la détache du feutre (12:1 de contraste) ;
+     2. la fenêtre de couleur  : la famille se lit à distance, sans lire le
+                                 chiffre — c'est la décision la plus
+                                 fréquente du jeu (suivre la couleur) ;
+     3. la dorure éraflée      : un filet de laiton, interrompu en quatre
+                                 endroits, autour de la fenêtre ;
+     4. le PIED de parchemin   : chiffre (ou nom) + motif de famille.
+
+   Le pied est le seul élément dont la lisibilité est garantie : dans
+   l'éventail les cartes se recouvrent et il ne reste qu'une bande gauche.
+   Rien d'identifiant ne vit donc au centre — le grand chiffre du milieu
+   n'est qu'un renfort, jamais la source.
+   ===================================================================== */
+
 .sk-card {
+  --sk-w: 84px;
+  --sk-pad: 4px;
+  --sk-foot: 30px;
+  --sk-fig: 2.9rem;
+  --band: var(--sk-vert);
+  --band-d: var(--sk-vert-d);
   position: relative;
-  width: 82px;
-  height: 120px;
-  border-radius: 12px;
-  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
-  border: 3px solid #1a1208;
+  flex-shrink: 0;
+  width: var(--sk-w);
+  height: calc(var(--sk-w) / 0.7); /* ratio 7:10, celui des illustrations */
+  border-radius: var(--sk-radius);
+  background:
+    radial-gradient(120% 90% at 22% 8%, var(--sk-parch-hi) 0%, var(--sk-parch) 46%, var(--sk-parch-lo) 100%);
+  box-shadow:
+    0 0 0 1px rgba(20, 12, 5, 0.6),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transition: transform 0.26s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+/* Grain du papier, posé au-dessus de tout : c'est ce qui empêche la carte
+   de ressembler à un aplat vectoriel. */
+.sk-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: var(--sk-grain);
+  opacity: 0.24;
+  mix-blend-mode: multiply;
+}
+
+/* --- La fenêtre de couleur + sa dorure ------------------------------- */
+.sk-card__field {
+  position: absolute;
+  top: var(--sk-pad);
+  left: var(--sk-pad);
+  right: var(--sk-pad);
+  bottom: var(--sk-foot);
+  z-index: 1;
+  border-radius: 2px;
+  background:
+    radial-gradient(120% 100% at 26% 8%, color-mix(in srgb, var(--band) 78%, var(--sk-parch-hi) 22%) 0%, var(--band) 46%, var(--band-d) 100%);
+  box-shadow:
+    0 0 0 1px var(--sk-brass),
+    0 0 0 2px rgba(38, 24, 8, 0.85),
+    inset 0 1px 0 rgba(255, 244, 214, 0.16),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.34);
+}
+
+.sk-card__field::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--sk-grain);
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+
+/* La dorure s'écaille : quatre interruptions du filet, toujours aux mêmes
+   endroits — une usure régulière lirait comme un motif. */
+.sk-card__field::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 22%, var(--band) 22%, var(--band) 27%, transparent 27%) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 63%, var(--band) 63%, var(--band) 70%, transparent 70%) bottom / 100% 1px no-repeat,
+    linear-gradient(180deg, transparent 40%, var(--band) 40%, var(--band) 48%, transparent 48%) left / 1px 100% no-repeat,
+    linear-gradient(180deg, transparent 74%, var(--band) 74%, var(--band) 80%, transparent 80%) right / 1px 100% no-repeat;
+  opacity: 0.85;
+}
+
+/* --- Le grand chiffre imprimé à l'encre, au centre de la fenêtre ------
+   Renfort de lecture uniquement : à moitié masqué dans l'éventail, il ne
+   porte jamais seul l'identité de la carte. */
+.sk-card__figure {
+  position: absolute;
+  top: var(--sk-pad);
+  left: var(--sk-pad);
+  right: var(--sk-pad);
+  bottom: var(--sk-foot);
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
-  font-weight: 800;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-size: var(--sk-fig);
+  line-height: 1;
+  color: var(--sk-parch-hi);
+  opacity: 0.3;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.sk-card__figure--wild {
+  font-size: calc(var(--sk-fig) * 0.46);
+  letter-spacing: -0.02em;
+}
+
+/* Gravure monochrome des cartes spéciales — jamais d'emoji : ils dépendent
+   de la police du système et jurent avec le reste peint. */
+.sk-card__wm {
+  position: absolute;
+  top: calc(var(--sk-pad) + 8%);
+  left: 18%;
+  right: 18%;
+  bottom: calc(var(--sk-foot) + 8%);
+  z-index: 2;
+  pointer-events: none;
+  background: var(--sk-parch-hi);
+  opacity: 0.34;
+  -webkit-mask: var(--gl, var(--sk-sabre)) center / contain no-repeat;
+  mask: var(--gl, var(--sk-sabre)) center / contain no-repeat;
+}
+
+/* --- Équerres de cordage et sceau du jeu ----------------------------- */
+.sk-card__rope {
+  position: absolute;
+  width: var(--sk-corner);
+  height: var(--sk-corner);
+  z-index: 5;
+  background: var(--sk-ropecorner) center / contain no-repeat;
+  pointer-events: none;
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+}
+
+.sk-card__rope--tl {
+  top: 0;
+  left: 0;
+}
+
+.sk-card__rope--br {
+  bottom: 0;
+  right: 0;
+  transform: scale(-1, -1);
+}
+
+/* Le médaillon complet devient une croix illisible sous 34 px : à la taille
+   d'une carte, c'est donc un rivet de laiton bombé. Un ornement illisible
+   vaut moins qu'un ornement absent. */
+.sk-card__seal {
+  position: absolute;
+  top: calc(var(--sk-pad) + 2px);
+  right: calc(var(--sk-pad) + 2px);
+  width: var(--sk-seal);
+  height: var(--sk-seal);
+  z-index: 6;
+  background: var(--sk-sealimg) center / contain no-repeat;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
+}
+
+/* --- LE PIED : l'indice, sur le papier nu ---------------------------- */
+.sk-card__foot {
+  position: absolute;
+  left: var(--sk-pad);
+  right: var(--sk-pad);
+  bottom: 0;
+  height: var(--sk-foot);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 3px;
+  color: var(--sk-parch-ink);
   overflow: hidden;
 }
 
+/* Chiffre : encre sombre sur papier, 14:1 de contraste, constant sur les
+   quatre familles — c'est ce qui survivra aux illustrations. */
+.card-emblem {
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-size: calc(var(--sk-w) * 0.31);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-parch-ink);
+  text-shadow: 0 1px 0 rgba(255, 248, 226, 0.6);
+}
+
+/* Le 0/14 non déclaré porte quatre caractères là où une numérotée n'en
+   porte qu'un ou deux : il est réduit pour tenir dans le pied. */
+.card-emblem--wild {
+  font-size: calc(var(--sk-w) * 0.15);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* Nom d'une carte spéciale : capitales gravées, coupées si besoin — les
+   libellés sont volontairement courts (voir SPECIAL_INFO côté JS). */
+.sk-special-label {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: calc(var(--sk-w) * 0.088);
+  line-height: 1.12;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sk-parch-ink);
+  text-align: left;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* --- Motif de famille : la couleur n'est jamais le seul canal ---------
+   Quatre silhouettes franchement différentes — une boucle fermée, un axe
+   vertical, une forme radiale, une diagonale — reconnaissables à 12 px et
+   en dichromatie, là où bordeaux et vert bouteille sont la même couleur
+   pour un protanope. */
+.sk-card__suit {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: calc(var(--sk-w) * 0.15);
+  height: calc(var(--sk-w) * 0.15);
+  background: var(--sk-parch-ink);
+  opacity: 0.62;
+  -webkit-mask: var(--gl) center / contain no-repeat;
+  mask: var(--gl) center / contain no-repeat;
+}
+
+.sk-card--vert { --band: var(--sk-vert); --band-d: var(--sk-vert-d); --gl: var(--sk-gl-rope); }
+.sk-card--jaune { --band: var(--sk-jaune); --band-d: var(--sk-jaune-d); --gl: var(--sk-gl-anchor); }
+.sk-card--violet { --band: var(--sk-violet); --band-d: var(--sk-violet-d); --gl: var(--sk-gl-wheel); }
+.sk-card--noir { --band: var(--sk-noir); --band-d: var(--sk-noir-d); --gl: var(--sk-sabre); }
+
+/* Le 0/14 garde la couleur de sa famille dès la donne ; tant qu'il n'est
+   pas déclaré, la fenêtre est coupée en deux (papier / ocre) pour dire
+   l'ambiguïté. Le Joker prend les quatre familles à la fois. */
+.sk-card--wild14 .sk-card__field {
+  background: linear-gradient(154deg, var(--sk-parch) 0%, var(--sk-parch) 46%, var(--sk-jaune) 54%, var(--sk-jaune-d) 100%);
+}
+
+.sk-card--wild14 .sk-card__figure {
+  color: var(--sk-parch-ink);
+  opacity: 0.4;
+}
+
+.sk-card--wild15 .sk-card__field {
+  background: linear-gradient(154deg, var(--sk-vert) 0%, var(--sk-jaune) 34%, var(--sk-violet) 67%, var(--sk-noir) 100%);
+}
+
+/* --- Cartes spéciales ------------------------------------------------
+   .sk-card--special est le fourre-tout : il vient EN PREMIER pour que les
+   classes de genre ci-dessous le remplacent (spécificité égale, c'est
+   l'ordre qui tranche). */
+.sk-card--special { --band: var(--sk-sirene); --band-d: var(--sk-sirene-d); --gl: var(--sk-gl-anchor); }
+.sk-card--pirate { --band: var(--sk-pirate); --band-d: var(--sk-pirate-d); --gl: var(--sk-sabre); }
+.sk-card--k-siren { --band: var(--sk-sirene); --band-d: var(--sk-sirene-d); --gl: var(--sk-gl-fin); }
+.sk-card--k-skullking { --band: var(--sk-sk); --band-d: var(--sk-sk-d); --gl: var(--sk-gl-skull); }
+.sk-card--k-loot { --band: var(--sk-butin); --band-d: var(--sk-butin-d); --gl: var(--sk-gl-coins); }
+.sk-card--k-kraken { --band: var(--sk-kraken); --band-d: var(--sk-kraken-d); --gl: var(--sk-gl-tentacle); }
+.sk-card--k-whale { --band: var(--sk-baleine); --band-d: var(--sk-baleine-d); --gl: var(--sk-gl-whale); }
+.sk-card--k-stingray { --band: var(--sk-kraken); --band-d: var(--sk-kraken-d); --gl: var(--sk-gl-fin); }
+.sk-card--k-lastvolley { --band: var(--sk-pirate); --band-d: var(--sk-pirate-d); --gl: var(--sk-sabre); }
+.sk-card--k-plank { --band: var(--sk-fuite); --band-d: var(--sk-fuite-d); --gl: var(--sk-gl-plank); }
+.sk-card--k-davyjones { --band: var(--sk-butin); --band-d: var(--sk-butin-d); --gl: var(--sk-gl-coins); }
+/* La Baleine blanche est la seule fenêtre claire du paquet : son chiffre
+   central doit s'encrer en sombre, pas en crème. */
+.sk-card--k-whale .sk-card__wm,
+.sk-card--k-whale .sk-card__figure {
+  background: var(--sk-parch-ink);
+  color: var(--sk-parch-ink);
+  opacity: 0.3;
+}
+
+/* Le NOIR est atout permanent, et le Skull King ne perd qu'une fois par
+   partie : dorure doublée pour l'un, halo permanent pour l'autre. */
+.sk-card--noir .sk-card__field,
+.sk-card--k-skullking .sk-card__field {
+  box-shadow:
+    0 0 0 1px var(--sk-brass-hi),
+    0 0 0 2px var(--sk-brass-lo),
+    0 0 0 3px rgba(24, 15, 6, 0.9),
+    inset 0 1px 0 rgba(255, 244, 214, 0.16),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.4);
+}
+
+.sk-card--k-skullking {
+  box-shadow:
+    0 0 0 1px var(--sk-brass-lo),
+    0 0 15px rgba(184, 137, 53, 0.35),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* Famille Fuite : elle ne prend jamais le pli, elle est donc la carte
+   ternie — étain chaud, à l'opposé du bordeaux des Pirates, qui est la
+   confusion la plus fréquente et la plus chère. */
+.sk-card--escape {
+  --band: var(--sk-fuite);
+  --band-d: var(--sk-fuite-d);
+  --gl: var(--sk-gl-flag);
+}
+
+/* La Tigresse est Pirate ou Fuite au choix : tant que son choix n'est pas
+   connu, sa fenêtre est coupée en deux. */
+.sk-card--tigress {
+  --band: #8e241e;
+  --band-d: #3b382f;
+  --gl: var(--sk-sabre);
+}
+
+.sk-card--tigress .sk-card__field {
+  background: linear-gradient(154deg, #8e241e 0%, var(--sk-pirate-d) 46%, var(--sk-fuite-d) 54%, #8a8578 100%);
+}
+
+/* Une fois la décision révélée (pli résolu), elle bascule franchement dans
+   la couleur correspondante — on lit son choix sans avoir à le déduire. */
+.sk-card--tigress-pirate .sk-card__field {
+  background: radial-gradient(120% 100% at 26% 8%, #a8322a 0%, var(--sk-pirate) 46%, var(--sk-pirate-d) 100%);
+}
+
+.sk-card--tigress-escape .sk-card__field {
+  background: radial-gradient(120% 100% at 26% 8%, #8a8578 0%, var(--sk-fuite) 46%, var(--sk-fuite-d) 100%);
+}
+
+/* --- Dos de carte : velours bordeaux, médaillon centré --------------- */
+.sk-card--hidden {
+  background: radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  cursor: default;
+}
+
+.sk-card--hidden .sk-card__field {
+  background: none;
+  box-shadow: 0 0 0 1px rgba(184, 137, 53, 0.45), inset 0 0 22px rgba(0, 0, 0, 0.5);
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+}
+
+.sk-card--hidden:hover {
+  transform: none;
+}
+
+.sk-hidden-mark {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 900;
+  font-size: calc(var(--sk-w) * 0.42);
+  color: var(--sk-brass-hi);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.7);
+}
+
+/* ---------------------------------------------------------------------
+   CARTE ILLUSTRÉE — l'illustration EST la carte.
+   Les PNG fournis portent déjà leur bord crème, leur bande peinte, leur
+   dorure et leurs médaillons d'angle : on ne rajoute donc ni fenêtre, ni
+   filet, ni sceau, ni cordage. Leur ratio est exactement 7:10, celui de
+   .sk-card — l'image se pose en `cover` sans être recadrée.
+   Seul le pied se surimpose, sur un vrai cartouche de parchemin.
+   --------------------------------------------------------------------- */
+.sk-card--art {
+  background: #1a0e06 var(--art) 50% 50% / cover no-repeat;
+}
+
+.sk-card--art .sk-card__field,
+.sk-card--art .sk-card__figure,
+.sk-card--art .sk-card__wm,
+.sk-card--art .sk-card__rope,
+.sk-card--art .sk-card__seal {
+  display: none;
+}
+
+.sk-card--art::after {
+  opacity: 0.1;
+}
+
+.sk-card--art .sk-card__foot {
+  left: 3px;
+  right: auto;
+  bottom: 3px;
+  max-width: 66%;
+  height: auto;
+  padding: 3px 6px 4px;
+  border-radius: 2px;
+  background: linear-gradient(178deg, var(--sk-parch-hi), var(--sk-parch) 58%, var(--sk-parch-lo));
+  box-shadow:
+    0 0 0 1px var(--sk-brass),
+    0 0 0 2px rgba(24, 14, 5, 0.85),
+    0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.sk-card--art-anto { --art: url('assets/cards/anto-coco.webp'); }
+.sk-card--art-mams { --art: url('assets/cards/guy-mams.webp'); }
+.sk-card--art-guigui { --art: url('assets/cards/guigui.webp'); }
+.sk-card--art-pablo { --art: url('assets/cards/pablo.webp'); }
+
+/* --- Extension : fanion de laiton au coin coupé ---------------------- */
+.sk-card--ext::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 6;
+  width: 0;
+  height: 0;
+  border-top: 14px solid var(--sk-brass);
+  border-left: 14px solid transparent;
+  filter: drop-shadow(-1px 1px 1px rgba(0, 0, 0, 0.65));
+}
+
+/* --- États ----------------------------------------------------------- */
 .sk-hand .sk-card {
   cursor: pointer;
 }
 
+/* Le survol soulève la carte et l'éclaire d'un halo chaud — c'est le seul
+   endroit du jeu où une carte s'allume toute seule. */
 .sk-hand .sk-card:hover,
 .sk-hand .sk-card:active {
-  transform: translateY(-18px) scale(1.06);
+  transform: translateY(-18px) scale(1.05);
   z-index: 3;
+  box-shadow:
+    0 0 0 1px var(--sk-brass),
+    0 0 26px rgba(232, 206, 146, 0.34),
+    0 16px 26px rgba(0, 0, 0, 0.6);
 }
 
-/* Carte numérotée hors-couleur alors qu'on doit suivre : grisée, pas de
-   lift au survol, curseur "interdit" - reste cliquable pour rappeler la
-   règle via un toast plutôt que de rester silencieuse. */
+/* Carte numérotée hors-couleur alors qu'on doit suivre : elle perd sa
+   dorure — le filet de laiton est ce qui dit « jouable » — et se ternit.
+   Elle reste cliquable pour rappeler la règle plutôt que de rester muette. */
 .sk-card--unplayable {
-  opacity: 0.45;
-  filter: grayscale(0.4);
+  filter: saturate(0.24) brightness(0.6);
   cursor: not-allowed;
+}
+
+.sk-card--unplayable .sk-card__field {
+  box-shadow: 0 0 0 1px rgba(110, 106, 94, 0.6), inset 0 0 10px rgba(0, 0, 0, 0.7);
 }
 
 .sk-hand .sk-card--unplayable:hover,
 .sk-hand .sk-card--unplayable:active {
   transform: none;
   z-index: auto;
+  box-shadow:
+    0 0 0 1px rgba(20, 12, 5, 0.6),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 /* Carte choisie pour la défausse pendant le pouvoir de Will le Bandit. */
 .sk-card--selected {
-  transform: translateY(-18px) scale(1.06);
-  border-color: #facc15;
-  box-shadow: 0 0 0 3px #facc1599, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  transform: translateY(-18px) scale(1.05);
   z-index: 3;
+  box-shadow:
+    0 0 0 2px var(--sk-brass-hi),
+    0 0 20px rgba(232, 206, 146, 0.5),
+    0 14px 24px rgba(0, 0, 0, 0.6);
 }
 
-/* Les deux cartes tout juste piochées par Will le Bandit : un liseré discret
-   dans la main (pour les repérer sans les confondre avec la sélection de
-   défausse ci-dessus, en bleu plutôt qu'en doré), et un aperçu séparé dans le
-   panneau du pouvoir - la vraie "popup" demandée, avant même de choisir quoi
-   défausser. */
+/* Les deux cartes tout juste piochées par Will le Bandit : un liseré de
+   cuivre pour les repérer sans les confondre avec la sélection de défausse
+   ci-dessus, qui est en laiton clair. */
 .sk-card--will-drawn {
-  box-shadow: 0 0 0 2px #38bdf8aa, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 2px var(--sk-copper),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 .sk-will-drawn-row {
@@ -1111,111 +2424,57 @@ h1 {
 
 .sk-will-drawn-row .sk-card {
   cursor: default;
-  animation: sk-card-drop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: sk-card-drop 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 .sk-will-drawn-row .sk-card:hover {
   transform: none;
 }
 
-/* Cartes numérotées : fond en couleur pleine selon la famille
-   (vert/jaune/violet/noir), le noir étant l'atout permanent - même
-   traitement "couleur pleine" pour les 4, pour qu'on les distingue au
-   premier coup d'œil sans avoir à lire le petit chiffre. */
-.sk-card--vert {
-  background: linear-gradient(155deg, #22c55e, #14532d);
-  color: #f0fdf4;
-}
-.sk-card--jaune {
-  background: linear-gradient(155deg, #fde047, #b45309);
-  color: #1a1208;
-}
-.sk-card--violet {
-  background: linear-gradient(155deg, #c084fc, #581c87);
-  color: #f5f0e6;
-}
-.sk-card--noir {
-  background: linear-gradient(155deg, #3a3a3a, #0a0a0a);
-  color: #f5f0e6;
-}
-
-/* Extension : le 0/14 garde sa vraie couleur de famille (posée par
-   sortHandForDisplay/cardClass sur .sk-card--vert etc.) tant qu'elle est
-   déclarée ; avant ça, un dégradé "coupé en deux" (crème/or) rappelle
-   visuellement l'ambiguïté 0 vs 14. Le Joker prend un dégradé arc-en-ciel,
-   seule carte à représenter "toutes les couleurs" avant d'être jouée. */
-.sk-card--wild14 {
-  background: linear-gradient(155deg, #fffdf8 0%, #fffdf8 46%, #facc15 54%, #b45309 100%);
-  color: #1a1208;
-}
-.sk-card--wild15 {
-  background: linear-gradient(135deg, #22c55e 0%, #fde047 34%, #c084fc 67%, #3a3a3a 100%);
-  color: #fff;
-}
-.sk-card--wild15 .sk-special-label {
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-}
-
-/* Le 0/14 non déclaré porte quatre caractères là où une carte numérotée n'en
-   porte qu'un ou deux : à la taille normale d'emblème il déborderait de la
-   carte. On le réduit, et dans l'éventail on le cale à gauche comme les
-   libellés spéciaux, seule bande que la carte suivante ne recouvre pas. */
-.card-emblem--wild {
-  font-size: 0.62em;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
-.sk-hand .card-emblem--wild {
-  position: absolute;
-  top: 8px;
-  left: 7px;
-  font-size: 0.5em;
-}
-
-/* Cartes spéciales : un emoji + un petit nom, fond distinct pour qu'elles
-   sautent aux yeux dans l'éventail. Les Pirates (et Mat le Forban, même
-   famille visuelle) ont leur propre couleur (rouge) pour qu'on les repère
-   instantanément parmi les autres spéciales. */
-.sk-card--special,
-.sk-card--pirate,
-.sk-card--wild15 {
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-}
-
-.sk-card--special {
-  background: #f5ede0;
-}
-
-/* Ta propre carte pendant l'annonce de la manche 1 : dos de carte, même
-   motif que les piles/dos de sièges - aucune information ne doit filtrer.
-   Le liseré doré pointillé et le « ? » disent que c'est volontaire. */
-.sk-card--hidden {
-  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
-  border-color: #1a0505;
-  box-shadow: inset 0 0 0 2px #facc1555, 3px 3px 0 rgba(0, 0, 0, 0.35);
+/* --- Échelles --------------------------------------------------------
+   Une seule variable pilote la carte : sa largeur. La hauteur, le pied, le
+   chiffre et les motifs en découlent, ce qui évite qu'un palier oublie une
+   dimension et casse la lisibilité du pied. */
+.sk-trick-card .sk-card {
+  /* --sk-trick-scale est posée par renderTrick : sur un feutre trop court
+     pour loger deux cartes entre les sièges opposés, elles rétrécissent
+     plutôt que de venir se poser sur les étiquettes. */
+  --sk-w: calc(76px * var(--sk-trick-scale, 1));
+  --sk-foot: calc(27px * var(--sk-trick-scale, 1));
+  --sk-fig: calc(2.5rem * var(--sk-trick-scale, 1));
+  --sk-corner: 14px;
+  --sk-seal: 11px;
   cursor: default;
 }
 
-.sk-card--hidden:hover {
-  transform: none;
+.sk-card.sk-seat-reveal-card {
+  --sk-w: 44px;
+  --sk-pad: 2px;
+  --sk-foot: 16px;
+  --sk-fig: 1.5rem;
+  --sk-corner: 9px;
+  --sk-seal: 0;
+  --sk-radius: 5px;
+  cursor: default;
+  transform: rotate(-4deg);
+  box-shadow: 0 0 0 1px var(--sk-brass-lo), 2px 3px 0 rgba(0, 0, 0, 0.45);
+  animation: sk-reveal-drop 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
-.sk-hidden-mark {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: #facc15;
-  opacity: 0.75;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+.sk-seat-reveal-card .sk-special-label {
+  font-size: 0.3rem;
+  letter-spacing: 0.01em;
 }
 
-.sk-card--pirate {
-  background: linear-gradient(155deg, #ef4444, #7f1d1d);
+@keyframes sk-reveal-drop {
+  from {
+    opacity: 0;
+    transform: rotate(-4deg) translateY(-10px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-4deg);
+  }
 }
 
 /* Compteur de plis posé au-dessus du jeton (paysage) : plis remportés sur
@@ -1227,14 +2486,16 @@ h1 {
   bottom: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(10, 4, 4, 0.88);
-  border: 2px solid rgba(255, 255, 255, 0.22);
+  padding: 1px 8px 2px;
+  border-radius: 2px;
+  background: rgba(6, 14, 11, 0.85);
+  box-shadow: 0 0 0 1px rgba(184, 137, 53, 0.42);
+  font-family: 'Bitter', Georgia, serif;
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   line-height: 1.35;
-  color: #f5f0e6;
+  color: var(--sk-cream);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -1246,81 +2507,17 @@ h1 {
   top: calc(100% + 4px);
 }
 
-/* Annonce tenue pile : vert. Dépassée : rouge — c'est perdu, autant que ça
-   se voie tout de suite. */
+/* Annonce tenue pile / dépassée. La couleur ne fait que redoubler : le
+   texte lui-même est explicite (« 2 sur 3 »), parce qu'un vert et un rouge
+   sont la même couleur pour 8 % des joueurs masculins. */
 .sk-seat-tally--exact {
-  border-color: #4ade8099;
-  color: #86efac;
+  box-shadow: 0 0 0 1px var(--sk-kept);
+  color: #9bd79e;
 }
 
 .sk-seat-tally--over {
-  border-color: #f8717199;
-  color: #fca5a5;
-}
-
-/* Famille Fuite : bleu, à l'opposé du rouge des Pirates. Une Fuite renonce
-   au pli quand un Pirate le prend — deux intentions contraires, deux
-   couleurs contraires, lisibles d'un coup d'œil sur le tapis. */
-.sk-card--escape {
-  background: linear-gradient(155deg, #3b82f6, #1e3a8a);
-}
-
-.sk-card--escape .sk-special-label {
-  color: #eff6ff;
-}
-
-/* La Tigresse est l'une ou l'autre au choix : tant que son choix n'est pas
-   connu, elle est coupée en deux, moitié rouge moitié bleue. */
-.sk-card--tigress {
-  background: linear-gradient(155deg, #ef4444 0%, #7f1d1d 47%, #1e3a8a 53%, #3b82f6 100%);
-}
-
-.sk-card--tigress .sk-special-label {
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-
-/* Une fois la décision révélée (pli résolu), elle bascule franchement dans
-   la couleur correspondante — on lit son choix sans avoir à le déduire. */
-.sk-card--tigress-pirate {
-  background: linear-gradient(155deg, #ef4444, #7f1d1d);
-}
-
-.sk-card--tigress-escape {
-  background: linear-gradient(155deg, #3b82f6, #1e3a8a);
-}
-
-/* Libellé d'une carte spéciale : c'est tout ce que porte la carte (plus
-   d'emoji). Calé en haut à gauche plutôt que centré, parce que dans
-   l'éventail la carte suivante recouvre la moitié droite : seule cette bande
-   est lue. Les libellés sont volontairement courts (voir SPECIAL_INFO et
-   PIRATE_SHORT_NAME) pour tenir sans être coupés. */
-.sk-special-label {
-  position: absolute;
-  top: 7px;
-  left: 7px;
-  right: 7px;
-  overflow-wrap: break-word;
-  font-size: 0.34em;
-  font-weight: 800;
-  color: #1a1208;
-  text-align: left;
-  line-height: 1.15;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  hyphens: auto;
-}
-
-.sk-card--pirate .sk-special-label {
-  color: #fff1f1;
-}
-
-/* Cartes du pli : plus petites que la main, jamais cliquables. */
-.sk-trick-card .sk-card {
-  width: 64px;
-  height: 92px;
-  font-size: 1.1rem;
-  cursor: default;
+  box-shadow: 0 0 0 1px var(--sk-failed);
+  color: #e09a90;
 }
 
 /* --- Bannière de début de manche --- */
@@ -1336,17 +2533,23 @@ h1 {
 }
 
 .sk-round-start-banner span {
-  background: rgba(15, 4, 4, 0.85);
-  border: 3px solid #facc15;
-  border-radius: 14px;
-  padding: 14px 34px;
-  color: #facc15;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-weight: 800;
-  font-size: 2.4rem;
+  padding: 16px 40px 18px;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.08), rgba(0, 0, 0, 0.34)),
+    linear-gradient(178deg, var(--sk-oak-hi) 0%, var(--sk-oak) 34%, var(--sk-oak-lo) 100%);
+  color: var(--sk-cream);
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 900;
+  font-size: 2.2rem;
   letter-spacing: 0.04em;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4), 0 0 24px rgba(250, 204, 21, 0.35);
-  animation: sk-round-start-pop 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.2),
+    0 0 0 1px var(--sk-brass),
+    0 0 0 3px rgba(16, 9, 3, 0.9),
+    0 18px 40px rgba(0, 0, 0, 0.7);
+  animation: sk-round-start-pop 1.8s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
 }
 
 @keyframes sk-round-start-pop {
@@ -1391,21 +2594,26 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  background: rgba(15, 4, 4, 0.88);
-  border: 3px solid #facc15;
-  border-radius: 16px;
-  padding: 18px 28px;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4), 0 0 24px rgba(250, 204, 21, 0.3);
+  gap: 12px;
+  padding: 20px 30px 22px;
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.32)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 20px 44px rgba(0, 0, 0, 0.72);
 }
 
 .sk-bid-reveal-title {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-weight: 800;
-  font-size: 1.3rem;
-  color: #facc15;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.24rem;
+  color: var(--sk-cream);
   letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
 
 /* Assez large pour aligner 6 annonces d'un coup ; au-delà (jusqu'à 9 avec
@@ -1451,15 +2659,19 @@ h1 {
 .sk-bid-card-face {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
-  border: 3px solid #1a1208;
+  border-radius: var(--sk-radius);
   backface-visibility: hidden;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.7), 0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 .sk-bid-card-back {
-  background: repeating-linear-gradient(45deg, #4a1414 0px, #4a1414 3px, #2b0a0a 3px, #2b0a0a 6px);
-  box-shadow: inset 0 0 0 2px #facc1544, 3px 3px 0 rgba(0, 0, 0, 0.35);
+  background:
+    var(--sk-medallion) center / 46% no-repeat,
+    radial-gradient(circle at 50% 42%, var(--sk-wine-hi), var(--sk-wine) 56%, var(--sk-wine-lo) 100%);
+  box-shadow:
+    inset 0 0 0 3px rgba(184, 137, 53, 0.32),
+    0 0 0 1px rgba(20, 12, 5, 0.7),
+    0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 .sk-bid-card-front {
@@ -1469,14 +2681,22 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  background: linear-gradient(155deg, #fffdf8 0%, #fff3d8 100%);
-  color: #1a1208;
+  background:
+    radial-gradient(120% 90% at 22% 8%, var(--sk-parch-hi) 0%, var(--sk-parch) 46%, var(--sk-parch-lo) 100%);
+  box-shadow:
+    inset 0 0 0 1px var(--sk-brass),
+    inset 0 0 0 2px rgba(38, 24, 8, 0.6),
+    0 8px 16px rgba(0, 0, 0, 0.5);
+  color: var(--sk-parch-ink);
 }
 
 .sk-bid-card-num {
-  font-size: 1.9rem;
-  font-weight: 900;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 1.85rem;
+  font-weight: 700;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(255, 248, 226, 0.6);
 }
 
 /* Le pseudo tient sur la largeur de la carte ou se coupe proprement : il
@@ -1486,11 +2706,12 @@ h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.48rem;
-  font-weight: 800;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.46rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  opacity: 0.75;
+  letter-spacing: 0.06em;
+  color: #6e5320;
 }
 
 /* --- Roue de tirage au sort (qui mène le premier pli), même DA que celle
@@ -1508,13 +2729,18 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: rgba(15, 4, 4, 0.88);
+  background: radial-gradient(60% 50% at 50% 44%, rgba(20, 12, 5, 0.88), rgba(3, 8, 10, 0.95));
 }
 
+/* Le gouvernail peint est le cadre lui-même. Son trou central mesure
+   52,1 % de la largeur de l'image (relevé au masque) : c'est la borne du
+   camembert, qui doit s'y loger sans mordre le bois. */
 .sk-wheel-frame {
   position: relative;
-  width: 260px;
-  height: 260px;
+  width: 320px;
+  height: 320px;
+  background: url('assets/skin/roue-gouvernail.webp') 50% 50% / 100% 100% no-repeat;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.7));
 }
 
 .sk-wheel {
@@ -1522,25 +2748,33 @@ h1 {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 150px;
-  height: 150px;
+  /* 50 % du cadre : un cheveu de moins que le trou (52,1 %), pour que le
+     bois du gouvernail recouvre le bord du camembert au lieu de laisser
+     apparaître une couture entre les deux. */
+  width: 50%;
+  height: 50%;
   border-radius: 50%;
-  border: 5px solid #1a1208;
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(255, 255, 255, 0.08), 0 0 0 2px #facc15;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.55);
 }
 
+/* La barre rouge pivote sur le centre du gouvernail. Elle pointe vers le
+   HAUT au repos, comme l'ancienne flèche SVG : la rotation calculée par
+   revealStarter reste donc valable telle quelle. Son moyeu est tronqué par
+   le bord de son image — c'est le clou de laiton du centre qui masque la
+   coupure. */
 .sk-wheel-needle {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 34px;
-  height: 66px;
-  margin-left: -17px;
-  margin-top: -66px;
+  width: 15%;
+  height: 23%;
+  margin-left: -7.5%;
+  margin-top: -23%;
+  object-fit: contain;
   transform-origin: 50% 100%;
   transform: rotate(0deg);
   transition: transform 2.2s cubic-bezier(0.12, 0.67, 0.16, 1);
-  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6));
   z-index: 3;
 }
 
@@ -1550,17 +2784,18 @@ h1 {
   display: block;
 }
 
+/* Le clou de laiton au moyeu : il n'est pas décoratif, il cache la base du
+   pointeur, tronquée net par le bord de son image. Sans lui on verrait une
+   coupure droite au centre du gouvernail. */
 .sk-wheel-hub {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #fef3c7;
-  border: 3px solid #1a1208;
-  box-shadow: 0 0 0 2px #facc15;
+  width: 11%;
+  height: 11%;
+  background: url('assets/skin/clou-laiton.webp') 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
   z-index: 4;
 }
 
@@ -1572,29 +2807,32 @@ h1 {
 .sk-wheel-tag {
   position: absolute;
   transform: translate(-50%, -50%);
-  padding: 5px 12px;
-  background: #ffffff11;
-  border: 2px solid #ffffff33;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.78rem;
-  color: #fff;
+  padding: 4px 12px 5px;
+  border-radius: 2px;
+  background: linear-gradient(178deg, var(--sk-parch-hi), var(--sk-parch) 60%, var(--sk-parch-lo));
+  box-shadow: 0 0 0 1px var(--sk-brass-lo), 0 2px 6px rgba(0, 0, 0, 0.6);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--sk-parch-ink);
   white-space: nowrap;
   transition: all 0.25s;
 }
 
 .sk-wheel-tag--winner {
-  background: #facc15;
-  border-color: #1a1208;
-  color: #1a1208;
+  background: linear-gradient(180deg, #eedca8, var(--sk-brass) 56%, var(--sk-brass-lo));
+  box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.85), 0 0 18px rgba(232, 206, 146, 0.55);
+  color: #2a1b06;
 }
 
 .sk-start-reveal-text {
-  font-weight: 800;
-  font-size: 1.15rem;
-  color: #facc15;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--sk-cream);
   text-align: center;
-  max-width: 280px;
+  max-width: 300px;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -1607,8 +2845,8 @@ h1 {
    pointillé pour ne jamais être confondu avec un bouton du jeu. */
 .sk-dev-tool {
   background: none;
-  border: 2px dashed #ffffff33;
-  color: #cbd5e1;
+  border: 2px dashed rgba(232, 206, 146, 0.28);
+  color: var(--sk-cream-2);
   box-shadow: none;
   font-size: 0.8rem;
   padding: 7px 14px;
@@ -1616,7 +2854,7 @@ h1 {
 }
 
 .sk-dev-tool:hover {
-  background: #ffffff12;
+  background: rgba(232, 206, 146, 0.10);
   box-shadow: none;
   transform: none;
 }
@@ -1624,22 +2862,24 @@ h1 {
 /* --- Historique des manches (panneau de scores → modale) --- */
 
 .sk-history-link {
-  margin-top: auto;
-  padding: 6px 8px;
-  border: 1px dashed #ffffff2e;
-  border-radius: 9px;
+  margin: 10px 0 0;
+  padding: 7px 8px 8px;
+  border: 1px dashed rgba(184, 137, 53, 0.34);
+  border-radius: 2px;
   background: none;
-  color: #cbd5e1;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
+  color: var(--sk-cream-2);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sk-history-link:hover {
-  background: #ffffff12;
-  color: #fff;
+  background: rgba(184, 137, 53, 0.12);
+  color: var(--sk-cream);
 }
 
 .sk-history-content {
@@ -1654,7 +2894,7 @@ h1 {
 .sk-hist-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Bitter', Georgia, serif;
   font-size: 0.78rem;
 }
 
@@ -1662,17 +2902,17 @@ h1 {
 .sk-hist-table td {
   padding: 5px 7px;
   text-align: center;
-  border-bottom: 1px solid #ffffff14;
+  border-bottom: 1px solid rgba(232, 206, 146, 0.11);
 }
 
 .sk-hist-table thead th {
-  color: #facc15;
+  color: var(--sk-brass-hi);
   font-size: 0.72rem;
   white-space: nowrap;
 }
 
 .sk-hist-round {
-  color: #cbd5e1;
+  color: var(--sk-cream-2);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -1691,11 +2931,11 @@ h1 {
 }
 
 .sk-hist-hit {
-  background: #16a34a26;
+  background: rgba(78, 138, 74, 0.16);
 }
 
 .sk-hist-miss {
-  background: #b91c1c26;
+  background: rgba(156, 42, 34, 0.15);
 }
 
 .sk-hist-bid {
@@ -1713,7 +2953,7 @@ h1 {
   display: block;
   font-size: 0.68rem;
   font-weight: 800;
-  color: #facc15;
+  color: var(--sk-brass-hi);
 }
 
 .sk-hist-legend {
@@ -1736,14 +2976,19 @@ h1 {
 }
 
 .sk-round-popup-inner {
-  background: #200606;
-  border: 3px solid #1a1208;
-  border-radius: 16px;
-  padding: 20px 22px;
-  max-width: 340px;
+  border-radius: 5px;
+  padding: 20px 22px 22px;
+  max-width: 360px;
   width: 100%;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4);
-  animation: sk-popup-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 20px 44px rgba(0, 0, 0, 0.7);
+  animation: sk-popup-in 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @keyframes sk-popup-in {
@@ -1758,9 +3003,13 @@ h1 {
 }
 
 .sk-round-popup-inner h3 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   text-align: center;
-  color: #facc15;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.16rem;
+  color: var(--sk-cream);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
 
 .sk-round-popup-rows {
@@ -1778,17 +3027,21 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 10px;
-  border-radius: 9px;
-  background: #ffffff0f;
-  font-size: 0.85rem;
+  padding: 7px 11px 8px;
+  border-radius: 2px;
+  background: rgba(255, 236, 196, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.16);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
 }
 
 /* --- Lien entre alliés du Butin : ligne tracée derrière les lignes du
    tableau, entre les deux (ou trois, si un joueur cumule deux alliances)
    joueurs concernés - même si d'autres lignes s'intercalent entre eux. --- */
 .sk-round-popup-row--loot {
-  border-left: 3px solid #facc15;
+  border-left: 3px solid var(--sk-brass-hi);
   padding-left: 7px;
 }
 
@@ -1827,41 +3080,55 @@ h1 {
 }
 
 .sk-round-popup-row-detail {
-  font-size: 0.72rem;
-  opacity: 0.7;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  color: var(--sk-cream-2);
 }
 
 .sk-round-popup-row-breakdown {
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 500;
   font-size: 0.68rem;
-  color: #facc15;
-  opacity: 0.85;
+  letter-spacing: 0;
+  color: var(--sk-brass);
 }
 
 .sk-round-popup-row-delta {
-  font-weight: 900;
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.06rem;
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
 .sk-delta--up {
-  color: #4ade80;
+  color: #8fc98c;
 }
 
 .sk-delta--down {
-  color: #fca5a5;
+  color: #e09a90;
 }
 
+/* Le signe est déjà écrit devant le nombre (+10 / -10) : la couleur ne fait
+   que redoubler, elle ne porte jamais l'information seule. */
+
 .sk-round-popup-timer {
-  margin-top: 14px;
-  height: 5px;
-  border-radius: 3px;
-  background: #ffffff1a;
+  margin-top: 16px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(184, 137, 53, 0.16);
   overflow: hidden;
 }
 
 .sk-round-popup-bar {
   height: 100%;
   width: 100%;
-  background: #facc15;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--sk-brass-lo), var(--sk-brass-hi));
+  box-shadow: 0 0 8px rgba(232, 206, 146, 0.6);
   transform-origin: left center;
 }
 
@@ -1880,37 +3147,61 @@ h1 {
 .sk-score-table th,
 .sk-score-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid #ffffff22;
+  border-bottom: 1px solid rgba(232, 206, 146, 0.19);
   text-align: center;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Bitter', Georgia, serif;
 }
 
 .sk-score-table th {
-  color: #facc15;
+  color: var(--sk-brass-hi);
 }
 
 /* Éléments introduits pour la mise en page paysage (marque du bandeau,
    intertitres et légende du panneau de scores, jeton de siège, colonne
    plis/annonce). Masqués par défaut : sous 1000px la mise en page verticale
    reste strictement celle d'avant, ces ajouts n'y apparaissent jamais. */
-.sk-brand,
 .sk-side-title,
 .sk-seat-av,
-.sk-round-segments,
 .sk-bar-hint,
 .sk-score-row-bid {
   display: none;
 }
 
 @media (max-width: 680px) {
-  .sk-play-area {
+  /* Sur téléphone, l'écran défile : la main doit rester juste sous le tapis,
+     sinon il faut passer tout le panneau (objectif, registre, carnet) pour
+     atteindre ses cartes — c'est-à-dire perdre le tapis de vue au moment de
+     jouer. `display: contents` sort le tapis et le panneau du conteneur pour
+     qu'ils puissent être ordonnés individuellement. */
+  #sk-screen-game {
+    display: flex;
     flex-direction: column;
-    gap: 10px;
   }
+  .sk-game-header { order: 0; }
+  .sk-play-area { display: contents; }
+  .sk-table { order: 1; }
+  #sk-power-banner,
+  .sk-power-panel,
+  .sk-turn-indicator { order: 2; }
+  .sk-bid-choices { order: 3; }
+  .sk-hand { order: 4; }
+  .sk-scoreboard { order: 5; margin-top: 12px; }
+
+  /* Sur téléphone le tapis prend toute la largeur ; sa hauteur suit le
+     ratio de l'image, l'écran défile de toute façon. */
   .sk-table {
     flex: none;
     width: 100%;
-    height: 260px;
+    max-width: none;
+    border-radius: 6px;
+  }
+  .sk-trick-card .sk-card {
+    --sk-w: 52px;
+    --sk-foot: 19px;
+    --sk-fig: 1.7rem;
+    --sk-corner: 10px;
+    --sk-seal: 8px;
+    --sk-radius: 6px;
   }
   .sk-turn-indicator {
     margin: 6px 0 4px;
@@ -1930,18 +3221,42 @@ h1 {
     flex: 1 1 44%;
   }
   .sk-seat {
-    width: 78px;
+    width: 84px;
+  }
+  .sk-seat-label {
+    flex-direction: column;
+    gap: 0;
+    padding: 2px 5px 3px;
+  }
+  .sk-seat-name {
+    max-width: 74px;
+    font-size: 0.62rem;
+  }
+  .sk-seat-bid {
+    font-size: 0.6rem;
+  }
+  .sk-seat-dealer {
+    top: -7px;
+    right: -11px;
+    width: 15px;
+    height: 15px;
+    font-size: 0.5rem;
+  }
+  /* Le carnet reste court : sur un écran qui défile déjà, il ne doit pas
+     repousser la main hors de portée. */
+  .sk-chat-log {
+    max-height: 96px;
   }
   .sk-hand {
-    --sk-fan-visible: 44px;
+    padding: 22px 10px 6px;
+    min-height: 140px;
   }
   .sk-hand .sk-card {
-    width: 70px;
-    height: 102px;
-    font-size: 1.2rem;
-  }
-  .sk-card-arc {
-    margin-left: -26px;
+    --sk-w: 72px;
+    --sk-foot: 26px;
+    --sk-fig: 2.3rem;
+    --sk-corner: 13px;
+    --sk-seal: 11px;
   }
 }
 
@@ -1975,34 +3290,13 @@ h1 {
 
   /* --- Bandeau du haut : plein cadre, marque à gauche, pilule d'avancement
      (manche + annonces/pli en cours) poussée à droite. --- */
+  /* En paysage, le bandeau tient toute la largeur et ne défile pas avec
+     le reste : c'est la seule barre permanente de l'écran. */
   .sk-game-header {
     flex-shrink: 0;
-    justify-content: flex-start;
-    gap: 16px;
     margin: 0;
-    padding: 7px 18px;
-    background: rgba(0, 0, 0, 0.45);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.09);
-  }
-
-  .sk-brand {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-weight: 800;
-    font-size: 1.15rem;
-    color: #f5c24c;
-    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
-  }
-
-  .sk-round-indicator {
-    margin-left: auto;
-    font-size: 0.8rem;
-    padding: 5px 15px;
-    border-radius: 999px;
-    background: #f5c24c1a;
-    border: 2px solid #f5c24c44;
+    border-radius: 0;
+    padding: 8px 18px 10px;
   }
 
   /* --- Corps : tapis pleine hauteur + panneau de scores permanent. --- */
@@ -2014,23 +3308,17 @@ h1 {
     padding: 12px 16px 4px;
   }
 
-  /* Feutre bleu nuit plutôt que rouge : le fond de page, l'habillage et les
-     cartes Pirate sont déjà rouges, le tapis ne s'en détachait pas. Le bleu
-     rend aussi les quatre couleurs de cartes (dont le vert) bien plus
-     lisibles, et reprend le tapis du mode portrait, resté bleu depuis le
-     début. */
+  /* En paysage l'écran ne défile pas : le tapis est borné par la hauteur
+     restante autant que par la largeur. Les 302 px retranchés sont le
+     bandeau, la main et les boutons d'annonce, mesurés à 1440×900.
+     `align-self` neutralise l'étirement du panneau voisin, qui écraserait
+     le ratio. */
   .sk-table {
-    height: auto;
-    border-radius: 50% / 34%;
-    border: 3px solid rgba(0, 0, 0, 0.55);
-    background:
-      radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0.07), transparent 62%),
-      radial-gradient(ellipse at 50% 45%, #1b3b4a 0%, #0d1e2a 62%, #060d14 100%);
-    box-shadow:
-      inset 0 0 80px rgba(0, 0, 0, 0.5),
-      inset 0 0 0 3px rgba(245, 194, 76, 0.26),
-      0 10px 30px rgba(0, 0, 0, 0.55);
+    align-self: center;
+    max-width: min(620px, calc((100dvh - 302px) * 1369 / 1149));
   }
+
+
 
   /* Cartes du pli : même gabarit que celles de la main. Tout ce qui est posé
      sur le tapis doit être à la même échelle, sinon les adversaires ont l'air
@@ -2040,9 +3328,9 @@ h1 {
      plutôt que de venir se poser sur les avatars. L'échelle vaut 1 dès qu'il
      y a la place. */
   .sk-trick-card .sk-card {
-    width: calc(84px * var(--sk-trick-scale, 1));
-    height: calc(118px * var(--sk-trick-scale, 1));
-    font-size: calc(1.45rem * var(--sk-trick-scale, 1));
+    --sk-w: calc(86px * var(--sk-trick-scale, 1));
+    --sk-foot: calc(30px * var(--sk-trick-scale, 1));
+    --sk-fig: calc(2.8rem * var(--sk-trick-scale, 1));
   }
 
   .sk-trick-caption {
@@ -2071,22 +3359,19 @@ h1 {
     font-size: 1.6rem;
     /* Couleur propre au joueur, posée par avatarLook() ; le bordeaux ne sert
        plus que de repli si la variable manque. */
-    background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
-    border: 3px solid #1a1208;
+    background: radial-gradient(circle at 35% 30%, var(--sk-av-color, var(--sk-wine-lo)), var(--sk-oak-lo));
+    border: 3px solid var(--sk-oak-lo);
     box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
     transition: all 0.25s;
   }
 
-  /* Le jaune est réservé à qui a la main : mon siège garde sa couleur, seul
-     un liseré clair dit « c'est toi ». */
-  .sk-seat--me .sk-seat-av {
-    border-color: #ffffffcc;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(255, 255, 255, 0.16);
-  }
+  /* Aucun liseré sur mon propre jeton : il est toujours en bas au centre,
+     et c'est le seul dont on lit le pseudo sans chercher. Le marquer en
+     plus ne faisait que salir l'émail du médaillon. */
 
   .sk-seat--turn .sk-seat-av {
-    background: radial-gradient(circle at 35% 30%, #fde047, #b45309);
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 0 6px #f5c24c40;
+    background: radial-gradient(circle at 35% 30%, var(--sk-brass-hi), var(--sk-brass-lo));
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 0 6px rgba(184, 137, 53, 0.25);
   }
 
   /* Comme sur la maquette : nom sur sa ligne, annonce en pilule en dessous. */
@@ -2109,7 +3394,7 @@ h1 {
   }
 
   .sk-seat--turn .sk-seat-name {
-    color: #f5c24c;
+    color: var(--sk-brass);
   }
 
   .sk-seat .sk-seat-bid,
@@ -2118,22 +3403,22 @@ h1 {
     padding: 1px 8px;
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.33);
-    border: 1px solid #ffffff26;
-    color: #fff;
+    border: 1px solid rgba(232, 206, 146, 0.21);
+    color: var(--sk-cream);
   }
 
   .sk-seat .sk-seat-bid--hit,
   .sk-seat--turn .sk-seat-bid--hit {
-    background: #16a34a55;
-    border-color: #4ade8088;
-    color: #bbf7d0;
+    background: rgba(78, 138, 74, 0.33);
+    border-color: rgba(78, 138, 74, 0.53);
+    color: #9bd79e;
   }
 
   .sk-seat .sk-seat-bid--over,
   .sk-seat--turn .sk-seat-bid--over {
-    background: #b91c1c55;
-    border-color: #f8717188;
-    color: #fecaca;
+    background: rgba(156, 42, 34, 0.33);
+    border-color: rgba(156, 42, 34, 0.53);
+    color: #e09a90;
   }
 
   .sk-seat-cards {
@@ -2141,59 +3426,25 @@ h1 {
     height: 24px;
   }
 
-  /* --- Panneau de scores : le poste de pilotage de la manche. --- */
+  /* --- Panneau de scores : le poste de pilotage de la manche.
+     La planche peinte tient le fond — pas de `background` ni de `border`
+     ici, ils écraseraient le `border-image` posé plus haut. --- */
   .sk-scoreboard {
-    width: 254px;
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-height: 0;
-    padding: 12px;
-    border-radius: 16px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.08);
     text-align: left;
   }
 
   .sk-side-title {
     display: block;
     margin: 0;
-    font-size: 0.58rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    opacity: 0.5;
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
   }
 
 
-  /* La piste continue à curseur laisse place aux segments de la maquette :
-     une case par manche, remplies au fur et à mesure. */
-  .sk-round-track,
-  .sk-round-track-label {
-    display: none;
-  }
-
-  .sk-round-segments {
-    display: flex;
-    gap: 3px;
-  }
-
-  .sk-round-segments i {
-    flex: 1;
-    height: 7px;
-    border-radius: 2px;
-    background: #ffffff1a;
-    border: 1px solid #ffffff14;
-  }
-
-  .sk-round-segments i.sk-round-seg--done {
-    background: #f5c24c88;
-  }
-
-  .sk-round-segments i.sk-round-seg--now {
-    background: #f5c24c;
-    box-shadow: 0 0 8px #f5c24ccc;
-  }
 
   .sk-scoreboard-rows {
     overflow-y: auto;
@@ -2208,35 +3459,36 @@ h1 {
     padding: 6px 9px;
     border-radius: 9px;
     font-size: 0.76rem;
-    background: #ffffff0d;
+    background: rgba(232, 206, 146, 0.07);
     border: 1px solid transparent;
   }
 
   .sk-score-row--me {
-    background: #f5c24c1f;
-    border-color: #f5c24c4d;
+    background: rgba(184, 137, 53, 0.12);
+    border-color: rgba(184, 137, 53, 0.3);
   }
 
   .sk-score-row-bid {
     display: inline-block;
+    font-family: 'Bitter', Georgia, serif;
     font-size: 0.68rem;
-    font-weight: 800;
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.33);
-    border: 1px solid #ffffff22;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #6e5320;
+    white-space: nowrap;
   }
 
+  /* Contrat tenu / dépassé : la couleur ne fait que redoubler une forme —
+     le contrat tenu est souligné, le contrat perdu est barré. */
   .sk-score-row-bid--hit {
-    background: #16a34a55;
-    border-color: #4ade8088;
-    color: #bbf7d0;
+    color: #2d5a2b;
+    border-bottom: 1.5px solid #2d5a2b;
   }
 
   .sk-score-row-bid--over {
-    background: #b91c1c55;
-    border-color: #f8717188;
-    color: #fecaca;
+    color: #5a1512;
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
   }
 
   .sk-score-row-total {
@@ -2262,42 +3514,58 @@ h1 {
      partagent la même pilule flottante : une seule barre d'actions, toujours
      au même endroit. :empty écarte #sk-bid-choices quand il est vidé — sans ça
      une pilule vide flotterait pendant toute la phase de jeu. */
+  /* --- La barre d'actions : une planche posée sous le tapis -----------
+     Annonce, Tigresse, Joker, 0/14, Marcher sur la Planche et les pouvoirs
+     de Pirate partagent la même barre, toujours au même endroit. */
   .sk-bid-choices:not(.hidden):not(:empty) {
     flex-shrink: 0;
     align-items: center;
     width: fit-content;
     max-width: calc(100% - 32px);
-    margin: 0 auto 4px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(26, 8, 8, 0.85);
-    border: 2px solid #1a1208;
-    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4), 0 0 0 2px #f5c24c4d;
+    margin: 0 auto 6px;
+    padding: 8px 14px 9px;
+    border-radius: 4px;
+    background:
+      linear-gradient(180deg, rgba(255, 236, 196, 0.07), rgba(0, 0, 0, 0.32)),
+      linear-gradient(180deg, #2a1b0f, #150c06);
+    box-shadow:
+      inset 0 1px 0 rgba(232, 206, 146, 0.18),
+      0 0 0 1px var(--sk-brass-lo),
+      0 4px 0 rgba(0, 0, 0, 0.5),
+      0 10px 22px rgba(0, 0, 0, 0.55);
   }
 
-  /* Dans la barre, les boutons redeviennent de simples pastilles claires :
-     le rouge en relief du reste du site y ferait un mur de gros boutons. */
+  /* Les chiffres d'annonce sont des jetons frappés, comme les doublons de
+     la rangée du haut : c'est le même vocabulaire d'un bout à l'autre. */
   .sk-bid-choices .btn {
-    padding: 7px 14px;
-    min-width: 40px;
-    font-size: 0.79rem;
-    border-radius: 999px;
-    border: 2px solid #ffffff28;
-    background: #ffffff12;
-    box-shadow: none;
+    min-width: 38px;
+    padding: 7px 13px 8px;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    border-radius: 3px;
+    border: 1px solid rgba(184, 137, 53, 0.34);
+    background:
+      linear-gradient(180deg, rgba(255, 236, 196, 0.08), rgba(0, 0, 0, 0.3)),
+      linear-gradient(180deg, #33200f, #170d05);
+    box-shadow: inset 0 1px 0 rgba(232, 206, 146, 0.18);
   }
 
   .sk-bid-choices .btn:hover {
-    background: #ffffff26;
-    box-shadow: none;
+    background:
+      linear-gradient(180deg, rgba(255, 236, 196, 0.16), rgba(0, 0, 0, 0.26)),
+      linear-gradient(180deg, #432b14, #1e1108);
+    box-shadow: inset 0 1px 0 rgba(232, 206, 146, 0.3), 0 0 12px rgba(184, 137, 53, 0.28);
+    transform: none;
   }
 
   .sk-bid-choices .btn-primary,
   .sk-bid-choices .btn-primary:hover {
-    background: #f5c24c;
-    color: #1a1208;
-    border-color: #1a1208;
-    box-shadow: none;
+    border-color: #5a4318;
+    color: #241505;
+    background:
+      linear-gradient(180deg, rgba(255, 248, 226, 0.28), rgba(255, 255, 255, 0) 46%),
+      linear-gradient(180deg, #dcbe7e, var(--sk-brass) 50%, #7a5a20);
+    box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.6);
   }
 
   .sk-bar-hint {
@@ -2312,20 +3580,15 @@ h1 {
      sans cette marge, les cartes du bas dépassaient sous l'écran. */
   .sk-hand {
     flex-shrink: 0;
-    min-height: 176px;
-    padding: 12px 20px 28px;
+    min-height: 186px;
+    padding: 10px 20px 36px;
     overflow: visible;
-    --sk-fan-visible: 58px; /* 84px de carte - 26px de chevauchement */
   }
 
   .sk-hand .sk-card {
-    width: 84px;
-    height: 118px;
-    font-size: 1.45rem;
-  }
-
-  .sk-card-arc {
-    margin-left: -26px;
+    --sk-w: 88px;
+    --sk-foot: 31px;
+    --sk-fig: 3rem;
   }
 }
 
@@ -2348,36 +3611,44 @@ h1 {
   max-width: min(90vw, 420px);
   padding: 16px 30px 18px;
   text-align: center;
-  background: rgba(20, 6, 6, 0.94);
-  border: 3px solid #ef4444;
-  border-radius: 16px;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45), 0 0 30px rgba(239, 68, 68, 0.35);
-  animation: sk-power-announce-pop 3.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.32)),
+    linear-gradient(180deg, #33180f, #180a06);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-wine),
+    0 0 0 2px rgba(16, 9, 3, 0.9),
+    0 18px 40px rgba(0, 0, 0, 0.7);
+  animation: sk-power-announce-pop 3.6s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
 }
 
 .sk-power-announce-kicker {
-  margin: 0 0 4px;
-  font-size: 0.62rem;
-  font-weight: 800;
+  margin: 0 0 5px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #fca5a5;
+  letter-spacing: 0.2em;
+  color: var(--sk-copper);
 }
 
 .sk-power-announce-title {
-  margin: 0 0 6px;
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #facc15;
-  letter-spacing: 0.01em;
+  margin: 0 0 7px;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-size: 1.42rem;
+  font-weight: 700;
+  color: var(--sk-cream);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
 }
 
 .sk-power-announce-detail {
   margin: 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  line-height: 1.35;
-  color: #f5f0e6;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.94rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--sk-cream-2);
 }
 
 /* Entrée franche, longue pause de lecture, sortie douce : le texte doit être
@@ -2440,9 +3711,13 @@ h1 {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 3px solid #1a1208;
-  background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  border: 0;
+  background: radial-gradient(circle at 50% 40%, var(--sk-av-color, var(--sk-wine)), rgba(0, 0, 0, 0.75));
+  box-shadow:
+    0 0 0 3px var(--sk-brass-lo),
+    0 0 0 4px rgba(16, 9, 3, 0.9),
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    0 5px 12px rgba(0, 0, 0, 0.6);
   cursor: pointer;
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, opacity 0.15s ease;
 }
@@ -2453,8 +3728,11 @@ h1 {
 }
 
 .sk-piece-btn--mine {
-  border-color: #facc15;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(250, 204, 21, 0.35);
+  box-shadow:
+    0 0 0 3px var(--sk-brass-hi),
+    0 0 0 4px rgba(16, 9, 3, 0.9),
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(232, 206, 146, 0.55);
   cursor: default;
 }
 
@@ -2487,8 +3765,8 @@ h1 {
   margin-right: 8px;
   vertical-align: middle;
   border-radius: 50%;
-  border: 2px solid #1a1208;
-  background: radial-gradient(circle at 35% 30%, var(--sk-av-color, #7f1d1d), #1a0808);
+  border: 2px solid var(--sk-oak-lo);
+  background: radial-gradient(circle at 35% 30%, var(--sk-av-color, var(--sk-wine-lo)), var(--sk-oak-lo));
 }
 
 /* --- Récap de fin de partie --- */
@@ -2514,7 +3792,7 @@ h1 {
 }
 
 .sk-end-row--me td {
-  color: #facc15;
+  color: var(--sk-brass-hi);
 }
 
 .sk-end-facts {
@@ -2529,7 +3807,7 @@ h1 {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: #facc15;
+  color: var(--sk-brass-hi);
   opacity: 0.8;
 }
 
@@ -2537,8 +3815,8 @@ h1 {
   margin: 0 0 5px;
   padding: 6px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(232, 206, 146, 0.08);
+  border: 1px solid rgba(232, 206, 146, 0.11);
   font-size: 0.84rem;
   line-height: 1.35;
 }
@@ -2555,7 +3833,7 @@ h1 {
   display: block;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(232, 206, 146, 0.11);
 }
 
 .sk-curve-line {
@@ -2573,19 +3851,19 @@ h1 {
 }
 
 .sk-curve-dot {
-  stroke: #1a1208;
+  stroke: var(--sk-oak-lo);
   stroke-width: 1.5;
 }
 
 .sk-curve-zero {
-  stroke: rgba(255, 255, 255, 0.28);
+  stroke: rgba(232, 206, 146, 0.39);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
 
 .sk-curve-tick,
 .sk-curve-round {
-  fill: rgba(255, 255, 255, 0.45);
+  fill: rgba(232, 206, 146, 0.63);
   font-size: 9px;
   font-weight: 700;
 }
@@ -2621,97 +3899,117 @@ h1 {
   border-radius: 2px;
 }
 
-/* --- « Ton objectif » : ce qu'il te reste à faire cette manche --- */
+/* --- « Ton objectif » : ce qu'il te reste à faire cette manche ---------
+   Un parchemin scellé à la cire, punaisé au-dessus du registre. C'est la
+   phrase qu'on se répète en jouant, et elle n'était écrite nulle part. */
 
+/* Le parchemin cacheté : le sceau de cire et les quatre clous sont PEINTS
+   dedans. Pas de découpe en 9 tranches ici — un sceau posé au milieu du
+   bord haut s'étirerait avec lui. Le rapport est donc figé et l'image
+   épouse la boîte, ce qui garde le dessin intact.
+
+   Le texte vit dans la fenêtre de papier plein, mesurée sur l'image :
+   il commence sous la coulée de cire et s'arrête avant les bords
+   déchirés. D'où des marges en pourcentage plutôt qu'en pixels — elles
+   suivent l'image quand la colonne change de largeur. */
 .sk-objective {
-  margin: 0 0 10px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  border-left-width: 5px;
+  position: relative;
+  margin: 2px 0 14px;
+  aspect-ratio: 1051 / 1313;
+  background: url('assets/skin/parchemin-objectif.webp') 50% 50% / 100% 100% no-repeat;
+  padding: 26% 15% 20% 21%;
+  color: var(--sk-parch-ink);
   text-align: left;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.55));
 }
 
 .sk-objective-kicker {
-  margin: 0 0 3px;
+  margin: 0 0 4px;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 0.56rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  opacity: 0.5;
+  letter-spacing: 0.2em;
+  color: #6e5320;
 }
 
 .sk-objective-text {
   margin: 0;
-  font-size: 0.84rem;
-  font-weight: 700;
-  line-height: 1.35;
-  color: #f5f0e6;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.42;
+  color: #33240f;
 }
 
-/* Quatre états, du plus tranquille au plus grave : encore du travail (doré),
-   plus aucune marge (orange), objectif atteint (vert), manche perdue (rouge).
-   La bordure gauche porte l'état, pour le lire sans lire la phrase. */
+/* Quatre états. Le liseré de gauche porte l'état pour qu'on le lise sans
+   lire la phrase — et le mot fort du texte est encré, pas seulement teinté,
+   parce qu'un vert et un rouge sont la même couleur pour un deutan. */
 .sk-objective--todo {
-  border-left-color: #facc15;
+  border-left: 4px solid var(--sk-brass);
 }
 
 .sk-objective--tendu {
-  border-left-color: #fb923c;
-}
-
-.sk-objective--tendu .sk-objective-text {
-  color: #fed7aa;
+  border-left: 4px solid var(--sk-copper);
 }
 
 .sk-objective--ok {
-  border-left-color: #4ade80;
+  border-left: 4px solid var(--sk-kept);
 }
 
 .sk-objective--ok .sk-objective-text {
-  color: #bbf7d0;
+  color: #2d5a2b;
 }
 
 .sk-objective--perdu {
-  border-left-color: #f87171;
+  border-left: 4px solid var(--sk-failed);
 }
 
 .sk-objective--perdu .sk-objective-text {
-  color: #fecaca;
+  color: #5a1512;
 }
 
-/* Bouton de confirmation de l'annonce : détaché des chiffres par une teinte
-   propre, pour qu'on voie qu'il ne s'agit pas d'un chiffre de plus. */
+/* Bouton de confirmation de l'annonce : c'est le seul plein laiton de
+   l'écran à ce moment-là, donc le seul endroit où le regard doit aller.
+   Une fois envoyée, il devient un état plutôt qu'une action : il reste
+   lisible mais n'invite plus au clic. */
 .sk-bid-confirm {
-  margin-left: 6px;
-  background: linear-gradient(160deg, #16a34a, #14532d);
-  border-color: #1a1208;
-  font-weight: 800;
+  margin-left: 8px;
+  border-color: #5a4318 !important;
+  color: #241505 !important;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 226, 0.28), rgba(255, 255, 255, 0) 46%),
+    linear-gradient(180deg, #dcbe7e, var(--sk-brass) 50%, #7a5a20) !important;
+  text-shadow: 0 1px 0 rgba(255, 244, 214, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.6), 0 0 18px rgba(232, 206, 146, 0.35) !important;
 }
 
-.sk-bid-confirm:hover:not(:disabled) {
-  background: linear-gradient(160deg, #22c55e, #166534);
+.sk-bid-confirm--done,
+.sk-bid-confirm--done:hover {
+  color: var(--sk-cream-3) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.05), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #241a12, #140d08) !important;
+  border-color: rgba(184, 137, 53, 0.34) !important;
+  box-shadow: inset 0 1px 0 rgba(232, 206, 146, 0.1) !important;
 }
 
-/* Une fois envoyée, le bouton devient un état plutôt qu'une action : il
-   reste lisible mais n'invite plus au clic. */
-.sk-bid-confirm--done {
-  background: linear-gradient(160deg, #334155, #1e293b);
-  opacity: 0.85;
-}
-
-/* --- Chat du salon (panneau de droite) --- */
+/* --- Le carnet du capitaine : la discussion de la table ---------------
+   Cuir sombre éclairé par une bougie au coin bas-droit. C'est le seul bloc
+   qui grandit : la place libérée par la progression des manches lui revient.
+   --------------------------------------------------------------------- */
 
 .sk-chat {
   display: none;
   flex-direction: column;
   min-height: 0;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
-/* Réservé au paysage : sous 1000px le panneau de droite n'existe pas, la
-   place manque et le chat viendrait manger le tapis. */
+/* Le carnet existe désormais à toutes les largeurs. Il était en display:none
+   sous 1000 px, c'est-à-dire absent sur téléphone : un jeu d'annonces où
+   l'on bluffe se joue en parlant, et les messages envoyés depuis un
+   ordinateur se perdaient sans que personne ne le sache. */
 @media (min-width: 1000px) {
   .sk-chat {
     display: flex;
@@ -2719,85 +4017,914 @@ h1 {
   }
 }
 
+@media (max-width: 999px) {
+  .sk-chat {
+    display: flex;
+  }
+  .sk-chat-log {
+    max-height: 132px;
+    min-height: 64px;
+  }
+}
+
 .sk-chat-log {
   flex: 1;
-  min-height: 90px;
+  min-height: 96px;
   overflow-y: auto;
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Le carré ferré du lot 2 : accroché sur la grande planche, son propre
+     cadre le détache du fond sans qu'on ait à tracer un liseré. */
+  padding: 0 2px;
   text-align: left;
 }
 
 .sk-chat-line {
   margin-bottom: 6px;
-  font-size: 0.78rem;
-  line-height: 1.3;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .sk-chat-who {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-weight: 800;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
   font-size: 0.66rem;
-  color: #facc15;
-  opacity: 0.9;
+  letter-spacing: 0.06em;
+  color: var(--sk-brass);
 }
 
 .sk-chat-line--me .sk-chat-who {
-  color: #86efac;
+  color: var(--sk-brass-hi);
 }
 
 .sk-chat-time {
-  font-weight: 600;
-  font-size: 0.58rem;
-  opacity: 0.45;
-  color: #f5f0e6;
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 500;
+  font-size: 0.56rem;
+  color: var(--sk-cream-3);
 }
 
 /* Le message peut contenir n'importe quoi : on force la coupure pour qu'une
-   suite de caractères sans espace ne déborde pas du panneau. */
+   suite de caractères sans espace ne déborde pas du carnet. */
 .sk-chat-text {
   display: block;
-  color: #f5f0e6;
+  color: var(--sk-cream-2);
   overflow-wrap: anywhere;
 }
 
 .sk-chat-form {
   display: flex;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 7px;
+  margin-top: 7px;
 }
 
 .sk-chat-form input {
   flex: 1;
   min-width: 0;
-  padding: 7px 10px;
-  border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-size: 0.78rem;
+  padding: 8px 11px;
+  border-radius: 2px;
+  border: 0;
+  background: linear-gradient(180deg, #1a120b, #241a12);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.65);
+  color: var(--sk-cream);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.86rem;
+}
+
+.sk-chat-form input::placeholder {
+  color: #6e5c42;
+  font-style: italic;
 }
 
 .sk-chat-form input:focus {
   outline: none;
-  border-color: #facc15;
+  box-shadow:
+    inset 0 0 0 1px var(--sk-brass),
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(184, 137, 53, 0.28);
 }
 
+/* Le bouton d'envoi est un cachet de cire frappé d'une flèche gravée. */
 .sk-chat-send {
   flex-shrink: 0;
-  width: 34px;
-  border-radius: 50%;
-  border: 2px solid #1a1208;
-  background: linear-gradient(160deg, #991b1b, #5c1010);
-  color: #fff;
-  font-size: 0.82rem;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  font-size: 0;
   cursor: pointer;
+  background:
+    var(--sk-arrow) center / 17px 17px no-repeat,
+    radial-gradient(70% 90% at 32% 22%, var(--sk-wine-hi) 0%, var(--sk-wine) 46%, var(--sk-wine-lo) 100%);
+  border-radius: 52% 48% 46% 54% / 48% 54% 46% 52%;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 170, 150, 0.34),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5),
+    0 2px 0 rgba(30, 4, 3, 0.7),
+    0 6px 14px rgba(0, 0, 0, 0.55);
+  transition: transform 0.14s ease;
 }
 
 .sk-chat-send:hover {
-  background: linear-gradient(160deg, #b91c1c, #7f1d1d);
+  transform: translateY(-1px) rotate(-4deg);
+}
+
+/* =====================================================================
+   RANG GRAVÉ DANS LE REGISTRE
+   L'ordre des lignes ne bouge jamais (c'est le tour de table) : seul ce
+   chiffre romain change de ligne en ligne au fil de la partie.
+   ===================================================================== */
+.sk-rank {
+  display: inline-block;
+  width: 17px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.56rem;
+  letter-spacing: 0;
+  color: #8a6528;
+}
+
+/* =====================================================================
+   BANDEAU DE GABIER — pourquoi cette carte est bloquée, sur la carte.
+   Le message était un toast en haut de page, à 700 px du doigt : on
+   retapait trois fois la même carte avant de comprendre l'obligation
+   de suivre.
+   ===================================================================== */
+.sk-card__why {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  bottom: 38%;
+  z-index: 8;
+  padding: 3px 2px 4px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: calc(var(--sk-w) * 0.088);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--sk-parch-ink);
+  background: linear-gradient(180deg, var(--sk-parch-hi), var(--sk-parch-lo));
+  box-shadow: 0 0 0 1px var(--sk-brass-lo), 0 2px 5px rgba(0, 0, 0, 0.6);
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+
+/* Le bandeau doit rester lisible même quand la carte est ternie. */
+.sk-card--unplayable .sk-card__why {
+  filter: saturate(3.5) brightness(1.7);
+}
+
+/* =====================================================================
+   MOUVEMENT RÉDUIT
+   Les états restent portés par la couleur et la forme ; seuls les
+   déplacements, rotations et respirations disparaissent.
+   ===================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .sk-hand .sk-card:hover,
+  .sk-hand .sk-card:active {
+    transform: none;
+  }
+
+  .sk-hand--mine::before,
+  .sk-table--mine::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* =====================================================================
+   PASTILLE DE COULEUR IMPOSÉE
+   Elle accompagne toujours le nom écrit de la couleur : la pastille ne
+   porte jamais l'information seule (deutéranopie).
+   ===================================================================== */
+.sk-suit-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: -1px;
+  box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.8), inset 0 1px 0 rgba(255, 244, 214, 0.3);
+}
+
+.sk-suit-dot--vert { background: var(--sk-vert); }
+.sk-suit-dot--jaune { background: var(--sk-jaune); }
+.sk-suit-dot--violet { background: var(--sk-violet); }
+.sk-suit-dot--noir { background: var(--sk-noir); }
+
+
+/* =====================================================================
+   LES ACCESSOIRES — plume et bougie. Ils DÉBORDENT de leur panneau :
+   c'est ce débordement qui donne la profondeur, et c'est pour ça qu'ils
+   ne sont pas peints dans le carnet ni dans la couverture. Un panneau en
+   9 tranches ne peut rien laisser dépasser — tout ce qui touche son bord
+   se retrouve figé dans un coin ou répété le long d'une arête.
+   ===================================================================== */
+
+.sk-carnet,
+.sk-chat-livre {
+  position: relative;
+}
+
+/* Le dessin de la plume va du bec (en bas à gauche) au panache (en haut à
+   droite), soit ~55° de l'horizontale. On la fait basculer d'autant pour
+   qu'elle se couche sur le bas de la page : le bec repose sur le papier,
+   le panache sort du livre par la droite. */
+.sk-plume {
+  position: absolute;
+  right: -44px;
+  bottom: 2px;
+  width: 128px;
+  transform: rotate(48deg);
+  transform-origin: 50% 50%;
+  filter: drop-shadow(-4px 5px 8px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sk-bougie {
+  position: absolute;
+  right: -26px;
+  bottom: -26px;
+  width: 112px;
+  filter: drop-shadow(-3px 5px 10px rgba(0, 0, 0, 0.72));
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* La flamme éclaire vraiment la page : un halo posé sous la bougie, pas
+   dessus, sinon il laverait le texte du chat. */
+.sk-chat-livre::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 22px;
+  width: 156px;
+  height: 156px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 196, 104, 0.26) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+/* =====================================================================
+   NOMBRE DE MANCHES — réglé par l'hôte dans le salon. Un jeton par
+   valeur plutôt qu'un menu : huit choix seulement, et la rangée dit
+   d'elle-même de quoi il s'agit — c'est la piste du bandeau en petit.
+   ===================================================================== */
+
+.sk-rounds-field {
+  margin: 10px auto 4px;
+  max-width: 320px;
+}
+
+.sk-rounds-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.sk-round-choice {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--sk-cream-3);
+  background:
+    radial-gradient(circle at 50% 34%, #1c1108, #0c0703);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 0 rgba(184, 137, 53, 0.16),
+    0 1px 0 rgba(232, 206, 146, 0.08);
+  transition: transform 0.1s, filter 0.12s;
+}
+
+.sk-round-choice:hover:not(:disabled) {
+  filter: brightness(1.35);
+}
+
+.sk-round-choice:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Le choix retenu est frappé en laiton — même matière que le doublon
+   d'une manche tenue, pour que le lien avec la piste se fasse tout seul. */
+.sk-round-choice.is-on {
+  color: #2a1b06;
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.36), rgba(0, 0, 0, 0.24) 56%),
+    linear-gradient(160deg, var(--sk-brass), var(--sk-brass-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 226, 0.6),
+    inset 0 -1px 0 rgba(42, 27, 6, 0.55),
+    0 0 0 2px rgba(184, 137, 53, 0.35),
+    0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.sk-round-choice:disabled {
+  cursor: default;
+}
+
+.sk-rounds-hint {
+  margin-top: 7px;
+}
+
+/* =====================================================================
+   LA SCÈNE — une seule image peinte qui fait le décor ET la table. Il
+   n'y a plus de fond d'un côté et de plateau de l'autre : le feutre est
+   dedans, à une place fixe.
+
+   D'où le rapport figé. Un `cover` recadrerait selon la fenêtre et le
+   feutre se déplacerait sous les cartes ; ici la scène garde ses
+   proportions et se centre, et tout se pose en pourcentage d'elle. Les
+   marges éventuelles sont comblées par la même image, floutée : on ne
+   voit pas de bandes noires, juste la salle qui continue.
+   ===================================================================== */
+
+#sk-screen-game:not(.hidden) {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  max-width: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+#sk-screen-game:not(.hidden)::before {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  background: url('assets/skin/scene-jeu.webp') 50% 50% / cover no-repeat;
+  filter: blur(26px) brightness(0.5);
+}
+
+.sk-scene {
+  position: relative;
+  container-type: size;
+  aspect-ratio: 1672 / 941;
+  width: min(100%, calc(100dvh * 1672 / 941));
+  max-height: 100dvh;
+  background: url('assets/skin/scene-jeu.webp') 50% 50% / 100% 100% no-repeat;
+}
+
+/* --- Le feutre. Coordonnées relevées sur l'image, pas estimées. ------- */
+.sk-scene .sk-table {
+  position: absolute;
+  /* Coordonnées du feutre RELEVÉES SUR LA SCÈNE ACTUELLE. Elles ne se
+     devinent pas : chaque nouvelle scène les déplace, et une valeur restée
+     de la scène précédente décale tous les sièges sans rien casser
+     d'autre — c'est exactement ce qui était arrivé ici. */
+  left: 23.35%;
+  top: 41.55%;
+  width: 38.61%;
+  height: 36.56%;
+  max-width: none;
+  margin: 0;
+  aspect-ratio: auto;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- Le bandeau flotte sur le haut de la scène. ----------------------- */
+.sk-scene .sk-game-header {
+  position: absolute;
+  top: 1.4%;
+  left: 1.5%;
+  right: 1.5%;
+  margin: 0;
+  z-index: 5;
+}
+
+/* --- La colonne flotte sur la droite, du bandeau jusqu'au bas. -------- */
+.sk-scene .sk-play-area {
+  display: contents;
+}
+
+.sk-scene .sk-scoreboard {
+  position: absolute;
+  right: 0.8%;
+  top: 12%;
+  bottom: 2%;
+  width: 21.5%;
+  z-index: 4;
+  overflow: hidden;
+}
+
+/* --- La main, les annonces et les choix, en bas de la scène. ---------- */
+/* --- Le bas de la scène, en deux postes --------------------------------
+   Les commandes d'annonce étaient centrées et remontaient sur le feutre :
+   elles recouvraient le siège du joueur, qui est justement en bas au
+   centre. Elles passent donc en bas à GAUCHE, hors du feutre (dont le
+   bord inférieur tombe à 78 % et le siège du joueur vers 76 %), et la
+   main prend toute la place à leur droite.
+   ----------------------------------------------------------------------- */
+
+.sk-scene .sk-bid-choices,
+.sk-scene .sk-power-panel,
+.sk-scene > #sk-hand {
+  position: absolute;
+  z-index: 5;
+}
+
+.sk-scene .sk-bid-choices {
+  left: 7%;
+  bottom: 5%;
+  width: 34%;
+  margin: 0;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Le panneau de pouvoir est le seul bloc dont le contenu est imprévisible :
+   un simple bouton pour Harry, une grille d'une douzaine de cartes pour
+   Juanita. Il est donc large, centré sous le feutre, et BORNÉ en hauteur —
+   au-delà il défile, il ne recouvre pas la table. */
+.sk-scene .sk-power-panel {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 3%;
+  width: 62%;
+  max-height: 30%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(10, 6, 3, 0.86);
+  border-color: rgba(232, 206, 146, 0.3);
+  z-index: 7;
+}
+
+/* Ses rangées de cartes restent dans le flux : elles se replient au lieu
+   de s'échapper du panneau. */
+.sk-scene .sk-juanita-row,
+.sk-scene .sk-will-drawn-row {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+/* Tant que l'annonce n'est pas partie, le bloc appelle. Le repère est le
+   bouton de confirmation lui-même : il porte `--done` une fois l'annonce
+   envoyée, donc pas besoin d'un drapeau supplémentaire côté JS — et le
+   clignotement s'arrête exactement quand il n'y a plus rien à décider. */
+.sk-scene .sk-bid-choices:not(.hidden):not(:has(.sk-bid-confirm--done)) {
+  animation: sk-attente 1.7s ease-in-out infinite;
+}
+
+@keyframes sk-attente {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(232, 206, 146, 0)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(232, 206, 146, 0.55)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-scene .sk-bid-choices { animation: none; }
+}
+
+.sk-scene > #sk-hand {
+  left: 32.5%;
+  right: 21%;
+  /* 3,5 % et non 1 % : la carte dépasse son conteneur d'environ 1,7 % vers
+     le bas (le rehaussement au survol est prévu dans sa boîte), et à 1 %
+     le pied des cartes était coupé net par le bord de la scène. Mesuré au
+     rendu, pas estimé. */
+  bottom: 3.5%;
+  min-height: 0;
+  padding: 0;
+}
+
+
+/* --- Les cartes du pli, à l'échelle du feutre -------------------------
+   Elles étaient en pixels fixes (76 px) : sur une scène qui occupe toute
+   la fenêtre, elles devenaient illisibles. `container-type: size` sur le
+   feutre permet de les exprimer en cqw — 17,5 % de sa largeur — donc
+   elles grandissent exactement comme lui. La même fraction est reprise
+   dans renderTrick (CARTE_LARGEUR_FRAC) pour le calcul d'encombrement.
+   --------------------------------------------------------------------- */
+
+.sk-scene .sk-table {
+  container-type: size;
+}
+
+.sk-scene .sk-trick-card .sk-card {
+  --sk-w: calc(22.5cqw * var(--sk-trick-scale, 1));
+  --sk-foot: calc(8cqw * var(--sk-trick-scale, 1));
+  --sk-fig: calc(10.3cqw * var(--sk-trick-scale, 1));
+  --sk-corner: 4.1cqw;
+  --sk-seal: 3.1cqw;
+  --sk-radius: 1.8cqw;
+}
+
+/* Les jetons de siège suivent, sinon ils paraissent perdus à côté. */
+.sk-scene .sk-seat {
+  width: 17cqw;
+}
+
+/* --- Les pièces peintes ------------------------------------------------
+   Un médaillon par figure, son cerclage émaillé portant déjà la couleur
+   du joueur. Le carré de fond teinté qui existait pour les silhouettes
+   SVG n'a donc plus lieu d'être — il ne ferait que jurer avec l'émail. */
+
+.sk-piece-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sk-lobby-piece,
+.sk-piece-btn,
+.sk-seat-avatar {
+  background: none;
+  border-color: transparent;
+}
+
+/* =====================================================================
+   LA COLONNE EST PEINTE DANS LA SCÈNE — le parchemin, le livre ouvert et
+   la couverture de cuir font partie du décor. Il ne reste donc plus rien
+   à habiller : chaque bloc n'est qu'une fenêtre de texte posée sur sa
+   zone, aux coordonnées relevées sur l'image.
+
+   C'est pour ça que tous les `border-image` de la colonne sont annulés
+   ici : les garder empilerait un panneau peint sur un panneau peint.
+   ===================================================================== */
+
+.sk-scene .sk-scoreboard {
+  display: contents;
+}
+
+.sk-scene .sk-objective,
+.sk-scene .sk-carnet,
+.sk-scene .sk-chat-livre {
+  position: absolute;
+  border: none;
+  border-image: none;
+  background: none;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+  aspect-ratio: auto;
+  margin: 0;
+  z-index: 4;
+  overflow: hidden;
+}
+
+/* Le parchemin cacheté, en haut. Le sceau mord le bord droit : la fenêtre
+   de texte s'arrête avant lui. */
+.sk-scene .sk-objective {
+  left: 84.5%;
+  top: 11.8%;
+  width: 8.2%;
+  height: 13.4%;
+  padding: 0;
+  color: #100A04;
+}
+
+/* Le livre ouvert. Le texte enjambe la gouttière — c'est ce que fait un
+   vrai registre tenu à deux pages. */
+.sk-scene .sk-carnet {
+  left: 83.4%;
+  top: 34.2%;
+  width: 12.6%;
+  height: 23.6%;
+  padding: 0;
+  color: #3A2510;
+}
+
+/* La couverture de cuir : texte pâle, la bougie l'éclaire depuis la droite. */
+.sk-scene .sk-chat-livre {
+  left: 84.2%;
+  top: 70.6%;
+  width: 10.4%;
+  height: 18.2%;
+}
+
+/* La zone de texte défile à l'intérieur, jamais au-delà de sa page. */
+.sk-scene .sk-scoreboard-rows,
+.sk-scene .sk-chat-log {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0;
+  border: none;
+  border-image: none;
+  background: none;
+  box-shadow: none;
+  min-height: 0;
+}
+
+.sk-scene .sk-scoreboard-rows::-webkit-scrollbar,
+.sk-scene .sk-chat-log::-webkit-scrollbar {
+  display: none;
+}
+
+.sk-scene .sk-carnet .sk-side-title,
+.sk-scene .sk-chat .sk-side-title,
+.sk-scene .sk-history-link {
+  display: none;
+}
+
+/* Le parchemin porte son titre, comme un vrai ordre de mission. */
+.sk-scene .sk-objective-kicker {
+  display: block;
+  margin: 0 0 3px;
+  font-size: 1.05cqw;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  /* Même encre noire que le texte : le brun doré le faisait passer pour
+     une mention secondaire alors que c'est le titre du papier. */
+  color: #100A04;
+  opacity: 1;
+}
+
+/* Le texte est resserré pour tenir dans la feuille : c'est la seule zone
+   de la colonne dont la hauteur ne peut pas défiler sans casser l'effet
+   de papier cloué. */
+.sk-scene .sk-objective-text {
+  margin: 0;
+  font-size: 0.92cqw;
+  line-height: 1.3;
+  text-align: center;
+  /* Encre noire franche sur le papier : le brun de la charte se confondait
+     avec les taches du parchemin. Le poids monte aussi d'un cran — un
+     serif clair sur un fond texturé perd ses déliés bien avant sa couleur. */
+  color: #100A04;
+  font-weight: 600;
+}
+
+/* Les nombres, à l'encre rouge — c'est ce qu'on vient chercher ici. */
+.sk-obj-n {
+  color: #A01109;
+  font-weight: 800;
+}
+
+/* Le champ de saisie du chat, sous la couverture. */
+.sk-scene .sk-chat {
+  display: contents;
+}
+
+.sk-scene .sk-chat-form {
+  position: absolute;
+  left: 84.2%;
+  top: 89.6%;
+  width: 13.4%;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+}
+
+/* --- Les flèches : elles n'apparaissent que si ça déborde -------------
+   Le bouton porte lui-même l'information « il y a autre chose au-dessus /
+   en dessous ». Une barre de défilement peinte n'aurait aucun sens dans
+   un livre ; deux flèches de laiton, si. */
+
+.sk-defiler {
+  position: absolute;
+  right: 2%;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 6;
+  font-size: 8px;
+  line-height: 1;
+  color: #2A1B0C;
+  background: radial-gradient(circle at 40% 30%, #E8CE92, #B88935 60%, #6E4C13);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.sk-defiler--haut { top: 1%; }
+.sk-defiler--bas  { bottom: 1%; }
+
+.sk-defiler.is-visible {
+  opacity: 0.92;
+  pointer-events: auto;
+}
+
+.sk-defiler:hover { filter: brightness(1.2); }
+
+/* Le porte-icône du bouton de création est vide depuis le retrait des
+   emojis : s'il garde une largeur, le libellé n'est plus centré mais
+   décalé de cette largeur-là. */
+.btn-create .btn-icon {
+  display: none;
+}
+
+/* --- Le choix de pièce, depuis que les médaillons sont peints ----------
+   Chaque médaillon porte son propre cerclage de laiton et son émail. Les
+   anneaux que le CSS ajoutait autour dataient des anciennes silhouettes,
+   qui n'avaient rien : posés sur un médaillon peint, ils en doublent le
+   bord et le halo pâle du « c'est la tienne » effaçait justement l'émail
+   qu'il devait mettre en valeur.
+
+   L'appartenance se dit donc par la TAILLE, et rien d'autre : la pièce
+   retenue est simplement plus grande que les autres. C'est immédiat, ça
+   ne recouvre rien, et ça ne demande aucune légende. */
+
+.sk-piece-btn,
+.sk-piece-btn--mine,
+.sk-piece-btn:hover:not(:disabled) {
+  background: none;
+  box-shadow: none;
+  border: 0;
+}
+
+.sk-piece-btn {
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7));
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.16s ease;
+}
+
+/* Au survol elle grandit — l'ancienne version la faisait monter, ce qui,
+   à côté d'une pièce retenue déjà surélevée, donnait l'illusion inverse. */
+.sk-piece-btn:hover:not(:disabled) {
+  transform: scale(1.16);
+  filter: drop-shadow(0 5px 9px rgba(0, 0, 0, 0.7)) brightness(1.1);
+}
+
+.sk-piece-btn--mine,
+.sk-piece-btn--mine:hover {
+  transform: scale(1.34);
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.75));
+  cursor: default;
+}
+
+.sk-piece-btn--taken {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+/* --- Loupe sur une carte posée ----------------------------------------
+   Sur un feutre à 7 ou 9 joueurs, les cartes du pli deviennent petites et
+   leurs pictogrammes illisibles. Le survol la ramène au premier plan,
+   agrandie — sans déplacer les autres, puisqu'elle est en position
+   absolue.
+
+   Le facteur MULTIPLIE la profondeur au lieu de la remplacer : une carte
+   du fond est réduite par `--sk-depth`, l'écraser d'un `scale` fixe la
+   ferait bondir plus que celles du premier plan. */
+
+.sk-scene .sk-trick-card {
+  cursor: zoom-in;
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.16s ease;
+}
+
+.sk-scene .sk-trick-card:hover {
+  transform: translate(-50%, -50%) scale(calc(var(--sk-depth, 1) * 1.7));
+  z-index: 9;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.75));
+  /* L'animation de pose fixe elle aussi `transform` : sans cette coupure,
+     survoler une carte dans les 250 ms qui suivent sa pose n'aurait aucun
+     effet, l'animation gardant la main. */
+  animation: none;
+}
+
+/* =====================================================================
+   VARIANTE DE SCÈNE — `?scene=2` dans l'URL. Sert à comparer deux fonds
+   sans dupliquer la page : mêmes gabarits, seules les coordonnées des
+   zones changent, puisqu'elles sont propres à chaque peinture.
+
+   Toutes les valeurs ci-dessous sont RELEVÉES sur l'image (feutre olive
+   isolé par masque, papiers clairs de la colonne, cuir du chat), jamais
+   estimées — une zone devinée décale silencieusement tous les sièges.
+   ===================================================================== */
+
+.sk-scene--v2 {
+  aspect-ratio: 1400 / 768;
+  width: min(100%, calc(100dvh * 1400 / 768));
+  background-image: url('assets/skin/scene-jeu-2.webp');
+}
+
+#sk-screen-game:not(.hidden).sk-v2::before {
+  background-image: url('assets/skin/scene-jeu-2.webp');
+}
+
+/* Le feutre : plus haut et plus centré que sur la première scène. */
+.sk-scene--v2 .sk-table {
+  left: 32.63%;
+  top: 32.68%;
+  width: 39.69%;
+  height: 35.55%;
+}
+
+/* La consigne remonte d'autant : le bord haut du feutre passe de 41,6 %
+   à 32,7 %, elle se serait retrouvée dessus. */
+.sk-scene--v2 .sk-turn-indicator {
+  top: 25.6%;
+}
+
+.sk-scene--v2 #sk-power-banner {
+  top: 18.8%;
+}
+
+/* --- La colonne de droite ---------------------------------------------- */
+.sk-scene--v2 .sk-objective {
+  left: 85.4%;
+  top: 11.4%;
+  width: 7.5%;
+  height: 13.6%;
+}
+
+.sk-scene--v2 .sk-carnet {
+  left: 84.1%;
+  top: 34.2%;
+  width: 11.8%;
+  height: 23.2%;
+}
+
+.sk-scene--v2 .sk-chat-livre {
+  left: 84.6%;
+  top: 70.4%;
+  width: 9.6%;
+  height: 17.6%;
+}
+
+.sk-scene--v2 .sk-chat-form {
+  left: 84.6%;
+  top: 88.8%;
+  width: 12.6%;
+}
+
+/* --- Le registre enjambe la reliure ------------------------------------
+   Les deux pages du livre sont séparées par une gouttière sombre, à peu
+   près à mi-largeur de la zone (46 % sur la scène 1, 49 % sur la 2). Une
+   colonne qui tombe dessus y devient illisible — le chiffre est bien
+   rendu, il disparaît simplement dans l'ombre du pli.
+
+   On passe donc la ligne en grille avec un vide au milieu, calé sur la
+   reliure : le nom tient la page de gauche, l'annonce et le score celle
+   de droite. */
+
+.sk-scene .sk-score-row {
+  display: grid;
+  grid-template-columns: 44% 1fr auto;
+  column-gap: 8%;
+  align-items: baseline;
+  width: 100%;
+}
+
+.sk-scene .sk-score-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-scene .sk-score-row-bid,
+.sk-scene .sk-score-row-total {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* --- Textes de la colonne, à l'échelle de la scène ---------------------
+   Comme pour l'objectif : en `rem` ils restaient figés pendant que leur
+   page grandissait avec la fenêtre. */
+.sk-scene .sk-score-row-name,
+.sk-scene .sk-score-row-bid {
+  font-size: 0.82cqw;
+}
+
+.sk-scene .sk-score-row-total {
+  font-size: 0.92cqw;
+}
+
+.sk-scene .sk-chat-log,
+.sk-scene .sk-chat-log * {
+  font-size: 0.8cqw;
+  line-height: 1.35;
+}
+
+.sk-scene .sk-chat-form input {
+  font-size: 0.82cqw;
 }

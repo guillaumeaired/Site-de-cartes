@@ -34,8 +34,23 @@ function maxPlayersFor(extensionEnabled) {
   return extensionEnabled ? MAX_PLAYERS_EXTENDED : MAX_PLAYERS;
 }
 
-function buildRoundSequence() {
-  return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+// Nombre de manches : réglable par l'hôte dans le salon. La manche N se joue
+// à N cartes, donc la dernière manche est aussi la plus chargée — c'est elle
+// qui fixe le plafond. À 10 manches et 7 joueurs il faut 70 cartes sur les 74
+// du paquet de base ; au-delà de 10, la manche 11 en demanderait 77 et le
+// paquet n'y suffirait plus. D'où ce plafond, qui n'est pas arbitraire.
+const MIN_ROUNDS = 3;
+const MAX_ROUNDS = 10;
+
+function clampRounds(total) {
+  const n = Math.round(Number(total));
+  if (!Number.isFinite(n)) return MAX_ROUNDS;
+  return Math.min(MAX_ROUNDS, Math.max(MIN_ROUNDS, n));
+}
+
+function buildRoundSequence(total = MAX_ROUNDS) {
+  const n = clampRounds(total);
+  return Array.from({ length: n }, (_, i) => i + 1);
 }
 
 // 4x14 numérotées + 2 Sirènes + 5 (ou 6) Pirates nommés + 1 Skull King + 5
@@ -374,6 +389,9 @@ module.exports = {
   MIN_PLAYERS,
   MAX_PLAYERS,
   MAX_PLAYERS_EXTENDED,
+  MIN_ROUNDS,
+  MAX_ROUNDS,
+  clampRounds,
   maxPlayersFor,
   buildRoundSequence,
   createDeck,

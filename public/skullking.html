@@ -6,35 +6,39 @@
   <title>Guimams — Skull King</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;600;700&family=Bitter:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="skullking.css" />
 </head>
 <body>
   <main class="app sk-app">
     <p id="sk-toast" class="hint sk-toast hidden"></p>
-    <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
+    <p id="reconnect-overlay" class="reconnect-overlay hidden">Connexion perdue — reconnexion en cours…</p>
     <div id="sk-card-tooltip" class="sk-card-tooltip hidden" role="tooltip"></div>
 
     <section id="sk-screen-home" class="screen">
-      <a href="index.html" class="btn-link">← Tous les jeux</a>
-      <p class="mascot" aria-hidden="true">💀</p>
-      <h1><span class="suit suit-black">🏴‍☠️</span>Skull King<span class="suit suit-red">🧜</span></h1>
+      <div class="sk-hero">
+        <img class="sk-hero-img" src="assets/skin/hero-taverne.webp" alt="" width="1701" height="924" aria-hidden="true" />
+        <a href="index.html" class="btn-link sk-hero-back">← Tous les jeux</a>
+      </div>
+      <h1 class="sk-home-title">
+        <img src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
+      </h1>
       <p class="tagline">De 3 à 7 joueurs (jusqu'à 9 avec l'extension officielle) — 10 manches, annonces simultanées.</p>
-      <button id="sk-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+      <button id="sk-btn-rules" class="btn-rules-link">Règles du jeu</button>
 
       <div class="nickname-field">
         <label for="sk-input-nickname" class="visually-hidden">Ton pseudo</label>
-        <input id="sk-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+        <input id="sk-input-nickname" type="text" maxlength="16" placeholder="Ton pseudo" autocomplete="off" />
       </div>
 
       <button id="sk-btn-create" class="btn btn-primary btn-create">
-        <span class="btn-icon">💀</span> Créer une partie
+        <span class="btn-icon" aria-hidden="true"></span> Créer une partie
       </button>
       <div class="divider">ou rejoindre avec un code</div>
       <form id="sk-form-join">
         <label for="sk-input-code" class="visually-hidden">Code de la partie</label>
         <input id="sk-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
-        <button type="submit" class="btn">Rejoindre</button>
+        <button type="submit" class="btn btn-rouge">Rejoindre</button>
       </form>
       <p id="sk-home-error" class="error"></p>
     </section>
@@ -45,15 +49,21 @@
       <div id="sk-share-block" class="invite-card hidden">
         <p class="invite-label">Code de la partie</p>
         <div class="code-badge" id="sk-share-code"></div>
-        <button id="sk-btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
+        <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
         <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
       </div>
 
       <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
         <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
-        <span class="sk-extension-toggle-label">🏆 Jouer avec l'extension</span>
+        <span class="sk-extension-toggle-label">Jouer avec l'extension</span>
       </button>
       <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
+
+      <div id="sk-rounds-field" class="sk-rounds-field">
+        <p class="invite-label">Nombre de manches</p>
+        <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
+        <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
+      </div>
 
       <div id="sk-piece-picker" class="sk-piece-picker hidden">
         <p class="invite-label">Ta pièce</p>
@@ -65,120 +75,141 @@
         <ul id="sk-lobby-list" class="lobby-list"></ul>
       </div>
 
-      <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">🤖 Ajouter un bot (test)</button>
-      <button id="sk-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
+      <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">Ajouter un bot (test)</button>
+      <button id="sk-btn-start-game" class="btn btn-primary hidden">Lancer la partie</button>
       <p id="sk-waiting-hint" class="hint"></p>
     </section>
 
     <section id="sk-screen-game" class="screen hidden">
-      <div id="sk-round-start-banner" class="sk-round-start-banner hidden">
-        <span id="sk-round-start-text"></span>
-      </div>
-
-      <div id="sk-power-announce" class="sk-power-announce hidden">
-        <div class="sk-power-announce-card">
-          <p class="sk-power-announce-kicker">Pouvoir de Pirate</p>
-          <p id="sk-power-announce-title" class="sk-power-announce-title"></p>
-          <p id="sk-power-announce-detail" class="sk-power-announce-detail"></p>
+      <!-- La scène : une seule image peinte qui fait à la fois le décor et
+           la table. Son rapport est figé, tout ce qui suit se place en
+           pourcentage d'elle — c'est ce qui garde le feutre sous les
+           cartes quelle que soit la taille de la fenêtre. -->
+      <div class="sk-scene">
+        <div id="sk-round-start-banner" class="sk-round-start-banner hidden">
+          <span id="sk-round-start-text"></span>
         </div>
-      </div>
 
-      <div id="sk-bid-reveal" class="sk-bid-reveal hidden">
-        <div class="sk-bid-reveal-inner">
-          <p class="sk-bid-reveal-title">📢 Annonces !</p>
-          <div id="sk-bid-reveal-rows" class="sk-bid-reveal-rows"></div>
-        </div>
-      </div>
-
-      <div id="sk-start-reveal" class="sk-start-reveal hidden">
-        <div class="sk-wheel-frame">
-          <div id="sk-wheel" class="sk-wheel"></div>
-          <div id="sk-wheel-needle" class="sk-wheel-needle">
-            <svg viewBox="0 0 32 64" class="sk-wheel-needle-svg" aria-hidden="true">
-              <path
-                d="M16 3 L28 27 L21 27 L21 60 L11 60 L11 27 L4 27 Z"
-                fill="#facc15"
-                stroke="#1a1208"
-                stroke-width="4.5"
-                stroke-linejoin="round"
-                stroke-linecap="round"
-              />
-            </svg>
-          </div>
-          <div class="sk-wheel-hub"></div>
-          <div id="sk-wheel-labels" class="sk-wheel-labels"></div>
-        </div>
-        <p id="sk-start-reveal-text" class="sk-start-reveal-text"></p>
-      </div>
-
-      <div class="sk-game-header">
-        <button id="sk-btn-leave-game" class="btn-link">← Quitter</button>
-        <span class="sk-brand" aria-hidden="true"><span>💀</span>Skull King</span>
-        <p id="sk-round-indicator" class="sk-round-indicator"></p>
-        <button id="sk-btn-end-game" class="btn btn-small hidden">🏁 Terminer</button>
-      </div>
-
-      <div class="sk-play-area">
-        <div id="sk-table" class="sk-table">
-          <div class="sk-table-center">
-            <p id="sk-trick-caption" class="sk-trick-caption"></p>
+        <div id="sk-power-announce" class="sk-power-announce hidden">
+          <div class="sk-power-announce-card">
+            <p class="sk-power-announce-kicker">Pouvoir de Pirate</p>
+            <p id="sk-power-announce-title" class="sk-power-announce-title"></p>
+            <p id="sk-power-announce-detail" class="sk-power-announce-detail"></p>
           </div>
         </div>
 
-        <aside class="sk-scoreboard">
-          <p id="sk-side-round" class="sk-side-title"></p>
-          <div id="sk-round-segments" class="sk-round-segments"></div>
-          <div class="sk-round-track">
-            <div class="sk-round-track-fill" id="sk-round-track-fill"></div>
-            <div class="sk-round-track-knob" id="sk-round-track-knob"></div>
+        <div id="sk-bid-reveal" class="sk-bid-reveal hidden">
+          <div class="sk-bid-reveal-inner">
+            <p class="sk-bid-reveal-title">Annonces !</p>
+            <div id="sk-bid-reveal-rows" class="sk-bid-reveal-rows"></div>
           </div>
-          <p id="sk-round-track-label" class="sk-round-track-label"></p>
-          <div id="sk-objective" class="sk-objective hidden">
-            <p class="sk-objective-kicker">Ton objectif</p>
-            <p id="sk-objective-text" class="sk-objective-text"></p>
+        </div>
+
+        <div id="sk-start-reveal" class="sk-start-reveal hidden">
+          <div class="sk-wheel-frame">
+            <div id="sk-wheel" class="sk-wheel"></div>
+            <img id="sk-wheel-needle" class="sk-wheel-needle" src="assets/skin/aiguille-roue.webp" alt="" aria-hidden="true" />
+            <div class="sk-wheel-hub"></div>
+            <div id="sk-wheel-labels" class="sk-wheel-labels"></div>
+          </div>
+          <p id="sk-start-reveal-text" class="sk-start-reveal-text"></p>
+        </div>
+
+        <div class="sk-game-header sk-wood">
+          <div class="sk-topbar-side">
+            <button id="sk-btn-leave-game" class="btn-link">Quitter</button>
+            <img class="sk-sign" src="assets/skin/logo-skullking-h.webp" alt="" width="2057" height="748" aria-hidden="true" />
           </div>
 
-          <p class="sk-side-title">Joueurs — annonce / plis</p>
-          <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
-          <button id="sk-btn-history" class="sk-history-link hidden" type="button">📜 Manches précédentes</button>
+          <!-- La piste des dix manches, gravée dans une barre de bois : une
+               alvéole par manche, un doublon frappé dedans. Le cartouche qui
+               suit porte le détail de la manche en cours. -->
+          <div id="sk-chain" class="sk-chain" role="img" aria-label="Progression des manches"></div>
+          <div id="sk-round-scroll" class="sk-round-scroll"></div>
 
-          <div class="sk-chat">
-            <p class="sk-side-title">Discussion</p>
-            <div id="sk-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
-            <form id="sk-chat-form" class="sk-chat-form" autocomplete="off">
-              <label for="sk-chat-input" class="visually-hidden">Message</label>
-              <input id="sk-chat-input" type="text" maxlength="200" placeholder="Écrire à la table…" />
-              <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
-            </form>
+          <div class="sk-topbar-side sk-topbar-side--end">
+            <div id="sk-mine" class="sk-mine hidden">
+              <span class="sk-mine-k">Mon contrat</span>
+              <span id="sk-mine-notches" class="sk-notches sk-notches--dark"></span>
+              <span id="sk-mine-v" class="sk-mine-v"></span>
+              <span id="sk-mine-score" class="sk-mine-score">0</span>
+            </div>
+            <button id="sk-btn-end-game" class="btn btn-small hidden">Terminer</button>
           </div>
-        </aside>
-      </div>
+          <p id="sk-round-indicator" class="sk-round-indicator" role="status" aria-live="polite"></p>
+        </div>
 
-      <p id="sk-power-banner" class="hint hidden"></p>
-      <div id="sk-power-panel" class="sk-power-panel hidden"></div>
+        <div class="sk-play-area">
+          <div id="sk-table" class="sk-table">
+            <div class="sk-table-center">
+              <p id="sk-trick-caption" class="sk-trick-caption"></p>
+            </div>
+          </div>
 
-      <p id="sk-turn-indicator" class="sk-turn-indicator"></p>
-      <div id="sk-bid-choices" class="sk-bid-choices"></div>
-      <div id="sk-tigress-choice" class="sk-bid-choices hidden">
-        <button id="sk-btn-tigress-pirate" class="btn">🏴‍☠️ Comme Pirate</button>
-        <button id="sk-btn-tigress-escape" class="btn">🏳️ Comme Fuite</button>
+          <!-- Consigne du tour et pouvoir en cours : au-dessus du feutre, sur
+               le bois. Posés SUR le feutre ils recouvraient le siège du haut,
+               qui s'assied à 5 % du bord — mesuré, ils se chevauchaient de
+               43,7 % à 47,3 % de la scène. Sous la table, ils repoussaient la
+               main hors de l'écran. -->
+          <p id="sk-turn-indicator" class="sk-turn-indicator"></p>
+          <p id="sk-power-banner" class="hint hidden"></p>
+
+          <!-- La progression des manches est remontée dans le bandeau du haut :
+               le panneau ne porte plus que l'objectif, le registre et le carnet. -->
+          <aside class="sk-scoreboard sk-wood">
+            <div id="sk-objective" class="sk-objective hidden">
+              <p class="sk-objective-kicker">Objectif</p>
+              <p id="sk-objective-text" class="sk-objective-text"></p>
+            </div>
+
+            <div class="sk-carnet">
+              <p class="sk-side-title">Registre de bord</p>
+              <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
+              <button class="sk-defiler sk-defiler--haut" type="button" aria-label="Voir le haut du classement">&#9650;</button>
+              <button class="sk-defiler sk-defiler--bas" type="button" aria-label="Voir le bas du classement">&#9660;</button>
+            </div>
+            <button id="sk-btn-history" class="sk-history-link hidden" type="button">Manches précédentes</button>
+
+            <div class="sk-chat">
+              <p class="sk-side-title">Discussion</p>
+              <div class="sk-chat-livre">
+                <div id="sk-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
+                <button class="sk-defiler sk-defiler--haut" type="button" aria-label="Remonter dans la discussion">&#9650;</button>
+                <button class="sk-defiler sk-defiler--bas" type="button" aria-label="Redescendre dans la discussion">&#9660;</button>
+              </div>
+              <form id="sk-chat-form" class="sk-chat-form" autocomplete="off">
+                <label for="sk-chat-input" class="visually-hidden">Message</label>
+                <input id="sk-chat-input" type="text" maxlength="200" placeholder="Écrire à la table…" />
+                <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
+              </form>
+            </div>
+          </aside>
+        </div>
+
+        <div id="sk-power-panel" class="sk-power-panel hidden"></div>
+
+        <div id="sk-bid-choices" class="sk-bid-choices"></div>
+        <div id="sk-tigress-choice" class="sk-bid-choices hidden">
+          <button id="sk-btn-tigress-pirate" class="btn">Comme Pirate</button>
+          <button id="sk-btn-tigress-escape" class="btn">Comme Fuite</button>
+        </div>
+        <div id="sk-joker-choice" class="sk-bid-choices hidden">
+          <p class="hint">Le Joker prend quelle couleur ?</p>
+          <button class="btn sk-btn-joker-color" data-suit="vert">Vert</button>
+          <button class="btn sk-btn-joker-color" data-suit="jaune">Jaune</button>
+          <button class="btn sk-btn-joker-color" data-suit="violet">Violet</button>
+        </div>
+        <div id="sk-declare-choice" class="sk-bid-choices hidden">
+          <p class="hint">Cette carte vaut-elle 0 ou 14 ?</p>
+          <button id="sk-btn-declare-0" class="btn">0 (perd toujours)</button>
+          <button id="sk-btn-declare-14" class="btn">14 (carte forte)</button>
+        </div>
+        <div id="sk-plank-choice" class="sk-bid-choices hidden">
+          <p class="hint">Quel Pirate retirer du pli ?</p>
+          <div id="sk-plank-options"></div>
+        </div>
+        <div id="sk-hand" class="sk-hand"></div>
       </div>
-      <div id="sk-joker-choice" class="sk-bid-choices hidden">
-        <p class="hint">🃏 Le Joker prend quelle couleur ?</p>
-        <button class="btn sk-btn-joker-color" data-suit="vert">🟢 Vert</button>
-        <button class="btn sk-btn-joker-color" data-suit="jaune">🟡 Jaune</button>
-        <button class="btn sk-btn-joker-color" data-suit="violet">🟣 Violet</button>
-      </div>
-      <div id="sk-declare-choice" class="sk-bid-choices hidden">
-        <p class="hint">Cette carte vaut-elle 0 ou 14 ?</p>
-        <button id="sk-btn-declare-0" class="btn">0 (perd toujours)</button>
-        <button id="sk-btn-declare-14" class="btn">14 (carte forte)</button>
-      </div>
-      <div id="sk-plank-choice" class="sk-bid-choices hidden">
-        <p class="hint">🪵 Quel Pirate retirer du pli ?</p>
-        <div id="sk-plank-options"></div>
-      </div>
-      <div id="sk-hand" class="sk-hand"></div>
     </section>
 
     <div id="sk-round-popup" class="sk-round-popup hidden">
@@ -186,11 +217,12 @@
         <h3 id="sk-round-popup-title"></h3>
         <div id="sk-round-popup-rows" class="sk-round-popup-rows"></div>
         <div class="sk-round-popup-timer"><div id="sk-round-popup-bar" class="sk-round-popup-bar"></div></div>
-        <button id="sk-btn-next-round" class="btn btn-small hidden">⏭️ Manche suivante</button>
+        <button id="sk-btn-next-round" class="btn btn-small hidden">Manche suivante</button>
       </div>
     </div>
 
     <section id="sk-screen-end" class="screen hidden">
+      <img class="sk-end-logo" src="assets/skin/logo-skullking-v.webp" alt="Skull King" width="1291" height="844" />
       <h2 id="sk-end-title"></h2>
       <table class="sk-score-table sk-end-table">
         <thead>
@@ -205,14 +237,14 @@
         <tbody id="sk-end-body"></tbody>
       </table>
       <div id="sk-end-facts" class="sk-end-facts"></div>
-      <button id="sk-btn-rematch" class="btn btn-primary">🔄 Rejouer</button>
+      <button id="sk-btn-rematch" class="btn btn-primary">Rejouer</button>
       <button id="sk-btn-leave-end" class="btn btn-leave-end">Quitter</button>
     </section>
   </main>
 
   <div id="sk-history-modal" class="modal hidden">
     <div class="modal-content sk-history-content">
-      <h2>📜 Manches précédentes</h2>
+      <h2>Manches précédentes</h2>
       <div id="sk-history-body" class="sk-history-body"></div>
       <button id="sk-btn-close-history" class="btn btn-primary">Fermer</button>
     </div>
@@ -244,7 +276,7 @@
     <div class="modal-content join-modal-content">
       <p class="invite-label">Rejoindre la partie</p>
       <label for="sk-join-modal-nickname" class="visually-hidden">Ton pseudo</label>
-      <input id="sk-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <input id="sk-join-modal-nickname" type="text" maxlength="16" placeholder="Ton pseudo" autocomplete="off" />
       <button id="sk-btn-join-modal" class="btn btn-primary">Rejoindre</button>
       <p id="sk-join-modal-error" class="error"></p>
     </div>

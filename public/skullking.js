@@ -137,6 +137,17 @@ function isCardPlayable(card, hand, trick) {
 // l'autre au choix, est coupée en deux — et une fois son choix connu elle
 // bascule dans la couleur correspondante (voir stateFor côté serveur : le
 // choix n'est révélé aux autres qu'une fois le pli résolu).
+// Les 4 illustrations disponibles, rattachées à un Pirate nommé. Les cartes
+// gardent leur nom officiel Skull King : l'illustration habille la carte,
+// elle ne la renomme pas. Le reste du paquet recevra le même traitement au
+// fur et à mesure — d'où la table plutôt qu'une suite de conditions.
+const CARD_ART = {
+  'Harry le Géant': 'anto',
+  'Juanita Jade': 'mams',
+  'Rascal le Flambeur': 'guigui',
+  "Rosie D'Laney": 'pablo',
+};
+
 function cardClass(card) {
   if (card.kind === 'hidden') return 'sk-card--hidden';
   if (card.kind === 'wild15' || card.wild15) return 'sk-card--wild15';
@@ -144,30 +155,63 @@ function cardClass(card) {
     if (card.wild14 && card.value == null) return 'sk-card--wild14';
     return `sk-card--${card.suit}`;
   }
-  if (card.kind === 'pirate' || card.kind === 'firstmate') return 'sk-card--pirate';
+  if (card.kind === 'pirate' || card.kind === 'firstmate') {
+    // Une carte illustrée EST son illustration : le cadre CSS est neutralisé
+    // (les PNG portent déjà leur bord crème, leur bande peinte et leurs
+    // médaillons d'angle), seul le cartouche de nom se surimpose.
+    const art = card.kind === 'pirate' && CARD_ART[card.name];
+    return art ? `sk-card--pirate sk-card--art sk-card--art-${art}` : 'sk-card--pirate';
+  }
   if (card.kind === 'escape') return 'sk-card--escape';
   if (card.kind === 'tigress') {
     if (card.chosenAs === 'pirate') return 'sk-card--tigress sk-card--tigress-pirate';
     if (card.chosenAs === 'escape') return 'sk-card--tigress sk-card--tigress-escape';
     return 'sk-card--tigress';
   }
-  return 'sk-card--special';
+  return `sk-card--special sk-card--k-${card.kind}`;
 }
+
+// Anatomie d'une carte : papier crème vieilli, fenêtre de couleur cerclée
+// d'une dorure éraflée, et un PIED de parchemin qui porte l'indice (le
+// chiffre ou le nom) plus le motif de famille. Le pied est le seul élément
+// dont la lisibilité est garantie : dans l'éventail, les cartes se
+// recouvrent et il ne reste que leur bande gauche. Tout ce qui identifie
+// une carte vit donc en bas à gauche, jamais au centre.
+function cardShell(figure, foot) {
+  return (
+    '<i class="sk-card__field"></i>' +
+    figure +
+    '<i class="sk-card__rope sk-card__rope--tl"></i>' +
+    '<i class="sk-card__rope sk-card__rope--br"></i>' +
+    '<i class="sk-card__seal"></i>' +
+    '<span class="sk-card__foot">' + foot + '</span>'
+  );
+}
+
 function cardFaceHTML(card) {
   // Ta propre carte pendant l'annonce de la manche 1 : dos de carte marqué
   // d'un « ? » pour que ce soit lisible comme un choix de règle et pas comme
   // un bug d'affichage (le contenu n'est même pas envoyé par le serveur -
   // voir stateFor, seul l'id accompagne la carte).
-  if (card.kind === 'hidden') return '<span class="sk-hidden-mark">?</span>';
+  if (card.kind === 'hidden') {
+    return '<i class="sk-card__field"></i><span class="sk-hidden-mark">?</span>';
+  }
   if (card.kind === 'wild15') {
     // Pas encore joué : sa couleur/valeur ne sont pas encore fixées.
-    return `<span class="sk-special-label">Joker</span>`;
+    return cardShell('<i class="sk-card__wm"></i>', '<b class="sk-special-label">Joker</b>');
   }
   if (card.kind === 'number') {
+    const suit = '<i class="sk-card__suit" aria-hidden="true"></i>';
     if (card.wild14 && card.value == null) {
-      return `<span class="card-emblem card-emblem--wild">0/14</span>`;
+      return cardShell(
+        '<span class="sk-card__figure sk-card__figure--wild">0/14</span>',
+        '<b class="card-emblem card-emblem--wild">0/14</b>' + suit
+      );
     }
-    return `<span class="card-emblem">${card.value}</span>`;
+    return cardShell(
+      `<span class="sk-card__figure">${card.value}</span>`,
+      `<b class="card-emblem">${card.value}</b>` + suit
+    );
   }
   const info = SPECIAL_INFO[card.kind];
   let label = card.kind === 'pirate' ? PIRATE_SHORT_NAME[card.name] || 'Pirate' : info.label;
@@ -176,7 +220,7 @@ function cardFaceHTML(card) {
   if (card.kind === 'tigress' && card.chosenAs) {
     label = card.chosenAs === 'pirate' ? 'Tigresse Pirate' : 'Tigresse Fuite';
   }
-  return `<span class="sk-special-label">${label}</span>`;
+  return cardShell('<i class="sk-card__wm"></i>', `<b class="sk-special-label">${label}</b>`);
 }
 
 // Texte d'infobulle (survol). Toutes les cartes en ont une, y compris celles
@@ -267,7 +311,49 @@ function attachPowerTooltip(el, card) {
   });
   el.addEventListener('mousemove', positionCardTooltip);
   el.addEventListener('mouseleave', hideCardTooltip);
+
+  // Appui long : la fiche s'ouvre, la carte ne se joue pas. Le clic qui
+  // suit le relâchement est avalé (voir suppressNextTap), sinon consulter
+  // une carte revenait à la poser — et une pose est irréversible.
+  let holdTimer = null;
+  let startX = 0;
+  let startY = 0;
+  el.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      el.dataset.consulted = '1';
+      cardTooltip.textContent = text;
+      cardTooltip.classList.remove('hidden');
+      positionCardTooltip({ clientX: startX, clientY: startY });
+    }, 350);
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+  }, { passive: true });
+  const endHold = () => {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    if (el.dataset.consulted) {
+      delete el.dataset.consulted;
+      suppressNextTap = true;
+      setTimeout(() => { suppressNextTap = false; }, 400);
+      setTimeout(hideCardTooltip, 2200);
+    }
+  };
+  el.addEventListener('touchend', endHold);
+  el.addEventListener('touchcancel', endHold);
 }
+
+// Vrai le temps qu'un appui long se termine : le clic synthétique émis
+// après le relâchement ne doit pas jouer la carte qu'on venait consulter.
+let suppressNextTap = false;
 
 const screens = {
   home: document.getElementById('sk-screen-home'),
@@ -306,7 +392,7 @@ socket.on('connect', () => {
   if (hasConnectedOnce) return;
   hasConnectedOnce = true;
   reconnectOverlay.classList.add('hidden');
-  reconnectOverlay.textContent = '🔌 Connexion perdue — reconnexion en cours…';
+  reconnectOverlay.textContent = 'Connexion perdue — reconnexion en cours…';
 });
 
 function showReconnectingOverlay(show) {
@@ -343,16 +429,16 @@ function setCreateBusy(busy, label) {
   btnCreate.disabled = busy;
   btnCreate.innerHTML = busy ? label : btnCreateDefaultLabel;
 }
-if (!socket.connected) setCreateBusy(true, '⏳ Connexion au serveur…');
+if (!socket.connected) setCreateBusy(true, 'Connexion au serveur…');
 socket.on('connect', () => setCreateBusy(false));
-socket.on('disconnect', () => setCreateBusy(true, '⏳ Connexion au serveur…'));
+socket.on('disconnect', () => setCreateBusy(true, 'Connexion au serveur…'));
 
 btnCreate.addEventListener('click', () => {
   const nickname = requireNickname();
   if (!nickname) return;
   homeError.textContent = '';
   myNickname = nickname;
-  setCreateBusy(true, '⏳ Création…');
+  setCreateBusy(true, 'Création…');
   socket.emit('skullking-create-room', { nickname, token: getPlayerToken() });
 });
 
@@ -407,7 +493,8 @@ socket.on('skullking-history', ({ rounds }) => {
   const head = players
     .map((r) => `<th>${r.id === myId ? 'Toi' : escapeHTML(r.nickname)}</th>`)
     .join('');
-  // Une ligne par manche, une colonne par joueur : « annonce/plis » puis le
+  // Une ligne par manche, une colonne par joueur : « plis sur annonce »
+  // — la MÊME convention que sur la table, écrite en toutes lettres —, puis le
   // delta de la manche, et le cumul en petit — de quoi refaire tout le match.
   const body = rounds
     .map((r) => {
@@ -416,7 +503,7 @@ socket.on('skullking-history', ({ rounds }) => {
           const exact = row.bid === row.made;
           const delta = row.delta >= 0 ? `+${row.delta}` : `${row.delta}`;
           return `<td class="${exact ? 'sk-hist-hit' : 'sk-hist-miss'}">
-              <span class="sk-hist-bid">${row.bid}/${row.made}</span>
+              <span class="sk-hist-bid">${row.made} sur ${row.bid}</span>
               <span class="sk-hist-delta">${delta}</span>
               <span class="sk-hist-total">${row.total}</span>
             </td>`;
@@ -429,7 +516,7 @@ socket.on('skullking-history', ({ rounds }) => {
       <thead><tr><th></th>${head}</tr></thead>
       <tbody>${body}</tbody>
     </table>
-    <p class="hint sk-hist-legend">annonce/plis · points de la manche · cumul</p>`;
+    <p class="hint sk-hist-legend">plis sur annonce · points de la manche · cumul</p>`;
 });
 
 // --- Salon d'attente ---
@@ -457,6 +544,8 @@ btnAddBot.addEventListener('click', () => socket.emit('skullking-add-bot'));
 const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
+const roundsGrid = document.getElementById('sk-rounds-grid');
+const roundsHint = document.getElementById('sk-rounds-hint');
 
 const joinModal = document.getElementById('sk-join-modal');
 const joinModalNickname = document.getElementById('sk-join-modal-nickname');
@@ -484,7 +573,7 @@ const copyDefaultLabel = btnCopy.innerHTML;
 btnCopy.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(shareLink.value);
-    btnCopy.textContent = '✅ Copié !';
+    btnCopy.textContent = 'Lien copié';
     setTimeout(() => (btnCopy.innerHTML = copyDefaultLabel), 1500);
   } catch {
     shareLink.select();
@@ -558,7 +647,35 @@ function renderPiecePicker(players) {
   });
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, myId: id }) => {
+// Le nombre de manches, réglé par l'hôte. Un bouton par valeur plutôt qu'un
+// menu déroulant : l'écart est de huit valeurs, et un jeton par manche dit
+// directement de quoi il s'agit — c'est la même piste que celle du bandeau.
+// Les autres joueurs voient le réglage en lecture seule, comme l'extension.
+function renderRoundsPicker(total, mini, maxi, isHost) {
+  const min = mini || 3;
+  const max = maxi || 10;
+  const choisi = total || max;
+  roundsGrid.innerHTML = '';
+  for (let n = min; n <= max; n++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sk-round-choice' + (n === choisi ? ' is-on' : '');
+    b.textContent = n;
+    b.disabled = !isHost;
+    b.setAttribute('aria-pressed', String(n === choisi));
+    if (isHost) {
+      b.addEventListener('click', () => socket.emit('skullking-set-rounds', { totalRounds: n }));
+    }
+    roundsGrid.appendChild(b);
+  }
+  // La dernière manche est la plus longue : elle dit à elle seule la durée
+  // de la partie mieux que le nombre de manches.
+  roundsHint.textContent = isHost
+    ? `${choisi} manches — la dernière se joue à ${choisi} cartes par joueur.`
+    : `${choisi} manches.`;
+}
+
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, totalRounds, minRounds, maxRounds, myId: id }) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
@@ -595,6 +712,8 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     : isHost
       ? "Active l'extension officielle pour plus de cartes et jusqu'à 9 joueurs."
       : '';
+
+  renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
 
   btnStartGame.classList.toggle('hidden', !isHost);
   // Outil de test : jamais proposé aux vrais joueurs (voir DEV_TOOLS).
@@ -693,11 +812,12 @@ const btnTigressPirate = document.getElementById('sk-btn-tigress-pirate');
 const btnTigressEscape = document.getElementById('sk-btn-tigress-escape');
 const handEl = document.getElementById('sk-hand');
 const scoreboardRows = document.getElementById('sk-scoreboard-rows');
-const roundTrackFill = document.getElementById('sk-round-track-fill');
-const roundTrackKnob = document.getElementById('sk-round-track-knob');
-const roundTrackLabel = document.getElementById('sk-round-track-label');
-const sideRound = document.getElementById('sk-side-round');
-const roundSegments = document.getElementById('sk-round-segments');
+const chainEl = document.getElementById('sk-chain');
+const scrollEl = document.getElementById('sk-round-scroll');
+const mineEl = document.getElementById('sk-mine');
+const mineNotches = document.getElementById('sk-mine-notches');
+const mineValue = document.getElementById('sk-mine-v');
+const mineScore = document.getElementById('sk-mine-score');
 
 let latestState = null;
 let startRevealPlayed = false;
@@ -733,8 +853,17 @@ const SEAT_ELLIPSE = { cx: 50, cy: 50, rx: 44, ry: 40, startDeg: 66 };
 // correctif 8/9 joueurs). On y répartit donc les joueurs régulièrement sur
 // toute l'ellipse, en partant du bas — la méthode retenue sur la maquette,
 // qui tient aussi bien à 3 joueurs qu'à 9.
-const SEAT_ELLIPSE_LANDSCAPE = { cx: 50, cy: 50, rx: 41, ry: 33 };
+// Les rayons sont exprimés dans le PLAN DE JEU (u,v), pas en pixels : c'est
+// surFeutre() qui les projette ensuite dans le trapèze peint. Un rayon de 50
+// tombe donc pile sur le bord du feutre, quel que soit son évasement. On
+// reste juste en deçà pour que le jeton morde le liseré doré sans le sauter.
+const SEAT_ELLIPSE_LANDSCAPE = { cx: 50, cy: 50, rx: 47, ry: 45 };
 const landscapeTable = window.matchMedia('(min-width: 1000px)');
+// Sur téléphone, le tapis est étroit et les étiquettes de siège débordaient
+// des deux côtés (« B… », « L… » posés hors du bois) : on resserre l'ellipse
+// pour que le siège entier tienne à l'intérieur du feutre.
+const narrowTable = window.matchMedia('(max-width: 680px)');
+const SEAT_ELLIPSE_NARROW = { cx: 50, cy: 50, rx: 33, ry: 32 };
 
 function computeSeatPositionsEven(count, ellipse) {
   const { cx, cy, rx, ry } = ellipse;
@@ -778,11 +907,58 @@ function nicknameOf(state, id) {
   return p ? p.nickname : '?';
 }
 
+// --- Le feutre est un trapèze ----------------------------------------
+// Le plateau est peint en légère plongée : le bord du fond est plus étroit
+// que celui du premier plan. Les sièges et les cartes se calculent donc
+// dans un plan de jeu carré (u, v dans [0,1], v = 0 au fond), puis se
+// projettent sur le feutre. Les fractions ci-dessous ont été relevées sur
+// plateau-taverne.webp ; elles ne valent que parce que le fond est posé en
+// `100% 100%`, l'image épousant exactement la boîte (voir skullking.css).
+// Deux scènes peintes coexistent, choisies par `?scene=2` dans l'URL — le
+// temps de trancher laquelle garder. Chacune a SON feutre : les fractions
+// ci-dessous sont relevées sur l'image, et se tromper de jeu décale tous
+// les sièges sans rien casser d'autre, donc sans qu'on s'en aperçoive.
+const SCENE_V2 = new URLSearchParams(location.search).get('scene') === '2';
+if (SCENE_V2) {
+  document.querySelector('.sk-scene')?.classList.add('sk-scene--v2');
+  document.getElementById('sk-screen-game')?.classList.add('sk-v2');
+}
+
+const FEUTRE = SCENE_V2
+  ? { haut: 0, bas: 1, gHaut: 0.070, dHaut: 0.923, gBas: 0, dBas: 1 }
+  : { haut: 0, bas: 1, gHaut: 0.030, dHaut: 0.904, gBas: 0, dBas: 1 };
+
+// Rend une position en POURCENTAGES de la boîte .sk-table, prête pour
+// style.left / style.top.
+function surFeutre(u, v) {
+  const g = FEUTRE.gHaut + (FEUTRE.gBas - FEUTRE.gHaut) * v;
+  const d = FEUTRE.dHaut + (FEUTRE.dBas - FEUTRE.dHaut) * v;
+  return {
+    x: (g + (d - g) * u) * 100,
+    y: (FEUTRE.haut + (FEUTRE.bas - FEUTRE.haut) * v) * 100,
+  };
+}
+
+// Ce qui est loin est petit. Sans cette réduction, une carte posée au fond
+// du tapis paraît une fois et demie celle du premier plan.
+function echelleProfondeur(v) {
+  return 0.72 + 0.38 * v;
+}
+
+// Hauteur du feutre en pixels : c'est l'unité dans laquelle se comptent les
+// écarts verticaux du plan de jeu.
+function hauteurFeutre() {
+  const h = tableEl.getBoundingClientRect().height || 1;
+  return (FEUTRE.bas - FEUTRE.haut) * h;
+}
+
 function seatLayout(state) {
   const ordered = seatOrder(state.players);
   let positions;
   if (landscapeTable.matches) {
     positions = computeSeatPositionsEven(ordered.length, SEAT_ELLIPSE_LANDSCAPE);
+  } else if (narrowTable.matches) {
+    positions = computeSeatPositionsEven(ordered.length, SEAT_ELLIPSE_NARROW);
   } else {
     // On ne garde la table figée que si elle couvre vraiment tout le monde ;
     // sinon on calcule, jamais de repli partiel (source du TypeError à 8/9 joueurs).
@@ -795,10 +971,118 @@ function seatLayout(state) {
   return { ordered, map };
 }
 
-// Le bandeau du haut ne porte que la manche : le numéro du pli en cours se
-// devine déjà aux cartes posées sur le tapis et à la main qui se vide.
+// Résultat de MES manches passées, accumulé au fil de la partie (le serveur
+// n'envoie l'historique complet que sur demande, à l'ouverture de la modale).
+// Sert à frapper les doublons du bandeau : laiton = contrat tenu, cuivre
+// oxydé = raté.
+const myRoundResults = new Map();
+
+// Rang gravé dans le registre : c'est lui qui bouge d'une manche à l'autre,
+// jamais la place de la ligne (voir renderScoreboard).
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+
+// --- Le bandeau du haut : la mémoire ET l'horloge de la partie ---------
+// Dix doublons, un par manche. Celui de la manche en cours s'ouvre sur un
+// cartouche qui porte le nombre de cartes et une encoche par pli, frappée au
+// fur et à mesure : c'est la seule façon de savoir combien de plis il reste
+// pour tenir son contrat, information qui n'était affichée nulle part.
 function renderRoundIndicator(state) {
-  roundIndicator.textContent = `Manche ${state.roundNumber}/${state.totalRounds}`;
+  roundIndicator.textContent =
+    `Manche ${state.roundNumber} sur ${state.totalRounds}, ${state.cardsInRound} carte` +
+    `${state.cardsInRound > 1 ? 's' : ''} par joueur.`;
+
+  // Le cartouche du bandeau : la manche en cours, en toutes lettres.
+  scrollEl.innerHTML = '';
+  const t = document.createElement('span');
+  t.className = 'sk-scroll-t';
+  t.textContent = `Manche ${state.roundNumber} — ${state.cardsInRound} carte${state.cardsInRound > 1 ? 's' : ''}`;
+  scrollEl.appendChild(t);
+  scrollEl.appendChild(trickNotches(state));
+
+  // La piste : deux embouts et une alvéole par manche. La barre peinte est
+  // débitée en trois pièces (barre-bout-g / barre-cellule / barre-bout-d)
+  // précisément pour ça — son dessin d'origine portait dix alvéoles en dur,
+  // et une partie en 5 manches en aurait laissé cinq vides.
+  //
+  // La matière dit tout : laiton frappé = contrat tenu, cuivre oxydé =
+  // raté, laiton vierge = manche à venir, liseré gravé = manche en cours.
+  // Quatre états qui se distinguent à la forme, pas seulement à la couleur.
+  chainEl.innerHTML = '';
+  const capG = document.createElement('i');
+  capG.className = 'sk-chain-bout sk-chain-bout--g';
+  chainEl.appendChild(capG);
+
+  for (let i = 1; i <= state.totalRounds; i++) {
+    const cell = document.createElement('i');
+    cell.className = 'sk-chain-alveole';
+
+    const past = myRoundResults.get(i);
+    const face = i === state.roundNumber ? 'courant'
+      : past === true ? 'tenu'
+      : past === false ? 'rate'
+      : 'vierge';
+    const d = document.createElement('img');
+    d.className = 'sk-dbl' + (i === state.roundNumber ? ' sk-dbl--now' : '');
+    d.src = `assets/skin/doublon-${face}.webp`;
+    d.alt = '';
+    d.title = i === state.roundNumber
+      ? `Manche ${i} — en cours`
+      : past !== undefined ? `Manche ${i} : contrat ${past ? 'tenu' : 'raté'}` : `Manche ${i}`;
+    cell.appendChild(d);
+    chainEl.appendChild(cell);
+  }
+
+  const capD = document.createElement('i');
+  capD.className = 'sk-chain-bout sk-chain-bout--d';
+  chainEl.appendChild(capD);
+}
+
+// Une encoche par pli de la manche : frappée quand le pli est joué, cerclée
+// de rouge pour celui qui est en cours.
+function trickNotches(state) {
+  const wrap = document.createElement('span');
+  wrap.className = 'sk-notches';
+  const current = state.phase === 'playing' || state.phase === 'power' ? state.trickNumber || 1 : 0;
+  for (let t = 1; t <= state.cardsInRound; t++) {
+    const n = document.createElement('i');
+    if (current && t < current) n.className = 'is-won';
+    else if (current && t === current) n.className = 'is-now';
+    wrap.appendChild(n);
+  }
+  return wrap;
+}
+
+// Mon contrat, en toutes lettres et en encoches. Jamais « 1/0 » : le même
+// glyphe voulait dire deux choses opposées selon l'écran où on le lisait.
+function renderMine(state) {
+  const me = (state.players || []).find((p) => p.id === myId);
+  const row = (state.scoreboard || []).find((r) => r.id === myId);
+  if (!me) {
+    mineEl.classList.add('hidden');
+    return;
+  }
+  mineEl.classList.remove('hidden');
+  mineScore.textContent = row ? row.total : 0;
+
+  mineNotches.innerHTML = '';
+  if (state.phase === 'bidding' || me.bid === undefined || me.bid === null) {
+    mineValue.textContent = me.hasBid ? 'annonce faite' : 'à annoncer';
+    mineEl.classList.remove('sk-mine--over', 'sk-mine--exact');
+    return;
+  }
+  mineValue.textContent = `${me.tricksWon} sur ${me.bid}`;
+  // Une encoche par pli annoncé : pleine = acquis, creuse = encore attendu,
+  // barrée = pli en trop. La forme porte le sens, la couleur ne fait que
+  // redoubler — un vert et un rouge sont la même couleur pour un deutan.
+  const shown = Math.max(me.bid, me.tricksWon);
+  for (let i = 1; i <= shown; i++) {
+    const n = document.createElement('i');
+    if (i > me.bid) n.className = 'is-over';
+    else if (i <= me.tricksWon) n.className = 'is-won';
+    mineNotches.appendChild(n);
+  }
+  mineEl.classList.toggle('sk-mine--over', me.tricksWon > me.bid);
+  mineEl.classList.toggle('sk-mine--exact', me.tricksWon === me.bid);
 }
 
 // Vert = l'annonce est pile tenue à cet instant, rouge = déjà dépassée,
@@ -822,39 +1106,39 @@ function bidStateSuffix(state, p) {
 // une seule silhouette lisible à 30px comme à 60px.
 const PIECES = [
   {
-    key: 'crane', label: 'Crâne', color: '#b91c1c',
+    key: 'crane', label: 'Crâne', color: '#7d1a15',
     svg: '<circle cx="12" cy="9.5" r="6.6"/><circle cx="9.6" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><circle cx="14.4" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M8.2 15.6h7.6v3a1.6 1.6 0 0 1-1.6 1.6H9.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M10.7 15.8v4.3M13.3 15.8v4.3"/>',
   },
   {
-    key: 'ancre', label: 'Ancre', color: '#1d4ed8',
+    key: 'ancre', label: 'Ancre', color: '#1e3a63',
     svg: '<circle cx="12" cy="4.4" r="2.3"/><path d="M12 6.7V21"/><path d="M8 10h8"/><path d="M4.8 14.3c0 3.7 3.2 6.7 7.2 6.7s7.2-3 7.2-6.7"/>',
   },
   {
-    key: 'voilier', label: 'Voilier', color: '#15803d',
+    key: 'voilier', label: 'Voilier', color: '#1c5a46',
     svg: '<path d="M12 2.8v12.6"/><path d="M13.3 4.6l5 10.8h-5z" fill="currentColor" stroke="none"/><path d="M10.7 6.8 6.2 15.4h4.5z"/><path d="M3.4 17.2h17.2l-2.7 3.9H6.1z"/>',
   },
   {
-    key: 'sabre', label: 'Sabre', color: '#a16207',
+    key: 'sabre', label: 'Sabre', color: '#8a6420',
     svg: '<path d="M20.2 3.8 9.7 14.3"/><path d="M6.9 12.9l4.2 4.2"/><path d="M8.3 15.7 4.9 19.1"/><circle cx="3.9" cy="20.1" r="1.5"/>',
   },
   {
-    key: 'boussole', label: 'Boussole', color: '#0f766e',
+    key: 'boussole', label: 'Boussole', color: '#17434a',
     svg: '<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-2 4.8-4.8 2 2-4.8z" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'coffre', label: 'Coffre', color: '#c2410c',
+    key: 'coffre', label: 'Coffre', color: '#9a5423',
     svg: '<path d="M3.6 10.6h16.8V19a1.6 1.6 0 0 1-1.6 1.6H5.2A1.6 1.6 0 0 1 3.6 19z"/><path d="M3.6 10.6A8.6 8.6 0 0 1 12 5.6a8.6 8.6 0 0 1 8.4 5"/><path d="M3.6 13.8h16.8"/><rect x="10.6" y="12.1" width="2.8" height="4" rx="0.7" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'barre', label: 'Barre', color: '#6d28d9',
+    key: 'barre', label: 'Barre', color: '#4a2a63',
     svg: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>',
   },
   {
-    key: 'bouteille', label: 'Bouteille', color: '#a21caf',
+    key: 'bouteille', label: 'Bouteille', color: '#5b2340',
     svg: '<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>',
   },
   {
-    key: 'crochet', label: 'Crochet', color: '#be123c',
+    key: 'crochet', label: 'Crochet', color: '#6d1730',
     svg: '<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>',
   },
 ];
@@ -875,8 +1159,12 @@ function pieceFor(player) {
 
 // Le SVG porte la couleur de la pièce sur son trait ; le rond du siège prend
 // la même teinte en fond, en plus sombre (voir --sk-av-color).
+// Les pièces sont désormais des médaillons peints, un fichier par figure.
+// Leur cerclage émaillé porte déjà la couleur du joueur : on ne la repeint
+// donc plus par-dessus. Elle reste dans PIECES parce que le registre et les
+// étiquettes de siège s'en servent pour teinter du texte, pas une figure.
 function pieceSVG(piece) {
-  return `<svg class="sk-piece-svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${piece.svg}</svg>`;
+  return `<img class="sk-piece-img" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
 }
 
 function renderSeats(state) {
@@ -884,11 +1172,16 @@ function renderSeats(state) {
   tableEl.querySelectorAll('.sk-seat').forEach((el) => el.remove());
 
   ordered.forEach((p) => {
+    // left/top sont les coordonnées du PLAN de jeu, en pourcentages ; c'est
+    // la projection qui les pose sur le feutre.
     const [left, top] = map.get(p.id);
+    const v = top / 100;
+    const pos = surFeutre(left / 100, v);
     const seat = document.createElement('div');
     seat.className = 'sk-seat' + (p.id === myId ? ' sk-seat--me' : '');
-    seat.style.left = left + '%';
-    seat.style.top = top + '%';
+    seat.style.left = pos.x + '%';
+    seat.style.top = pos.y + '%';
+    seat.style.transform = `translate(-50%, -50%) scale(${echelleProfondeur(v).toFixed(3)})`;
     if (!p.connected) seat.classList.add('sk-seat--disconnected');
     // Pendant l'annonce (simultanée, pas de "tour" à proprement parler), on
     // met déjà en avant qui mènera le pli - sinon rien n'indique "qui
@@ -928,7 +1221,7 @@ function renderSeats(state) {
       // carte du pli venait le recouvrir.
       tally.className = 'sk-seat-tally' + (top > 50 ? ' sk-seat-tally--below' : '');
       const won = p.tricksWon || 0;
-      tally.textContent = `${won}/${p.bid}`;
+      tally.textContent = `${won} sur ${p.bid}`;
       // Vert tant que l'annonce reste tenable, rouge dès qu'elle est dépassée.
       if (won > p.bid) tally.classList.add('sk-seat-tally--over');
       else if (won === p.bid) tally.classList.add('sk-seat-tally--exact');
@@ -951,7 +1244,7 @@ function renderSeats(state) {
     label.className = 'sk-seat-label';
     const name = document.createElement('span');
     name.className = 'sk-seat-name';
-    name.textContent = (p.connected ? '' : '🔌 ') + p.nickname;
+    name.textContent = (p.connected ? '' : '⚑ ') + p.nickname;
     label.appendChild(name);
 
     // Annonce et plis gagnés vivent dans le panneau de droite, pas sur le
@@ -964,17 +1257,20 @@ function renderSeats(state) {
       if (state.phase === 'bidding') {
         bidEl.textContent = p.hasBid ? '✓' : '…';
       } else {
-        bidEl.textContent = p.bid === undefined || p.bid === null ? '?' : `${p.tricksWon}/${p.bid}`;
+        bidEl.textContent = p.bid === undefined || p.bid === null ? '?' : `${p.tricksWon} sur ${p.bid}`;
       }
       label.appendChild(bidEl);
     }
 
     if (p.id === state.dealerId) {
+      // Accrochée au SIÈGE, pas à l'étiquette du nom : dans l'étiquette elle
+      // se posait sur les premières lettres du pseudo, qui est justement ce
+      // qu'on cherche à lire. Sur le siège, elle vient au coin du jeton.
       const chip = document.createElement('span');
       chip.className = 'sk-seat-dealer';
       chip.textContent = 'D';
-      chip.title = 'Donneur';
-      label.appendChild(chip);
+      chip.title = 'Donneur — c\'est lui qui distribue';
+      seat.appendChild(chip);
     }
 
     // Alliance Butin : une fois formée, elle reste marquée à côté de chaque
@@ -995,7 +1291,13 @@ function renderSeats(state) {
   });
 }
 
-const SUIT_DOT = { vert: '🟢', jaune: '🟡', violet: '🟣', noir: '⚫' };
+// La couleur imposée se lit sur une pastille peinte aux teintes de la
+// maison — un emoji dépend de la police du système et détonne au milieu de
+// gravures. Le nom de la couleur reste écrit à côté : la pastille ne porte
+// jamais l'information seule.
+function suitDot(suit) {
+  return `<i class="sk-suit-dot sk-suit-dot--${suit}" aria-hidden="true"></i>`;
+}
 
 // Chaque carte du pli est posée devant le siège de qui l'a jouée (interpolée
 // entre le siège et le centre) : le pli dessine un cercle et on lit d'un coup
@@ -1005,8 +1307,10 @@ function renderTrick(state) {
   const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
   // Horizontalement, un tirage en pourcentage suffit : le tapis est large et
-  // les sièges de gauche/droite sont loin du centre.
-  const PULL_X = 0.44;
+  // les sièges de gauche/droite sont loin du centre. Sur téléphone le tapis
+  // fait 390 px de large : la carte des sièges latéraux venait mordre leur
+  // étiquette, on la tire donc plus franchement vers le centre.
+  const PULL_X = narrowTable.matches ? 0.62 : 0.34;
 
   // Verticalement, non : un pourcentage vaut de moins en moins de pixels à
   // mesure que la fenêtre raccourcit, et la carte finissait par recouvrir le
@@ -1014,34 +1318,55 @@ function renderTrick(state) {
   // en bas). On pose donc la carte à une distance FIXE du siège, mesurée sur
   // les éléments réellement rendus plutôt que codée en dur — et quand le
   // tapis est trop court pour tout loger, ce sont les cartes qui rétrécissent,
-  // jamais le dégagement autour des sièges.
-  const tableH = tableEl.getBoundingClientRect().height || 1;
-  const CARTE_H = 118; // hauteur nominale d'une carte du pli, à l'échelle 1
+  // jamais le dégagement autour des sièges. Cette distance se compte dans le
+  // plan de jeu, dont l'unité verticale est la hauteur du feutre.
+  const H_PLAN = hauteurFeutre();
+  // La carte du pli est indexée sur la largeur du feutre (--sk-w vaut
+  // 22.5cqw côté CSS), pas sur une taille en pixels : sur la nouvelle scène
+  // le feutre fait toute la fenêtre, une carte de 76 px y était minuscule.
+  // Sa hauteur nominale doit suivre la même règle, sinon ce calcul
+  // d'encombrement les croirait plus petites qu'elles ne sont et les
+  // laisserait se chevaucher.
+  const CARTE_LARGEUR_FRAC = 0.225;
+  const CARTE_H = Math.max(96, tableEl.clientWidth * CARTE_LARGEUR_FRAC * (118 / 84));
   const MARGE = 8;
 
   const sieges = [...tableEl.querySelectorAll('.sk-seat')];
+  // offsetHeight est la hauteur de mise en page, insensible au scale de
+  // profondeur posé par renderSeats : on le remet donc à la main.
   const hSiege = sieges.length ? sieges[0].offsetHeight : 76;
-  const hauteurs = sieges.map((el) => parseFloat(el.style.top) || 50);
-  const plusHaut = Math.min(...hauteurs, 50);
-  const plusBas = Math.max(...hauteurs, 50);
+  const places = [...map.values()];
+  const hauteurs = places.map(([, top]) => top);
+  const vHaut = Math.min(...hauteurs, 50) / 100;
+  const vBas = Math.max(...hauteurs, 50) / 100;
 
-  // Bande libre entre le siège le plus haut et le plus bas. S'il y a des
-  // sièges des deux côtés du centre, deux cartes doivent y tenir ; sinon une
-  // seule, et rien ne contraint.
-  const bande = ((plusBas - plusHaut) / 100) * tableH - hSiege - 2 * MARGE;
-  const rangees = plusHaut < 50 && plusBas > 50 ? 2 : 1;
-  const hDispo = rangees === 2 ? (bande - MARGE) / 2 : bande;
-  const echelle = Math.max(0.62, Math.min(1, hDispo / CARTE_H));
+  // Deux cartes ne se gênent que si elles partagent la même COLONNE : une
+  // carte du haut et une du bas ne se croisent pas si elles sont décalées
+  // horizontalement. L'ancienne version imposait deux rangées dès qu'il y
+  // avait un siège de chaque côté du centre — à 3 joueurs, où les deux
+  // adversaires sont aux coins opposés du feutre, ça bridait les cartes à
+  // leur plancher pour rien.
+  const COLONNE = 26; // en % de la largeur du plan : en deçà, elles se croisent
+  const hautes = places.filter(([, v]) => v < 50);
+  const basses = places.filter(([, v]) => v > 50);
+  const seChevauchent = hautes.some(([uh]) => basses.some(([ub]) => Math.abs(uh - ub) < COLONNE));
+
+  // Bande libre entre le siège le plus haut et le plus bas.
+  const bande =
+    (vBas - vHaut) * H_PLAN -
+    (hSiege * echelleProfondeur(vHaut)) / 2 -
+    (hSiege * echelleProfondeur(vBas)) / 2 -
+    2 * MARGE;
+  const hDispo = seChevauchent ? (bande - MARGE) / 2 : bande;
+  const echelle = Math.max(0.82, Math.min(1, hDispo / (CARTE_H * echelleProfondeur(0.5))));
   tableEl.style.setProperty('--sk-trick-scale', echelle.toFixed(3));
-
-  const DEMI_SIEGE = hSiege / 2;
-  const DEMI_CARTE = (CARTE_H * echelle) / 2;
-  const ECART = DEMI_SIEGE + DEMI_CARTE + MARGE;
 
   trick.forEach((t) => {
     const seatPos = map.get(t.playerId);
     if (!seatPos) return;
     const [seatLeft, seatTop] = seatPos;
+    const uSiege = seatLeft / 100;
+    const vSiege = seatTop / 100;
 
     const slot = document.createElement('div');
     slot.className = 'sk-trick-card';
@@ -1049,16 +1374,21 @@ function renderTrick(state) {
     // Skull King qui dévore les Pirates, voir playDevourAnimation).
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
-    slot.style.left = `${seatLeft + (50 - seatLeft) * PULL_X}%`;
 
-    // Sens du décalage : vers le centre du tapis. Un siège pile au milieu
-    // (gauche/droite) ne bouge pas verticalement. Aucun garde-fou ici : la
-    // taille des cartes a déjà été ajustée pour que tout tienne, et brider la
-    // position revenait à repousser la carte sur le siège — précisément le
-    // défaut qu'on corrige.
-    const sens = seatTop < 50 ? 1 : seatTop > 50 ? -1 : 0;
-    const y = (seatTop / 100) * tableH + sens * ECART;
-    slot.style.top = `${(y / tableH) * 100}%`;
+    // La carte avance vers le centre du feutre, juste assez pour dégager
+    // l'étiquette du siège — et jamais au-delà du centre. Ce garde-fou est
+    // le seul de la fonction : à cinq joueurs les sièges latéraux ne sont
+    // qu'à un dixième du centre, et sans lui leur carte ressortait de
+    // l'autre côté, en plein sur les sièges du fond.
+    const sens = vSiege < 0.5 ? 1 : vSiege > 0.5 ? -1 : 0;
+    const k = echelleProfondeur(vSiege);
+    const ecart = (hSiege * k) / 2 + (CARTE_H * echelle * k) / 2 + MARGE;
+    const dv = Math.min(ecart / H_PLAN, Math.abs(0.5 - vSiege));
+    const v = vSiege + sens * dv;
+    const pos = surFeutre(uSiege + (0.5 - uSiege) * PULL_X, v);
+    slot.style.left = `${pos.x}%`;
+    slot.style.top = `${pos.y}%`;
+    slot.style.setProperty('--sk-depth', echelleProfondeur(v).toFixed(3));
     if (t.playerId === state.leadingPlayerId) slot.classList.add('sk-trick-card--leading');
 
     const cardEl = document.createElement('div');
@@ -1074,16 +1404,16 @@ function renderTrick(state) {
   // l'annonce, puis l'issue du pli. Qui mène se lit déjà au liseré vert de la
   // carte, la couleur demandée aux cartes grisées dans la main.
   if (state.phase === 'bidding') {
-    trickCaptionEl.textContent = '🎯 Tout le monde annonce son nombre de plis…';
+    trickCaptionEl.textContent = 'Tout le monde annonce son nombre de plis…';
   } else if (state.trickPaused) {
     if (state.lastTrickResult && state.lastTrickResult.destroyed) {
       trickCaptionEl.textContent = '💥 Le pli est détruit !';
     } else {
       const winner = state.leadingPlayerId === myId ? 'Tu remportes' : `${nicknameOf(state, state.leadingPlayerId)} remporte`;
-      trickCaptionEl.textContent = `🏆 ${winner} le pli !`;
+      trickCaptionEl.textContent = `${winner} le pli !`;
     }
   } else if (state.trickWillBeDestroyed) {
-    trickCaptionEl.textContent = '💀 Ce pli sera détruit…';
+    trickCaptionEl.textContent = 'Ce pli sera détruit…';
   } else {
     trickCaptionEl.textContent = '';
   }
@@ -1123,12 +1453,15 @@ function playDevourAnimation(state) {
     if (!slot) return;
     const dx = king.offsetLeft - slot.offsetLeft;
     const dy = king.offsetTop - slot.offsetTop;
+    // La case porte déjà une échelle de profondeur : la reprendre évite que
+    // la carte grossisse d'un coup au premier pas de l'animation.
+    const k = parseFloat(slot.style.getPropertyValue('--sk-depth')) || 1;
     slot.style.zIndex = '4';
     slot.animate(
       [
-        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-        { transform: `translate(-50%, -50%) translate(${dx * 0.25}px, ${dy * 0.25}px) scale(1.08) rotate(-6deg)`, opacity: 1, offset: 0.28 },
-        { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.15) rotate(14deg)`, opacity: 0 },
+        { transform: `translate(-50%, -50%) scale(${k})`, opacity: 1 },
+        { transform: `translate(-50%, -50%) translate(${dx * 0.25}px, ${dy * 0.25}px) scale(${k * 1.08}) rotate(-6deg)`, opacity: 1, offset: 0.28 },
+        { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${k * 0.15}) rotate(14deg)`, opacity: 0 },
       ],
       { duration: 850, delay: 120 + i * 90, easing: 'cubic-bezier(0.5, -0.3, 0.7, 1)', fill: 'forwards' }
     );
@@ -1188,7 +1521,7 @@ function renderBidChoices(state) {
   const confirmBtn = document.createElement('button');
   confirmBtn.className = 'btn sk-bid-confirm' + (confirme ? ' sk-bid-confirm--done' : '');
   confirmBtn.disabled = pendingBid === null || confirme;
-  confirmBtn.textContent = confirme ? '✓ Annonce envoyée' : '✅ Confirmer';
+  confirmBtn.textContent = confirme ? 'Annonce envoyée' : 'Confirmer';
   confirmBtn.addEventListener('click', () => {
     if (pendingBid === null) return;
     socket.emit('skullking-bid', { bid: pendingBid });
@@ -1215,8 +1548,8 @@ function renderTurnIndicator(state) {
     if (state.myBid === undefined) {
       turnIndicator.textContent =
         state.roundNumber === 1
-          ? '🎯 Ta carte reste cachée — base ton annonce sur celles que tu vois des autres.'
-          : '🎯 Combien de plis vas-tu remporter cette manche ?';
+          ? 'Ta carte reste cachée — base ton annonce sur celles que tu vois des autres.'
+          : 'Combien de plis vas-tu remporter cette manche ?';
     } else {
       const waiting = state.players.filter((p) => !p.hasBid).map((p) => p.nickname);
       turnIndicator.textContent = waiting.length
@@ -1243,9 +1576,9 @@ function renderTurnIndicator(state) {
   if (!led) {
     turnIndicator.textContent = 'À toi de jouer !';
   } else if (mustFollowSuit(state.hand || [], led)) {
-    turnIndicator.textContent = `${SUIT_DOT[led]} À toi de jouer — tu dois suivre le ${led}`;
+    turnIndicator.innerHTML = `${suitDot(led)} À toi de jouer — tu dois suivre le <b>${led}</b>`;
   } else {
-    turnIndicator.textContent = `${SUIT_DOT[led]} À toi de jouer — tu n'as pas de ${led}, joue ce que tu veux`;
+    turnIndicator.innerHTML = `${suitDot(led)} À toi de jouer — tu n'as pas de <b>${led}</b>, joue ce que tu veux`;
   }
 }
 
@@ -1331,7 +1664,7 @@ function renderHand(state) {
   hand.forEach((card, i) => {
     const angle = n > 1 ? -maxSpread / 2 + i * step : 0;
     const normalized = n > 1 ? Math.abs(i - (n - 1) / 2) / ((n - 1) / 2) : 0;
-    const lift = normalized * normalized * 14;
+    const lift = normalized * normalized * 8;
 
     const arc = document.createElement('div');
     arc.className = 'sk-card-arc';
@@ -1349,6 +1682,14 @@ function renderHand(state) {
       el.title = state.forcedCardId
         ? 'Le pouvoir de Mary Thorne t\'oblige à jouer une autre carte précise ce pli-ci.'
         : 'Tu dois suivre la couleur demandée : cette carte est bloquée tant que tu en as une en main.';
+      // Un bandeau de gabier collé sur la carte, plutôt qu'un message en
+      // haut de page : au doigt, le toast apparaissait à 700 px du doigt et
+      // on retapait trois fois la même carte avant de comprendre.
+      const led = ledSuitOf(trick);
+      const why = document.createElement('span');
+      why.className = 'sk-card__why';
+      why.textContent = state.forcedCardId ? 'Carte imposée' : `Suis le ${led}`;
+      el.appendChild(why);
     }
     if (willMode) {
       // Repère les deux cartes tout juste piochées au milieu du reste de la
@@ -1362,11 +1703,20 @@ function renderHand(state) {
         updateWillConfirmButton();
       });
     } else if (canPlay && !playable) {
-      el.addEventListener('click', () =>
-        showToast(state.forcedCardId ? '🚫 Mary Thorne t\'oblige à jouer une autre carte.' : '🚫 Tu dois suivre la couleur demandée.')
-      );
+      // La raison est déjà collée sur la carte (bandeau de gabier) ; le
+      // message reprend la couleur imposée plutôt qu'une règle générale.
+      el.addEventListener('click', () => {
+        if (suppressNextTap) return;
+        const led = ledSuitOf(trick);
+        showToast(
+          state.forcedCardId
+            ? "Mary Thorne t'oblige à jouer une autre carte ce pli-ci."
+            : `Tu dois suivre le ${led} : cette carte reste bloquée tant que tu en as une.`
+        );
+      });
     } else if (canPlay) {
       el.addEventListener('click', () => {
+        if (suppressNextTap) return;
         if (card.kind === 'tigress') {
           pendingTigressCardId = card.id;
           hideAllChoicePanels();
@@ -1437,7 +1787,47 @@ function renderHand(state) {
     arc.appendChild(el);
     handEl.appendChild(arc);
   });
+
+  // Mon tour : la main s'allume. C'est de la vision périphérique, pas de la
+  // lecture — le texte de consigne, lui, est au centre et se rate.
+  handEl.classList.toggle('sk-hand--mine', canPlay);
+  layoutHand();
 }
+
+// Chevauchement de l'éventail, calculé sur la place réellement disponible.
+// Une carte recouverte n'expose que sa bande gauche : on ne recouvre donc
+// que si la rangée déborde, et jamais au point de manger le pied, qui est
+// le seul endroit où se lisent le chiffre et le motif de famille.
+// La borne haute est la largeur du pied plus sa marge : au-delà, on
+// préfère laisser la main défiler plutôt que rendre les cartes muettes.
+function layoutHand() {
+  const cards = handEl.querySelectorAll('.sk-card-arc');
+  const n = cards.length;
+  if (!n) return;
+  const first = cards[0].firstElementChild;
+  const w = first ? first.getBoundingClientRect().width : 84;
+  if (!w) return;
+  const styles = getComputedStyle(handEl);
+  const room =
+    handEl.clientWidth - parseFloat(styles.paddingLeft || 0) - parseFloat(styles.paddingRight || 0);
+  const GUTTER = 8;
+  const MAX_LAP = Math.round(w * 0.36); // il reste au moins 64 % de la carte
+  let lap = -GUTTER;
+  if (n > 1) {
+    const needed = n * w + (n - 1) * GUTTER;
+    if (needed > room) lap = Math.min(MAX_LAP, Math.ceil((n * w - room) / (n - 1)));
+  }
+  handEl.style.setProperty('--lap', `${lap}px`);
+}
+
+// La largeur disponible change avec la fenêtre : l'éventail se recalcule,
+// sinon il reste chevauché après un agrandissement (ou déborde après une
+// réduction).
+let handLayoutTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(handLayoutTimer);
+  handLayoutTimer = setTimeout(layoutHand, 120);
+});
 
 // « Ce qu'il te reste à faire » : la phrase qu'on se répète en jouant et qui
 // n'était écrite nulle part. Réécrite à chaque pli, elle dit combien de plis
@@ -1487,7 +1877,23 @@ function renderObjective(state) {
   }
   objectiveEl.classList.remove('hidden');
   objectiveEl.className = `sk-objective sk-objective--${o.ton}`;
-  objectiveTextEl.textContent = o.texte;
+
+  // Les nombres sont ce qu'on vient lire ici : combien de plis il reste à
+  // prendre, combien de cartes en main. On les détache du reste de la
+  // phrase. Construit en noeuds plutôt qu'en innerHTML — la règle du
+  // fichier, tenue même quand le texte est fabriqué localement.
+  objectiveTextEl.textContent = '';
+  o.texte.split(/(\d+)/).forEach((bout, i) => {
+    if (!bout) return;
+    if (i % 2 === 1) {
+      const n = document.createElement('b');
+      n.className = 'sk-obj-n';
+      n.textContent = bout;
+      objectiveTextEl.appendChild(n);
+    } else {
+      objectiveTextEl.appendChild(document.createTextNode(bout));
+    }
+  });
 }
 
 // --- Chat du salon ---
@@ -1557,14 +1963,26 @@ function renderScoreboard(state) {
   renderChat(state);
   scoreboardRows.innerHTML = '';
   const byId = new Map(state.players.map((p) => [p.id, p]));
+  // Rang calculé à part : c'est lui qui bouge, jamais la place de la ligne.
+  const ranks = new Map();
   [...state.scoreboard]
     .sort((a, b) => b.total - a.total)
+    .forEach((s, i) => ranks.set(s.id, i + 1));
+  // L'ordre affiché est celui du tour de table, figé pour toute la partie.
+  const byPlayerOrder = state.players
+    .map((p) => state.scoreboard.find((s) => s.id === p.id))
+    .filter(Boolean);
+  byPlayerOrder
     .forEach((s) => {
       const row = document.createElement('div');
       row.className = 'sk-score-row' + (s.id === myId ? ' sk-score-row--me' : '');
       const name = document.createElement('span');
       name.className = 'sk-score-row-name';
-      name.textContent = s.nickname;
+      const rank = document.createElement('i');
+      rank.className = 'sk-rank';
+      rank.textContent = ROMAN[ranks.get(s.id)] || '';
+      name.appendChild(rank);
+      name.appendChild(document.createTextNode(s.nickname));
       const total = document.createElement('span');
       total.className = 'sk-score-row-total';
       total.textContent = s.total;
@@ -1578,7 +1996,7 @@ function renderScoreboard(state) {
         const bidEl = document.createElement('span');
         bidEl.className = 'sk-score-row-bid' + (bidState ? ` sk-score-row-bid${bidState}` : '');
         if (state.phase === 'bidding') bidEl.textContent = p.hasBid ? '✓' : '…';
-        else bidEl.textContent = p.bid === undefined || p.bid === null ? '–' : `${p.tricksWon}/${p.bid}`;
+        else bidEl.textContent = p.bid === undefined || p.bid === null ? '–' : `${p.tricksWon} sur ${p.bid}`;
         row.appendChild(bidEl);
       }
 
@@ -1586,27 +2004,8 @@ function renderScoreboard(state) {
       scoreboardRows.appendChild(row);
     });
 
-  // Piste de manches en segments (paysage) : on voit d'un coup d'œil combien
-  // de manches sont derrière soi et laquelle est en cours.
-  sideRound.textContent =
-    `Manche ${state.roundNumber} / ${state.totalRounds}` +
-    ` — ${state.cardsInRound} carte${state.cardsInRound > 1 ? 's' : ''}`;
-  roundSegments.innerHTML = '';
-  for (let i = 1; i <= state.totalRounds; i++) {
-    const seg = document.createElement('i');
-    if (i < state.roundNumber) seg.className = 'sk-round-seg--done';
-    else if (i === state.roundNumber) seg.className = 'sk-round-seg--now';
-    roundSegments.appendChild(seg);
-  }
-
   // Rien à consulter tant qu'aucune manche n'est terminée.
   btnHistory.classList.toggle('hidden', state.roundNumber <= 1);
-
-  const progress = state.totalRounds > 1 ? (state.roundNumber - 1) / (state.totalRounds - 1) : 0;
-  roundTrackFill.style.width = `${progress * 100}%`;
-  roundTrackKnob.style.left = `${progress * 100}%`;
-  roundTrackKnob.textContent = state.roundNumber;
-  roundTrackLabel.textContent = `${state.cardsInRound} carte${state.cardsInRound > 1 ? 's' : ''} par joueur`;
 }
 
 // --- Pouvoirs des pirates nommés ---
@@ -1642,7 +2041,7 @@ function renderPower(state) {
     clearTimeout(juanitaDoneTimer);
   }
 
-  powerBanner.textContent = `🏴‍☠️ ${nicknameOf(state, pending.playerId)} déclenche le pouvoir de ${POWER_LABEL[pending.kind]} !`;
+  powerBanner.textContent = `${nicknameOf(state, pending.playerId)} déclenche le pouvoir de ${POWER_LABEL[pending.kind]} !`;
   powerBanner.classList.remove('hidden');
 
   if (!pending.mine) {
@@ -1859,22 +2258,26 @@ function maybeAnimateDeal(state) {
   const { ordered, map } = seatLayout(state);
   const waves = Math.min(state.cardsInRound, DEAL_MAX_WAVES);
 
+  const centre = surFeutre(0.5, 0.5);
   const pile = document.createElement('div');
   pile.className = 'sk-deck-pile';
+  pile.style.left = `${centre.x}%`;
+  pile.style.top = `${centre.y}%`;
   tableEl.appendChild(pile);
 
   let i = 0;
   for (let w = 0; w < waves; w++) {
     ordered.forEach((p) => {
       const [left, top] = map.get(p.id);
+      const arrivee = surFeutre(left / 100, top / 100);
       const card = document.createElement('div');
       card.className = 'sk-flying-card';
       tableEl.appendChild(card);
       const anim = card.animate(
         [
-          { left: '50%', top: '50%', transform: 'translate(-50%, -50%) scale(0.8)', opacity: 0 },
-          { left: '50%', top: '50%', transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.15 },
-          { left: `${left}%`, top: `${top}%`, transform: 'translate(-50%, -50%) scale(0.8)', opacity: 1 },
+          { left: `${centre.x}%`, top: `${centre.y}%`, transform: 'translate(-50%, -50%) scale(0.8)', opacity: 0 },
+          { left: `${centre.x}%`, top: `${centre.y}%`, transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.15 },
+          { left: `${arrivee.x}%`, top: `${arrivee.y}%`, transform: 'translate(-50%, -50%) scale(0.8)', opacity: 1 },
         ],
         { duration: DEAL_FLIGHT_MS, delay: i * DEAL_WAVE_MS, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' }
       );
@@ -1900,6 +2303,7 @@ function renderGame(state) {
   // affichée sur rien sans ce reset.
   hideCardTooltip();
   renderRoundIndicator(state);
+  renderMine(state);
   btnEndGame.classList.toggle('hidden', !state.isHost);
   maybeAnimateDeal(state);
   renderSeats(state);
@@ -1971,6 +2375,8 @@ function markLootRows(links) {
 
 function showRoundPopup(state) {
   const summary = state.roundSummary;
+  const mine = summary.results.find((r) => r.id === myId);
+  if (mine) myRoundResults.set(summary.round, mine.bid === mine.made);
   roundPopupTitle.textContent = `Manche ${summary.round} terminée`;
   roundPopupRows.innerHTML = '';
 
@@ -2017,7 +2423,8 @@ const endBody = document.getElementById('sk-end-body');
 // ajoute ce que l'historique des manches permet de dire — annonces tenues,
 // plis pris — puis quelques faits marquants qui font parler la table.
 const endFactsEl = document.getElementById('sk-end-facts');
-const MEDALS = ['🥇', '🥈', '🥉'];
+// Rang gravé en chiffres romains, comme au registre de bord — une médaille
+// en emoji n'a rien à faire sur un tableau d'équipage.
 
 function endFacts(ranking) {
   const facts = [];
@@ -2028,29 +2435,29 @@ function endFacts(ranking) {
     .filter((r) => r.bestRound)
     .reduce((b, r) => (b === null || r.bestRound.delta > b.bestRound.delta ? r : b), null);
   if (bestRound && bestRound.bestRound.delta > 0) {
-    facts.push(`🔥 Meilleure manche : ${bestRound.nickname}, +${bestRound.bestRound.delta} points à la manche ${bestRound.bestRound.round}.`);
+    facts.push(`Meilleure manche : ${bestRound.nickname}, +${bestRound.bestRound.delta} points à la manche ${bestRound.bestRound.round}.`);
   }
 
   const worstRound = withRounds
     .filter((r) => r.worstRound)
     .reduce((b, r) => (b === null || r.worstRound.delta < b.worstRound.delta ? r : b), null);
   if (worstRound && worstRound.worstRound.delta < 0) {
-    facts.push(`💀 Pire manche : ${worstRound.nickname}, ${worstRound.worstRound.delta} points à la manche ${worstRound.worstRound.round}.`);
+    facts.push(`Pire manche : ${worstRound.nickname}, ${worstRound.worstRound.delta} points à la manche ${worstRound.worstRound.round}.`);
   }
 
   const streak = withRounds.reduce((b, r) => (r.bestStreak > b.bestStreak ? r : b));
   if (streak.bestStreak >= 2) {
-    facts.push(`🎯 Plus longue série d'annonces tenues : ${streak.nickname}, ${streak.bestStreak} manches d'affilée.`);
+    facts.push(`Plus longue série d'annonces tenues : ${streak.nickname}, ${streak.bestStreak} manches d'affilée.`);
   }
 
   const zeros = withRounds.reduce((b, r) => (r.zeros > b.zeros ? r : b));
   if (zeros.zeros >= 2) {
-    facts.push(`🧊 Sang-froid : ${zeros.nickname} a tenu ${zeros.zeros} annonces à zéro.`);
+    facts.push(`Sang-froid : ${zeros.nickname} a tenu ${zeros.zeros} annonces à zéro.`);
   }
 
   const tricks = withRounds.reduce((b, r) => (r.tricks > b.tricks ? r : b));
   if (tricks.tricks > 0) {
-    facts.push(`🗡️ Plus gros ramasseur : ${tricks.nickname}, ${tricks.tricks} plis sur la partie.`);
+    facts.push(`Plus gros ramasseur : ${tricks.nickname}, ${tricks.tricks} plis sur la partie.`);
   }
   return facts;
 }
@@ -2119,13 +2526,13 @@ function renderScoreCurve(ranking) {
 function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
-  endTitle.textContent = winner.id === myId ? 'Tu remportes la partie ! 🏆' : `${winner.nickname} remporte la partie !`;
+  endTitle.textContent = winner.id === myId ? 'Tu remportes la partie !' : `${winner.nickname} remporte la partie !`;
   endBody.innerHTML = ranking
     .map((r, i) => {
-      const rang = MEDALS[i] || `${i + 1}ᵉ`;
+      const rang = ROMAN[i + 1] || `${i + 1}`;
       // Les parties d'avant ce récap n'ont pas ces champs : on retombe alors
       // sur un tiret plutôt que d'afficher « undefined ».
-      const annonces = r.rounds ? `${r.exact}/${r.rounds}` : '—';
+      const annonces = r.rounds ? `${r.exact} sur ${r.rounds}` : '—';
       const plis = r.tricks == null ? '—' : r.tricks;
       const moi = r.id === myId ? ' class="sk-end-row--me"' : '';
       return `<tr${moi}><td>${rang}</td><td>${escapeHTML(r.nickname)}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td></tr>`;
@@ -2149,8 +2556,11 @@ document.getElementById('sk-btn-rematch').addEventListener('click', () => socket
 // l'extérieur de la roue. Ne joue qu'une fois par partie, sur la toute
 // première annonce de la manche 1 (voir applyState) - startRevealPlayed est
 // réarmé à chaque retour au salon (nouvelle partie ou revanche).
+// Secteurs peints dans les couleurs de la maison : les quatre familles de
+// plis, puis les teintes des cartes spéciales. Plus de fluo — la roue est un
+// disque de bois peint, pas une roue de kermesse.
 const START_WHEEL_COLORS = [
-  '#4ade80', '#facc15', '#c084fc', '#38bdf8', '#f87171', '#fb923c', '#a3e635', '#f472b6', '#94a3b8',
+  '#1c5a46', '#a8792c', '#5b2340', '#131c2e', '#741a16', '#17434a', '#9a6432', '#6e6a5e', '#3c2a12',
 ];
 
 function playStartReveal(players, starterId) {
@@ -2211,7 +2621,7 @@ function playStartReveal(players, starterId) {
   setTimeout(() => {
     const tags = labelsEl.querySelectorAll('.sk-wheel-tag');
     if (tags[winnerIndex]) tags[winnerIndex].classList.add('sk-wheel-tag--winner');
-    text.textContent = `🎯 ${starter ? starter.nickname : '???'} mène le premier pli !`;
+    text.textContent = `${starter ? starter.nickname : '???'} mène le premier pli !`;
     text.classList.add('sk-visible');
   }, 2150);
   setTimeout(() => overlay.classList.add('hidden'), 3400);
@@ -2269,11 +2679,11 @@ socket.on('skullking-state', applyState);
 socket.on('skullking-rejoin-ok', applyState);
 
 socket.on('skullking-player-disconnected', ({ nickname }) => {
-  showToast(`🔌 ${nickname} a une connexion instable…`);
+  showToast(`${nickname} a une connexion instable…`);
 });
 
 socket.on('skullking-player-reconnected', ({ nickname }) => {
-  showToast(`✅ ${nickname} est de retour !`);
+  showToast(`${nickname} est de retour !`);
 });
 
 socket.on('skullking-rejoin-failed', (payload) => {
@@ -2332,3 +2742,36 @@ if (roomFromUrl) {
 } else {
   showScreen('home');
 }
+
+
+// --- Défilement des pages de la colonne ---------------------------------
+// Le registre et la discussion vivent dans une page peinte : ils ne peuvent
+// pas s'allonger, seulement défiler à l'intérieur. Les flèches ne
+// s'affichent que s'il y a vraiment quelque chose au-delà — un bouton
+// toujours visible mentirait la moitié du temps.
+function brancherDefilement(zone, boite) {
+  if (!zone || !boite) return;
+  const haut = boite.querySelector('.sk-defiler--haut');
+  const bas = boite.querySelector('.sk-defiler--bas');
+  if (!haut || !bas) return;
+
+  const PAS = 0.75; // trois quarts de page : on garde une ligne de repère
+
+  function rafraichir() {
+    const reste = zone.scrollHeight - zone.clientHeight;
+    haut.classList.toggle('is-visible', zone.scrollTop > 2);
+    bas.classList.toggle('is-visible', reste > 2 && zone.scrollTop < reste - 2);
+  }
+
+  haut.addEventListener('click', () => zone.scrollBy({ top: -zone.clientHeight * PAS, behavior: 'smooth' }));
+  bas.addEventListener('click', () => zone.scrollBy({ top: zone.clientHeight * PAS, behavior: 'smooth' }));
+  zone.addEventListener('scroll', rafraichir);
+  // Le contenu change à chaque pli : on réévalue à chaque mutation plutôt
+  // que d'appeler rafraichir() depuis les dix endroits qui l'alimentent.
+  new MutationObserver(rafraichir).observe(zone, { childList: true, subtree: true, characterData: true });
+  window.addEventListener('resize', rafraichir);
+  rafraichir();
+}
+
+brancherDefilement(scoreboardRows, document.querySelector('.sk-carnet'));
+brancherDefilement(document.getElementById('sk-chat-log'), document.querySelector('.sk-chat-livre'));

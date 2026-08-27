@@ -13,6 +13,9 @@ const {
   PIRATE_POWER_BY_NAME,
   maxPlayersFor,
   buildRoundSequence,
+  MIN_ROUNDS,
+  MAX_ROUNDS,
+  clampRounds,
   dealRound,
   isValidBid,
   isCardPlayable,
@@ -93,11 +96,21 @@ const PIECE_KEYS = [
   'coffre', 'barre', 'bouteille', 'crochet',
 ];
 
-// Première pièce encore libre, pour qu'un joueur qui ne choisit rien ait
-// quand même une figure à lui (et que deux joueurs n'aient jamais la même).
-function firstFreePiece(room) {
-  const taken = new Set(room.players.map((p) => p.piece).filter(Boolean));
-  return PIECE_KEYS.find((k) => !taken.has(k)) || null;
+// Personne ne démarre avec une pièce : le salon sert justement à la
+// choisir, et une pièce pré-cochée donne l'impression que la question est
+// déjà réglée. Ceux qui n'ont rien choisi au lancement en reçoivent une au
+// hasard parmi celles qui restent — au hasard et non la première libre,
+// sinon la même partie donnerait toujours le crâne au même distrait.
+function assignMissingPieces(room) {
+  const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
+  const libres = PIECE_KEYS.filter((k) => !prises.has(k));
+  for (let i = libres.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [libres[i], libres[j]] = [libres[j], libres[i]];
+  }
+  for (const p of room.players) {
+    if (!p.piece) p.piece = libres.pop() || null;
+  }
 }
 
 // --- Chat de salon ---
@@ -270,6 +283,9 @@ function broadcastLobby(io, room) {
       // serveur dans le handler dédié) ; tous les autres le voient en
       // lecture seule via ce même champ.
       extensionEnabled: Boolean(room.extensionEnabled),
+      totalRounds: room.totalRounds || MAX_ROUNDS,
+      minRounds: MIN_ROUNDS,
+      maxRounds: MAX_ROUNDS,
     });
   }
 }
@@ -789,7 +805,8 @@ function finishGame(io, room) {
 }
 
 function startGame(io, room) {
-  room.roundSequence = buildRoundSequence();
+  assignMissingPieces(room);
+  room.roundSequence = buildRoundSequence(room.totalRounds);
   room.roundIndex = 0;
   room.dealerIndex = 0;
   room.players.forEach((p) => {
@@ -894,11 +911,12 @@ function registerSkullKingHandlers(io, socket) {
       phase: 'lobby',
       hostId: socket.id,
       extensionEnabled: false,
+      totalRounds: MAX_ROUNDS,
       players: [
         {
           id: socket.id,
           nickname,
-          piece: PIECE_KEYS[0],
+          piece: null,
           token: payload && payload.token,
           connected: true,
           disconnectTimer: null,
@@ -941,7 +959,7 @@ function registerSkullKingHandlers(io, socket) {
     room.players.push({
       id: socket.id,
       nickname,
-      piece: firstFreePiece(room),
+      piece: null,
       token: payload && payload.token,
       connected: true,
       disconnectTimer: null,
@@ -969,6 +987,20 @@ function registerSkullKingHandlers(io, socket) {
     // Si l'extension vient d'être désactivée et que la salle dépassait déjà
     // le plafond de base, on laisse l'hôte constater l'incompatibilité via
     // canStart plutôt que d'expulser qui que ce soit.
+    broadcastLobby(io, room);
+  });
+
+  // Nombre de manches : même régime que le switch d'extension — hôte
+  // seulement, lobby seulement, diffusé par broadcastLobby. Une fois la
+  // partie lancée, room.roundSequence est figée et ce réglage n'a plus
+  // aucun effet, donc rien à verrouiller de plus.
+  socket.on('skullking-set-rounds', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    const total = clampRounds(payload && payload.totalRounds);
+    if (total === room.totalRounds) return;
+    room.totalRounds = total;
     broadcastLobby(io, room);
   });
 

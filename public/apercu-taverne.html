@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Habillage Taverne — planche d'aperçu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+/* =====================================================================
+   Planche d'aperçu — chaque asset peint fait ici le travail qu'il fera
+   dans le jeu, avec du VRAI texte posé dessus. C'est le seul moyen de
+   juger la lisibilité : une plaque de laiton superbe et un libellé
+   illisible dessus, c'est un asset raté.
+
+   Les valeurs de `border-width` sont les tranches de l'image ramenées à
+   l'échelle d'affichage — sinon les coins peints grossissent ou
+   rétrécissent par rapport au reste.
+   ===================================================================== */
+*{box-sizing:border-box}
+body{
+  margin:0; padding:0 0 80px;
+  background:radial-gradient(120% 100% at 50% -10%,#0d2429,#08191e 46%,#050f13);
+  color:#F2D69A; font-family:'Spectral',Georgia,serif;
+}
+h2{
+  font-family:'Cinzel',serif; font-size:.82rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#B88935; font-weight:600;
+  margin:44px 0 14px; padding-bottom:8px;
+  border-bottom:1px solid rgba(184,137,53,.22);
+}
+.page{max-width:1080px; margin:0 auto; padding:0 24px}
+.duo{display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap}
+.note{font-size:.8rem; color:#96805C; font-style:italic; margin:8px 0 0}
+
+/* ---- la poutre : ne s'étire qu'en largeur, ferrures aux deux bouts ---- */
+.barre{
+  border-style:solid; border-width:0 24px; height:58px;
+  border-image:url('assets/skin/barre-bois.webp') 0 100 fill / 0 24px stretch;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 6px; margin-top:28px;
+}
+.barre img{height:30px; display:block}
+.nav{display:flex; gap:22px; padding-right:14px}
+.nav a{
+  font-family:'Cinzel',serif; font-size:.74rem; letter-spacing:.12em;
+  text-transform:uppercase; color:#E6D2A0; text-decoration:none;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
+}
+.nav a:first-child{color:#F6E9C6; border-bottom:1px solid #B88935; padding-bottom:2px}
+
+/* ---- le bandeau d'accueil : le panneau vert mord sur le bas de l'image ---- */
+.hero{position:relative}
+.hero>img{width:100%; display:block; border-radius:3px}
+.hero-panneau{
+  position:relative; margin:-84px auto 0; width:min(660px,92%);
+  border-style:solid; border-width:61px 63px;
+  border-image:url('assets/skin/panneau-vert.webp') 145 150 fill / 61px 63px stretch;
+  text-align:center; padding:4px 10px 10px;
+}
+.hero-panneau p{
+  font-family:'Cinzel',serif; font-size:1.34rem; line-height:1.28; margin:0 0 18px;
+  color:#F6E9C6; text-shadow:0 2px 5px rgba(0,0,0,.75);
+}
+
+/* ---- boutons : un seul asset, les états se font au filtre ---- */
+.btn{
+  border:none; background:none; padding:0; cursor:pointer;
+  min-width:230px; height:66px; position:relative;
+  font-family:'Cinzel',serif; font-size:.9rem; letter-spacing:.1em;
+  text-transform:uppercase; font-weight:600;
+  border-style:solid; border-width:17px 19px;
+  transition:filter .12s, transform .06s;
+}
+.btn-laiton{
+  border-image:url('assets/skin/btn-laiton.webp') 130 150 fill / 17px 19px stretch;
+  color:#170E03; font-weight:700;
+  text-shadow:0 1px 0 rgba(255,241,205,.55), 0 -1px 1px rgba(0,0,0,.35);
+}
+.btn-rouge{
+  border-image:url('assets/skin/btn-rouge.webp') 125 145 fill / 16px 18px stretch;
+  color:#F6E9C6; text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+.btn:hover{filter:brightness(1.14) saturate(1.05)}
+.btn:active{filter:brightness(.86); transform:translateY(1px)}
+
+/* ---- le champ : le texte vit dans la rainure, pas sur le laiton ---- */
+.champ{
+  border-style:solid; border-width:9px 30px; height:56px; width:300px;
+  border-image:url('assets/skin/champ-saisie.webp') 40 150 fill / 9px 30px stretch;
+  background:none; color:#F2D69A; font-family:'Spectral',serif; font-size:1rem;
+  padding:0 4px; outline:none;
+}
+.champ::placeholder{color:#8a7a54}
+
+/* ---- panneaux du jeu ---- */
+.parchemin{
+  border-style:solid; border-width:35px 32px; width:300px;
+  border-image:url('assets/skin/parchemin.webp') 120 110 fill / 35px 32px stretch;
+  color:#2A1B0C; padding:2px 6px 8px; min-height:130px;
+}
+.carnet{
+  border-style:solid; border-width:76px 27px 27px;
+  border-image:url('assets/skin/carnet.webp') 255 90 90 90 fill / 76px 27px 27px stretch;
+  width:320px; color:#2A1B0C; padding:0 6px 6px; min-height:250px;
+}
+.bois{
+  border-style:solid; border-width:45px; width:320px; min-height:210px;
+  border-image:url('assets/skin/panneau-bois.webp') 180 fill / 45px stretch;
+  padding:0 4px;
+}
+.kicker{
+  font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.16em;
+  text-transform:uppercase; margin:0 0 8px; opacity:.72;
+}
+.parchemin .kicker,.carnet .kicker{color:#6B4A22}
+.parchemin p:last-child{margin:0; font-size:.95rem; line-height:1.4}
+.reg{width:100%; border-collapse:collapse; font-size:.84rem}
+.reg th{
+  font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.1em;
+  text-transform:uppercase; color:#6B4A22; text-align:right; font-weight:600;
+  padding-bottom:4px; border-bottom:1px solid rgba(107,74,34,.3);
+}
+.reg th:first-child{text-align:left}
+.reg td{padding:3px 0; text-align:right; border-bottom:1px solid rgba(107,74,34,.14)}
+.reg td:first-child{text-align:left; font-variant:small-caps; font-size:.92rem}
+.chat p{margin:0 0 7px; font-size:.85rem; line-height:1.35}
+.chat b{font-variant:small-caps; color:#B88935; font-weight:600}
+
+/* ---- le plateau : ratio fixe, le feutre est un trapèze ---- */
+.plateau{
+  position:relative; width:min(560px,100%); aspect-ratio:1369/1149;
+  background:url('assets/skin/plateau-taverne.webp') center/100% 100% no-repeat;
+}
+.carte{
+  position:absolute; transform:translate(-50%,-50%);
+  width:64px; aspect-ratio:84/118; border-radius:5px;
+  background:linear-gradient(160deg,#F6E9C6,#C7AE79);
+  border:2px solid #F6E9C6; box-shadow:0 6px 14px rgba(0,0,0,.55);
+  display:grid; place-items:center;
+  font-family:'Cinzel',serif; font-size:1.3rem; color:#2A1B0C;
+}
+.jeton{
+  position:absolute; transform:translate(-50%,-50%);
+  width:52px; height:52px; border-radius:50%;
+  background:radial-gradient(circle at 34% 28%,#E8CE92,#B88935 55%,#5E4212);
+  border:3px solid #2B1D07; box-shadow:0 5px 12px rgba(0,0,0,.6);
+  display:grid; place-items:center; font-size:.62rem; color:#2A1B0C;
+  font-family:'Cinzel',serif; font-weight:700;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h2>Bandeau de navigation — poutre + logo horizontal</h2>
+  <div class="barre">
+    <img src="assets/skin/logo-skullking-h.webp" alt="Skull King" />
+    <nav class="nav">
+      <a href="#">Accueil</a><a href="#">Créer une partie</a>
+      <a href="#">Rejoindre</a><a href="#">Règles</a>
+    </nav>
+  </div>
+  <p class="note">La poutre ne s'étire qu'en largeur ; les ferrures des deux bouts restent à taille fixe.</p>
+
+  <h2>Écran d'accueil — hero + panneau vert</h2>
+  <div class="hero">
+    <img src="assets/skin/hero-taverne.webp" alt="Quatre pirates attablés dans une taverne" />
+    <div class="hero-panneau">
+      <p>Êtes-vous prêt<br />à prendre la mer ?</p>
+      <div class="duo" style="justify-content:center">
+        <button class="btn btn-laiton">Créer une partie</button>
+        <button class="btn btn-rouge">Rejoindre</button>
+      </div>
+    </div>
+  </div>
+  <p class="note">Le panneau remonte de 84 px sur l'image : il masque la carte au trésor mais laisse les quatre visages.</p>
+
+  <h2>Boutons et champ de saisie</h2>
+  <div class="duo" style="align-items:center">
+    <button class="btn btn-laiton">Lancer la partie</button>
+    <button class="btn btn-rouge">Quitter</button>
+    <input class="champ" type="text" placeholder="Ton pseudo" />
+    <input class="champ" style="width:150px" type="text" placeholder="A1B2" />
+  </div>
+  <p class="note">Survole et clique les boutons : le survol et l'enfoncement sont des filtres CSS, pas des images en plus.</p>
+
+  <h2>Panneaux du jeu</h2>
+  <div class="duo">
+    <div class="parchemin">
+      <p class="kicker">Ton objectif</p>
+      <p>Encore <b>1 pli</b> à remporter. Il t'en reste 3 en main.</p>
+    </div>
+
+    <div class="carnet">
+      <p class="kicker">Registre de bord</p>
+      <table class="reg">
+        <thead><tr><th>Joueur</th><th>Ann.</th><th>Plis</th><th>Score</th></tr></thead>
+        <tbody>
+          <tr><td>Paul</td><td>2</td><td>1</td><td>140</td></tr>
+          <tr><td>Barbe-Rousse</td><td>2</td><td>0</td><td>90</td></tr>
+          <tr><td>Anne Bonny</td><td>1</td><td>1</td><td>−90</td></tr>
+          <tr><td>Le Borgne</td><td>1</td><td>1</td><td>60</td></tr>
+          <tr><td>Mams</td><td>0</td><td>0</td><td>30</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bois chat">
+      <p class="kicker">Discussion</p>
+      <p><b>Barbe-Rousse</b> J'ai vu passer le Skull King…</p>
+      <p><b>Anne Bonny</b> Menteur.</p>
+      <p style="opacity:.7"><i>— Le Borgne remporte le pli 2 —</i></p>
+    </div>
+  </div>
+
+  <h2>Le plateau — feutre en trapèze</h2>
+  <div class="plateau" id="plateau"></div>
+  <p class="note">Cartes et jetons sont projetés à travers le trapèze et réduits selon leur profondeur : une carte au fond est plus petite qu'une carte au premier plan.</p>
+
+</div>
+
+<script>
+// Le feutre peint est un trapèze — le bord du fond est plus étroit que celui
+// du premier plan. Un point (u,v) du plan de jeu s'y projette linéairement.
+const HAUT = 0.225, BAS = 0.737;
+const G_HAUT = 0.237, D_HAUT = 0.766;
+const G_BAS  = 0.129, D_BAS  = 0.859;
+
+function surFeutre(u, v) {
+  const g = G_HAUT + (G_BAS - G_HAUT) * v;
+  const d = D_HAUT + (D_BAS - D_HAUT) * v;
+  return { x: g + (d - g) * u, y: HAUT + (BAS - HAUT) * v, e: 0.72 + 0.38 * v };
+}
+
+const plateau = document.getElementById('plateau');
+function poser(classe, u, v, texte) {
+  const p = surFeutre(u, v);
+  const el = document.createElement('div');
+  el.className = classe;
+  el.textContent = texte;
+  el.style.left = (p.x * 100) + '%';
+  el.style.top = (p.y * 100) + '%';
+  // La profondeur, seule, dit la taille : sans ça une carte du fond paraît géante.
+  el.style.transform = `translate(-50%,-50%) scale(${p.e.toFixed(3)})`;
+  plateau.appendChild(el);
+}
+
+// Cinq sièges autour du feutre, et les cartes qu'ils ont posées devant eux.
+const sieges = [
+  ['Paul', 0.50, 0.96], ['Mams', 0.06, 0.62], ['Guigui', 0.22, 0.06],
+  ['Pablo', 0.78, 0.06], ['Anto', 0.94, 0.62],
+];
+const cartes = [
+  ['6', 0.50, 0.72], ['9', 0.24, 0.52], ['K', 0.36, 0.26],
+  ['3', 0.66, 0.26], ['A', 0.78, 0.52],
+];
+sieges.forEach(([n, u, v]) => poser('jeton', u, v, n));
+cartes.forEach(([c, u, v]) => poser('carte', u, v, c));
+</script>
+</body>
+</html>
