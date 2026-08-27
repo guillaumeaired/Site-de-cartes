@@ -46,38 +46,58 @@
     <section id="sk-screen-waiting" class="screen hidden">
       <button id="sk-btn-leave-waiting" class="btn-link">← Quitter</button>
 
-      <div id="sk-share-block" class="invite-card hidden">
-        <p class="invite-label">Code de la partie</p>
-        <div class="code-badge" id="sk-share-code"></div>
-        <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
-        <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      <!-- L'enseigne, en grand : le salon était le seul écran de la partie
+           où la marque n'apparaissait nulle part — on arrivait par un lien
+           d'invitation sur trois planches de bois sans savoir à quoi on
+           venait de s'asseoir. -->
+      <img class="sk-waiting-logo" src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
+
+      <!-- Le salon se lit en trois planches côte à côte dès qu'il y a de la
+           largeur : le code à gauche, les réglages au milieu, l'équipage à
+           droite. Sous 1000px la grille redevient une simple colonne et
+           l'ordre du DOM suffit — c'est exactement l'empilement d'avant. -->
+      <div class="sk-lobby-grid">
+        <div id="sk-share-block" class="invite-card sk-lobby-col hidden">
+          <p class="invite-label">Code de la partie</p>
+          <div class="code-badge" id="sk-share-code"></div>
+          <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
+          <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+        </div>
+
+        <div class="sk-lobby-col sk-lobby-col--settings">
+          <p class="invite-label sk-lobby-col-title">Réglages</p>
+
+          <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
+            <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+            <span class="sk-extension-toggle-label">Jouer avec l'extension</span>
+          </button>
+          <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
+
+          <div id="sk-rounds-field" class="sk-rounds-field">
+            <p class="invite-label">Nombre de manches</p>
+            <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
+            <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
+          </div>
+        </div>
+
+        <div class="sk-lobby-col sk-lobby-col--crew">
+          <div id="sk-piece-picker" class="sk-piece-picker hidden">
+            <p class="invite-label">Ta pièce</p>
+            <div id="sk-piece-grid" class="sk-piece-grid"></div>
+          </div>
+
+          <div id="sk-lobby-players" class="lobby-players hidden">
+            <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (<span id="sk-lobby-range">3 à 7</span>)</p>
+            <ul id="sk-lobby-list" class="lobby-list"></ul>
+          </div>
+        </div>
       </div>
 
-      <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
-        <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
-        <span class="sk-extension-toggle-label">Jouer avec l'extension</span>
-      </button>
-      <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
-
-      <div id="sk-rounds-field" class="sk-rounds-field">
-        <p class="invite-label">Nombre de manches</p>
-        <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
-        <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
+      <div class="sk-lobby-actions">
+        <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">Ajouter un bot (test)</button>
+        <button id="sk-btn-start-game" class="btn btn-primary hidden">Lancer la partie</button>
+        <p id="sk-waiting-hint" class="hint"></p>
       </div>
-
-      <div id="sk-piece-picker" class="sk-piece-picker hidden">
-        <p class="invite-label">Ta pièce</p>
-        <div id="sk-piece-grid" class="sk-piece-grid"></div>
-      </div>
-
-      <div id="sk-lobby-players" class="lobby-players hidden">
-        <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (<span id="sk-lobby-range">3 à 7</span>)</p>
-        <ul id="sk-lobby-list" class="lobby-list"></ul>
-      </div>
-
-      <button id="sk-btn-add-bot" class="btn btn-small sk-dev-tool hidden">Ajouter un bot (test)</button>
-      <button id="sk-btn-start-game" class="btn btn-primary hidden">Lancer la partie</button>
-      <p id="sk-waiting-hint" class="hint"></p>
     </section>
 
     <section id="sk-screen-game" class="screen hidden">
@@ -222,24 +242,41 @@
     </div>
 
     <section id="sk-screen-end" class="screen hidden">
-      <img class="sk-end-logo" src="assets/skin/logo-skullking-v.webp" alt="Skull King" width="1291" height="844" />
-      <h2 id="sk-end-title"></h2>
-      <table class="sk-score-table sk-end-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Joueur</th>
-            <th title="Annonces tenues exactement">Annonces</th>
-            <th title="Plis remportés sur toute la partie">Plis</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody id="sk-end-body"></tbody>
-      </table>
-      <div id="sk-end-facts" class="sk-end-facts"></div>
-      <button id="sk-btn-rematch" class="btn btn-primary">Rejouer</button>
-      <button id="sk-btn-leave-end" class="btn btn-leave-end">Quitter</button>
+      <div class="sk-end-head">
+        <img class="sk-end-logo" src="assets/skin/logo-skullking-v.webp" alt="Skull King" width="1291" height="844" />
+        <h2 id="sk-end-title"></h2>
+      </div>
+
+      <!-- Le récap se lit en deux colonnes en paysage : le verdict à gauche
+           (qui a gagné, dans quel ordre), le récit à droite (la courbe puis
+           les faits marquants, chacun dans sa propre planche). -->
+      <div class="sk-end-grid">
+        <div class="sk-end-panel sk-end-panel--rank">
+          <p class="sk-end-panel-title">Classement</p>
+          <table class="sk-score-table sk-end-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Joueur</th>
+                <th title="Annonces tenues exactement">Annonces</th>
+                <th title="Plis remportés sur toute la partie">Plis</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="sk-end-body"></tbody>
+          </table>
+        </div>
+
+        <div id="sk-end-curve" class="sk-end-panel sk-end-panel--curve"></div>
+        <div id="sk-end-facts" class="sk-end-panel sk-end-panel--facts"></div>
+      </div>
+
+      <div class="sk-end-actions">
+        <button id="sk-btn-rematch" class="btn btn-primary">Rejouer</button>
+        <button id="sk-btn-leave-end" class="btn btn-rouge">Quitter</button>
+      </div>
     </section>
+
   </main>
 
   <div id="sk-history-modal" class="modal hidden">
