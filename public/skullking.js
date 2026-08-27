@@ -673,6 +673,58 @@ btnCloseRules.addEventListener('click', () => rulesModal.classList.add('hidden')
 // (voir skullking-request-history côté serveur), pas envoyées en continu.
 const historyModal = document.getElementById('sk-history-modal');
 const historyBody = document.getElementById('sk-history-body');
+// --- Réglages d'affichage -------------------------------------------
+// Un seul réglage pour l'instant : la taille des cartes du tapis. Il est
+// LOCAL — gardé sur cet appareil, jamais envoyé au serveur. Ce qu'il corrige
+// dépend de l'écran et de la distance à laquelle on joue, pas de la partie.
+//
+// Il ne s'applique qu'à la validation, pas au glissement du curseur : la
+// modale couvre le tapis, on ne verrait rien de l'effet en direct, et un
+// redessin par cran de curseur relancerait les animations de chaque carte.
+const settingsModal = document.getElementById('sk-settings-modal');
+const rangeTaille = document.getElementById('sk-range-taille');
+const rangeTailleValeur = document.getElementById('sk-range-taille-valeur');
+
+function afficherValeurTaille() {
+  rangeTailleValeur.textContent = `${rangeTaille.value} %`;
+}
+
+function ouvrirReglages() {
+  rangeTaille.min = Math.round(TAILLE_CARTES_MIN * 100);
+  rangeTaille.max = Math.round(TAILLE_CARTES_MAX * 100);
+  rangeTaille.value = Math.round(tailleDesCartes() * 100);
+  afficherValeurTaille();
+  settingsModal.classList.remove('hidden');
+}
+
+function fermerReglages() {
+  settingsModal.classList.add('hidden');
+}
+
+document.getElementById('sk-btn-settings').addEventListener('click', ouvrirReglages);
+document.getElementById('sk-btn-settings-close').addEventListener('click', fermerReglages);
+rangeTaille.addEventListener('input', afficherValeurTaille);
+settingsModal.addEventListener('click', (e) => {
+  if (e.target === settingsModal) fermerReglages();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !settingsModal.classList.contains('hidden')) fermerReglages();
+});
+
+document.getElementById('sk-btn-settings-apply').addEventListener('click', () => {
+  tailleCartesChoisie = Math.min(
+    TAILLE_CARTES_MAX,
+    Math.max(TAILLE_CARTES_MIN, Number(rangeTaille.value) / 100)
+  );
+  ecrireReglage(TAILLE_CARTES_CLE, String(tailleCartesChoisie));
+  fermerReglages();
+  // Le tapis est redessiné de force : renderTrick ne redessine pas un pli
+  // qu'il a déjà posé (voir l'empreinte), et l'empreinte ne connaît pas la
+  // taille — elle décrit ce que le tapis MONTRE, pas comment il le montre.
+  empreinteRendue = null;
+  if (latestState) renderGame(latestState);
+});
+
 const btnHistory = document.getElementById('sk-btn-history');
 
 btnHistory.addEventListener('click', () => {
@@ -1969,10 +2021,57 @@ function zoneDesCartes(boite) {
   return { x0: x0 - boite.left, x1: x1 - boite.left, y0: y0 - boite.top, y1: y1 - boite.top };
 }
 
+// --- La taille des cartes du pli, réglable par le joueur ---------------
+// Le tapis est peint en plongée et les cartes s'y posent en couronne : elles
+// ne peuvent pas remplir l'écran. Mais 42 % de la hauteur du feutre les
+// laissait petites sur un grand écran, où c'est justement l'illustration
+// qu'on veut lire — et il reste de la place dans les angles hauts du feutre,
+// que personne n'occupe. Le socle passe donc à 52 %, et le joueur peut
+// s'écarter de ±30 % autour de là, par le réglage de la barre latérale.
+//
+// Bornes, tenues au rendu à neuf joueurs — la table la plus serrée — sur une
+// fenêtre de 1400x800 : en dessous de 0,8 les chiffres des cartes numérotées
+// ne se lisent plus au fond du tapis ; à 1,15 tout reste lisible mais les
+// cartes de deux sièges voisins commencent à se mordre, et à 1,3 elles se
+// recouvrent franchement. Le maximum est donc 1,15, pas un cran de plus.
+const HAUTEUR_CARTE_PLI = 0.52;
+const TAILLE_CARTES_MIN = 0.8;
+const TAILLE_CARTES_MAX = 1.15;
+const TAILLE_CARTES_CLE = 'guimams-sk-taille-cartes';
+let tailleCartesChoisie = null;
+
+function tailleDesCartes() {
+  if (tailleCartesChoisie === null) {
+    const brut = Number(lireReglage(TAILLE_CARTES_CLE));
+    tailleCartesChoisie = Number.isFinite(brut) && brut > 0
+      ? Math.min(TAILLE_CARTES_MAX, Math.max(TAILLE_CARTES_MIN, brut))
+      : 1;
+  }
+  return tailleCartesChoisie;
+}
+
+// Le stockage local peut être refusé (navigation privée, réglage strict) :
+// le jeu doit marcher sans, avec la taille par défaut.
+function lireReglage(cle) {
+  try {
+    return localStorage.getItem(cle);
+  } catch (e) {
+    return null;
+  }
+}
+
+function ecrireReglage(cle, valeur) {
+  try {
+    localStorage.setItem(cle, valeur);
+  } catch (e) {
+    /* tant pis : le réglage ne survivra pas à la partie */
+  }
+}
+
 // Deux bornes, et on garde la plus basse.
 //
-// La hauteur d'abord : une carte du pli ne dépasse pas 42 % de la hauteur du
-// feutre. À la taille d'avant (les cartes se rejoignaient au centre, où l'on
+// La hauteur d'abord : une carte du pli ne dépasse pas HAUTEUR_CARTE_PLI de
+// la hauteur du feutre. À la taille d'avant (les cartes se rejoignaient au centre, où l'on
 // pouvait empiler) une seule carte couvrait les deux tiers du tapis ; posée
 // contre un nom, elle recouvrait la moitié de la scène. Les 42 % ne sont pas
 // un chiffre rond : c'est ce qu'il faut pour que MA carte, la plus haute des
@@ -1983,13 +2082,18 @@ function zoneDesCartes(boite) {
 // feutre. Jusqu'à six joueurs il y en a de reste ; à neuf, les voisines se
 // toucheraient. Jamais en deçà de 55 %, où les chiffres deviennent illisibles.
 function echelleCouronne(effectif, largeurPleine, L, H) {
-  const hauteur = (0.42 * H * 0.7) / largeurPleine;
+  const hauteur = (HAUTEUR_CARTE_PLI * H * 0.7) / largeurPleine;
   const a = 0.47 * L;
   const b = 0.45 * H;
   // Périmètre d'ellipse, approximation de Ramanujan.
   const tour = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
   const arc = tour / Math.max(1, effectif) / (largeurPleine * 1.25);
-  return Math.max(0.55, Math.min(1, hauteur, arc));
+  // Le plafond de 1 est celui de la taille NATURELLE de la carte (22,5 % du
+  // feutre, voir la CSS) : au-delà on l'agrandit, ce qui est exactement ce
+  // que demande le réglage du joueur — d'où le facteur, appliqué après les
+  // deux bornes et non dedans. Les bornes disent ce qui tient sans se
+  // chevaucher ; le réglage dit ce que le joueur préfère voir.
+  return Math.max(0.55, Math.min(1, hauteur, arc)) * tailleDesCartes();
 }
 
 // Manche 1 : chacun tient sa carte tournée vers les autres. Tout le monde la
@@ -2125,6 +2229,18 @@ function renderTrick(state) {
   const sieges = new Map();
   tableEl.querySelectorAll('.sk-seat').forEach((el) => sieges.set(el.dataset.player, el));
 
+  // MA carte est la seule à remonter VERS le feutre — les autres s'écartent
+  // vers l'extérieur, où il n'y a personne. Plus elle grossit, plus elle
+  // remonte (elle doit d'abord dégager mon propre siège), et à neuf joueurs
+  // elle finissait sur les sièges d'en face : leur nom et leur compteur de
+  // plis passaient dessous. Ils deviennent donc des obstacles pour elle, au
+  // même titre que les bandes de texte — et comme elle arrive par en dessous,
+  // `ecarterDe` la repousse vers le bas, du côté d'où elle vient.
+  const siegesDesAutres = [...sieges.entries()]
+    .filter(([id]) => id !== myId)
+    .map(([, el]) => rectDansLeTapis(el, boite))
+    .filter(Boolean);
+
   // Pendant que le pli se joue, la liste vient de l'aperçu ; une fois tombé,
   // du résultat — sans quoi le voile sauterait à la seconde même où il sert
   // le plus, celle où l'on comprend ce qui vient de se passer.
@@ -2218,6 +2334,15 @@ function renderTrick(state) {
     }
     const x = borner(sx + dx * ecart - dy * ecartFrere, cadre.x0 + demiCarteL, cadre.x1 - demiCarteL);
     let y = borner(sy + dy * ecart + dx * ecartFrere, cadre.y0 + demiCarteH, cadre.y1 - demiCarteH);
+    // Les sièges d'abord, la main ensuite : si les deux se disputent la même
+    // carte, c'est la main qui gagne — une carte du pli qui passe sous
+    // l'éventail est perdue pour tout le monde, un nom de siège à moitié
+    // couvert reste devinable au médaillon.
+    if (t.playerId === myId) {
+      siegesDesAutres.forEach((siege) => {
+        y = ecarterDe(x, y, demiCarteL, demiCarteH, siege, MARGE);
+      });
+    }
     bandes.forEach((bande) => {
       y = ecarterDe(x, y, demiCarteL, demiCarteH, bande, MARGE);
     });

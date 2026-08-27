@@ -6206,6 +6206,25 @@ body.sk-ciblage .sk-turn-indicator {
   display: none;
 }
 
+/* Sauf les Réglages. La colonne peinte laisse un vide entre le registre
+   (qui s'arrête à 57,8 %) et le carnet de cuir (qui commence à 70,6 %) :
+   c'est là que traîne la plume, et c'est la seule bande de la colonne où
+   poser une commande ne recouvre aucun texte. Sélecteur plus précis que la
+   règle ci-dessus, pour ne pas dépendre de l'ordre des blocs. */
+.sk-scene .sk-history-link.sk-reglages-link {
+  display: block;
+  position: absolute;
+  left: 84.2%;
+  top: 58.6%;
+  width: 12.6%;
+  z-index: 5;
+  margin: 0;
+  padding: 0.55cqw 0 0.65cqw;
+  font-size: 0.8cqw;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
 /* Le parchemin porte son titre, comme un vrai ordre de mission. */
 .sk-scene .sk-objective-kicker {
   display: block;
@@ -7150,4 +7169,121 @@ body.sk-ciblage .sk-turn-indicator {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
+}
+
+/* =====================================================================
+   RÉGLAGES D'AFFICHAGE — la planche qui s'ouvre depuis la barre latérale.
+   Un curseur de laiton dans une glissière de bois : même vocabulaire que
+   le champ de saisie (un creux) et que les boutons (une plaque).
+   ===================================================================== */
+.sk-settings-content {
+  max-width: 380px;
+  text-align: center;
+}
+
+.sk-settings-label {
+  margin: 0 0 12px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sk-brass-hi);
+}
+
+.sk-settings-rangee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sk-settings-borne {
+  flex-shrink: 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--sk-cream-3);
+}
+
+.sk-settings-valeur {
+  margin: 10px 0 0;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-cream);
+}
+
+.sk-settings-note {
+  margin: 12px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.sk-settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.sk-settings-actions .btn {
+  margin: 0;
+}
+
+/* La glissière : un creux dans la planche, comme le champ de saisie. Les
+   deux familles de pseudo-éléments sont OBLIGATOIREMENT dans des règles
+   séparées — un navigateur qui ne connaît pas l'un jette tout le sélecteur,
+   et le curseur retomberait au gris du système. */
+.sk-range {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sk-range:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: 4px;
+}
+
+.sk-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #150e07, #2a1e13);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.32), inset 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+.sk-range::-moz-range-track {
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #150e07, #2a1e13);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.32), inset 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Le curseur est un doublon frappé, comme les jetons d'annonce. */
+.sk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(16, 9, 3, 0.7);
+}
+
+.sk-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(16, 9, 3, 0.7);
 }

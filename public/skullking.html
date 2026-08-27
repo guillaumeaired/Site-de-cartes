@@ -246,6 +246,10 @@
               <button class="sk-defiler sk-defiler--bas" type="button" aria-label="Voir le bas du classement">&#9660;</button>
             </div>
             <button id="sk-btn-history" class="sk-history-link hidden" type="button">Manches précédentes</button>
+            <!-- Sur la scène peinte, « Manches précédentes » n'a pas de place et
+                 disparaît ; celui-ci en a une, dans le vide entre le registre
+                 et le carnet, là où traîne la plume. -->
+            <button id="sk-btn-settings" class="sk-history-link sk-reglages-link" type="button">Réglages</button>
 
             <div class="sk-chat">
               <p class="sk-side-title">Discussion</p>
@@ -386,6 +390,30 @@
       <h2>Manches précédentes</h2>
       <div id="sk-history-body" class="sk-history-body"></div>
       <button id="sk-btn-close-history" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Les réglages d'affichage. Ils ne touchent QUE cet écran-ci : rien n'est
+       envoyé au serveur, rien n'est imposé aux autres joueurs. La taille des
+       cartes du tapis dépend d'un écran, d'une distance et d'une vue, pas
+       d'une partie. -->
+  <div id="sk-settings-modal" class="modal hidden">
+    <div class="modal-content sk-settings-content">
+      <h2>Réglages</h2>
+      <p class="sk-settings-label" id="sk-settings-taille-label">Taille des cartes sur le tapis</p>
+      <div class="sk-settings-rangee">
+        <span class="sk-settings-borne" aria-hidden="true">Petites</span>
+        <input id="sk-range-taille" class="sk-range" type="range" min="80" max="115" step="5"
+               aria-labelledby="sk-settings-taille-label" />
+        <span class="sk-settings-borne" aria-hidden="true">Grandes</span>
+      </div>
+      <p class="sk-settings-valeur"><output id="sk-range-taille-valeur" for="sk-range-taille"></output></p>
+      <p class="hint sk-settings-note">Le tapis est peint en plongée : au-delà, les cartes de deux joueurs
+        voisins se recouvrent. Le réglage est gardé sur cet appareil.</p>
+      <div class="sk-settings-actions">
+        <button id="sk-btn-settings-apply" class="btn btn-primary">Appliquer</button>
+        <button id="sk-btn-settings-close" class="btn-link">Annuler</button>
+      </div>
     </div>
   </div>
 
