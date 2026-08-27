@@ -182,7 +182,7 @@ const etat = {
     : KRAKEN
     ? { winnerId: null, destroyed: true, krakenCardId: 'c2', devouredCardIds: [], plankedCardIds: [], davyJones: null }
     : RAIE
-    ? { winnerId: null, destroyed: true, krakenCardId: null, destroyedBy: 'stingray', devouredCardIds: [], plankedCardIds: [], davyJones: null }
+    ? { winnerId: null, destroyed: true, krakenCardId: null, destroyedBy: 'stingray', neutralisedCardIds: ['c0', 'c1', 'c3', 'c4'], devouredCardIds: [], plankedCardIds: [], davyJones: null }
     : PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
   sittingOutThisTrick: false,
 };

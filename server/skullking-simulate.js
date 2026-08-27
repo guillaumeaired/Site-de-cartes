@@ -172,8 +172,38 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   check('Raie sans numérotée : personne ne remporte le pli', r.winnerIdx, null);
   check('Raie sans numérotée : pli détruit', r.destroyed, true);
   check('Raie sans numérotée : la Raie est désignée coupable', r.destroyerIdx, 2);
+  // Le voile posé sur les cartes hors course : les deux Pirates et la Fuite,
+  // pas la Raie (elle est la cause) ni le Pirate jeté à la Planche, qui est
+  // sorti du pli autrement et a son propre sort à l'écran.
+  check('Raie sans numérotée : les cartes hors course sont nommées', r.neutralisedIdx, [0, 3, 4]);
   const sansRaie = resolveTrick(pli.filter((c) => c.kind !== 'stingray'));
   check('le même pli sans la Raie : le Pirate restant le remporte', sansRaie.winnerIdx, 2);
+}
+{
+  // Le cas courant : le monstre ne détruit rien, il met seulement les
+  // spéciales hors course et laisse les numérotées se départager.
+  const pli = [
+    { id: 'sk', kind: 'skullking' },
+    { id: 'ba', kind: 'whale' },
+    { id: 'n4', kind: 'number', suit: 'noir', value: 4 },
+    { id: 'v9', kind: 'number', suit: 'vert', value: 9 },
+    { id: 'si', kind: 'siren' },
+  ];
+  const r = resolveTrick(pli);
+  check('Baleine : la plus haute numérotée gagne, le noir sans son atout', r.winnerIdx, 3);
+  check('Baleine : pli non détruit', r.destroyed, false);
+  check('Baleine : Skull King et Sirène hors course, pas la Baleine', r.neutralisedIdx, [0, 4]);
+}
+{
+  // Un 0/14 déclaré à 0 est hors course sous la Raie — c'est le seul endroit
+  // où il gagnerait sans l'exclusion, puisque c'est la plus basse qui prend.
+  const r = resolveTrick([
+    { id: 'z', kind: 'number', suit: 'vert', value: 0, wild14: true },
+    { id: 'ra', kind: 'stingray' },
+    { id: 'v5', kind: 'number', suit: 'vert', value: 5 },
+  ]);
+  check('Raie : le 0/14 déclaré à 0 ne prend pas le pli', r.winnerIdx, 2);
+  check('Raie : et il est marqué hors course', r.neutralisedIdx, [0]);
 }
 {
   // Kraken avalé par le Coffre de Davy Jones : le pli n'est plus détruit,
