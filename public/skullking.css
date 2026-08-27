@@ -2766,12 +2766,20 @@ h3 {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 15%;
-  height: 23%;
-  margin-left: -7.5%;
-  margin-top: -23%;
+  /* Le pointeur porte son propre moyeu de laiton, dont le centre tombe à
+     74 % de la hauteur de l'image (mesuré : c'est le milieu de sa partie
+     la plus large). C'est LUI le pivot, pas le bas de l'image — d'où
+     l'origine et la marge ci-dessous, calculées depuis ces 74 %.
+
+     Longueur : 0,74 x 32,4 % = 24 % du cadre entre le pivot et la pointe,
+     soit un cheveu de moins que le rayon du trou (26 %), pour que la
+     barre ne vienne pas taper dans le bois du gouvernail. */
+  width: 23.3%;
+  height: 32.4%;
+  margin-left: -11.65%;
+  margin-top: -24%;
   object-fit: contain;
-  transform-origin: 50% 100%;
+  transform-origin: 50% 74%;
   transform: rotate(0deg);
   transition: transform 2.2s cubic-bezier(0.12, 0.67, 0.16, 1);
   filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6));
@@ -2784,20 +2792,7 @@ h3 {
   display: block;
 }
 
-/* Le clou de laiton au moyeu : il n'est pas décoratif, il cache la base du
-   pointeur, tronquée net par le bord de son image. Sans lui on verrait une
-   coupure droite au centre du gouvernail. */
-.sk-wheel-hub {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 11%;
-  height: 11%;
-  background: url('assets/skin/clou-laiton.webp') 50% 50% / contain no-repeat;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
-  z-index: 4;
-}
+
 
 .sk-wheel-labels {
   position: absolute;
