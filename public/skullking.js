@@ -2972,9 +2972,6 @@ function courbeSVG(series, grand) {
   const W = grand ? 940 : 460;
   const H = grand ? 470 : 190;
   const PAD_L = grand ? 64 : 38;
-  // Assez de marge à droite pour que le médaillon posé sur le dernier point
-  // tienne entier dans le cadre : il déborderait avec l'ancienne valeur (10).
-  const PAD_R = grand ? 40 : 16;
   const PAD_T = grand ? 22 : 12;
   const PAD_B = grand ? 50 : 22;
 
@@ -3004,6 +3001,30 @@ function courbeSVG(series, grand) {
     min -= span * 0.08;
     max += span * 0.08;
   }
+
+  // Taille du médaillon de bout de ligne : il doit rester lisible, mais à 9
+  // joueurs neuf médaillons pleine taille ne tiennent pas dans la hauteur
+  // utile du cadre. On les rétrécit donc à mesure que la table se remplit.
+  const dBase = grand
+    ? (series.length <= 5 ? 40 : series.length <= 7 ? 34 : 29)
+    : (series.length <= 5 ? 22 : series.length <= 7 ? 18 : 15);
+
+  // Les ex æquo se rangent CÔTE À CÔTE, pas empilés. Empilés, deux
+  // médaillons se lisent comme deux scores voisins — exactement le contraire
+  // de ce qu'ils disent. En rangée, l'égalité se voit : même hauteur, même
+  // ligne. Le peloton le plus fourni décide donc de la marge droite, puisque
+  // c'est là que la rangée s'étale.
+  const finDe = (r) => `${r.curve.length}|${r.curve[r.curve.length - 1].total}`;
+  const effectifs = new Map();
+  series.forEach((r) => effectifs.set(finDe(r), (effectifs.get(finDe(r)) || 0) + 1));
+  const peloton = Math.max(1, ...effectifs.values());
+  const ecartH = dBase * 0.92;
+  // Une rangée ne mange jamais plus d'un cinquième du cadre : à sept ex æquo
+  // il ne resterait plus de courbe à regarder. Le trop-plein passe à la
+  // rangée du dessous, ce qui reste plus juste qu'une pile — les égaux y sont
+  // encore groupés, et personne n'est seul sur sa ligne.
+  const parRangee = Math.max(1, Math.min(peloton, 1 + Math.floor((W * 0.2) / ecartH)));
+  const PAD_R = (grand ? 40 : 16) + (parRangee - 1) * ecartH;
 
   const x = (i) => PAD_L + (maxRound === 1 ? 0 : (i / (maxRound - 1)) * (W - PAD_L - PAD_R));
   const y = (v) => PAD_T + (1 - (v - min) / (max - min)) * (H - PAD_T - PAD_B);
@@ -3054,12 +3075,6 @@ function courbeSVG(series, grand) {
   // Les médaillons se posent APRÈS toutes les lignes, dans une seconde passe :
   // sinon la ligne d'un joueur tracée ensuite passerait par-dessus le
   // médaillon d'un autre (SVG n'a pas de z-index, seul l'ordre compte).
-  // Taille du médaillon de bout de ligne : il doit rester lisible, mais à 9
-  // joueurs neuf médaillons pleine taille ne tiennent pas dans les 156 px
-  // utiles du cadre. On les rétrécit donc à mesure que la table se remplit.
-  const dBase = grand
-    ? (series.length <= 5 ? 40 : series.length <= 7 ? 34 : 29)
-    : (series.length <= 5 ? 22 : series.length <= 7 ? 18 : 15);
   const bouts = [];
   series.forEach((r) => {
     const piece = PIECE_BY_KEY[r.piece] || pieceFor(r);
@@ -3085,29 +3100,50 @@ function courbeSVG(series, grand) {
     // c'est le même repère que sur le tapis et dans le registre.
     const d = r.id === myId ? dBase + 4 : dBase;
     bouts.push({
-      cle: piece.key, d, moi: !!moi,
+      cle: piece.key, d, moi: !!moi, fin: finDe(r),
       cx: x(r.curve.length - 1),
       cy: y(dernier.total),
       titre: `${escapeHTML(r.nickname)} — ${dernier.total}`,
     });
   });
 
-  // Deux joueurs qui finissent au même score verraient leurs médaillons
-  // empilés, donc illisibles tous les deux. On les écarte verticalement du
-  // strict nécessaire, du haut vers le bas : le médaillon quitte un peu son
-  // point, mais la ligne qui y mène reste sous lui et le rattache.
-  bouts.sort((a, b) => a.cy - b.cy);
-  // Le plus haut ne doit pas déborder par le haut du cadre avant même qu'on
+  // Une rangée par score d'arrivée : les ex æquo la partagent, côte à côte.
+  // Le premier reste sur son point, les suivants s'alignent à sa droite —
+  // la ligne qui mène au premier ancre toute la rangée à sa hauteur.
+  const rangees = [];
+  const parFin = new Map();
+  bouts.forEach((b) => {
+    let rangee = parFin.get(b.fin);
+    if (!rangee || rangee.membres.length >= parRangee) {
+      rangee = { cy: b.cy, membres: [] };
+      rangees.push(rangee);
+      parFin.set(b.fin, rangee);
+    }
+    rangee.membres.push(b);
+  });
+  rangees.forEach((rangee) => {
+    rangee.d = Math.max(...rangee.membres.map((b) => b.d));
+    rangee.membres.forEach((b, i) => { b.cx += i * ecartH; });
+  });
+
+  // Deux scores voisins verraient leurs rangées se chevaucher, donc
+  // illisibles toutes les deux. On les écarte verticalement du strict
+  // nécessaire, du haut vers le bas : la rangée quitte un peu son point,
+  // mais la ligne qui y mène reste sous elle et la rattache.
+  rangees.sort((a, b) => a.cy - b.cy);
+  // La plus haute ne doit pas déborder par le haut du cadre avant même qu'on
   // écarte les autres — sinon un peloton en tête sort du SVG.
-  if (bouts.length) bouts[0].cy = Math.max(bouts[0].cy, PAD_T - 4 + bouts[0].d / 2);
-  for (let i = 1; i < bouts.length; i++) {
-    const mini = (bouts[i - 1].d + bouts[i].d) / 2 * 0.82;
-    if (bouts[i].cy - bouts[i - 1].cy < mini) bouts[i].cy = bouts[i - 1].cy + mini;
+  if (rangees.length) rangees[0].cy = Math.max(rangees[0].cy, PAD_T - 4 + rangees[0].d / 2);
+  for (let i = 1; i < rangees.length; i++) {
+    const mini = (rangees[i - 1].d + rangees[i].d) / 2 * 0.82;
+    if (rangees[i].cy - rangees[i - 1].cy < mini) rangees[i].cy = rangees[i - 1].cy + mini;
   }
   // Le tas peut alors dépasser par le bas : on le remonte en bloc, ce qui
   // conserve les écarts qu'on vient d'établir.
-  const debord = bouts.length ? bouts[bouts.length - 1].cy + bouts[bouts.length - 1].d / 2 - (H - PAD_B + 4) : 0;
-  if (debord > 0) bouts.forEach((b) => { b.cy -= debord; });
+  const derniere = rangees[rangees.length - 1];
+  const debord = rangees.length ? derniere.cy + derniere.d / 2 - (H - PAD_B + 4) : 0;
+  if (debord > 0) rangees.forEach((r) => { r.cy -= debord; });
+  rangees.forEach((rangee) => rangee.membres.forEach((b) => { b.cy = rangee.cy; }));
 
   svg += bouts
     .map((b) =>
@@ -3163,13 +3199,11 @@ function renderGameEnd(state) {
   const piece = PIECE_BY_KEY[winner.piece] || pieceFor(winner);
   const trophee =
     `<img class="sk-end-winner-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
-  const vainqueur =
-    winner.id === myId
-      ? `<span class="sk-nom" style="color:${couleurJoueur(winner)}">Tu</span>`
-      : nomColore(winner);
+  // Le vainqueur est nommé, même quand c'est soi : « Tu remportes la partie »
+  // se lit vite, mais c'est la seule ligne de l'écran qui grave un nom, et
+  // c'est celle-là qu'on garde en capture. Le pseudo y a sa place.
   endTitle.innerHTML =
-    `<span class="sk-end-winner">${trophee}${vainqueur}</span>` +
-    (winner.id === myId ? ' remportes la partie !' : ' remporte la partie !');
+    `<span class="sk-end-winner">${trophee}${nomColore(winner)}</span> remporte la partie !`;
   endBody.innerHTML = ranking
     .map((r, i) => {
       const rang = ROMAN[i + 1] || `${i + 1}`;
@@ -3220,6 +3254,7 @@ function fermerCourbeAgrandie() {
 
 if (curveModal) {
   document.getElementById('sk-btn-close-curve').addEventListener('click', fermerCourbeAgrandie);
+  document.getElementById('sk-btn-close-curve-x').addEventListener('click', fermerCourbeAgrandie);
   // Le fond fait office de bouton « fermer » : c'est un agrandissement, on
   // en sort comme on sort d'une loupe. Seul un clic SUR le fond compte, pas
   // un clic sur la planche qu'il porte.

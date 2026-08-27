@@ -1051,11 +1051,13 @@ h3 {
     0 18px 40px rgba(0, 0, 0, 0.65);
 }
 
-/* Fin de partie : le lettrage peint annonce l'écran, en petit — le verdict
-   qui le suit doit rester la première chose qu'on lit. */
+/* Fin de partie : le lettrage peint annonce l'écran. Il tient la moitié de
+   la hauteur du verdict, assez pour qu'on voie de quel jeu on sort d'une
+   capture d'écran ; le nom du vainqueur reste ce qu'on lit en premier parce
+   qu'il est écrit, pas parce que le logo s'efface. */
 .sk-end-logo {
   display: block;
-  width: 156px;
+  width: 210px;
   height: auto;
   margin: 0 auto 6px;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7));
@@ -4404,7 +4406,7 @@ h3 {
 .sk-curve-loupe {
   position: absolute;
   top: 7px;
-  right: 9px;
+  left: 9px;
   padding: 2px 7px;
   border-radius: 3px;
   font-family: 'Cinzel', Georgia, serif;
@@ -4530,6 +4532,49 @@ h3 {
      refuserait de rétrécir et déborderait de l'écran au lieu de la laisser
      défiler dans son cadre. */
   min-width: 0;
+}
+
+/* La croix de fermeture, punaisée dans le coin de la planche : agrandir se
+   fait d'un clic, refermer doit se faire du même geste, sans aller chercher
+   le bouton en bas d'une planche qui remplit l'écran. Un clou de laiton,
+   comme ceux qui tiennent les parchemins. */
+.sk-modal-x {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--sk-brass-hi);
+  background: radial-gradient(circle at 38% 32%, rgba(255, 236, 196, 0.16), rgba(0, 0, 0, 0.42));
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 137, 53, 0.42),
+    0 2px 5px rgba(0, 0, 0, 0.55);
+  transition: color 0.15s, box-shadow 0.15s;
+}
+
+.sk-modal-x:hover {
+  color: var(--sk-cream);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 206, 146, 0.7),
+    0 2px 7px rgba(0, 0, 0, 0.65);
+}
+
+.sk-modal-x:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: 2px;
+}
+
+/* Le titre laisse la place à la croix : centré, il passerait dessous. */
+.sk-curve-content h2 {
+  padding: 0 34px;
 }
 
 /* Sur un téléphone, la courbe agrandie ne tient pas en largeur sans devenir
@@ -5991,7 +6036,7 @@ h3 {
   }
 
   .sk-end-logo {
-    width: 118px;
+    width: 190px;
     margin: 0;
   }
 

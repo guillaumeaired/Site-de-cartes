@@ -58,7 +58,13 @@ function makeRoomCode() {
 function sanitizeNickname(nickname) {
   if (typeof nickname !== 'string') return null;
   const trimmed = nickname.trim().slice(0, 16);
-  return trimmed || null;
+  if (!trimmed) return null;
+  // Une majuscule d'office à l'initiale : le pseudo est affiché partout comme
+  // un nom propre — au siège, au registre, dans le verdict de fin — et un
+  // « hlo » en bas de casse au milieu de sept noms capitalisés se lit comme
+  // une faute d'affichage. Le reste du pseudo n'est pas touché : « McGraw »
+  // et « d'Aubigné » restent tels qu'ils ont été saisis.
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 function findPlayer(room, id) {
