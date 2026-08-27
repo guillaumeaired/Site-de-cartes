@@ -1845,16 +1845,19 @@ function zoneDesCartes(boite) {
 
 // Deux bornes, et on garde la plus basse.
 //
-// La hauteur d'abord : une carte du pli ne doit pas dépasser 45 % de la
-// hauteur du feutre. À la taille d'avant (les cartes se rejoignaient au
-// centre, où l'on pouvait empiler) une seule carte couvrait les deux tiers
-// du tapis ; posée contre un nom, elle recouvrait la moitié de la scène.
+// La hauteur d'abord : une carte du pli ne dépasse pas 42 % de la hauteur du
+// feutre. À la taille d'avant (les cartes se rejoignaient au centre, où l'on
+// pouvait empiler) une seule carte couvrait les deux tiers du tapis ; posée
+// contre un nom, elle recouvrait la moitié de la scène. Les 42 % ne sont pas
+// un chiffre rond : c'est ce qu'il faut pour que MA carte, la plus haute des
+// neuf puisqu'elle est au premier plan, s'arrête sous le bandeau du centre
+// où s'écrit l'issue du pli. Un cran au-dessus et elle le recouvrait.
 //
 // La couronne ensuite : chaque carte a besoin d'un arc à elle sur le tour du
 // feutre. Jusqu'à six joueurs il y en a de reste ; à neuf, les voisines se
 // toucheraient. Jamais en deçà de 55 %, où les chiffres deviennent illisibles.
 function echelleCouronne(effectif, largeurPleine, L, H) {
-  const hauteur = (0.45 * H * 0.7) / largeurPleine;
+  const hauteur = (0.42 * H * 0.7) / largeurPleine;
   const a = 0.47 * L;
   const b = 0.45 * H;
   // Périmètre d'ellipse, approximation de Ramanujan.
@@ -2000,12 +2003,16 @@ function renderTrick(state) {
   // Le centre ne porte plus que les moments qui comptent : la consigne pendant
   // l'annonce, puis l'issue du pli. Qui mène se lit déjà au liseré vert de la
   // carte, la couleur demandée aux cartes grisées dans la main.
+  trickCaptionEl.classList.remove('sk-trick-caption--verdict');
   if (state.phase === 'bidding') {
     trickCaptionEl.textContent = 'Tout le monde annonce son nombre de plis…';
   } else if (state.trickPaused) {
     if (state.lastTrickResult && state.lastTrickResult.destroyed) {
       trickCaptionEl.textContent = '💥 Le pli est détruit !';
     } else {
+      // Le verdict n'est pas une consigne de plus : c'est la ligne qu'on
+      // cherche quand le pli tombe. Elle est gravée, pas murmurée.
+      trickCaptionEl.classList.add('sk-trick-caption--verdict');
       const winner = state.leadingPlayerId === myId ? 'Tu remportes' : `${nicknameOf(state, state.leadingPlayerId)} remporte`;
       trickCaptionEl.textContent = `${winner} le pli !`;
     }

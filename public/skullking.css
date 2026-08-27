@@ -1712,6 +1712,20 @@ h3 {
   .sk-trick-card--gagnante .sk-card { animation: none; }
 }
 
+/* Quand le pli tombe, le bandeau ne commente plus : il tranche. Gravé en
+   Cinzel comme les noms des sièges, en laiton clair, il est la seule ligne
+   de l'écran qui nomme le vainqueur — la carte gagnante, elle, porte son
+   cerclage. Le nom et la carte, chacun de son côté, disent la même chose. */
+.sk-trick-caption--verdict {
+  font-family: 'Cinzel', Georgia, serif;
+  font-style: normal;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--sk-brass-hi);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 16px rgba(255, 226, 150, 0.35);
+}
+
 /* Le commentaire du pli est un ruban de parchemin posé sur le feutre. */
 .sk-trick-caption {
   margin: 0;
