@@ -893,6 +893,12 @@ function ajusterHauteurSalon() {
   if (lobbyChatLog && pile) {
     const place = placeDisponible(lobbyChatLog, pile, cible);
     if (place > 90) lobbyChatLog.style.height = `${place}px`;
+    // Le fil est collé en bas APRÈS la mesure, jamais avant. `ajouterMessage`
+    // le fait déjà en posant chaque message, mais sur la hauteur d'alors —
+    // celle du plancher CSS. La planche grandit juste après, le `scrollTop`
+    // ne suit pas, et le dernier message se retrouvait coupé en deux au ras
+    // du formulaire : on voyait « Pablo 19:00 » sans lire ce qu'il disait.
+    lobbyChatLog.scrollTop = lobbyChatLog.scrollHeight;
   }
 }
 
@@ -1172,6 +1178,8 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   startRevealPlayed = false;
   lastDevouredTrick = null;
   lastPlankedTrick = null;
+  lastDavyTrick = null;
+  lastWonTrick = null;
 });
 
 window.addEventListener('resize', ajusterHauteurSalon);
@@ -1247,6 +1255,9 @@ const roundIndicator = document.getElementById('sk-round-indicator');
 const btnEndGame = document.getElementById('sk-btn-end-game');
 const tableEl = document.getElementById('sk-table');
 const trickCaptionEl = document.getElementById('sk-trick-caption');
+const verdictEl = document.getElementById('sk-trick-verdict');
+const verdictPieceEl = document.getElementById('sk-verdict-piece');
+const verdictTexteEl = document.getElementById('sk-verdict-texte');
 const turnIndicator = document.getElementById('sk-turn-indicator');
 const bidChoices = document.getElementById('sk-bid-choices');
 const tigressChoiceEl = document.getElementById('sk-tigress-choice');
@@ -1940,12 +1951,51 @@ function cartesDeLaManche1(state) {
 // peint, puisque les sièges sont déjà au bord. C'est voulu — le tapis est le
 // plateau, le bois est la table. Ce qu'elle rend : le centre du feutre reste
 // vide, et c'est là que s'écrit l'issue du pli.
+// Ce que le tapis montre, en une chaîne : le pli, les cartes qui le
+// composent, les joueurs assis et la taille du feutre. Tout ce qui change le
+// dessin du tapis y est, et RIEN d'autre — surtout pas la phase : c'est
+// justement le passage en `power` qui rediffuse un état sans que le pli ait
+// bougé d'un pixel.
+function empreinteDuTapis(state, trick, boite) {
+  return [
+    cleDuPli(state),
+    Math.round(boite.width),
+    Math.round(boite.height),
+    (state.players || []).map((p) => p.id).join(','),
+    trick
+      .map((t) => [t.playerId, t.card.id, t.card.kind, t.card.chosenAs || '',
+                   t.card.suit || '', t.card.value ?? ''].join(':'))
+      .join('|'),
+  ].join('#');
+}
+
+let empreinteRendue = null;
+
 function renderTrick(state) {
-  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
   const { map } = seatLayout(state);
   const trick = state.currentTrick && state.currentTrick.length ? state.currentTrick : cartesDeLaManche1(state);
 
   const boite = tableEl.getBoundingClientRect();
+
+  // Pendant la pause de fin de pli, le même pli est rediffusé à chaque
+  // broadcast : un pouvoir de Pirate qui s'ouvre, un joueur qui se
+  // reconnecte, la file de Mat le Forban qui enchaîne. Redessiner recrée les
+  // cases, donc RANNULE les animations en cours — les cartes que la gagnante
+  // venait d'avaler réapparaissaient à leur place, et le garde-fou qui
+  // empêche de rejouer deux fois l'animation du même pli (lastWonTrick) les
+  // y laissait. D'où des cartes qui revenaient sans raison visible.
+  //
+  // Tant que le tapis montre exactement la même chose, on n'y touche pas.
+  // Le garde ne vaut que pendant la pause : le reste du temps, chaque état
+  // apporte une carte de plus et il faut bien la poser.
+  if (state.trickPaused
+      && empreinteRendue === empreinteDuTapis(state, trick, boite)
+      && tableEl.querySelector('.sk-trick-card')) {
+    return;
+  }
+
+  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
+  empreinteRendue = empreinteDuTapis(state, trick, boite);
   const L = boite.width || 1;
   const H = boite.height || 1;
 
@@ -2061,24 +2111,81 @@ function renderTrick(state) {
   // Le centre ne porte plus que les moments qui comptent : la consigne pendant
   // l'annonce, puis l'issue du pli. Qui mène se lit déjà au liseré vert de la
   // carte, la couleur demandée aux cartes grisées dans la main.
-  trickCaptionEl.classList.remove('sk-trick-caption--verdict');
   if (state.phase === 'bidding') {
+    retirerVerdict();
     trickCaptionEl.textContent = 'Tout le monde annonce son nombre de plis…';
   } else if (state.trickPaused) {
     if (state.lastTrickResult && state.lastTrickResult.destroyed) {
-      trickCaptionEl.textContent = '💥 Le pli est détruit !';
+      // Le Kraken vient chercher le pli au centre du feutre (voir
+      // playKrakenAnimation) : ce qui est écrit ici ne doit pas se retrouver
+      // sous les cartes qui convergent. La classe ne fait que retarder son
+      // apparition jusqu'à ce que le tas ait fini de s'effacer — la ligne
+      // arrive donc sur un feutre vide, et elle dit la conséquence, pendant
+      // que la consigne au-dessus du feutre dit la cause.
+      retirerVerdict();
+      const parLeKraken = !!state.lastTrickResult.krakenCardId;
+      // Le tas met d'autant plus de temps à s'effacer qu'il a de cartes à
+      // avaler (playKrakenAnimation les étale de 75 ms) : à neuf joueurs, une
+      // attente fixe aurait fait s'écrire la ligne sous le retournement, au
+      // pixel près à l'endroit qu'elle est censée attendre.
+      const aAvaler = Math.max(0, (state.currentTrick || []).length - 1);
+      trickCaptionEl.style.setProperty('--sk-attente', `${(1.54 + aAvaler * 0.075).toFixed(2)}s`);
+      trickCaptionEl.textContent = parLeKraken
+        ? 'Le pli est englouti — personne ne le remporte.'
+        : 'Le pli est détruit — personne ne le remporte.';
+      trickCaptionEl.classList.toggle('sk-trick-caption--apres-kraken', parLeKraken);
     } else {
       // Le verdict n'est pas une consigne de plus : c'est la ligne qu'on
-      // cherche quand le pli tombe. Elle est gravée, pas murmurée.
-      trickCaptionEl.classList.add('sk-trick-caption--verdict');
-      const winner = state.leadingPlayerId === myId ? 'Tu remportes' : `${nicknameOf(state, state.leadingPlayerId)} remporte`;
-      trickCaptionEl.textContent = `${winner} le pli !`;
+      // cherche quand le pli tombe. Il se lit d'un coup — la pièce, puis le
+      // nom dans sa couleur, celle du médaillon du siège et de la courbe du
+      // récap. Le bandeau de texte lui laisse la place.
+      trickCaptionEl.textContent = '';
+      const gagnant = state.players.find((p) => p.id === state.leadingPlayerId);
+      if (gagnant) poserVerdict(`${state.roundNumber}-${state.trickNumber}`, gagnant);
+      else retirerVerdict();
     }
   } else if (state.trickWillBeDestroyed) {
+    retirerVerdict();
+    trickCaptionEl.classList.remove('sk-trick-caption--apres-kraken');
     trickCaptionEl.textContent = 'Ce pli sera détruit…';
   } else {
+    retirerVerdict();
+    trickCaptionEl.classList.remove('sk-trick-caption--apres-kraken');
     trickCaptionEl.textContent = '';
   }
+}
+
+// LE VERDICT DU PLI, posé une seule fois par pli. renderTrick est rappelé à
+// chaque état reçu pendant la pause : masquer puis réafficher le bandeau à
+// chaque passage empêchait toute animation d'entrée de repartir — le
+// navigateur ne recalcule rien entre le `add` et le `remove` du même passage,
+// il ne voit donc aucun changement à animer, et le verdict apparaissait d'un
+// coup. D'où le repère de pli : on ne touche au bandeau que quand il change
+// vraiment de contenu.
+function poserVerdict(cle, gagnant) {
+  if (verdictEl.dataset.pli === cle) return;
+  verdictEl.dataset.pli = cle;
+  verdictPieceEl.innerHTML = pieceSVG(pieceFor(gagnant));
+  verdictTexteEl.innerHTML = gagnant.id === myId
+    ? `<b class="sk-verdict-nom" style="color:${couleurJoueur(gagnant)}">Tu</b> remportes le pli`
+    : `<b class="sk-verdict-nom" style="color:${couleurJoueur(gagnant)}">${escapeHTML(gagnant.nickname)}</b> remporte le pli`;
+  verdictEl.classList.remove('hidden');
+  // Le retard laisse passer ce qui a un sort particulier — dévoré, englouti,
+  // jeté par-dessus bord. Ces gestes disent POURQUOI le pli tombe comme ça ;
+  // le verdict tranche ensuite, en même temps que le ramassage.
+  verdictEl.animate(
+    [
+      { opacity: 0, transform: 'translateY(10px) scale(0.94)' },
+      { opacity: 1, transform: 'none' },
+    ],
+    { duration: 360, delay: 900, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+  );
+}
+
+function retirerVerdict() {
+  if (!verdictEl.dataset.pli) return;
+  verdictEl.dataset.pli = '';
+  verdictEl.classList.add('hidden');
 }
 
 // --- Marcher sur la Planche : le Pirate passe par-dessus bord ---
@@ -2152,40 +2259,29 @@ function playPlankAnimation(state) {
   }
 }
 
-// --- Le Skull King dévore les Pirates du pli ---
-// Joué une seule fois par pli (repère lastDevouredTrick) : les cartes de
-// Pirate glissent vers le Skull King en rétrécissant, pendant qu'il grossit
-// d'un temps. Pilotée par l'API Web Animations plutôt qu'en CSS parce que la
-// distance à parcourir dépend de la position réelle des cases sur le tapis,
-// qui change à chaque pli et à chaque nombre de joueurs.
-let lastDevouredTrick = null;
-
-function playDevourAnimation(state) {
-  const res = state.lastTrickResult;
-  const ids = (res && res.devouredCardIds) || [];
-  if (!state.trickPaused || !ids.length) return;
-
-  // Un même pli est rediffusé à chaque broadcast pendant la pause : sans ce
-  // repère, l'animation repartirait à zéro à chaque état reçu.
-  const key = `${state.roundNumber}-${state.trickNumber}`;
-  if (lastDevouredTrick === key) return;
-  lastDevouredTrick = key;
-
-  const king = tableEl.querySelector('.sk-trick-card[data-kind="skullking"]');
-  if (!king) return;
-  const kingCard = king.querySelector('.sk-card');
-
-  // Distances prises sur offsetLeft/offsetTop, pas sur getBoundingClientRect :
-  // les cases viennent d'être créées et leur animation d'apparition
-  // (sk-card-drop) est encore en cours, donc leur boîte mesurée est décalée
-  // et la carte n'atterrissait pas sur le roi (35 px d'écart mesurés). Les
-  // offsets, eux, sont la position de mise en page, insensible aux
-  // transformations en cours.
-  ids.forEach((id, i) => {
+// --- AVALER UNE CARTE ---
+// Le même geste sert trois fois : le Skull King qui dévore les Pirates, le
+// Coffre de Davy Jones qui engloutit les Monstres Marins, et le vainqueur qui
+// ramasse le pli. La carte part vers celle qui la prend, grossit d'un temps
+// en chemin puis s'écrase dedans.
+//
+// Pilotée par l'API Web Animations plutôt qu'en CSS : la distance dépend de
+// la position réelle des cases sur le tapis, qui change à chaque pli et à
+// chaque nombre de joueurs.
+//
+// Distances prises sur offsetLeft/offsetTop, pas sur getBoundingClientRect :
+// les cases viennent d'être créées et leur animation d'apparition
+// (sk-card-drop) est encore en cours, donc leur boîte mesurée est décalée et
+// la carte n'atterrissait pas sur celle qui l'avale (35 px d'écart mesurés).
+// Les offsets, eux, sont la position de mise en page, insensible aux
+// transformations en cours.
+function avalerCartes(cible, ids, { duree = 850, retard = 120, pas = 90, tour = 14 } = {}) {
+  let n = 0;
+  ids.forEach((id) => {
     const slot = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(id)}"]`);
-    if (!slot) return;
-    const dx = king.offsetLeft - slot.offsetLeft;
-    const dy = king.offsetTop - slot.offsetTop;
+    if (!slot || slot === cible) return;
+    const dx = cible.offsetLeft - slot.offsetLeft;
+    const dy = cible.offsetTop - slot.offsetTop;
     // La case porte déjà une échelle de profondeur : la reprendre évite que
     // la carte grossisse d'un coup au premier pas de l'animation.
     const k = parseFloat(slot.style.getPropertyValue('--sk-depth')) || 1;
@@ -2194,23 +2290,245 @@ function playDevourAnimation(state) {
       [
         { transform: `translate(-50%, -50%) scale(${k})`, opacity: 1 },
         { transform: `translate(-50%, -50%) translate(${dx * 0.25}px, ${dy * 0.25}px) scale(${k * 1.08}) rotate(-6deg)`, opacity: 1, offset: 0.28 },
-        { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${k * 0.15}) rotate(14deg)`, opacity: 0 },
+        { transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${k * 0.15}) rotate(${tour}deg)`, opacity: 0 },
       ],
-      { duration: 850, delay: 120 + i * 90, easing: 'cubic-bezier(0.5, -0.3, 0.7, 1)', fill: 'forwards' }
+      { duration: duree, delay: retard + n * pas, easing: 'cubic-bezier(0.5, -0.3, 0.7, 1)', fill: 'forwards' }
     );
+    n += 1;
+  });
+  return n;
+}
+
+// Celle qui avale encaisse : une pulsation au moment où les cartes arrivent.
+function pulsationAvaleuse(cible, avalees, { duree = 700, retard = 700, pas = 90, ampleur = 1.14, eclat = 1.5 } = {}) {
+  const carte = cible && cible.querySelector('.sk-card');
+  if (!carte || !avalees) return;
+  carte.animate(
+    [
+      { transform: 'scale(1)', filter: 'brightness(1)' },
+      { transform: `scale(${ampleur})`, filter: `brightness(${eclat})`, offset: 0.55 },
+      { transform: 'scale(1)', filter: 'brightness(1)' },
+    ],
+    { duration: duree, delay: retard + (avalees - 1) * pas, easing: 'ease-out' }
+  );
+}
+
+// Un même pli est rediffusé à chaque broadcast pendant la pause : sans ces
+// repères, les animations repartiraient à zéro à chaque état reçu.
+let lastDevouredTrick = null;
+let lastDavyTrick = null;
+let lastWonTrick = null;
+
+function cleDuPli(state) {
+  return `${state.roundNumber}-${state.trickNumber}`;
+}
+
+// --- Le Skull King dévore les Pirates du pli ---
+function playDevourAnimation(state) {
+  const res = state.lastTrickResult;
+  const ids = (res && res.devouredCardIds) || [];
+  if (!state.trickPaused || !ids.length) return;
+  const key = cleDuPli(state);
+  if (lastDevouredTrick === key) return;
+  lastDevouredTrick = key;
+
+  const king = tableEl.querySelector('.sk-trick-card[data-kind="skullking"]');
+  if (!king) return;
+  const avalees = avalerCartes(king, ids);
+  pulsationAvaleuse(king, avalees);
+}
+
+// --- Le Coffre de Davy Jones engloutit les Monstres Marins ---
+// Il les détruisait sans que rien ne le montre : le Kraken restait posé,
+// entier, à côté d'un coffre qui venait pourtant de l'effacer du pli. Les
+// Monstres tombent maintenant dedans, un par un, et le coffre tressaute.
+// Plus lentement que le Skull King, et sans éclat doré : un coffre qui se
+// referme n'a pas la même faim qu'un roi.
+function playDavyAnimation(state) {
+  const res = state.lastTrickResult;
+  const davy = res && res.davyJones;
+  if (!state.trickPaused || !davy || !davy.ids.length) return;
+  const key = cleDuPli(state);
+  if (lastDavyTrick === key) return;
+  lastDavyTrick = key;
+
+  const coffre = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(davy.chestId)}"]`);
+  if (!coffre) return;
+  const avalees = avalerCartes(coffre, davy.ids, { duree: 950, retard: 140, pas: 130, tour: -18 });
+  pulsationAvaleuse(coffre, avalees, { duree: 620, retard: 820, pas: 130, ampleur: 1.1, eclat: 1.25 });
+}
+
+// --- LE KRAKEN ENGLOUTIT LE PLI ---
+// Un pli détruit s'effaçait exactement comme un pli remporté : les cartes
+// disparaissaient d'un coup au ramassage, et seule une ligne de texte
+// distinguait « personne ne gagne » de « quelqu'un a gagné ». Le geste dit
+// maintenant la règle — le Kraken vient prendre le centre du feutre, les
+// cartes lui tombent dedans en tournoyant sur elles-mêmes, puis le tas se
+// retourne face contre table et s'efface. Personne ne le ramasse : il n'y a
+// personne vers qui le faire partir, et c'est justement ce qu'on veut voir.
+//
+// Le centre du FEUTRE, pas le centre du tapis : le tapis déborde du feutre
+// sur le bois peint depuis que les cartes se posent contre leur siège, et le
+// tas doit tomber sur le drap, là où le pli se joue.
+//
+// Distances prises sur offsetLeft/offsetTop pour la même raison que la
+// dévoration : les cases viennent d'être créées et leur animation
+// d'apparition fausse encore leur boîte mesurée.
+let lastKrakenTrick = null;
+
+function playKrakenAnimation(state) {
+  const res = state.lastTrickResult;
+  const krakenId = res && res.destroyed && res.krakenCardId;
+  if (!state.trickPaused || !krakenId) return;
+  const key = cleDuPli(state);
+  if (lastKrakenTrick === key) return;
+  lastKrakenTrick = key;
+
+  const kraken = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(krakenId)}"]`);
+  if (!kraken) return;
+
+  const centre = surFeutre(0.5, 0.5);
+  const cx = (centre.x / 100) * tableEl.clientWidth;
+  const cy = (centre.y / 100) * tableEl.clientHeight;
+  const kKraken = parseFloat(kraken.style.getPropertyValue('--sk-depth')) || 1;
+
+  // 1. Le Kraken prend le centre. Il grossit en chemin : ce n'est plus une
+  //    carte parmi les autres, c'est ce dans quoi les autres vont tomber.
+  const dxK = cx - kraken.offsetLeft;
+  const dyK = cy - kraken.offsetTop;
+  kraken.classList.add('sk-trick-card--kraken');
+  const versLeCentre = `translate(-50%, -50%) perspective(900px) translate(${dxK}px, ${dyK}px) scale(${kKraken * 1.22})`;
+  kraken.animate(
+    [
+      { transform: `translate(-50%, -50%) perspective(900px) scale(${kKraken})` },
+      { transform: `${versLeCentre} rotate(-4deg)`, offset: 0.7 },
+      { transform: versLeCentre },
+    ],
+    { duration: 620, easing: 'cubic-bezier(0.34, 1.25, 0.64, 1)', fill: 'forwards' }
+  );
+
+  // 2. Les autres cartes lui tombent dedans en tournoyant. Ce qui a déjà été
+  //    jeté par-dessus bord par la Planche n'est plus sur le tapis.
+  const dejaParties = new Set(res.plankedCardIds || []);
+  let n = 0;
+  tableEl.querySelectorAll('.sk-trick-card').forEach((slot) => {
+    if (slot === kraken || dejaParties.has(slot.dataset.cardId)) return;
+    const dx = cx - slot.offsetLeft;
+    const dy = cy - slot.offsetTop;
+    const k = parseFloat(slot.style.getPropertyValue('--sk-depth')) || 1;
+    // Le sens de rotation vient du côté d'où la carte arrive : elles sont
+    // aspirées dans le même tourbillon, pas chacune dans le sien.
+    const sens = dx === 0 ? 1 : Math.sign(dx);
+    slot.style.zIndex = '4';
+    slot.animate(
+      [
+        { transform: `translate(-50%, -50%) scale(${k}) rotate(0deg)`, opacity: 1 },
+        {
+          transform: `translate(-50%, -50%) translate(${dx * 0.2}px, ${dy * 0.2}px) scale(${k * 1.06}) rotate(${sens * -60}deg)`,
+          opacity: 1,
+          offset: 0.3,
+        },
+        {
+          transform: `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${k * 0.12}) rotate(${sens * 620}deg)`,
+          opacity: 0,
+        },
+      ],
+      { duration: 780, delay: 380 + n * 75, easing: 'cubic-bezier(0.55, -0.25, 0.75, 1)', fill: 'forwards' }
+    );
+    n += 1;
   });
 
-  // Le roi encaisse : une pulsation dorée au moment où les cartes arrivent.
-  if (kingCard) {
-    kingCard.animate(
-      [
-        { transform: 'scale(1)', filter: 'brightness(1)' },
-        { transform: 'scale(1.14)', filter: 'brightness(1.5)', offset: 0.55 },
-        { transform: 'scale(1)', filter: 'brightness(1)' },
-      ],
-      { duration: 700, delay: 700 + (ids.length - 1) * 90, easing: 'ease-out' }
-    );
+  // 3. Le tas se retourne, puis s'efface.
+  //
+  //    En deux temps et en scaleX, pas en rotateY : le demi-tour 3D suppose
+  //    un contexte `preserve-3d` que la case ne peut pas tenir — elle porte
+  //    une opacité et un empilement animés, et Chrome aplatit le contexte dès
+  //    qu'un de ces groupages apparaît. Le dos se retrouvait alors dans le
+  //    plan du dessin, tous deux masqués par leur backface, et le tas
+  //    disparaissait au quart de tour sans jamais montrer de dos.
+  //
+  //    Sur la tranche, ce qui est visible est échangé : le dessin s'efface,
+  //    le dos peint prend sa place. C'est le même geste à l'écran, et il ne
+  //    dépend d'aucune propriété de composition.
+  if (!kraken.querySelector('.sk-kraken-dos')) {
+    const dos = document.createElement('i');
+    dos.className = 'sk-kraken-dos';
+    dos.setAttribute('aria-hidden', 'true');
+    kraken.appendChild(dos);
   }
+  const retournement = 480 + n * 75;
+  const surLaTranche = `${versLeCentre} scaleX(0.02)`;
+  const DUREE = 1060;
+  // L'instant de la tranche, en fraction de l'animation : c'est là que le
+  // dessin cède la place au dos. Les trois animations le partagent — le
+  // retournement n'est un retournement que si l'échange tombe pile au
+  // moment où la carte n'a plus de largeur.
+  const TRANCHE = 0.42;
+
+  kraken.animate(
+    [
+      { transform: versLeCentre, opacity: 1 },
+      // Le temps où il encaisse ce qu'il vient d'avaler, juste avant de se
+      // retourner : sans lui, le demi-tour part sur une carte immobile et on
+      // ne rattache plus le retournement à ce qui vient de tomber dedans.
+      { transform: `${versLeCentre} scale(1.08)`, opacity: 1, offset: TRANCHE * 0.45 },
+      { transform: surLaTranche, opacity: 1, offset: TRANCHE },
+      { transform: versLeCentre, opacity: 1, offset: 0.66 },
+      { transform: `${versLeCentre} scale(0.84) translateY(18px)`, opacity: 0 },
+    ],
+    { duration: DUREE, delay: retournement, easing: 'ease-in-out', fill: 'forwards' }
+  );
+
+  // L'échange des deux faces, en escalier : rien ne s'estompe, l'un s'éteint
+  // et l'autre s'allume dans le même quart de milliseconde, sur la tranche.
+  const echange = (el, avant, apres) => {
+    if (!el) return;
+    el.animate(
+      [
+        { opacity: avant, offset: 0 },
+        { opacity: avant, offset: TRANCHE - 0.005 },
+        { opacity: apres, offset: TRANCHE },
+        { opacity: apres, offset: 1 },
+      ],
+      { duration: DUREE, delay: retournement, fill: 'forwards' }
+    );
+  };
+  echange(kraken.querySelector('.sk-card'), 1, 0);
+  echange(kraken.querySelector('.sk-kraken-dos'), 0, 1);
+}
+
+// --- Le vainqueur ramasse le pli ---
+// La carte gagnante restait seule, immobile, cerclée de son halo, pendant que
+// les autres attendaient d'être effacées d'un coup au ramassage. Elles lui
+// tombent maintenant dedans — c'est ce que « remporter le pli » veut dire, et
+// ça se voit sans lire le bandeau.
+//
+// Après les autres : ce qui a déjà été dévoré, englouti ou jeté par-dessus
+// bord n'est plus sur le tapis, on ne le ramasse pas une seconde fois.
+function playTrickWinAnimation(state) {
+  const res = state.lastTrickResult;
+  if (!state.trickPaused || !res || res.destroyed) return;
+  const key = cleDuPli(state);
+  if (lastWonTrick === key) return;
+  lastWonTrick = key;
+
+  const gagnante = tableEl.querySelector('.sk-trick-card--gagnante');
+  if (!gagnante) return;
+
+  const dejaParties = new Set([
+    ...(res.devouredCardIds || []),
+    ...(res.plankedCardIds || []),
+    ...((res.davyJones && res.davyJones.ids) || []),
+  ]);
+  const ids = [...tableEl.querySelectorAll('.sk-trick-card')]
+    .map((slot) => slot.dataset.cardId)
+    .filter((id) => id && !dejaParties.has(id));
+
+  // Le retard laisse les animations de carte se finir : elles racontent
+  // POURQUOI le pli tombe comme ça, le ramassage n'en est que la conclusion.
+  const avalees = avalerCartes(gagnante, ids, { duree: 620, retard: 1150, pas: 55, tour: 10 });
+  pulsationAvaleuse(gagnante, avalees, { duree: 620, retard: 1500, pas: 55, ampleur: 1.12, eclat: 1.35 });
+
 }
 
 // Annonce en deux temps : on choisit un chiffre (sélection locale, rien n'est
@@ -2229,6 +2547,12 @@ function renderBidChoices(state) {
     pendingBid = null;
     return;
   }
+
+  // La manche 1 se joue à l'aveugle : ta carte reste cachée et tu annonces
+  // sur celles que tu vois chez les autres. La barre n'a donc pas la même
+  // place qu'aux autres manches — c'est la CSS de la scène qui s'en sert
+  // (voir .sk-scene #sk-bid-choices), pas le JS.
+  bidChoices.dataset.manche = state.roundNumber === 1 ? '1' : 'n';
 
   // Nouvelle manche : on repart d'une sélection vide plutôt que de traîner
   // le chiffre de la manche précédente.
@@ -2249,6 +2573,16 @@ function renderBidChoices(state) {
     });
     bidChoices.appendChild(btn);
   }
+
+  // La grille se répartit en rangées ÉGALES. À six colonnes fixes, la manche
+  // 6 donnait une rangée pleine suivie d'un « 6 » tout seul, et la manche 1
+  // deux jetons calés à gauche d'une pilule vide aux trois quarts — passable
+  // dans un coin, voyant une fois la pilule centrée. On garde six colonnes
+  // au plus (au-delà les jetons deviennent illisibles), mais on répartit :
+  // sept jetons font 4 + 3, onze font 6 + 5, deux font 2.
+  const jetons = state.cardsInRound + 1;
+  const rangees = Math.ceil(jetons / 6);
+  bidChoices.style.setProperty('--sk-bid-cols', Math.ceil(jetons / rangees));
 
   const confirme = pendingBid !== null && pendingBid === state.myBid;
   const confirmBtn = document.createElement('button');
@@ -2292,6 +2626,17 @@ function renderTurnIndicator(state) {
     return;
   }
   if (state.trickPaused) {
+    // La consigne est écrite sur le bois, au-dessus du feutre : c'est le seul
+    // endroit que l'engloutissement ne traverse pas. Elle dit ce qui est en
+    // train de se passer pendant que ça se passe ; le centre du feutre, lui,
+    // n'écrit la conséquence qu'une fois le tas effacé.
+    const res = state.lastTrickResult;
+    if (res && res.destroyed) {
+      turnIndicator.textContent = res.krakenCardId
+        ? 'Le Kraken s\'empare du pli…'
+        : 'Le pli se défait…';
+      return;
+    }
     turnIndicator.textContent = 'Le pli se ramasse…';
     return;
   }
@@ -3212,6 +3557,9 @@ function renderGame(state) {
   // pli, elles doivent donc déjà être dans le DOM.
   playPlankAnimation(state);
   playDevourAnimation(state);
+  playDavyAnimation(state);
+  playKrakenAnimation(state);
+  playTrickWinAnimation(state);
   renderBidChoices(state);
   renderHand(state);
   renderScoreboard(state);
@@ -3456,9 +3804,12 @@ function pasGraduation(etendue, cible) {
   return (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
 }
 
-function courbeSVG(series, grand) {
+function courbeSVG(series, grand, hauteur) {
   const W = grand ? 940 : 460;
-  const H = grand ? 470 : 190;
+  // Agrandie, la hauteur est celle que la planche laisse (voir
+  // dessinerCourbeAgrandie), exprimée dans la même échelle que W. La vignette,
+  // elle, garde son format : elle occupe une case du récap, pas un écran.
+  const H = grand ? Math.round(hauteur || 470) : 190;
   const PAD_L = grand ? 64 : 38;
   const PAD_T = grand ? 22 : 12;
   const PAD_B = grand ? 50 : 22;
@@ -3493,7 +3844,7 @@ function courbeSVG(series, grand) {
   // Taille du médaillon de bout de ligne : il doit rester lisible, mais à 9
   // joueurs neuf médaillons pleine taille ne tiennent pas dans la hauteur
   // utile du cadre. On les rétrécit donc à mesure que la table se remplit.
-  const dBase = grand
+  let dBase = grand
     ? (series.length <= 5 ? 40 : series.length <= 7 ? 34 : 29)
     : (series.length <= 5 ? 22 : series.length <= 7 ? 18 : 15);
 
@@ -3506,13 +3857,25 @@ function courbeSVG(series, grand) {
   const effectifs = new Map();
   series.forEach((r) => effectifs.set(finDe(r), (effectifs.get(finDe(r)) || 0) + 1));
   const peloton = Math.max(1, ...effectifs.values());
-  const ecartH = dBase * 0.92;
-  // Une rangée ne mange jamais plus d'un cinquième du cadre : à sept ex æquo
-  // il ne resterait plus de courbe à regarder. Le trop-plein passe à la
-  // rangée du dessous, ce qui reste plus juste qu'une pile — les égaux y sont
-  // encore groupés, et personne n'est seul sur sa ligne.
-  const parRangee = Math.max(1, Math.min(peloton, 1 + Math.floor((W * 0.2) / ecartH)));
-  const PAD_R = (grand ? 40 : 16) + (parRangee - 1) * ecartH;
+  // Un peloton entier tient sur SA rangée, quel qu'il soit — il n'y a pas de
+  // trop-plein qui passe en dessous. Une seconde rangée disait le contraire
+  // de ce qu'elle voulait dire : deux médaillons l'un sous l'autre se lisent
+  // comme deux scores voisins, et à neuf ex æquo le neuvième se retrouvait
+  // seul sur sa ligne, en apparence dernier.
+  //
+  // La rangée ne déborde donc pas, elle se serre. Elle dispose d'un quart du
+  // cadre ; au-delà, les médaillons se recouvrent comme des pièces poussées
+  // en éventail — on les compte encore, et surtout on les lit sur la même
+  // ligne. Et quand le recouvrement en cacherait plus de la moitié, c'est
+  // leur taille qui cède plutôt que la rangée.
+  const bande = W * 0.25;
+  let ecartH = dBase * 0.92;
+  if (peloton > 1) {
+    ecartH = Math.min(ecartH, bande / (peloton - 1));
+    const dTenable = ecartH / 0.5;
+    if (dTenable < dBase) dBase = Math.max(grand ? 20 : 11, dTenable);
+  }
+  const PAD_R = (grand ? 40 : 16) + (peloton - 1) * ecartH;
 
   const x = (i) => PAD_L + (maxRound === 1 ? 0 : (i / (maxRound - 1)) * (W - PAD_L - PAD_R));
   const y = (v) => PAD_T + (1 - (v - min) / (max - min)) * (H - PAD_T - PAD_B);
@@ -3595,14 +3958,15 @@ function courbeSVG(series, grand) {
     });
   });
 
-  // Une rangée par score d'arrivée : les ex æquo la partagent, côte à côte.
-  // Le premier reste sur son point, les suivants s'alignent à sa droite —
-  // la ligne qui mène au premier ancre toute la rangée à sa hauteur.
+  // Une rangée par score d'arrivée, et une seule : les ex æquo la partagent
+  // tous, côte à côte. Le premier reste sur son point, les suivants
+  // s'alignent à sa droite — la ligne qui mène au premier ancre toute la
+  // rangée à sa hauteur.
   const rangees = [];
   const parFin = new Map();
   bouts.forEach((b) => {
     let rangee = parFin.get(b.fin);
-    if (!rangee || rangee.membres.length >= parRangee) {
+    if (!rangee) {
       rangee = { cy: b.cy, membres: [] };
       rangees.push(rangee);
       parFin.set(b.fin, rangee);
@@ -3726,15 +4090,43 @@ function renderGameEnd(state) {
 let dernierClassement = null;
 const curveModal = document.getElementById('sk-curve-modal');
 const curveModalBody = document.getElementById('sk-curve-modal-body');
+const curveModalLegend = document.getElementById('sk-curve-modal-legend');
+
+// Le tracé agrandi n'a PAS de rapport hauteur/largeur imposé : il prend
+// toute la largeur de la planche, et la hauteur qui reste une fois la
+// légende et le bouton posés. À rapport fixe, une fenêtre basse le réduisait
+// des deux côtés à la fois — on se retrouvait à regarder, au milieu d'une
+// planche aux deux tiers vide, une courbe plus petite que la vignette sur
+// laquelle on venait de cliquer pour l'agrandir.
+//
+// La hauteur est calculée dans l'échelle du viewBox, à partir de la largeur
+// réelle de la case : le SVG remplit alors exactement la place, sans
+// étirement — les libellés et les médaillons gardent leur taille.
+function dessinerCourbeAgrandie(series) {
+  const largeur = Math.max(curveModalBody.clientWidth, 520);
+  const dispo = curveModalBody.clientHeight;
+  const H = Math.min(560, Math.max(280, (dispo * 940) / largeur));
+  curveModalBody.innerHTML = courbeSVG(series, true, H);
+  if (curveModalLegend) curveModalLegend.innerHTML = courbeLegende(series);
+}
 
 function ouvrirCourbeAgrandie() {
   if (!curveModal || !dernierClassement) return;
   const series = seriesCourbe(dernierClassement);
   if (!series.length) return;
-  curveModalBody.innerHTML =
-    courbeSVG(series, true) + `<div class="sk-curve-legend">${courbeLegende(series)}</div>`;
+  // Montrée d'abord, mesurée ensuite : une planche encore cachée n'a pas de
+  // dimensions, et le tracé se serait calé sur du vide.
   curveModal.classList.remove('hidden');
+  dessinerCourbeAgrandie(series);
 }
+
+// Tourner un téléphone ou redimensionner une fenêtre change la place
+// disponible : le tracé se refait, sinon il garde la hauteur d'avant.
+window.addEventListener('resize', () => {
+  if (!curveModal || curveModal.classList.contains('hidden') || !dernierClassement) return;
+  const series = seriesCourbe(dernierClassement);
+  if (series.length) dessinerCourbeAgrandie(series);
+});
 
 function fermerCourbeAgrandie() {
   if (curveModal) curveModal.classList.add('hidden');

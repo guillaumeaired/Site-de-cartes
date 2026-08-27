@@ -343,7 +343,11 @@ function resolveTrick(cards) {
     virtualKinds[activeKraken] = 'escape';
     const { winnerIdx: virtualWinner, allNeverWin } = resolveHierarchy(cards, virtualKinds);
     const leaderIdx = allNeverWin ? 0 : virtualWinner;
-    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx };
+    // krakenIdx : QUI a détruit le pli. Un pli détruit ne l'est pas toujours
+    // par le Kraken (Baleine ou Raie sur un pli sans numérotée le détruisent
+    // aussi), et l'écran doit pouvoir montrer l'engloutissement sans avoir à
+    // redeviner la cause depuis les cartes posées.
+    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx, krakenIdx: activeKraken };
   }
 
   if (activeWhale !== -1 || activeStingray !== -1) {
@@ -432,6 +436,7 @@ function computeRoundScore(bid, made, roundNumber, bonus) {
 
 module.exports = {
   SUITS,
+  MONSTER_KINDS,
   PIRATE_NAMES,
   EXTENSION_PIRATE_NAME,
   PIRATE_POWER_BY_NAME,

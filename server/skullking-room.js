@@ -10,6 +10,7 @@
 const {
   MIN_PLAYERS,
   MAX_PLAYERS,
+  MONSTER_KINDS,
   PIRATE_POWER_BY_NAME,
   maxPlayersFor,
   deckSizeFor,
@@ -57,11 +58,24 @@ function sanitizeDeckStyle(style) {
 // avant de considérer le joueur vraiment parti.
 const DISCONNECT_GRACE_MS = 45_000;
 const TRICK_REVEAL_MS = 2_600;
+// Un pli englouti par le Kraken se raconte plus longtemps qu'un pli ramassé :
+// il vient prendre le centre du feutre, avale les cartes une à une, se
+// retourne, puis s'efface — et la ligne qui dit « personne ne le remporte »
+// n'apparaît qu'ensuite, sur un feutre vide (voir playKrakenAnimation). À
+// 2,6 s elle n'avait plus qu'un souffle avant que la manche reparte.
+const TRICK_KRAKEN_MS = 3_600;
 // Filet de sécurité si le joueur n'interagit jamais (déconnexion, inactivité) -
 // pas la vraie limite de lecture : celle-ci est maintenant pilotée par le
 // client lui-même (skullking-power-juanita-done), déclenchée une fois toutes
 // les cartes retournées + une pause de lecture.
 const POWER_REVEAL_MS = 25_000;
+// Le temps qu'on laisse au cadre d'annonce d'un pouvoir avant de ramasser le
+// pli. Il ne sert QUE sur le dernier pli d'une manche : ailleurs le cadre
+// tient ses 3,6 s par-dessus le pli suivant qui s'installe, personne ne le
+// coupe. Sur le dernier, `finishTrickCollection` enchaînait sur `endRound`
+// dans la foulée du broadcast, et la planche de fin de manche recouvrait
+// l'annonce avant qu'on ait lu de quel Pirate il s'agissait.
+const POWER_ANNOUNCE_MS = 2_600;
 const ROUND_END_MS = 7_000;
 
 // Déconnexion en pleine partie : pause indéfinie, plus de délai de grâce fixe
@@ -129,6 +143,24 @@ function plankedCardIds(cards) {
     if (cards.some((cc) => cc.id === c.removesId)) ids.push(c.removesId);
   }
   return ids;
+}
+
+// Ce que le Coffre de Davy Jones engloutit : tous les Monstres Marins du
+// pli. Comme pour la Planche, le calcul les retirait sans que l'écran n'en
+// dise rien — le Kraken restait posé, entier, à côté d'un coffre qui venait
+// pourtant de le détruire.
+//
+// Le coffre est renvoyé avec eux : c'est vers lui que les cartes tombent, et
+// le client n'a pas à le rechercher par son genre. Lui-même est détruit par
+// son propre effet, mais il reste sur le tapis — on ne fait pas disparaître
+// la bouche qui mange.
+function davyJonesSwallow(cards) {
+  const coffre = cards.find((c) => effectiveKind(c) === 'davyjones');
+  if (!coffre) return null;
+  const ids = cards
+    .filter((c) => c !== coffre && MONSTER_KINDS.includes(effectiveKind(c)))
+    .map((c) => c.id);
+  return { chestId: coffre.id, ids };
 }
 
 // Pièces de joueur (façon Monopoly) : une seule par salon, choisie dans le
@@ -804,10 +836,27 @@ function resolvePowerDone(io, room) {
   // suite (file constituée à la résolution du pli, voir plus bas) - on
   // enchaîne sur le suivant avant de ramasser le pli pour de bon, en
   // conservant le meneur déjà éventuellement changé par un pouvoir
-  // précédent de la même file (ex: Rosie D'Laney).
+  // précédent de la même file (ex: Rosie la Douce).
   if (room.pendingPowerQueue && room.pendingPowerQueue.length) {
     const nextKey = room.pendingPowerQueue.shift();
     startPiratePower(io, room, nextKey, playerId, leaderId);
+    return;
+  }
+  // Dernier pli de la manche : on laisse l'annonce se lire avant que la
+  // planche de fin de manche ne prenne l'écran (voir POWER_ANNOUNCE_MS).
+  //
+  // Le pouvoir est marqué résolu avant l'attente : pendant ces 2,6 s la
+  // manche est encore en phase `power`, et un second envoi du même pouvoir
+  // (double clic, client rejoué) repasserait sinon `guardPower` et
+  // relancerait un timer par-dessus le premier. On le marque plutôt que de
+  // le retirer, pour que le bandeau du pouvoir reste affiché derrière le
+  // cadre d'annonce au lieu de disparaître au milieu de la lecture.
+  if (announce && room.trickNumber === room.cardsInRound) {
+    room.pendingPower.resolved = true;
+    room.trickTimer = setTimeout(() => {
+      if (rooms.get(room.code) !== room) return;
+      finishTrickCollection(io, room, leaderId);
+    }, POWER_ANNOUNCE_MS);
     return;
   }
   finishTrickCollection(io, room, leaderId);
@@ -978,6 +1027,9 @@ function handleDisconnecting(io, socket) {
 // attente, et c'est bien à ce joueur d'agir.
 function guardPower(room, socket, kind) {
   if (!room || room.phase !== 'power' || !room.pendingPower) return false;
+  // Déjà résolu, on n'attend plus que la fin du temps de lecture de son
+  // annonce (voir resolvePowerDone) : plus rien à envoyer.
+  if (room.pendingPower.resolved) return false;
   if (room.pendingPower.kind !== kind) return false;
   return room.pendingPower.playerId === socket.id;
 }
@@ -1384,6 +1436,10 @@ function registerSkullKingHandlers(io, socket) {
       winnerId,
       devouredCardIds: devouredPirateIds(cards, result),
       plankedCardIds: plankedCardIds(cards),
+      davyJones: davyJonesSwallow(cards),
+      // La carte qui engloutit le pli, quand c'est le Kraken : l'écran s'en
+      // sert pour faire converger les autres cartes dessus.
+      krakenCardId: result.krakenIdx != null && result.krakenIdx !== -1 ? cards[result.krakenIdx].id : null,
     };
     room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
     room.trickPaused = true;
@@ -1419,10 +1475,10 @@ function registerSkullKingHandlers(io, socket) {
         }
       }
       finishTrickCollection(io, room, leaderId);
-    }, TRICK_REVEAL_MS);
+    }, result.destroyed && result.krakenIdx >= 0 ? TRICK_KRAKEN_MS : TRICK_REVEAL_MS);
   });
 
-  // Rosie D'Laney : choisit qui entame le pli suivant (elle-même incluse).
+  // Rosie la Douce : choisit qui entame le pli suivant (elle-même incluse).
   socket.on('skullking-power-rosie', (payload) => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!guardPower(room, socket, 'rosie')) return;
@@ -1615,6 +1671,7 @@ module.exports = {
   capturedPirateKeys,
   devouredPirateIds,
   plankedCardIds,
+  davyJonesSwallow,
   powerResultMessage,
   stateFor,
   setBotAdapter,

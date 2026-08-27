@@ -25,13 +25,19 @@
     ?joues=3        combien ont déjà posé leur carte (défaut : tous)
     ?scene=2        la seconde scène peinte
     ?phase=playing  playing (défaut) | bidding | paused (pli remporté)
+                    | fin (l'écran de fin ; &exaequo=4, &loupe=0)
+                    | kraken (pli englouti, l'animation part au chargement)
+    ?fige=1300      fige toutes les animations à cet instant (ms), pour capturer
     ?manche=1       la manche 1 pendant l'annonce : la carte de chacun est
                     tournée vers les autres, la mienne face cachée
+    ?annonces=1     la révélation des annonces, plaques peintes retournées
 -->
 <script>
 const P = new URLSearchParams(location.search);
 const N = Math.max(2, Math.min(9, Number(P.get('n') || 5)));
 const PHASE = P.get('phase') || 'playing';
+// ?phase=kraken : le pli est posé, le Kraken l'a détruit, la pause court.
+const KRAKEN = PHASE === 'kraken';
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
 const MANCHE1 = P.get('manche') === '1';
 
@@ -48,13 +54,19 @@ function emettre(evt, payload) { (auditeurs.get(evt) || []).forEach((cb) => cb(p
 // --- L'état fabriqué ---------------------------------------------------
 const PSEUDOS = ['Moi', 'Bérénice', 'Long John', 'Guigui', 'Pablo', 'Anto', 'Mams', 'Rackham', 'Surcouf'];
 const JETONS  = ['crane', 'ancre', 'voilier', 'sabre', 'boussole', 'coffre', 'barre', 'crochet', 'bouteille'];
+const PIRATES = ['Harry le Géant', 'Juanita Jade', "Rosie la Douce", 'Will le Bandit', 'Rascal le Flambeur'];
 const COULEURS = ['tresor', 'violet', 'vert'];
 
 function carte(i) {
-  // Un peu de tout : des numérotées, un Pirate, une Fuite, le Skull King.
-  if (i === 1) return { id: `c${i}`, kind: 'pirate', name: 'Harry le Géant' };
+  // Un peu de tout : des numérotées, une Fuite, le Skull King, et les cinq
+  // Pirates nommés plutôt qu'un seul — ce sont eux qui portent les
+  // illustrations peintes une par une, donc ceux qu'on vient regarder quand
+  // une planche vient d'être redécoupée.
+  // En mode kraken, le 3e joueur pose le Kraken : c'est lui qui engloutit.
+  if (KRAKEN && i === 2) return { id: `c${i}`, kind: 'kraken' };
   if (i === 3) return { id: `c${i}`, kind: 'escape' };
   if (i === 5) return { id: `c${i}`, kind: 'skullking' };
+  if (i < 9) return { id: `c${i}`, kind: 'pirate', name: PIRATES[i % PIRATES.length] };
   return { id: `c${i}`, kind: 'number', suit: COULEURS[i % 3], value: 3 + ((i * 5) % 11) };
 }
 
@@ -103,10 +115,37 @@ const etat = {
   trickNumber: 3,
   leadingPlayerId: 'p1',
   trickWillBeDestroyed: false,
-  trickPaused: PHASE === 'paused',
-  lastTrickResult: PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
+  trickPaused: PHASE === 'paused' || KRAKEN,
+  lastTrickResult: KRAKEN
+    ? { winnerId: null, destroyed: true, krakenCardId: 'c2', devouredCardIds: [], plankedCardIds: [], davyJones: null }
+    : PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
   sittingOutThisTrick: false,
 };
+
+// --- L'écran de fin, pour régler le récap et la courbe agrandie ---------
+// `?phase=fin` monte le classement final au lieu du tapis. `?exaequo=N` fait
+// terminer les N premiers joueurs sur le MÊME score : c'est le cas qui règle
+// la rangée de médaillons au bout des courbes, et celui qu'on ne rencontre
+// jamais en jouant à la main.
+const EXAEQUO = Math.max(0, Math.min(N, Number(P.get('exaequo') || 0)));
+const MANCHES = 10;
+
+function classementFinal() {
+  return joueurs.map((p, i) => {
+    const arrivee = i < EXAEQUO ? 140 : 190 - i * 23;
+    const curve = Array.from({ length: MANCHES }, (_, m) => ({
+      round: m + 1,
+      // Des trajets distincts qui convergent : sans ça les lignes se
+      // superposent et on ne voit pas ce que la rangée du bout répare.
+      total: Math.round((arrivee * (m + 1)) / MANCHES + Math.sin((m + 1) * (i + 1)) * 26),
+    }));
+    curve[MANCHES - 1].total = arrivee;
+    return {
+      id: p.id, nickname: p.nickname, piece: p.piece, curve,
+      total: arrivee, rounds: MANCHES, exact: 4 + (i % 4), tricks: 12 + i,
+    };
+  }).sort((a, b) => b.total - a.total);
+}
 
 // --- Montage ------------------------------------------------------------
 (async () => {
@@ -122,7 +161,39 @@ const etat = {
     document.body.appendChild(s);
   });
 
+  if (PHASE === 'fin') {
+    emettre('skullking-state', { ...etat, phase: 'game-end', finalRanking: classementFinal() });
+    // La courbe agrandie est ce qu'on vient régler : on l'ouvre d'office.
+    if (P.get('loupe') !== '0') document.getElementById('sk-curve-zoom').click();
+    document.documentElement.dataset.apercuPret = '1';
+    return;
+  }
+
   emettre('skullking-state', etat);
+  // La révélation des annonces se déclenche sur la TRANSITION bidding -> le
+  // reste : on sert donc deux états, l'annonce puis le jeu.
+  if (P.get('annonces') === '1') {
+    emettre('skullking-state', { ...etat, phase: 'bidding', players: joueurs.map((p) => ({ ...p, bid: undefined })) });
+    emettre('skullking-state', { ...etat, phase: 'playing', players: joueurs.map((p, i) => ({ ...p, bid: i % 4 })) });
+  }
+
+  // ?fige=1300 : arrête toutes les animations à 1300 ms de leur début et les
+  // y maintient. Une capture d'écran d'une animation est sinon une loterie —
+  // l'horloge virtuelle du navigateur sans tête n'avance pas pendant les
+  // chargements, et on ne sait jamais quel instant on a photographié. Là, on
+  // demande l'instant qu'on veut voir.
+  const FIGE = P.get('fige');
+  if (FIGE !== null) {
+    const t = Number(FIGE);
+    // Deux tours de boucle : les animations du pli sont posées après le
+    // rendu, celles qui suivent un `onfinish` ou un délai encore après.
+    const figer = () => document.getAnimations().forEach((a) => {
+      a.pause();
+      try { a.currentTime = t; } catch (e) { /* animation déjà finie */ }
+    });
+    requestAnimationFrame(() => requestAnimationFrame(() => { figer(); setTimeout(figer, 60); }));
+  }
+
   document.documentElement.dataset.apercuPret = '1';
 })();
 </script>

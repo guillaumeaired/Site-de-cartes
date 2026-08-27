@@ -210,6 +210,15 @@
         <div class="sk-play-area">
           <div id="sk-table" class="sk-table">
             <div class="sk-table-center">
+              <!-- Le verdict du pli : la pièce du vainqueur, puis son nom
+                   dans sa couleur. Le bandeau de texte suffisait tant qu'il
+                   n'y avait rien à regarder pendant la pause ; les cartes se
+                   font maintenant ramasser sous nos yeux, et il fallait dire
+                   PAR QUI au même endroit que le geste. -->
+              <div id="sk-trick-verdict" class="sk-trick-verdict hidden">
+                <span id="sk-verdict-piece" class="sk-verdict-piece"></span>
+                <p id="sk-verdict-texte" class="sk-verdict-texte"></p>
+              </div>
               <p id="sk-trick-caption" class="sk-trick-caption"></p>
             </div>
           </div>
@@ -358,6 +367,11 @@
       <button id="sk-btn-close-curve-x" class="sk-modal-x" type="button" aria-label="Fermer">&times;</button>
       <h2>Évolution des scores</h2>
       <div id="sk-curve-modal-body" class="sk-curve-modal-body"></div>
+      <!-- La légende est SŒUR du cadre de la courbe, pas dedans : c'est elle
+           qui rattache une couleur à un joueur, et à neuf joueurs elle passait
+           sous la ligne de flottaison de la planche. Le tracé se serre, la
+           légende ne bouge pas. -->
+      <div id="sk-curve-modal-legend" class="sk-curve-legend sk-curve-legend--grande"></div>
       <button id="sk-btn-close-curve" class="btn btn-primary">Fermer</button>
     </div>
   </div>

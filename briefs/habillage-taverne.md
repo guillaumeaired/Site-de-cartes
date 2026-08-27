@@ -160,6 +160,14 @@ Réduit par la décision « décor peint dans le plateau ». Restent :
 
 Sur `#FF00FF`, détourage automatique.
 
+**Le clou sert.** `clou-laiton.webp` est resté longtemps dans `skin/` sans être
+appelé nulle part : les planches du salon portaient un rond en dégradé radial,
+ce qui à quinze pixels fait une bulle et pas une tête martelée. Il coiffe
+maintenant chacune d'elles. Une règle en découle : le clou vit dans la marge
+haute de la planche, et c'est le `padding-top` de la planche qui lui réserve sa
+hauteur plus le jeu — avec 22 px de marge pour un clou qui descendait à 19, il
+retombait sur les capitales du titre.
+
 ### Lot 4 — les cartes
 
 Format 1× : **84 × 118 px** → générer en 3×, soit ~252 × 354.
@@ -398,9 +406,15 @@ cadre de choix.
 **Deux emplois, une seule paire de fichiers :**
 
 - **le cadre de choix**, au centre de l'écran, quand on pose la Tigresse. Les
-  autres choix de pose (Joker, 0/14, Marcher sur la Planche) tiennent dans la
-  barre d'actions parce qu'ils précisent une carte ; celui-ci décide de ce
-  qu'elle est, et rien ne le reprend. Les deux blasons en grand, séparés du
+  autres choix de pose (Joker, 0/14, Marcher sur la Planche) se posent au
+  centre du feutre, sur la scène : ils précisent une carte, celui-ci décide de
+  ce qu'elle est, et rien ne le reprend — d'où la fenêtre entière plutôt que
+  le tapis. L'annonce, elle, se pose au-dessus du tapis, entre le bandeau et
+  la bulle de consigne — sauf à la manche 1, qui s'annonce sur les cartes des
+  autres : la pilule descend alors sous le siège du joueur pour ne rien
+  masquer. Sur une scène de moins de 600 px de haut elle retourne dans le
+  coin bas-gauche, sa place d'origine : en dessous, son texte est bloqué à
+  9 px et elle ne rétrécit plus avec la scène. Les deux blasons en grand, séparés du
   slash de la maquette — tracé au trait, pas au caractère : un « / » de fonte
   penche selon la police et ne monte jamais aussi haut que les disques. Sortie
   possible sans choisir (clic hors du cadre, Échap, « Reposer la carte ») :

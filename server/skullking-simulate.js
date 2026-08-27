@@ -144,6 +144,22 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   check('kraken : personne ne gagne (winnerIdx null)', r.winnerIdx, null);
   check('kraken : pli détruit', r.destroyed, true);
   check('kraken : pli suivant mené par le gagnant virtuel (ici le vert 14)', r.leaderIdx, 2);
+  // L'écran a besoin de savoir QUI a détruit le pli pour montrer
+  // l'engloutissement : un pli détruit ne l'est pas toujours par le Kraken.
+  check('kraken : krakenIdx désigne la carte qui engloutit', r.krakenIdx, 1);
+}
+{
+  // Baleine sur un pli sans aucune numérotée : détruit aussi, mais pas par
+  // le Kraken — pas d'engloutissement à jouer.
+  const r = resolveTrick([whale(), pirate(), siren()]);
+  check('baleine sans numérotée : pli détruit', r.destroyed, true);
+  check('baleine sans numérotée : aucun Kraken à désigner', r.krakenIdx === undefined || r.krakenIdx === -1, true);
+}
+{
+  // Kraken avalé par le Coffre de Davy Jones : le pli n'est plus détruit,
+  // donc rien à engloutir non plus.
+  const r = resolveTrick([kraken(), davyjones(), num('vert', 5)]);
+  check('Davy Jones mange le Kraken : pas de pli englouti', !!(r.destroyed && r.krakenIdx >= 0), false);
 }
 {
   // Kraken en présence de pirates/SK/sirène : le gagnant virtuel suit quand

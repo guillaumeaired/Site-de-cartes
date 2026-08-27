@@ -682,7 +682,7 @@ h3 {
 .invite-card {
   position: relative;
   margin: 24px auto 0;
-  padding: 22px 20px 20px;
+  padding: 31px 20px 20px;   /* 7 + 16 du clou, plus 8 de jeu sous sa tête */
   max-width: 300px;
   border-radius: 4px;
   background:
@@ -694,17 +694,25 @@ h3 {
     0 16px 34px rgba(0, 0, 0, 0.55);
 }
 
+/* Le clou qui tient la planche. C'était un rond en dégradé radial : à cette
+   taille un dégradé fait une bulle, pas une tête de clou martelée. Le lot 2
+   en avait livré une, peinte, qui ne servait nulle part — c'est elle qui est
+   posée ici (`clou-laiton.webp`).
+
+   Il vit dans la marge haute de la planche, jamais dans le texte : le
+   `padding-top` de chaque planche lui réserve sa hauteur plus le jeu, sans
+   quoi il retombe sur les capitales du titre — c'est exactement ce qui se
+   passait avec 22 px de marge pour un clou qui descendait à 19. */
 .invite-card::before {
   content: '';
   position: absolute;
-  top: 8px;
+  top: 7px;
   left: 50%;
-  margin-left: -5px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(16, 9, 3, 0.6);
+  margin-left: -8px;
+  width: 16px;
+  height: 16px;
+  background: url('assets/skin/clou-laiton.webp') 50% 50% / contain no-repeat;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
 }
 
 .invite-label {
@@ -1657,7 +1665,13 @@ h3 {
   top: 27%;
   transform: translate(-50%, -50%);
   width: 84%;
-  z-index: 1;
+  /* Au-dessus des cartes, y compris de la gagnante (5). Le centre ne portait
+     qu'une ligne de commentaire, qu'on pouvait laisser passer derrière un
+     pli ; il porte maintenant le verdict, et une carte posée dessus en
+     mangeait la moitié. Ce qui est écrit au centre se lit toujours — d'où
+     aussi le fond posé sous le verdict, pour qu'il tienne par-dessus une
+     illustration. */
+  z-index: 6;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1745,19 +1759,61 @@ h3 {
   .sk-trick-card--gagnante .sk-card { animation: none; }
 }
 
-/* Quand le pli tombe, le bandeau ne commente plus : il tranche. Gravé en
-   Cinzel comme les noms des sièges, en laiton clair, il est la seule ligne
-   de l'écran qui nomme le vainqueur — la carte gagnante, elle, porte son
-   cerclage. Le nom et la carte, chacun de son côté, disent la même chose. */
-.sk-trick-caption--verdict {
+/* LE VERDICT DU PLI. Quand le pli tombe, le centre ne commente plus : il
+   tranche. La pièce du vainqueur d'abord — c'est le même jeton qu'à son
+   siège, sur la roue et dans le récap, et il se reconnaît avant tout mot —
+   puis son nom, gravé en Cinzel, dans SA couleur. Le reste de la phrase
+   reste en crème : c'est le nom qu'on cherche, pas le verbe.
+
+   Il arrive en même temps que le ramassage des cartes, et par le même
+   mouvement : monter d'un cran en se posant. Les deux disent la même chose
+   au même instant, l'un par le geste, l'autre par le nom. */
+.sk-trick-verdict {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 18px 8px;
+  border-radius: 14px;
+  background: radial-gradient(60% 70% at 50% 50%, rgba(4, 9, 11, 0.72), rgba(4, 9, 11, 0) 78%);
+  /* L'entrée est jouée en JS (voir playTrickWinAnimation), pas ici. En CSS
+     elle ne se déclenchait qu'une fois par chargement de page : le verdict
+     est masqué puis réaffiché dans le MÊME passage de renderTrick, et le
+     navigateur, qui ne recalcule rien entre les deux, ne voyait aucun
+     changement à animer. Le pli suivant l'affichait donc d'un coup. */
+}
+
+.sk-trick-verdict.hidden {
+  display: none;
+}
+
+.sk-verdict-piece .sk-piece-img {
+  display: block;
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.75));
+}
+
+.sk-verdict-texte {
+  margin: 0;
   font-family: 'Cinzel', Georgia, serif;
-  font-style: normal;
   font-size: 1.02rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--sk-brass-hi);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 16px rgba(255, 226, 150, 0.35);
+  color: var(--sk-cream-2);
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
 }
+
+/* Le nom porte la couleur de la pièce, posée en style par le JS. Le halo
+   doré autour, lui, ne dépend pas du joueur : c'est celui du laiton, le même
+   que sur le cerclage de la carte gagnante. */
+.sk-verdict-nom {
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 16px rgba(255, 226, 150, 0.4);
+}
+
+
 
 /* Le commentaire du pli est un ruban de parchemin posé sur le feutre. */
 .sk-trick-caption {
@@ -1769,6 +1825,70 @@ h3 {
   color: var(--sk-cream-2);
   text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* --- LE KRAKEN ENGLOUTIT LE PLI -------------------------------------
+   Le geste est piloté en JS (playKrakenAnimation) : les distances dépendent
+   de la position réelle des cases, qui change à chaque pli. Il ne reste ici
+   que ce qui rend le retournement possible — un tas de cartes qui se retourne
+   doit montrer un DOS, pas son propre dessin en miroir. */
+.sk-trick-card--kraken {
+  /* Au-dessus de tout ce qui reste sur le feutre : c'est lui qui avale. */
+  z-index: 7;
+}
+
+/* Le dos peint, posé par-dessus le dessin et masqué jusqu'à la tranche : au
+   milieu du demi-tour, la case est écrasée à 2 % de sa largeur, on échange
+   ce qui est visible et le tas se redéploie face contre table. Même dos que
+   partout ailleurs, et il porte déjà son encadrement doré. */
+.sk-kraken-dos {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--sk-radius);
+  background: #16110d var(--sk-dos) center / cover no-repeat;
+  box-shadow:
+    0 0 0 1px rgba(20, 12, 5, 0.7),
+    0 10px 22px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* Le verdict d'un pli englouti attend que le tas ait fini de s'effacer.
+   Écrit tout de suite, il se serait retrouvé sous les cartes qui convergent
+   vers le centre — et c'est précisément ce qu'on ne veut pas. `backwards` le
+   tient invisible pendant le délai, sans avoir à le poser puis à le retirer
+   depuis le JS. */
+.sk-trick-caption--apres-kraken {
+  /* --sk-attente : posé par renderTrick, il vaut le temps que met le tas à
+     finir de s'effacer. `backwards` tient la ligne invisible jusque-là. */
+  animation: sk-verdict-englouti 0.4s ease-out var(--sk-attente, 1.6s) backwards;
+}
+
+/* Et elle s'écrit LÀ OÙ le tas vient de disparaître, pas dans le bandeau du
+   centre : celui-ci est posé dans le tiers haut du tapis, où il passe sur
+   les noms des sièges du fond. Le centre du feutre, lui, est vide — le
+   Kraken vient précisément de le vider. En unités du tapis (cqh) parce que
+   la position se déduit de la projection du plateau : v = 0,5 tombe à 48,1 %
+   de sa hauteur, le bandeau est à 27 %, reste 21,1 % à descendre. */
+.sk-scene .sk-trick-caption--apres-kraken {
+  --sk-descente: 21.1cqh;
+  transform: translateY(var(--sk-descente));
+}
+
+@keyframes sk-verdict-englouti {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--sk-descente, 0px) + 7px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(var(--sk-descente, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-trick-caption--apres-kraken { animation: none; }
 }
 
 /* --- Sièges : médaillons de capitaine en laiton --------------------- */
@@ -4731,6 +4851,21 @@ h3 {
 .sk-curve-content {
   width: min(1220px, 100%);
   max-width: min(1220px, 100%);
+  /* Une colonne dont un seul étage cède : le tracé. Le titre, la légende et
+     le bouton gardent leur hauteur, la courbe prend ce qui reste. Sans ça,
+     la planche défilait en bloc et la légende passait sous le bord — à neuf
+     joueurs, il fallait faire défiler une modale pour savoir quelle couleur
+     était la sienne, ce qui est exactement l'inverse d'un agrandissement. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Une hauteur POSÉE, pas seulement plafonnée : c'est ce qui la rend
+     définie, et sans hauteur définie l'étage du tracé n'a rien contre quoi
+     calculer son `100 %` — il gardait sa taille naturelle et se faisait
+     rogner par le bord au lieu de se serrer. Le plafond de 800 px est la
+     hauteur qu'occupent le tracé à sa taille maximale et ce qui l'entoure :
+     au-delà, la planche se contenterait de gagner du vide. */
+  height: min(80vh, 800px);
   /* Sans ce 0, la planche ne peut pas descendre sous la largeur utile de la
      courbe (voir min-width plus bas) : posée en élément flexible, elle
      refuserait de rétrécir et déborderait de l'écran au lieu de la laisser
@@ -4785,31 +4920,58 @@ h3 {
    illisible — un quadrillage réduit à 380 px ne se lit pas mieux que la
    vignette. Elle garde donc sa largeur utile et défile dans son cadre. */
 .sk-curve-modal-body {
-  margin-bottom: 16px;
-  overflow-x: auto;
+  /* Le seul étage qui cède. `min-height: 0` sans quoi un élément flexible
+     refuse de descendre sous la taille de son contenu et rien ne rétrécit. */
+  flex: 1 1 auto;
+  min-height: 0;
+  /* `min-width: 0` sur un élément flexible qui est LUI-MÊME un conteneur
+     flexible : sans lui, il refuse de descendre sous la largeur utile du
+     tracé (520 px, voir plus bas) et c'est la planche entière qui s'élargit
+     et sort de l'écran d'un téléphone, au lieu de laisser le tracé défiler
+     dans son cadre. */
+  min-width: 0;
+  display: flex;
+  /* `safe` : centré tant que ça rentre, calé au bord dès que ça déborde.
+     Un centrage nu rend le début du tracé inatteignable au défilement. */
+  align-items: safe center;
+  justify-content: safe center;
+  margin-bottom: 14px;
+  overflow: auto;
 }
 
+/* Rien à borner ici : c'est le tracé lui-même qui est dessiné à la hauteur
+   de la case (voir dessinerCourbeAgrandie). Il prend donc toute la largeur,
+   et sa hauteur tombe juste. */
 .sk-curve-modal-body .sk-curve {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
   min-width: 520px;
   border-radius: 6px;
 }
 
-.sk-curve-modal-body .sk-curve-legend {
-  margin-top: 12px;
+.sk-curve-legend--grande {
+  flex: 0 0 auto;
+  margin-top: 0;
+  margin-bottom: 14px;
   gap: 7px 20px;
+}
+
+.sk-curve-content > .btn {
+  flex: 0 0 auto;
 }
 
 /* La légende agrandie porte les pseudos à la taille d'un texte qu'on lit,
    pas d'une mention : c'est elle qui rattache une couleur à un joueur, et à
    sept lignes voisines on y revient plusieurs fois. */
-.sk-curve-modal-body .sk-curve-key {
+.sk-curve-legend--grande .sk-curve-key {
   font-family: 'Cinzel', Georgia, serif;
   font-size: 1.02rem;
   letter-spacing: 0.03em;
   opacity: 1;
 }
 
-.sk-curve-modal-body .sk-curve-key i {
+.sk-curve-legend--grande .sk-curve-key i {
   width: 24px;
   height: 5px;
 }
@@ -5446,13 +5608,14 @@ h3 {
   overflow: hidden;
 }
 
-/* --- La main, les annonces et les choix, en bas de la scène. ---------- */
-/* --- Le bas de la scène, en deux postes --------------------------------
-   Les commandes d'annonce étaient centrées et remontaient sur le feutre :
-   elles recouvraient le siège du joueur, qui est justement en bas au
-   centre. Elles passent donc en bas à GAUCHE, hors du feutre (dont le
-   bord inférieur tombe à 78 % et le siège du joueur vers 76 %), et la
-   main prend toute la place à leur droite.
+/* --- La main, les annonces et les choix, posés sur la scène ----------- */
+/* Les pilules d'annonce et de choix sont sorties du flux : la scène est une
+   image à ratio fixe, tout ce qui s'y pose se repère en pourcentages d'elle.
+   Chacune dit ensuite OÙ elle se pose — l'annonce au-dessus du feutre (ou
+   sous le siège, manche 1), les choix de pose en son centre. Le coin
+   bas-gauche, qui les tenait toutes, ne servait qu'à ne pas recouvrir le
+   siège du joueur ; le centrage vertical au-dessus du tapis y arrive aussi,
+   sans obliger l'œil à quitter la table.
    ----------------------------------------------------------------------- */
 
 .sk-scene .sk-bid-choices,
@@ -5463,8 +5626,6 @@ h3 {
 }
 
 .sk-scene .sk-bid-choices {
-  left: 7%;
-  bottom: 5%;
   width: 34%;
   margin: 0;
   justify-content: center;
@@ -5475,8 +5636,6 @@ h3 {
    l'éventail qui gagnait (il vient plus tard dans le document) et il
    avalait les clics destinés au bouton « Confirmer ». */
 .sk-scene .sk-bid-choices:not(.hidden):not(:empty) {
-  left: 4%;
-  right: auto;
   width: 26%;
   max-width: 26%;
   margin: 0;
@@ -5485,26 +5644,73 @@ h3 {
 
 /* À partir de la manche 7, les onze jetons d'annonce + « Confirmer » +
    le rappel formaient une pilule de 620 px qui débordait jusque sous les
-   cartes : le bouton de confirmation se retrouvait sous la main, donc
-   impossible à cliquer. Les jetons passent en grille dans une colonne qui
-   s'arrête à 30 % de la scène, la main commençant à 32,5 % — les deux ne
-   peuvent plus se croiser, quel que soit le nombre de manches. */
+   cartes : le bouton de confirmation se retrouvait sous la main. Les jetons
+   passent donc en grille de six colonnes, dans une pilule d'un quart de
+   scène — deux rangées au plus, quel que soit le nombre de manches. */
 .sk-scene #sk-bid-choices:not(.hidden):not(:empty) {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* Le nombre de colonnes vient du JS : il dépend du nombre de jetons, et
+     c'est lui qui garde les rangées égales (voir renderBidChoices). */
+  grid-template-columns: repeat(var(--sk-bid-cols, 6), minmax(0, 1fr));
   gap: 5px;
   align-content: end;
+  /* La pilule ne s'élargit qu'autant que ses jetons le demandent, et pas
+     au-delà du quart de scène — deux jetons dans une pilule de 26 % font
+     deux plaques de laiton démesurées. */
+  width: min(26%, max-content);
+  /* Centrée sur le feutre, comme les choix de pose. La demi-largeur part en
+     `translateX` plutôt qu'en `margin-left` : la pilule est en pourcentages
+     de la scène, sa largeur propre est en pourcentages aussi, et translater
+     évite d'avoir à les additionner. */
+  left: 42.66%;   /* 23.35 % + 38.61 % / 2, le centre du feutre */
+  right: auto;
+  transform: translateX(-50%);
+  /* Au-dessus du tapis, et sous le bandeau : la pilule s'arrête juste avant
+     la bulle de consigne (elle occupe 35 → 37,8 %), qui dit précisément quoi
+     annoncer. Ancrée par le BAS — c'est le bord qui doit rester à sa place
+     quand la grille passe d'une rangée à deux, de la manche 6 à la 7. */
+  bottom: 66%;
+  top: auto;
+  /* Tout ce qui se pose sur la scène est en pourcentages d'elle ; la pilule,
+     elle, était en pixels. Tant qu'elle vivait dans un coin ça passait — elle
+     grossissait avec les petits écrans sans rien heurter. Placée entre le
+     bandeau et le tapis, il lui faut la même échelle que le reste, sinon elle
+     déborde sous le bandeau dès que la fenêtre se raccourcit. D'où `cqh`, le
+     centième de la hauteur de scène (`.sk-scene` est un conteneur de taille),
+     et des marges en `em` : une seule molette règle toute la pilule. À la
+     hauteur de référence, 1,62 cqh vaut les 0,8 rem d'avant — rien ne bouge
+     sur un grand écran. */
+  font-size: clamp(9px, 1.62cqh, 13px);
+  gap: 0.4em;
+  padding: 0.63em 1.1em 0.7em;
+}
+
+.sk-scene #sk-bid-choices .sk-bar-hint {
+  font-size: 0.88em;
+}
+
+/* La manche 1 est la seule qu'on annonce à l'aveugle : ta carte reste
+   cachée, et ce que tu lis pour décider, ce sont les cartes des AUTRES,
+   posées à leurs sièges tout autour du feutre. La pilule ne peut donc pas se
+   mettre au-dessus du tapis, elle couvrirait la moitié de ce qu'il faut
+   regarder. Elle descend sous ton propre siège — la seule bande libre : ta
+   main ne tient qu'une carte, l'éventail est vide. */
+.sk-scene #sk-bid-choices[data-manche="1"]:not(.hidden):not(:empty) {
+  top: 83.6%;     /* le nom du siège se termine à 82,4 % */
+  bottom: auto;
+  align-content: start;
 }
 
 .sk-scene #sk-bid-choices .btn {
   min-width: 0;
-  padding: 7px 2px 8px;
+  padding: 0.55em 0.16em 0.63em;
+  font-size: 1em;
 }
 
 .sk-scene #sk-bid-choices .sk-bid-confirm {
   grid-column: 1 / -1;
   margin-left: 0;
-  padding: 7px 10px 8px;
+  padding: 0.55em 0.8em 0.63em;
 }
 
 .sk-scene #sk-bid-choices .sk-bar-hint {
@@ -5512,6 +5718,56 @@ h3 {
   text-align: center;
   padding: 0;
   line-height: 1.25;
+}
+
+/* Scène trop basse (téléphone couché, fenêtre écrasée) : sous cette hauteur
+   le `clamp` bloque la pilule à 9 px de texte, elle cesse de rétrécir avec la
+   scène et ne tient plus entre le bandeau et le tapis. Elle retourne alors
+   d'où elle vient — le coin bas-gauche, par-dessus l'éventail, qui reste la
+   seule bande où une pilule à taille fixe ne recouvre rien d'utile. */
+@container (max-height: 600px) {
+  .sk-scene #sk-bid-choices:not(.hidden):not(:empty),
+  .sk-scene #sk-bid-choices[data-manche="1"]:not(.hidden):not(:empty) {
+    left: 4%;
+    right: auto;
+    top: auto;
+    bottom: 5%;
+    transform: none;
+    align-content: end;
+  }
+}
+
+/* Les choix de POSE — le Joker qui déclare sa famille, le 0/14 qui fixe sa
+   valeur, Marcher sur la Planche qui désigne son Pirate — quittent le coin
+   bas-gauche pour le CENTRE DU FEUTRE.
+   
+   Le coin bas-gauche est la bonne place pour l'annonce : elle reste à
+   l'écran toute la phase d'annonce, à côté d'une main qu'on relit entre deux
+   jetons, et centrée elle recouvrait le siège du joueur. Un choix de pose
+   n'a rien de tout ça — il dure deux secondes, il porte sur la carte qu'on
+   vient de lâcher sur le tapis, et pendant qu'il est ouvert la main est
+   gelée. Le regarder en bas à gauche pendant que la carte part au centre
+   demandait un aller-retour que rien ne justifiait. La Tigresse a ouvert la
+   voie avec son cadre au centre (voir plus bas) ; ces trois-là suivent, à
+   ceci près qu'ils se posent sur le feutre et non sur toute la fenêtre :
+   ils ne décident pas de ce qu'EST la carte, seulement de son détail.
+
+   Les pourcentages sont ceux du feutre, moitié de sa largeur et de sa
+   hauteur ajoutées à son origine — ils suivent donc `.sk-table` si la scène
+   change. */
+.sk-scene #sk-joker-choice:not(.hidden),
+.sk-scene #sk-declare-choice:not(.hidden),
+.sk-scene #sk-plank-choice:not(.hidden) {
+  left: 42.66%;   /* 23.35 % + 38.61 % / 2 */
+  top: 59.83%;    /* 41.55 % + 36.56 % / 2 */
+  right: auto;
+  bottom: auto;
+  width: max-content;
+  max-width: 34%;
+  transform: translate(-50%, -50%);
+  /* Au-dessus de l'éventail comme la barre d'annonce, et au-dessus des
+     cartes du pli, qu'il recouvre le temps du choix. */
+  z-index: 9;
 }
 
 /* Le panneau de pouvoir est le seul bloc dont le contenu est imprévisible :
@@ -6147,7 +6403,7 @@ h3 {
     min-width: 0;
     max-width: 330px;
     margin: 0;
-    padding: 22px 16px 16px;
+    padding: 31px 16px 16px;
     border-radius: 4px;
     background:
       linear-gradient(180deg, rgba(255, 232, 190, 0.09), rgba(0, 0, 0, 0.34)),
@@ -6158,17 +6414,18 @@ h3 {
       0 16px 34px rgba(0, 0, 0, 0.55);
   }
 
+  /* Même clou peint que la planche d'invitation, mêmes cotes (voir
+     .invite-card::before). */
   .sk-lobby-col::before {
     content: '';
     position: absolute;
-    top: 8px;
+    top: 7px;
     left: 50%;
-    margin-left: -5px;
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 36% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(16, 9, 3, 0.6);
+    margin-left: -8px;
+    width: 16px;
+    height: 16px;
+    background: url('assets/skin/clou-laiton.webp') 50% 50% / contain no-repeat;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
   }
 
   /* L'équipage est la planche qu'on regarde le plus (qui est là, qui a pris
@@ -6214,7 +6471,10 @@ h3 {
   .sk-lobby-chat {
     margin: 0;
     max-width: none;
-    padding: 15px 13px 11px;
+    /* Plus serrée que les autres planches sur les côtés et en pied — tout ce
+       qu'on lui prend en marges, elle le rend en lignes lisibles. En tête,
+       non : le clou y loge comme partout ailleurs. */
+    padding: 29px 13px 11px;
   }
 
   .sk-lobby-chat .sk-lobby-col-title {
@@ -6228,10 +6488,35 @@ h3 {
 
   /* Réglée en JS pour que la pile tombe à la hauteur des planches voisines
      (voir ajusterHauteurSalon) ; ce plancher n'est là que pour le premier
-     rendu, avant la mesure. */
+     rendu, avant la mesure.
+
+     Et un CREUX dans la planche, comme le champ de saisie juste en dessous :
+     c'était le seul bloc du salon dont le contenu flottait à même le bois,
+     sans rien pour dire où le fil commence ni où il s'arrête. */
   .sk-lobby-chat .sk-chat-log {
     flex: none;
     height: 150px;
+    padding: 8px 9px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(10, 6, 3, 0.5), rgba(26, 18, 11, 0.38));
+    box-shadow:
+      inset 0 0 0 1px rgba(184, 137, 53, 0.22),
+      inset 0 3px 7px rgba(0, 0, 0, 0.5);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
+  }
+
+  /* Salon tout juste ouvert : le creux vide se lisait comme un bloc cassé.
+     Une ligne suffit à dire que c'est un fil, et qu'il n'a rien encore. */
+  .sk-lobby-chat .sk-chat-log:empty::before {
+    content: 'Personne n\2019 a encore parlé.';
+    display: block;
+    padding-top: 4px;
+    font-family: 'Spectral', Georgia, serif;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--sk-cream-3);
+    opacity: 0.7;
   }
 
   .sk-lobby-col--crew {
