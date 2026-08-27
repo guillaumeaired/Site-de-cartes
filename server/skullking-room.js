@@ -112,6 +112,25 @@ function devouredPirateIds(cards, result) {
     .map((c) => c.id);
 }
 
+// Cartes jetées par-dessus bord par « Marcher sur la Planche ». Le calcul
+// les retirait bel et bien du pli (resolveTrick, excludedIdx) mais l'écran
+// n'en disait rien : le Pirate restait posé sur le tapis, intact, et le
+// pouvoir avait l'air de n'avoir servi à rien. Ces ids sont là pour que le
+// client puisse le faire tomber à l'eau.
+//
+// Volontairement indépendant de result.destroyed : un Kraken qui détruit le
+// pli n'annule pas la Planche, le Pirate a bien été retiré avant. La
+// condition est exactement celle de resolveTrick — une cible absente du pli
+// ne retire rien, ici comme là-bas.
+function plankedCardIds(cards) {
+  const ids = [];
+  for (const c of cards) {
+    if (effectiveKind(c) !== 'plank' || !c.removesId) continue;
+    if (cards.some((cc) => cc.id === c.removesId)) ids.push(c.removesId);
+  }
+  return ids;
+}
+
 // Pièces de joueur (façon Monopoly) : une seule par salon, choisie dans le
 // salon d'attente. Le serveur ne connaît que les clés - le dessin vit côté
 // client (voir PIECES dans public/skullking.js) ; les deux listes doivent
@@ -1340,6 +1359,7 @@ function registerSkullKingHandlers(io, socket) {
       destroyed: result.destroyed,
       winnerId,
       devouredCardIds: devouredPirateIds(cards, result),
+      plankedCardIds: plankedCardIds(cards),
     };
     room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
     room.trickPaused = true;
@@ -1570,6 +1590,7 @@ module.exports = {
   eligiblePlankTargets,
   capturedPirateKeys,
   devouredPirateIds,
+  plankedCardIds,
   powerResultMessage,
   stateFor,
   setBotAdapter,

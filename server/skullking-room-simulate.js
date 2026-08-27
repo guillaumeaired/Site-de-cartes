@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, capturedPirateKeys, devouredPirateIds, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, capturedPirateKeys, devouredPirateIds, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -52,6 +52,46 @@ check(
   ]).map((t) => t.card.id),
   ['c1', 'c2']
 );
+
+// --- Marcher sur la Planche : ce que l'écran doit montrer tomber. Le
+// calcul retirait bien le Pirate du pli, mais rien ne le disait à l'écran —
+// ces ids sont ce qui manquait.
+{
+  const cible = { id: 'c-pirate', kind: 'pirate', name: 'Will le Bandit' };
+  const planche = { id: 'c-planche', kind: 'plank', removesId: 'c-pirate' };
+
+  check(
+    'Planche : le Pirate ciblé est celui qui passe par-dessus bord',
+    plankedCardIds([cible, planche, numberCard]),
+    ['c-pirate']
+  );
+
+  check(
+    "Planche sans cible (aucun Pirate au moment de la pose) : rien ne tombe",
+    plankedCardIds([{ id: 'c-planche2', kind: 'plank' }, numberCard]),
+    []
+  );
+
+  check(
+    "Planche dont la cible n'est pas dans le pli : rien ne tombe, comme dans resolveTrick",
+    plankedCardIds([{ id: 'c-planche3', kind: 'plank', removesId: 'absent' }, cible]),
+    []
+  );
+
+  check(
+    'Planche : une Tigresse jouée comme Pirate tombe aussi',
+    plankedCardIds([tigressAsPirate, { id: 'c-planche4', kind: 'plank', removesId: 'c2' }]),
+    ['c2']
+  );
+
+  // Le pli détruit par un Kraken n'annule pas la Planche : le Pirate a été
+  // retiré avant, et l'écran doit le montrer tomber quand même.
+  check(
+    'Planche : la chute se joue même si le Kraken détruit le pli',
+    plankedCardIds([cible, planche, { id: 'c-kraken', kind: 'kraken' }]),
+    ['c-pirate']
+  );
+}
 
 // --- Skull King (et Mat le Forban) mangent des Pirates : héritage des
 // pouvoirs, quel que soit qui a effectivement remporté le pli.

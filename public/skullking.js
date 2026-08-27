@@ -156,8 +156,9 @@ const PIRATE_ART = {
     'Harry le Géant': 'classique-harry',
     "Rosie D'Laney": 'classique-rosie',
     'Rascal le Flambeur': 'classique-rascal',
-    // Juanita Jade et Mary Thorne n'ont pas encore leur planche : elles
-    // restent en carte dessinée, comme avant.
+    'Mary Thorne': 'classique-mary',
+    // Juanita Jade n'a pas encore sa planche : elle reste en carte
+    // dessinée, comme avant.
   },
   perso: {
     'Harry le Géant': 'anto',
@@ -177,6 +178,11 @@ const SPECIAL_ART = {
   whale: 'classique-baleine',
   stingray: 'classique-raie',
   tigress: 'classique-tigresse',
+  firstmate: 'classique-forban',
+  plank: 'classique-planche',
+  davyjones: 'classique-davyjones',
+  lastvolley: 'classique-salve',
+  wild15: 'classique-joker',
 };
 
 // Les deux Sirènes sont identiques en règle et distinctes en peinture. Le
@@ -205,13 +211,16 @@ function artFor(card) {
   return SPECIAL_ART[card.kind] || null;
 }
 
-// Les classes d'une carte illustrée. Le pied de parchemin reste VISIBLE, y
-// compris sur les planches classiques qui peignent déjà leur nom dans un
-// cartouche : mesuré à 84 px, la largeur d'une carte en main, le nom peint
-// tombe sous les 6 px de haut et n'est plus qu'un gribouillis, quand le pied
-// reste net. Il redit donc le nom, en plus petit et en plus lisible — c'est
-// exactement le marché de R1. Seules les familles numérotées s'en passent
-// (sk-card--art-num) : leur chiffre est gravé en gros dans les médaillons.
+// UNE CARTE ILLUSTRÉE N'A PAS DE CARTOUCHE. Le pied de parchemin masquait le
+// bas du dessin, sur toute sa largeur, pour redire ce que le dessin dit déjà
+// — un nom peint dans sa banderole, un chiffre gravé dans les médaillons, ou
+// un sujet qui se reconnaît sans légende. Il reste dans le document, hors
+// champ : c'est lui que lisent les technologies d'assistance.
+//
+// Deux cartes changent d'état en cours de pli et le disaient dans ce pied :
+// il fallait le remplacer, pas seulement l'enlever. La Tigresse annoncée et
+// le Joker posé portent un LISERÉ de la couleur retenue (voir la CSS) — le
+// signal survit au cartouche, sans rien poser sur le dessin.
 function artClasses(cle) {
   return `sk-card--art sk-card--art-${cle}`;
 }
@@ -223,15 +232,28 @@ function artClasses(cle) {
 // médaillon du haut passe sous la carte voisine dès que l'éventail se
 // recouvre — seul le pied reste alors lisible.
 const SUIT_ART = {
-  jaune: { prefixe: 'tresor', pied: false },      // le coffre ouvert
-  violet: { prefixe: 'carte', pied: false },      // la carte au trésor
-  noir: { prefixe: 'pavillon', pied: false },     // le pavillon noir — la famille d'atout
-  vert: { prefixe: 'perroquet', pied: true },     // les Perroquets
+  jaune: 'tresor',      // le coffre ouvert
+  violet: 'carte',      // la carte au trésor
+  noir: 'pavillon',     // le pavillon noir — la famille d'atout
+  vert: 'perroquet',    // les Perroquets
 };
 
 function cardClass(card) {
   if (card.kind === 'hidden') return 'sk-card--hidden';
-  if (card.kind === 'wild15' || card.wild15) return 'sk-card--wild15';
+  // Le Joker, avant comme après sa pose. Son 15 est peint dans les
+  // médaillons ; ce qui ne l'est pas, c'est la famille qu'il déclare en se
+  // posant — et elle ne l'était nulle part. Ni la fenêtre aux quatre
+  // couleurs, la même quoi qu'il déclare, ni l'emblème du pied, qui se
+  // peignait en carré d'encre plein faute de la classe de couleur qui lui
+  // donne son masque. Un Joker posé n'annonçait donc sa famille nulle part :
+  // elle ne se lisait que dans la résolution du pli. Elle est maintenant sa
+  // classe de couleur, et un liseré avec elle.
+  if (card.kind === 'wild15' || card.wild15) {
+    const peinte = artFor({ kind: 'wild15' });
+    const famille = card.suit ? ` sk-card--${card.suit} sk-card--wild15-pose` : '';
+    const art = peinte ? ` ${artClasses(peinte)}` : '';
+    return `sk-card--wild15${famille}${art}`;
+  }
   if (card.kind === 'number') {
     if (card.wild14 && card.value == null) return 'sk-card--wild14';
     // Familles peintes : une planche d'illustrations par couleur, quatorze
@@ -244,10 +266,9 @@ function cardClass(card) {
     // Le 0/14 de l'extension en est exclu, quelle que soit sa famille : sa
     // valeur peut valoir 0, qui n'existe dans aucune planche, et il a déjà
     // son habillage.
-    const art = SUIT_ART[card.suit];
-    if (art && !card.wild14 && card.value >= 1 && card.value <= 14) {
-      const pied = art.pied ? '' : ' sk-card--art-num';
-      return `sk-card--${card.suit} sk-card--art${pied} sk-card--art-${art.prefixe}-${card.value}`;
+    const prefixe = SUIT_ART[card.suit];
+    if (prefixe && !card.wild14 && card.value >= 1 && card.value <= 14) {
+      return `sk-card--${card.suit} ${artClasses(`${prefixe}-${card.value}`)}`;
     }
     return `sk-card--${card.suit}`;
   }
@@ -255,7 +276,10 @@ function cardClass(card) {
     // Une carte illustrée EST son illustration : le cadre CSS est neutralisé
     // (les PNG portent déjà leur bord crème, leur bande peinte et leurs
     // médaillons d'angle), seul le cartouche de nom se surimpose.
-    const art = card.kind === 'pirate' && artFor(card);
+    // Mat le Forban n'est pas un Pirate au sens des règles, mais il en a
+    // l'habit et désormais sa propre planche : artFor le sert par
+    // SPECIAL_ART, les Pirates nommés par la table du paquet courant.
+    const art = artFor(card);
     return art ? `sk-card--pirate ${artClasses(art)}` : 'sk-card--pirate';
   }
   // La Tigresse passe AVANT la Fuite : une fois annoncée en Fuite, elle
@@ -662,6 +686,23 @@ const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
 const extList = document.getElementById('sk-ext-list');
+const cardModal = document.getElementById('sk-card-modal');
+const cardModalArt = document.getElementById('sk-card-modal-art');
+const cardModalTitle = document.getElementById('sk-card-modal-title');
+const cardModalRule = document.getElementById('sk-card-modal-rule');
+
+function fermerFiche() {
+  cardModal.classList.add('hidden');
+}
+document.getElementById('sk-btn-close-card').addEventListener('click', fermerFiche);
+// Le fond de la modale ferme aussi : on l'ouvre pour un coup d'œil, pas pour
+// s'y installer.
+cardModal.addEventListener('click', (e) => {
+  if (e.target === cardModal) fermerFiche();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !cardModal.classList.contains('hidden')) fermerFiche();
+});
 const roundsGrid = document.getElementById('sk-rounds-grid');
 const roundsHint = document.getElementById('sk-rounds-hint');
 const deckGrid = document.getElementById('sk-deck-grid');
@@ -792,7 +833,18 @@ const DECK_CHOICES = [
 // il suffit de dire quelle carte représente la ligne. Les numérotées font
 // exception : elles en couvrent trois d'un coup.
 const EXTENSION_APERCU = {
-  numerotees: "Ajoute à chaque couleur un 7, un 8 et une carte 0/14. Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5, et le 0/14 se déclare au moment de la pose : 0 perd toujours, 14 est une carte forte.",
+  // Les numérotées sont la seule ligne qui n'est pas UNE carte : elle en
+  // ajoute trois par couleur. D'où un texte écrit à la main, et une fiche
+  // qui montre les trois d'un coup, chacune dans une famille différente
+  // pour dire qu'elles arrivent dans les quatre.
+  numerotees: {
+    texte: "Ajoute à chaque couleur un 7, un 8 et une carte 0/14. Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5, et le 0/14 se déclare au moment de la pose : 0 perd toujours, 14 est une carte forte.",
+    cartes: [
+      { kind: 'number', suit: 'vert', value: 7, ext: true },
+      { kind: 'number', suit: 'jaune', value: 8, ext: true },
+      { kind: 'number', suit: 'violet', value: null, ext: true, wild14: true },
+    ],
+  },
   joker: { kind: 'wild15' },
   marythorne: { kind: 'pirate', name: 'Mary Thorne' },
   firstmate: { kind: 'firstmate' },
@@ -801,6 +853,32 @@ const EXTENSION_APERCU = {
   plank: { kind: 'plank' },
   davyjones: { kind: 'davyjones' },
 };
+
+// Ce qu'une ligne de la planche a à montrer : une ou plusieurs cartes, et
+// le texte de règle. Pour tout le monde sauf les numérotées, ce texte est
+// celui de l'infobulle en jeu — rien à réécrire, rien à tenir en phase.
+function ficheExtension(module) {
+  const apercu = EXTENSION_APERCU[module.key];
+  if (!apercu) return { cartes: [], texte: '' };
+  if (apercu.cartes) return { cartes: apercu.cartes, texte: apercu.texte };
+  return { cartes: [apercu], texte: cardPowerText(apercu) || '' };
+}
+
+function ouvrirFiche(titre, fiche) {
+  cardModalArt.innerHTML = '';
+  fiche.cartes.forEach((carte) => {
+    const el = document.createElement('div');
+    el.className = `sk-card ${cardClass(carte)}`;
+    el.innerHTML = cardFaceHTML(carte);
+    cardModalArt.appendChild(el);
+  });
+  // Trois cartes de front tiennent moins large qu'une seule : la fiche des
+  // numérotées les réduit plutôt que d'élargir la modale.
+  cardModalArt.classList.toggle('sk-card-modal-art--trio', fiche.cartes.length > 1);
+  cardModalTitle.textContent = titre;
+  cardModalRule.textContent = fiche.texte;
+  cardModal.classList.remove('hidden');
+}
 
 // La planche des extensions : un interrupteur maître, puis une ligne par
 // apport. Le maître ne s'allume que si les huit le sont — un interrupteur à
@@ -830,16 +908,30 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
     b.innerHTML =
       '<span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>' +
       `<span class="sk-ext-name">${escapeHTML(module.label)}</span>`;
-    const apercu = EXTENSION_APERCU[module.key];
-    const texte = typeof apercu === 'string' ? apercu : apercu && cardPowerText(apercu);
-    if (texte) {
-      b.title = texte;
-      attachTooltip(b, texte);
+    const fiche = ficheExtension(module);
+    if (fiche.texte) {
+      b.title = fiche.texte;
+      attachTooltip(b, fiche.texte);
     }
     if (isHost) {
       b.addEventListener('click', () => socket.emit('skullking-toggle-extension-module', { module: module.key }));
     }
     li.appendChild(b);
+
+    // Le « ? », collé au nom. La bulle de survol dit déjà la règle, mais
+    // jamais à quoi la carte ressemble — et c'est la question qu'on se pose
+    // en hésitant à cocher une ligne. Il reste cliquable pour tout le monde,
+    // y compris ceux qui ne peuvent pas régler le paquet : consulter n'est
+    // pas régler.
+    if (fiche.cartes.length) {
+      const q = document.createElement('button');
+      q.type = 'button';
+      q.className = 'sk-ext-help';
+      q.textContent = '?';
+      q.setAttribute('aria-label', `Voir la carte : ${module.label}`);
+      q.addEventListener('click', () => ouvrirFiche(module.label, fiche));
+      li.appendChild(q);
+    }
 
     const n = document.createElement('span');
     n.className = 'sk-ext-count';
@@ -965,6 +1057,7 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   // suivante porterait la même clé que celui de la partie précédente).
   startRevealPlayed = false;
   lastDevouredTrick = null;
+  lastPlankedTrick = null;
 });
 
 btnExtension.addEventListener('click', () => {
@@ -1739,6 +1832,77 @@ function renderTrick(state) {
     trickCaptionEl.textContent = 'Ce pli sera détruit…';
   } else {
     trickCaptionEl.textContent = '';
+  }
+}
+
+// --- Marcher sur la Planche : le Pirate passe par-dessus bord ---
+// Le pouvoir marchait depuis toujours — le Pirate était bien retiré du pli
+// pour le gagnant, les bonus et les pouvoirs hérités — mais rien ne le
+// disait à l'écran : la carte restait posée sur le tapis, intacte, et on en
+// concluait que la Planche n'avait rien fait. Elle bascule maintenant et
+// tombe hors du tapis, dans la direction opposée à la Planche qui l'y
+// envoie.
+let lastPlankedTrick = null;
+
+function playPlankAnimation(state) {
+  const res = state.lastTrickResult;
+  const ids = (res && res.plankedCardIds) || [];
+  if (!state.trickPaused || !ids.length) return;
+
+  // Même repère que la dévoration : un pli est rediffusé à chaque broadcast
+  // pendant la pause, l'animation ne doit partir qu'une fois.
+  const key = `${state.roundNumber}-${state.trickNumber}`;
+  if (lastPlankedTrick === key) return;
+  lastPlankedTrick = key;
+
+  const planche = tableEl.querySelector('.sk-trick-card[data-kind="plank"]');
+
+  ids.forEach((id, i) => {
+    const slot = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(id)}"]`);
+    if (!slot) return;
+    // On tombe en s'éloignant de la Planche : c'est elle qui pousse. Sans
+    // repère (Planche hors du tapis), on tombe tout droit.
+    const ecart = planche ? slot.offsetLeft - planche.offsetLeft : 0;
+    const sens = ecart === 0 ? 1 : Math.sign(ecart);
+    // Comme pour la dévoration : offsetTop et non getBoundingClientRect,
+    // les cases sont encore en cours d'apparition et leur boîte mesurée est
+    // décalée.
+    const chute = tableEl.clientHeight - slot.offsetTop + 160;
+    const k = parseFloat(slot.style.getPropertyValue('--sk-depth')) || 1;
+    slot.style.zIndex = '3';
+    slot.animate(
+      [
+        { transform: `translate(-50%, -50%) scale(${k})`, opacity: 1 },
+        // Le temps de bascule : la carte se redresse sur sa tranche avant de
+        // partir. Sans lui, elle glisse au lieu de tomber.
+        {
+          transform: `translate(-50%, -50%) translate(${sens * 14}px, -18px) scale(${k * 1.04}) rotate(${sens * 12}deg)`,
+          opacity: 1,
+          offset: 0.3,
+        },
+        {
+          transform: `translate(-50%, -50%) translate(${sens * 60}px, ${chute}px) scale(${k * 0.7}) rotate(${sens * 82}deg)`,
+          opacity: 0,
+        },
+      ],
+      { duration: 1000, delay: 140 + i * 110, easing: 'cubic-bezier(0.42, -0.2, 0.85, 0.9)', fill: 'forwards' }
+    );
+  });
+
+  // La Planche accuse le coup : une secousse, au moment où elle pousse.
+  if (planche) {
+    const carte = planche.querySelector('.sk-card');
+    if (carte) {
+      carte.animate(
+        [
+          { transform: 'translateX(0) rotate(0deg)' },
+          { transform: 'translateX(-3px) rotate(-2.5deg)', offset: 0.3 },
+          { transform: 'translateX(3px) rotate(2deg)', offset: 0.62 },
+          { transform: 'translateX(0) rotate(0deg)' },
+        ],
+        { duration: 520, delay: 140, easing: 'ease-out' }
+      );
+    }
   }
 }
 
@@ -2721,6 +2885,7 @@ function renderGame(state) {
   renderTrick(state);
   // Après renderTrick : l'animation mesure la position réelle des cases du
   // pli, elles doivent donc déjà être dans le DOM.
+  playPlankAnimation(state);
   playDevourAnimation(state);
   renderBidChoices(state);
   renderPower(state);

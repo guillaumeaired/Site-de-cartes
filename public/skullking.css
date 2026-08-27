@@ -857,7 +857,10 @@ h3 {
   display: flex;
   align-items: center;
   gap: 9px;
-  flex: 1;
+  /* L'interrupteur épouse son contenu au lieu d'occuper la ligne : c'est ce
+     qui pose le « ? » contre le nom plutôt qu'à l'autre bout, et le compte
+     de cartes reste chassé à droite par sa propre marge. */
+  flex: 0 1 auto;
   min-width: 0;
   padding: 3px 2px;
   border: none;
@@ -900,21 +903,88 @@ h3 {
   transform: translateX(14px);
 }
 
+/* Le « ? » posé après le nom lui a pris une vingtaine de pixels, et les deux
+   plus longs libellés se coupaient. Ils reviennent à la ligne plutôt que de
+   finir en points de suspension : une planche un peu plus haute coûte moins
+   cher qu'un « LE COFFRE DE DAVY J… ». */
 .sk-ext-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 /* Ce que la ligne ajoute au paquet. C'est ce chiffre qui explique le pied de
    planche : douze cartes de plus ouvrent un huitième siège, une seule non. */
 .sk-ext-count {
   flex-shrink: 0;
+  margin-left: auto;
   font-family: 'Bitter', Georgia, serif;
   font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
   color: var(--sk-brass-hi);
   opacity: 0.75;
+}
+
+/* Le « ? » : un jeton de laiton gravé, à la taille d'une pastille. Il ne
+   règle rien — il ouvre la fiche — donc il reste actif même pour les joueurs
+   qui voient la planche en lecture seule. */
+.sk-ext-help {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.58rem;
+  line-height: 1;
+  color: var(--sk-cream-3);
+  background: radial-gradient(circle at 50% 34%, #241608, #0d0703);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.14),
+    0 0 0 1px rgba(184, 137, 53, 0.34);
+  transition: color 0.12s, filter 0.12s;
+}
+
+.sk-ext-help:hover {
+  color: #2a1b06;
+  background: linear-gradient(160deg, var(--sk-brass), var(--sk-brass-lo));
+}
+
+/* LA FICHE D'UNE CARTE — l'illustration en grand, son nom, sa règle. */
+.sk-card-modal-content {
+  max-width: 340px;
+  text-align: center;
+}
+
+.sk-card-modal-art {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.sk-card-modal-art .sk-card {
+  --sk-w: 190px;
+}
+
+.sk-card-modal-art--trio .sk-card {
+  --sk-w: 92px;
+}
+
+.sk-card-modal-title {
+  margin: 0 0 10px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.98rem;
+  letter-spacing: 0.05em;
+  color: var(--sk-brass-hi);
+}
+
+.sk-card-modal-rule {
+  margin: 0 0 18px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--sk-cream-2);
 }
 
 .sk-ext-tally {
@@ -2511,19 +2581,21 @@ h3 {
   opacity: 0.1;
 }
 
+/* Et pas de cartouche : une carte illustrée n'a rien par-dessus son dessin.
+   Le pied part hors de l'écran plutôt qu'en `display:none` — c'est lui que
+   lisent les technologies d'assistance, et lui seul porte le nom ou le
+   chiffre sous une forme que la machine sait lire. */
 .sk-card--art .sk-card__foot {
-  left: 3px;
-  right: auto;
-  bottom: 3px;
-  max-width: 66%;
-  height: auto;
-  padding: 3px 6px 4px;
-  border-radius: 2px;
-  background: linear-gradient(178deg, var(--sk-parch-hi), var(--sk-parch) 58%, var(--sk-parch-lo));
-  box-shadow:
-    0 0 0 1px var(--sk-brass),
-    0 0 0 2px rgba(24, 14, 5, 0.85),
-    0 2px 6px rgba(0, 0, 0, 0.7);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  background: none;
+  box-shadow: none;
 }
 
 /* Le paquet perso : quatre Pirates, quatre visages de l'équipage. Ils ne
@@ -2549,6 +2621,12 @@ h3 {
 .sk-card--art-classique-baleine { --art: url('assets/cards/classique-baleine.webp'); }
 .sk-card--art-classique-raie { --art: url('assets/cards/classique-raie.webp'); }
 .sk-card--art-classique-tigresse { --art: url('assets/cards/classique-tigresse.webp'); }
+.sk-card--art-classique-forban { --art: url('assets/cards/classique-forban.webp'); }
+.sk-card--art-classique-mary { --art: url('assets/cards/classique-mary.webp'); }
+.sk-card--art-classique-planche { --art: url('assets/cards/classique-planche.webp'); }
+.sk-card--art-classique-davyjones { --art: url('assets/cards/classique-davyjones.webp'); }
+.sk-card--art-classique-salve { --art: url('assets/cards/classique-salve.webp'); }
+.sk-card--art-classique-joker { --art: url('assets/cards/classique-joker.webp'); }
 
 /* La Tigresse illustrée : son cadre peint est rouge, celui d'un Pirate. Tant
    que son choix n'est pas connu ce rouge ne ment pas — elle en est un, au
@@ -2568,29 +2646,23 @@ h3 {
 .sk-card--art.sk-card--tigress-pirate { --sk-tigresse-liser: var(--sk-pirate); }
 .sk-card--art.sk-card--tigress-escape { --sk-tigresse-liser: var(--sk-fuite); }
 
+/* Le Joker posé : même dispositif, même raison. Son 15 est peint, la famille
+   qu'il vient de déclarer ne l'est pas — elle ne peut pas l'être, elle change
+   à chaque partie. `--band` est déjà la couleur de la famille, posée par la
+   classe de couleur qui accompagne la pose. Tant qu'il est en main, pas de
+   liseré : il n'a encore rien déclaré. */
+.sk-card--art.sk-card--wild15-pose {
+  box-shadow:
+    0 0 0 3px var(--band),
+    0 0 0 4px rgba(20, 12, 5, 0.7),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
 /* Les quatre familles peintes : le coffre (Jaune), la carte au trésor
    (Violet), le pavillon noir (Noir, l'atout) et les Perroquets (Vert). Les
    trois premières se passent de leur pied, le Vert le garde — voir plus
    bas. */
-
-/* Une famille peinte n'a pas de pied : l'illustration grave déjà son chiffre
-   dans deux médaillons d'angle, et sa couleur se lit sur le cadre — un
-   cartouche de parchemin par-dessus ne fait que masquer le dessin pour
-   redire ce qu'il dit. Le pied reste dans le document, hors de l'écran :
-   c'est lui que lisent les technologies d'assistance. Les Pirates illustrés,
-   eux, le gardent visible — il porte leur nom, qui n'est pas sur l'image. */
-.sk-card--art-num .sk-card__foot {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  background: none;
-  box-shadow: none;
-}
 
 .sk-card--art-tresor-1 { --art: url('assets/cards/tresor-1.webp'); }
 .sk-card--art-tresor-2 { --art: url('assets/cards/tresor-2.webp'); }
