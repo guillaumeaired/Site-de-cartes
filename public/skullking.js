@@ -157,8 +157,12 @@ const PIRATE_ART = {
     "Rosie D'Laney": 'classique-rosie',
     'Rascal le Flambeur': 'classique-rascal',
     'Mary Thorne': 'classique-mary',
-    // Juanita Jade n'a pas encore sa planche : elle reste en carte
-    // dessinée, comme avant.
+    // Juanita Jade est bien sur la planche des spéciales : c'est la brune à
+    // la boule de cristal, celle dont on croyait qu'elle était une seconde
+    // Rosie. Le paquet classique est donc peint en entier, Pirates compris —
+    // ne restent nus que les quatre 0/14, qu'aucune planche numérotée ne
+    // contient.
+    'Juanita Jade': 'classique-juanita',
   },
   perso: {
     'Harry le Géant': 'anto',

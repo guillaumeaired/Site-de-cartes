@@ -4,8 +4,8 @@
 Même découpe que les familles numérotées — d'où la réutilisation directe de
 `grille()` et `carte()` de decouper-planche-numerotees.py. Seule différence :
 les cases ne portent pas des chiffres de 1 à 14 mais des sujets, donc la
-sortie est nommée à la main, case par case, en lecture (haut->bas puis
-gauche->droite).
+sortie est nommée à la main, case par case, dans l'ordre où `grille()` les
+rend : rangée par rangée, de gauche à droite.
 
 Le repérage ne suppose rien du fond : il isole ce qui n'est PAS le fond,
 échantillonné dans les marges latérales. Peu importe donc que la première
@@ -34,9 +34,17 @@ _s.loader.exec_module(_num)
 # pirates perso (anto/mams/guigui/pablo), qui n'habille que des Pirates et
 # emprunte tout le reste à celui-ci.
 PLANCHES = {
-    # Deux rangées de cinq sur un plan de bois. Dix cases pour huit cartes :
-    # la seconde Rosie est une autre femme et le second Will un doublon,
-    # aucun des deux n'a de carte où aller.
+    # Deux rangées de cinq sur un plan de bois. Dix cases pour neuf cartes :
+    # seul le second Will est un vrai doublon.
+    #
+    # Les deux femmes de la rangée du bas portent le MÊME nom peint, « Rosie
+    # la Douce » — Gemini l'a écrit deux fois. Ce ne sont pourtant pas deux
+    # variantes du même personnage : la blonde au rouleau à pâtisserie est
+    # Rosie, la brune à la boule de cristal est Juanita Jade. On les sert
+    # donc chacune à sa carte, en se fiant au sujet et pas au bandeau. Reste
+    # que celui de Juanita ment ; à 104 px sur le tapis il tombe sous les
+    # 6 px de haut et ne se lit pas, dans la fiche ouverte par le « ? » il se
+    # lit. À regénérer quand la planche repassera par Gemini.
     'extra-cards-sk.png': [
         'classique-fuite',      # le navire à la voile, au couchant
         'classique-skullking',  # le capitaine à la barre, fond noir
@@ -44,9 +52,9 @@ PLANCHES = {
         'classique-sirene-2',   # Alyra, à l'étoile de mer
         'classique-will',       # Will le Bandit
         'classique-harry',      # Harry le Géant
-        'classique-rosie',      # Rosie D'Laney
+        'classique-juanita',    # Juanita Jade, à la boule de cristal
         'classique-rascal',     # Rascal le Flambeur
-        None,                   # seconde Rosie — aucune carte où l'employer
+        'classique-rosie',      # Rosie la Douce, au rouleau et au cache-œil
         None,                   # Will en double
     ],
     # L'extension, deux rangées de cinq sur drap bleu. Trois cases en
