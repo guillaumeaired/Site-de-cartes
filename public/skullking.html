@@ -269,12 +269,10 @@
     <section id="sk-screen-end" class="screen hidden">
       <div class="sk-end-head">
         <img class="sk-end-logo" src="assets/skin/logo-skullking-v.webp" alt="Skull King" width="1291" height="844" />
-        <!-- La pièce du vainqueur au-dessus de son nom, comme à son siège et
-             sur la roue : c'est le médaillon qu'on a suivi toute la partie. -->
-        <div class="sk-end-verdict">
-          <img id="sk-end-winner-piece" class="sk-end-winner-piece hidden" src="" alt="" aria-hidden="true" />
-          <h2 id="sk-end-title"></h2>
-        </div>
+        <!-- La pièce du vainqueur se pose DANS le titre, au-dessus de son
+             nom (voir renderGameEnd) : c'est le médaillon qu'on a suivi
+             toute la partie, comme à son siège et sur la roue. -->
+        <h2 id="sk-end-title"></h2>
       </div>
 
       <!-- Le récap se lit en deux colonnes en paysage : le verdict à gauche
