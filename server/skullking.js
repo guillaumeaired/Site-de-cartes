@@ -7,7 +7,7 @@
 const { shuffle } = require('./game');
 
 const SUITS = ['vert', 'jaune', 'violet', 'noir'];
-const PIRATE_NAMES = ["Rosie D'Laney", 'Will le Bandit', 'Rascal le Flambeur', 'Juanita Jade', 'Harry le Géant'];
+const PIRATE_NAMES = ["Rosie la Douce", 'Will le Bandit', 'Rascal le Flambeur', 'Juanita Jade', 'Harry le Géant'];
 const EXTENSION_PIRATE_NAME = 'Mary Thorne';
 
 // Clé courte du pouvoir associé à chaque pirate nommé, utilisée côté
@@ -18,7 +18,7 @@ const EXTENSION_PIRATE_NAME = 'Mary Thorne';
 // dans skullking-room.js via une file de pouvoirs plutôt qu'un seul pouvoir
 // direct.
 const PIRATE_POWER_BY_NAME = {
-  "Rosie D'Laney": 'rosie',
+  "Rosie la Douce": 'rosie',
   'Will le Bandit': 'will',
   'Rascal le Flambeur': 'rascal',
   'Juanita Jade': 'juanita',

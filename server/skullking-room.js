@@ -710,7 +710,7 @@ function finishTrickCollection(io, room, leaderId) {
 }
 
 // Ouvre la phase d'action d'un pouvoir de pirate. `leaderId` est le meneur
-// par défaut du pli suivant (le gagnant du pli) — seule Rosie D'Laney peut
+// par défaut du pli suivant (le gagnant du pli) — seule Rosie la Douce peut
 // le changer.
 function startPiratePower(io, room, powerKey, playerId, leaderId) {
   room.pendingPower = { kind: powerKey, playerId, leaderId };
@@ -752,7 +752,7 @@ function powerResultMessage(room) {
       const leader = findPlayer(room, pending.leaderId);
       const leaderName = leader ? (leader.id === pending.playerId ? 'soi-même' : leader.nickname) : '?';
       return {
-        title: "Rosie D'Laney",
+        title: "Rosie la Douce",
         detail: `${name} désigne ${leaderName} pour mener le prochain pli.`,
       };
     }
@@ -1430,7 +1430,7 @@ function registerSkullKingHandlers(io, socket) {
     // Corrigé Manche 2 : une cible invalide restait sans aucun retour, le
     // pouvoir semblait juste ne rien faire côté client.
     if (!findPlayer(room, targetId)) {
-      sendError(socket, 'Cible invalide pour Rosie D\'Laney.');
+      sendError(socket, 'Cible invalide pour Rosie la Douce.');
       return;
     }
     room.pendingPower.leaderId = targetId;
@@ -1447,7 +1447,7 @@ function registerSkullKingHandlers(io, socket) {
     if (!guardPower(room, socket, 'marythorne')) return;
     const targetId = payload && payload.targetId;
     const target = findPlayer(room, targetId);
-    // Même bug que Rosie D'Laney (corrigé Manche 2) : une cible invalide ne
+    // Même bug que Rosie la Douce (corrigé Manche 2) : une cible invalide ne
     // renvoyait rien.
     if (!target) {
       sendError(socket, 'Cible invalide pour Mary Thorne.');

@@ -60,7 +60,7 @@ const SPECIAL_INFO = {
 // Les pirates nommés portent leur nom sur la carte : raccourci à un seul mot
 // distinctif, sinon rien ne tient dans la bande visible de l'éventail.
 const PIRATE_SHORT_NAME = {
-  "Rosie D'Laney": 'Rosie',
+  "Rosie la Douce": 'Rosie',
   'Will le Bandit': 'Will',
   'Rascal le Flambeur': 'Rascal',
   'Juanita Jade': 'Juanita',
@@ -71,7 +71,7 @@ const PIRATE_SHORT_NAME = {
 // carte — affiché en infobulle sur la carte, pour savoir à quoi s'attendre
 // avant même de la jouer.
 const PIRATE_POWER_TEXT = {
-  "Rosie D'Laney": "Choisit qui entame le pli suivant (pas sur le dernier pli).",
+  "Rosie la Douce": "Choisit qui entame le pli suivant (pas sur le dernier pli).",
   'Will le Bandit': 'Pioche 2 cartes non distribuées et en défausse 2 (pas sur le dernier pli).',
   'Rascal le Flambeur': "Peut miser 10 ou 20 points de plus sur sa propre annonce (pas sur le dernier pli).",
   'Juanita Jade': 'Regarde les cartes non distribuées ce tour-ci (pas sur le dernier pli).',
@@ -154,7 +154,7 @@ const PIRATE_ART = {
   classique: {
     'Will le Bandit': 'classique-will',
     'Harry le Géant': 'classique-harry',
-    "Rosie D'Laney": 'classique-rosie',
+    "Rosie la Douce": 'classique-rosie',
     'Rascal le Flambeur': 'classique-rascal',
     'Mary Thorne': 'classique-mary',
     // Juanita Jade est bien sur la planche des spéciales : c'est la brune à
@@ -168,7 +168,7 @@ const PIRATE_ART = {
     'Harry le Géant': 'anto',
     'Juanita Jade': 'mams',
     'Rascal le Flambeur': 'guigui',
-    "Rosie D'Laney": 'pablo',
+    "Rosie la Douce": 'pablo',
   },
 };
 
@@ -2848,7 +2848,7 @@ function renderScoreboard(state) {
 const powerBanner = document.getElementById('sk-power-banner');
 const powerPanel = document.getElementById('sk-power-panel');
 const POWER_LABEL = {
-  rosie: "Rosie D'Laney",
+  rosie: "Rosie la Douce",
   will: 'Will le Bandit',
   rascal: 'Rascal le Flambeur',
   juanita: 'Juanita Jade',

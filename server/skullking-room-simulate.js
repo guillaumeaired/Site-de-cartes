@@ -12,7 +12,7 @@ function check(label, actual, expected) {
   assert.deepStrictEqual(actual, expected, `${label}\nattendu: ${JSON.stringify(expected)}\nreçu: ${JSON.stringify(actual)}`);
 }
 
-const pirateCard = { id: 'c1', kind: 'pirate', name: "Rosie D'Laney" };
+const pirateCard = { id: 'c1', kind: 'pirate', name: "Rosie la Douce" };
 const tigressAsPirate = { id: 'c2', kind: 'tigress', chosenAs: 'pirate' };
 const tigressAsEscape = { id: 'c3', kind: 'tigress', chosenAs: 'escape' };
 const numberCard = { id: 'c4', kind: 'number', suit: 'vert', value: 7 };
@@ -95,7 +95,7 @@ check(
 
 // --- Skull King (et Mat le Forban) mangent des Pirates : héritage des
 // pouvoirs, quel que soit qui a effectivement remporté le pli.
-const rosieCard = { id: 'p1', kind: 'pirate', name: "Rosie D'Laney" };
+const rosieCard = { id: 'p1', kind: 'pirate', name: "Rosie la Douce" };
 const willCard = { id: 'p2', kind: 'pirate', name: 'Will le Bandit' };
 const noPowerPirate = { id: 'p3', kind: 'pirate', name: 'Personne Connue' };
 
@@ -223,7 +223,7 @@ check(
 // qu'on est en phase d'annonce.
 function makeBiddingRoom() {
   const p1 = { ...makePlayer('p1', 'Alice'), hand: [{ id: 'h1', kind: 'number', suit: 'vert', value: 9 }] };
-  const p2 = { ...makePlayer('p2', 'Bob'), hand: [{ id: 'h2', kind: 'pirate', name: "Rosie D'Laney" }] };
+  const p2 = { ...makePlayer('p2', 'Bob'), hand: [{ id: 'h2', kind: 'pirate', name: "Rosie la Douce" }] };
   const p3 = { ...makePlayer('p3', 'Chloé'), hand: [{ id: 'h3', kind: 'skullking' }] };
   return {
     phase: 'bidding',
@@ -247,7 +247,7 @@ check(
   round1View.players.map((p) => [p.id, p.revealedCard && p.revealedCard.kind, p.revealedCard && p.revealedCard.name]),
   [
     ['p1', undefined, undefined],
-    ['p2', 'pirate', "Rosie D'Laney"],
+    ['p2', 'pirate', "Rosie la Douce"],
     ['p3', 'skullking', undefined],
   ]
 );
@@ -290,7 +290,7 @@ check(
 check(
   'Rosie annonce qui mènera le prochain pli',
   powerResultMessage(makePowerRoom({ kind: 'rosie', playerId: 'p1', leaderId: 'p2' })),
-  { title: "Rosie D'Laney", detail: 'Guillaume désigne Barbe-Rousse pour mener le prochain pli.' }
+  { title: "Rosie la Douce", detail: 'Guillaume désigne Barbe-Rousse pour mener le prochain pli.' }
 );
 check(
   'Rosie qui se désigne elle-même le dit sans répéter le pseudo',
@@ -320,7 +320,7 @@ check(
 
 // --- Pirates dévorés par le Skull King (animation) ---
 const sk = { id: 'sk', kind: 'skullking' };
-const rosie = { id: 'r1', kind: 'pirate', name: "Rosie D'Laney" };
+const rosie = { id: 'r1', kind: 'pirate', name: "Rosie la Douce" };
 const harry = { id: 'r2', kind: 'pirate', name: 'Harry le Géant' };
 const num = { id: 'n1', kind: 'number', suit: 'vert', value: 9 };
 const forban = { id: 'f1', kind: 'firstmate' };
