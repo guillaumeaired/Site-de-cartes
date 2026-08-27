@@ -3096,21 +3096,36 @@ h3 {
 }
 
 /* Assez large pour aligner 6 annonces d'un coup ; au-delà (jusqu'à 9 avec
-   l'extension) ça passe sur deux rangs, ce qui reste lisible. */
+   l'extension) ça passe sur deux rangs, ce qui reste lisible. La borne suit
+   la fenêtre : sur téléphone, 580px déborderaient. */
 .sk-bid-reveal-rows {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
-  max-width: 460px;
+  gap: 10px;
+  max-width: min(580px, 84vw);
 }
 
 /* Annonces révélées : une carte face cachée par joueur, qui se retourne en
    cascade. Même idiome 3D que le pouvoir de Juanita (preserve-3d +
-   backface-visibility), volontairement dupliqué plutôt que mutualisé. */
+   backface-visibility), volontairement dupliqué plutôt que mutualisé.
+
+   Le nom du joueur est SOUS la carte, pas dessus : la face est une plaque
+   peinte, on ne pose rien sur un dessin. Il lui faut donc une boîte à lui,
+   hors de la perspective — dans la carte, il se retournerait avec elle. */
+.sk-bid-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Le rapport est celui de la plaque peinte (283 x 480), pas celui d'une
+   carte à jouer : ce n'en est pas une, et la rogner pour l'y ramener
+   couperait les ferrures des deux bords. */
 .sk-bid-card {
-  width: 66px;
-  height: 92px;
+  width: 84px;
+  height: 142px;
   perspective: 700px;
 }
 
@@ -3150,44 +3165,72 @@ h3 {
     0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
+/* La face révélée est la plaque peinte, posée telle quelle : le chiffre y est
+   gravé dans le laiton, il n'y a rien à écrire par-dessus. Pas de liseré
+   ajouté non plus — la plaque porte déjà son cadre, en poser un second en
+   ferait deux. */
 .sk-bid-card-front {
   transform: rotateY(180deg);
+  background: #100a05 var(--sk-annonce) 50% 50% / 100% 100% no-repeat;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* La pièce du joueur, posée sur le crâne casqué du bas de la plaque —
+   coordonnées relevées sur l'image, pas estimées : centre à 50 % / 83,5 %,
+   large comme 30 % de la plaque. Les sabres croisés du décor dépassent tout
+   autour, la pièce a l'air sertie plutôt que collée. */
+.sk-bid-piece {
+  position: absolute;
+  left: 50%;
+  top: 83.5%;
+  width: 32%;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+}
+
+/* Repli pour une annonce de 10, que la planche ne peint pas — seulement
+   possible à la dernière manche, et seulement si quelqu'un annonce tous les
+   plis. Le chiffre est écrit, pas gravé, mais la plaque reste du cuir cerclé
+   de laiton : en parchemin clair, elle criait au milieu de ses voisines
+   bronze. */
+.sk-bid-card-front--nombre {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
   background:
-    radial-gradient(120% 90% at 22% 8%, var(--sk-parch-hi) 0%, var(--sk-parch) 46%, var(--sk-parch-lo) 100%);
+    radial-gradient(120% 90% at 30% 12%, #6b3a17 0%, #47240d 52%, #2a1408 100%);
   box-shadow:
-    inset 0 0 0 1px var(--sk-brass),
-    inset 0 0 0 2px rgba(38, 24, 8, 0.6),
+    inset 0 0 0 2px var(--sk-brass-lo),
+    inset 0 0 0 4px rgba(20, 11, 4, 0.9),
     0 8px 16px rgba(0, 0, 0, 0.5);
-  color: var(--sk-parch-ink);
+  color: var(--sk-brass-hi);
 }
 
 .sk-bid-card-num {
-  font-family: 'Bitter', Georgia, serif;
-  font-size: 1.85rem;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 2.1rem;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 0 rgba(255, 248, 226, 0.6);
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* Le pseudo tient sur la largeur de la carte ou se coupe proprement : il
-   accompagne le chiffre, c'est le chiffre qu'on vient lire. */
-.sk-bid-card-who {
-  max-width: 60px;
+/* Le pseudo, sous la plaque, dans la couleur de la pièce du joueur : la même
+   qui l'identifie sur son siège, sur la roue et au bout de sa courbe. La
+   couleur est posée en ligne par showBidReveal (elle est propre à chacun),
+   d'où l'absence de `color` ici. Il se coupe proprement plutôt que d'élargir
+   la colonne : c'est le chiffre qu'on vient lire, le nom le rattache. */
+.sk-bid-nom {
+  max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.46rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #6e5320;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 /* --- Roue de tirage au sort (qui mène le premier pli), même DA que celle

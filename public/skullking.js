@@ -3078,6 +3078,9 @@ function showBidReveal(state) {
   const STEP_MS = 260;
 
   state.players.forEach((p, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'sk-bid-slot';
+
     const card = document.createElement('div');
     card.className = 'sk-bid-card';
     card.style.setProperty('--sk-bid-delay', `${i * STEP_MS}ms`);
@@ -3090,17 +3093,41 @@ function showBidReveal(state) {
 
     const front = document.createElement('div');
     front.className = 'sk-bid-card-face sk-bid-card-front';
-    const num = document.createElement('span');
-    num.className = 'sk-bid-card-num';
-    num.textContent = p.bid;
-    const who = document.createElement('span');
-    who.className = 'sk-bid-card-who';
-    who.textContent = p.id === myId ? 'Toi' : p.nickname;
-    front.append(num, who);
+    // Le chiffre est PEINT, une plaque par valeur : c'est ce que la planche
+    // des annonces sait faire de mieux et qu'aucune police ne rendra. Elle ne
+    // va que de 0 à 9 ; une annonce de 10 (possible à la dernière manche)
+    // retombe donc sur la plaque de parchemin d'avant, chiffre écrit en DOM.
+    if (p.bid >= 0 && p.bid <= 9) {
+      front.style.setProperty('--sk-annonce', `url('assets/skin/annonce-${p.bid}.webp')`);
+      // Le crâne casqué du bas de la plaque reçoit la pièce du joueur : le
+      // même médaillon que sur son siège, sur la roue et au bout de sa courbe
+      // du récap. C'est lui qui rattache l'annonce à quelqu'un, le pseudo
+      // en dessous ne fait que le nommer.
+      const piece = PIECE_BY_KEY[p.piece] || pieceFor(p);
+      const jeton = document.createElement('img');
+      jeton.className = 'sk-bid-piece';
+      jeton.src = `assets/skin/piece-${piece.key}.webp`;
+      jeton.alt = '';
+      jeton.setAttribute('aria-hidden', 'true');
+      front.appendChild(jeton);
+    } else {
+      front.classList.add('sk-bid-card-front--nombre');
+      const num = document.createElement('span');
+      num.className = 'sk-bid-card-num';
+      num.textContent = p.bid;
+      front.appendChild(num);
+    }
 
     inner.append(back, front);
     card.appendChild(inner);
-    bidRevealRows.appendChild(card);
+
+    const nom = document.createElement('span');
+    nom.className = 'sk-bid-nom';
+    nom.textContent = p.id === myId ? 'Toi' : p.nickname;
+    nom.style.color = couleurJoueur(p);
+
+    slot.append(card, nom);
+    bidRevealRows.appendChild(slot);
   });
 
   bidRevealEl.classList.remove('hidden');
