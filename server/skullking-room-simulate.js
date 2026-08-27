@@ -258,10 +258,25 @@ check(
 const round1PlayingRoom = { ...makeBiddingRoom(), phase: 'playing', bids: { p1: 0, p2: 0, p3: 0 }, turnCount: 0 };
 const playingView = stateFor(round1PlayingRoom, { id: 'p1', hand: [{ id: 'h1', kind: 'number', suit: 'vert', value: 9 }] });
 check('une fois la phase de jeu entamée, ma carte redevient visible pour moi', playingView.hand[0].kind, 'number');
+// Les cartes des autres restent montrées pendant la phase de jeu de la manche
+// 1, tant qu'elles ne sont pas posées. Elles disparaissaient à la seconde où
+// l'annonce se refermait, et le tapis se vidait d'un coup pour se remplir une
+// carte à la fois — alors que rien n'avait bougé et que tout le monde les
+// avait déjà vues. Elles ne quittent la liste qu'une fois jouées, c'est-à-dire
+// quand la main de leur porteur est vide.
 check(
-  'et je ne vois plus les cartes des autres via revealedCard (redevenu normal)',
-  playingView.players.every((p) => p.revealedCard === undefined),
-  true
+  'manche 1, phase de jeu : je vois toujours les cartes que les autres tiennent encore',
+  playingView.players.map((p) => p.revealedCard && p.revealedCard.kind),
+  [undefined, 'pirate', 'skullking']
+);
+const p3Joue = {
+  ...round1PlayingRoom,
+  players: round1PlayingRoom.players.map((p) => (p.id === 'p3' ? { ...p, hand: [] } : p)),
+};
+check(
+  'et une carte posée quitte la liste : elle est dans le pli, plus dans la main',
+  stateFor(p3Joue, { id: 'p1', hand: [] }).players.map((p) => p.revealedCard && p.revealedCard.kind),
+  [undefined, 'pirate', undefined]
 );
 
 // --- Annonces des pouvoirs de Pirates ---

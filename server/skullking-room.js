@@ -501,6 +501,13 @@ function stateFor(room, p) {
   // l'annonce : une fois la phase de jeu entamée, chacun pose sa carte à
   // son tour et elle devient visible normalement pour tout le monde.
   const blindRound1 = bidding && roundNumber(room) === 1;
+  // Manche 1 : chacun tient sa carte tournée vers les autres. Elle reste
+  // montrée pendant la phase de jeu, tant que son porteur ne l'a pas posée —
+  // sans quoi les cartes disparaissaient toutes du tapis à la seconde où
+  // l'annonce se refermait, pour y revenir une à une. Rien de neuf n'est
+  // révélé : tout le monde les a vues pendant l'annonce, c'est la manche qui
+  // est ainsi. Seule la mienne reste hors de cette liste, elle est dans ma
+  // main.
   const base = {
     phase: room.phase,
     myId: p.id,
@@ -518,7 +525,9 @@ function stateFor(room, p) {
       // phase d'annonce ; une fois révélées (phase 'playing' et après),
       // elles sont toutes visibles d'un coup, jamais avant.
       bid: room.bids && (!bidding || pp.id === p.id) ? room.bids[pp.id] : undefined,
-      revealedCard: blindRound1 && pp.id !== p.id && pp.hand && pp.hand[0] ? pp.hand[0] : undefined,
+      revealedCard: inRound && roundNumber(room) === 1 && pp.id !== p.id && pp.hand && pp.hand[0]
+        ? pp.hand[0]
+        : undefined,
     })),
     // Historique du chat : renvoyé avec l'état pour qu'une reconnexion ou un
     // arrivant en cours de partie retrouve la conversation.

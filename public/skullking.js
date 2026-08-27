@@ -2004,15 +2004,21 @@ function echelleCouronne(effectif, largeurPleine, L, H) {
 // qui la porte. La mienne rejoint le lot, face cachée — c'est la seule chose
 // que la manche 1 change, et elle se voit mieux ainsi qu'en creux.
 function cartesDeLaManche1(state) {
-  if (state.phase !== 'bidding') return [];
+  if (state.roundNumber !== 1) return [];
+  // Celles qui sont déjà posées viennent du pli, pas d'ici : sans quoi la
+  // même carte se dessinerait deux fois, une fois jouée et une fois en
+  // attente, au même endroit.
+  const posees = new Set((state.currentTrick || []).map((t) => t.playerId));
   const cartes = state.players
-    .filter((p) => p.revealedCard)
-    .map((p) => ({ playerId: p.id, card: p.revealedCard }));
+    .filter((p) => p.revealedCard && !posees.has(p.id))
+    .map((p) => ({ playerId: p.id, card: p.revealedCard, enAttente: true }));
   if (!cartes.length) return [];
-  // La mienne : le serveur ne m'en envoie que l'id (voir stateFor), ce qui
-  // est exactement ce qu'il faut pour poser un dos de carte.
+  // La mienne, mais seulement pendant l'annonce, où elle est un dos de carte
+  // (le serveur ne m'en envoie que l'id, voir stateFor). Dès que la phase de
+  // jeu s'ouvre elle m'est révélée et rejoint mon éventail : c'est de là que
+  // je la pose, elle n'a plus à être sur le tapis en double.
   const mienne = (state.hand || []).find((c) => c.kind === 'hidden');
-  if (mienne) cartes.push({ playerId: myId, card: mienne });
+  if (state.phase === 'bidding' && mienne) cartes.push({ playerId: myId, card: mienne, enAttente: true });
   return cartes;
 }
 
@@ -2054,7 +2060,10 @@ let empreinteRendue = null;
 
 function renderTrick(state) {
   const { map } = seatLayout(state);
-  const trick = state.currentTrick && state.currentTrick.length ? state.currentTrick : cartesDeLaManche1(state);
+  // Le pli, plus ce que la manche 1 laisse en attente sur le tapis : les deux
+  // cohabitent, une carte posée ne fait que passer d'un lot à l'autre. C'est
+  // ce qui empêche le tapis de se vider d'un coup entre l'annonce et le jeu.
+  const trick = [...(state.currentTrick || []), ...cartesDeLaManche1(state)];
 
   const boite = tableEl.getBoundingClientRect();
 
@@ -2157,6 +2166,12 @@ function renderTrick(state) {
     // contre-intuitive pour être redevinée ici, et elle a des coins — un
     // 0/14 déclaré à 0 en fait partie sous la Raie.
     if (neutralisees.has(t.card.id)) slot.classList.add('sk-trick-card--neutralisee');
+    // Manche 1 : une carte encore en main de son porteur est montrée à sa
+    // place mais ne compte pas dans le pli — elle ne peut donc pas mener, ni
+    // être éteinte par un monstre. Pendant l'annonce, toutes le sont et il
+    // n'y a rien à distinguer ; pendant le jeu, la marque dit lesquelles sont
+    // vraiment tombées.
+    if (t.enAttente && state.phase === 'playing') slot.classList.add('sk-trick-card--en-attente');
     // De qui est la carte, en clair : le ciblage de la Planche s'en sert
     // pour annoncer sa cible à un lecteur d'écran, qui ne voit ni le tapis
     // ni de qui la carte est voisine.
@@ -2770,6 +2785,50 @@ function renderTurnIndicator(state) {
   } else {
     turnIndicator.innerHTML = `${suitDot(led)} À toi de jouer — tu n'as pas de <b>${led}</b>, joue ce que tu veux`;
   }
+}
+
+// --- Manche 1 : la carte se pose toute seule -----------------------------
+// Une seule carte en main, et l'annonce est faite : il n'y a plus rien à
+// décider. Le clic ne disait rien que l'état ne sût déjà, il ne faisait
+// qu'attendre. On la pose donc, après un temps de lecture — le tapis porte
+// encore toutes les cartes de la manche, c'est le moment où on les compare.
+//
+// Quatre cartes gardent leur clic, parce qu'elles demandent une DÉCLARATION
+// et pas un choix de carte : la Tigresse (Pirate ou Fuite), le 0/14 (0 ou
+// 14), le Joker (sa couleur) et Marcher sur la Planche (sa cible). Les
+// poser d'office déciderait à la place du joueur.
+const MANCHE1_LECTURE_MS = 900;
+let carteAutoJouee = null;
+let carteAutoTimer = null;
+
+function demandeUneDeclaration(card) {
+  if (card.kind === 'tigress' || card.kind === 'wild15' || card.kind === 'plank') return true;
+  return card.kind === 'number' && card.wild14 && card.value == null;
+}
+
+function poserSeuleEnManche1(state) {
+  // Toute sortie de la phase de jeu remet le garde à zéro : les identifiants
+  // de carte sont refaits à chaque donne (s0, s1, …) et reviennent donc d'une
+  // manche à l'autre. Sans ce reset, une carte portant un identifiant déjà
+  // posé automatiquement ne le serait plus jamais.
+  if (state.phase !== 'playing') {
+    carteAutoJouee = null;
+    clearTimeout(carteAutoTimer);
+    return;
+  }
+  if (state.roundNumber !== 1 || state.trickPaused || !state.isMyTurn) return;
+  const main = state.hand || [];
+  if (main.length !== 1) return;
+  const carte = main[0];
+  if (carte.id === carteAutoJouee || demandeUneDeclaration(carte)) return;
+  carteAutoJouee = carte.id;
+  clearTimeout(carteAutoTimer);
+  carteAutoTimer = setTimeout(() => {
+    // L'état a pu changer pendant l'attente (reconnexion, pli ramassé) : on
+    // relit avant de poser plutôt que de faire refuser la carte par le serveur.
+    const s = latestState;
+    if (s && s.phase === 'playing' && s.isMyTurn && !s.trickPaused) playCard(carte.id);
+  }, MANCHE1_LECTURE_MS);
 }
 
 function hideAllChoicePanels() {
@@ -3761,6 +3820,7 @@ function renderGame(state) {
   renderBidChoices(state);
   renderHand(state);
   renderScoreboard(state);
+  poserSeuleEnManche1(state);
   // En dernier : le feutre vient d'être mis à sa taille, c'est le moment où
   // le mesurer donne la bonne réponse.
   publierCentreDuPlateau();

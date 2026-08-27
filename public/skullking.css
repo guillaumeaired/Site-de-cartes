@@ -1726,6 +1726,17 @@ h3 {
     0 10px 22px rgba(0, 0, 0, 0.6);
 }
 
+/* Manche 1, pendant le jeu : la carte est sur le tapis depuis l'annonce mais
+   son porteur ne l'a pas encore posée. Elle est là, lisible, à sa place — le
+   tapis ne se vide plus entre l'annonce et le jeu — mais elle ne compte pas
+   encore dans le pli. Un cran plus petite et à peine effacée : assez pour que
+   « déjà tombée » se distingue de « va tomber », pas assez pour qu'on croie
+   qu'il lui manque quelque chose. */
+.sk-trick-card--en-attente {
+  --sk-gagne: 0.9;
+  opacity: 0.86;
+}
+
 /* Mises hors course par la Baleine blanche ou la Raie Tachetée. Ces deux-là
    annulent toutes les cartes spéciales du pli : un Pirate, un Skull King, une
    Sirène posés sous elles ne valent plus rien, et rien ne le disait — un

@@ -54,14 +54,26 @@ const BALEINE = PHASE === 'baleine';
 const TIGRESSE = P.get('tigresse');
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
 const MANCHE1 = P.get('manche') === '1';
+// ?manche=1&joues=2 : la manche 1 une fois l'annonce faite, deux cartes
+// posées et les autres encore en attente sur le tapis. C'est la seule
+// disposition où des cartes jouées et des cartes en attente cohabitent.
+const MANCHE1_EN_JEU = MANCHE1 && P.get('joues') !== null;
 
 // --- Le bouchon de socket ---------------------------------------------
 const auditeurs = new Map();
+const envois = [];
 window.io = () => ({
   connected: true,
   id: 'apercu',
   on(evt, cb) { (auditeurs.get(evt) || auditeurs.set(evt, []).get(evt) || auditeurs.get(evt)).push(cb); },
-  emit() {},
+  // Ce que le client ENVOIE est aussi une sortie à vérifier : la manche 1 se
+  // joue toute seule, et rien à l'écran ne le prouve — la carte partirait au
+  // même endroit si elle avait été cliquée. Les envois sont donc reflétés sur
+  // la racine du document, où une capture du DOM les lit.
+  emit(evt, payload) {
+    envois.push(evt + (payload && payload.cardId ? ':' + payload.cardId : ''));
+    document.documentElement.dataset.envois = envois.join(' ');
+  },
 });
 function emettre(evt, payload) { (auditeurs.get(evt) || []).forEach((cb) => cb(payload)); }
 
@@ -141,14 +153,16 @@ const pli = SALVE
 // donne à voir celle de chacun des autres. Voir stateFor.
 if (MANCHE1) {
   joueurs.forEach((p, i) => {
-    if (i > 0) p.revealedCard = carte(i);
-    p.bid = undefined;
-    p.hasBid = i % 2 === 0;
+    // Une carte posée quitte la liste des cartes montrées : elle est dans le
+    // pli. C'est exactement ce que fait stateFor.
+    if (i > 0 && !(MANCHE1_EN_JEU && i < JOUES)) p.revealedCard = carte(i);
+    p.bid = MANCHE1_EN_JEU ? 1 : undefined;
+    p.hasBid = MANCHE1_EN_JEU || i % 2 === 0;
   });
 }
 
 const etat = {
-  phase: MANCHE1 || PHASE === 'bidding' ? 'bidding' : 'playing',
+  phase: MANCHE1 && !MANCHE1_EN_JEU ? 'bidding' : PHASE === 'bidding' ? 'bidding' : 'playing',
   myId: 'p0',
   isHost: true,
   players: joueurs,
@@ -161,13 +175,15 @@ const etat = {
   extensions: [],
   deckStyle: 'classique',
   lootAllies: [],
-  hand: MANCHE1
+  hand: MANCHE1_EN_JEU
+    ? (JOUES > 0 ? [] : [carte(0)])
+    : MANCHE1
     ? [{ id: 'c-moi', kind: 'hidden' }]
     : PLANCHE
       ? [{ id: 'ma-planche', kind: 'plank', ext: true }, carte(11), carte(12)]
       : Array.from({ length: 6 }, (_, i) => carte(i + 10)),
-  myBid: MANCHE1 ? undefined : 2,
-  currentTrick: MANCHE1 ? [] : pli,
+  myBid: MANCHE1 && !MANCHE1_EN_JEU ? undefined : 2,
+  currentTrick: MANCHE1_EN_JEU ? pli.slice(0, JOUES) : MANCHE1 ? [] : pli,
   turnPlayerId: PLANCHE ? 'p0' : `p${JOUES % N}`,
   isMyTurn: PLANCHE === 'cible' || JOUES === 0,
   trickNumber: 3,
