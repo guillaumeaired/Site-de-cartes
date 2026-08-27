@@ -76,17 +76,33 @@
             <p id="sk-deck-hint" class="hint sk-deck-hint"></p>
           </div>
 
-          <button id="sk-btn-extension" class="sk-extension-toggle" type="button" aria-pressed="false">
-            <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
-            <span class="sk-extension-toggle-label">Jouer avec l'extension</span>
-          </button>
-          <p id="sk-extension-hint" class="hint sk-extension-hint"></p>
-
           <div id="sk-rounds-field" class="sk-rounds-field">
             <p class="invite-label">Nombre de manches</p>
             <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
             <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
           </div>
+        </div>
+
+        <!-- L'extension a sa propre planche : c'était un interrupteur unique
+             qui ajoutait dix-neuf cartes d'un coup, ce sont maintenant huit
+             lignes qu'on ouvre séparément. Posées sous les Réglages elles
+             auraient noyé les manches et le paquet ; à côté, elles se lisent
+             comme ce qu'elles sont — le contenu du paquet, pas un réglage de
+             partie. La grille s'enroule d'elle-même quand la place manque. -->
+        <div class="sk-lobby-col sk-ext-card">
+          <p class="invite-label sk-lobby-col-title">Extension officielle</p>
+
+          <button id="sk-btn-extension" class="sk-extension-toggle sk-ext-master" type="button" aria-pressed="false">
+            <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+            <span class="sk-extension-toggle-label">Tout activer</span>
+          </button>
+
+          <ul id="sk-ext-list" class="sk-ext-list"></ul>
+
+          <!-- Ce que pèse le paquet, et donc combien de monde peut s'asseoir :
+               c'est la seule conséquence des huit lignes qui ne se devine pas
+               en les lisant. -->
+          <p id="sk-extension-hint" class="hint sk-ext-tally"></p>
         </div>
 
         <div class="sk-lobby-col sk-lobby-col--crew">
@@ -253,7 +269,12 @@
     <section id="sk-screen-end" class="screen hidden">
       <div class="sk-end-head">
         <img class="sk-end-logo" src="assets/skin/logo-skullking-v.webp" alt="Skull King" width="1291" height="844" />
-        <h2 id="sk-end-title"></h2>
+        <!-- La pièce du vainqueur au-dessus de son nom, comme à son siège et
+             sur la roue : c'est le médaillon qu'on a suivi toute la partie. -->
+        <div class="sk-end-verdict">
+          <img id="sk-end-winner-piece" class="sk-end-winner-piece hidden" src="" alt="" aria-hidden="true" />
+          <h2 id="sk-end-title"></h2>
+        </div>
       </div>
 
       <!-- Le récap se lit en deux colonnes en paysage : le verdict à gauche
@@ -288,6 +309,16 @@
 
   </main>
 
+  <!-- La courbe agrandie : même tracé que la vignette du récap, mais avec
+       le quadrillage et les valeurs des deux axes. -->
+  <div id="sk-curve-modal" class="modal hidden">
+    <div class="modal-content sk-curve-content">
+      <h2>Évolution des scores</h2>
+      <div id="sk-curve-modal-body" class="sk-curve-modal-body"></div>
+      <button id="sk-btn-close-curve" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
+
   <div id="sk-history-modal" class="modal hidden">
     <div class="modal-content sk-history-content">
       <h2>Manches précédentes</h2>
@@ -311,7 +342,7 @@
         <li><strong>Kraken :</strong> détruit le pli, personne ne le gagne. Le pli suivant est mené par qui aurait gagné sans lui.</li>
         <li><strong>Baleine blanche :</strong> annule l'effet de toutes les cartes spéciales du pli — seule la valeur numérique compte (le noir perd son atout). Si le pli n'a que des spéciales, il est détruit et c'est le joueur qui a entamé le pli qui mène le suivant.</li>
         <li><strong>Pouvoirs des 5 pirates</strong> (déclenchés s'ils remportent le pli avec leur propre carte — ou si le Skull King les capture, il hérite alors du pouvoir ; survole une carte Pirate pour voir son pouvoir) : Rosie D'Laney choisit qui entame le pli suivant, Will le Bandit pioche 2 cartes et en défausse 2, Rascal le Flambeur peut miser 10 ou 20 points de plus sur son annonce, Juanita Jade regarde les cartes non distribuées, Harry le Géant modifie sa propre annonce de ±1. Sur le tout dernier pli d'une manche, seul le pouvoir de Harry se déclenche encore ; les 4 autres sont désactivés.</li>
-        <li><strong>Extension officielle (facultative, activable par l'hôte dans le salon d'attente) :</strong> 12 numérotées de plus (7/8/0-14 par couleur), un Joker/Wild 15, et 6 nouvelles cartes spéciales (Mary Thorne, Mat le Forban, Raie Tachetée, Dernière Salve, Marcher sur la Planche, Coffre de Davy Jones) — survole chaque carte en jeu pour voir son effet en détail. Jusqu'à 9 joueurs avec l'extension activée (au lieu de 7).</li>
+        <li><strong>Extension officielle (facultative, réglée par l'hôte dans le salon d'attente) :</strong> 12 numérotées de plus (7/8/0-14 par couleur), un Joker/Wild 15, et 6 nouvelles cartes spéciales (Mary Thorne, Mat le Forban, Raie Tachetée, Dernière Salve, Marcher sur la Planche, Coffre de Davy Jones) — survole chaque carte en jeu pour voir son effet en détail. Chacune s'active séparément : on peut prendre les monstres sans les numérotées, ou l'inverse. Le nombre de joueurs suit le paquet — 7 sans rien, jusqu'à 9 avec tout.</li>
         <li>La partie peut s'arrêter avant la fin des 10 manches, à la discrétion de l'hôte : classement sur le score accumulé jusque-là.</li>
       </ol>
       <button id="sk-btn-close-rules" class="btn btn-primary">Compris !</button>

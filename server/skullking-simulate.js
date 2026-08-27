@@ -17,6 +17,7 @@ const {
   clampRounds,
   MIN_ROUNDS,
   MAX_ROUNDS,
+  EXTENSION_KEYS,
 } = require('./skullking');
 
 let passed = 0;
@@ -282,9 +283,40 @@ check('breakdown : contrat 0 réussi', computeRoundScoreBreakdown(0, 0, 4, 0), {
   check('extension : 1 Coffre de Davy Jones', extDeck.filter((c) => c.kind === 'davyjones').length, 1);
 }
 
+// --- Extensions à la carte ---
+// Chaque ligne du salon n'ajoute QUE ses cartes : c'est ce qui permet de
+// jouer avec les monstres sans les numérotées, ou l'inverse.
+{
+  const seulesNum = createDeck(['numerotees']);
+  check('à la carte : les numérotées seules font 86 cartes', seulesNum.length, 86);
+  check('à la carte : pas de Joker sans sa ligne', seulesNum.filter((c) => c.kind === 'wild15').length, 0);
+  check('à la carte : 5 pirates tant que Mary Thorne est éteinte', seulesNum.filter((c) => c.kind === 'pirate').length, 5);
+
+  const seuleMary = createDeck(['marythorne']);
+  check('à la carte : Mary Thorne seule fait 75 cartes', seuleMary.length, 75);
+  check('à la carte : Mary Thorne est le 6e pirate', seuleMary.filter((c) => c.kind === 'pirate').length, 6);
+  check('à la carte : aucune numérotée d\'extension sans sa ligne', seuleMary.filter((c) => c.ext).length, 0);
+
+  const monstres = createDeck(['stingray', 'davyjones']);
+  check('à la carte : deux monstres font 76 cartes', monstres.length, 76);
+  check('à la carte : la Raie répond présente', monstres.filter((c) => c.kind === 'stingray').length, 1);
+  check('à la carte : la Salve reste au vestiaire', monstres.filter((c) => c.kind === 'lastvolley').length, 0);
+
+  // Les huit clés, cochées une à une, doivent refaire le paquet complet.
+  check('à la carte : les huit lignes refont les 93 cartes', createDeck(EXTENSION_KEYS).length, 93);
+  check('à la carte : une clé inconnue ne fait rien', createDeck(['inexistant']).length, 74);
+  check('à la carte : l\'objet du salon est compris aussi', createDeck({ joker: true, plank: false }).length, 75);
+}
+
 // --- Plafond de joueurs ---
+// Ce n'est pas une constante mais une division : la manche 10 se joue à 10
+// cartes par joueur, donc le paquet divisé par 10 dit combien de monde peut
+// s'asseoir. Les deux valeurs historiques doivent en ressortir intactes.
 check('extension : plafond 7 joueurs sans extension', maxPlayersFor(false), 7);
 check('extension : plafond 9 joueurs avec extension', maxPlayersFor(true), 9);
+check('à la carte : les numérotées seules ouvrent un 8e siège', maxPlayersFor(['numerotees']), 8);
+check('à la carte : une seule carte de plus ne suffit pas à un 8e siège', maxPlayersFor(['joker']), 7);
+check('à la carte : le plafond ne dépasse jamais 9', maxPlayersFor(EXTENSION_KEYS), 9);
 
 // --- Mat le Forban (First Mate Con) ---
 check('Mat le Forban bat un Pirate classique', winnerIdx([pirate(), firstmate()]), 1);

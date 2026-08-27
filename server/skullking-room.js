@@ -12,6 +12,10 @@ const {
   MAX_PLAYERS,
   PIRATE_POWER_BY_NAME,
   maxPlayersFor,
+  deckSizeFor,
+  EXTENSION_MODULES,
+  EXTENSION_KEYS,
+  extensionSet,
   buildRoundSequence,
   MIN_ROUNDS,
   MAX_ROUNDS,
@@ -33,6 +37,16 @@ const { recordGameStarted } = require('./play-counts');
 // cartes change côté client. Le serveur ne fait que le garder et le
 // diffuser, pour que tout le monde autour du tapis voie le même jeu.
 const DECK_STYLES = ['classique', 'perso'];
+
+// Les extensions actives d'une salle, en objet plat prêt à partir dans un
+// message : c'est cette forme que la planche du salon coche. Passe par
+// extensionSet pour qu'une salle d'avant la découpe — qui portait un simple
+// booléen — se relise sans conversion : `true` veut dire les huit.
+function extensionsOf(room) {
+  const source = room && (room.extensions !== undefined ? room.extensions : room.extensionEnabled);
+  const actives = extensionSet(source);
+  return Object.fromEntries(EXTENSION_KEYS.map((key) => [key, actives.has(key)]));
+}
 const DEFAULT_DECK_STYLE = 'classique';
 
 function sanitizeDeckStyle(style) {
@@ -273,7 +287,8 @@ function setBotAdapter(adapter) {
 }
 
 function broadcastLobby(io, room) {
-  const maxPlayers = maxPlayersFor(room.extensionEnabled);
+  const extensions = extensionsOf(room);
+  const maxPlayers = maxPlayersFor(extensions);
   for (const p of room.players) {
     io.to(p.id).emit('skullking-lobby-update', {
       code: room.code,
@@ -290,10 +305,18 @@ function broadcastLobby(io, room) {
       canStart: room.players.length >= MIN_PLAYERS && room.players.length <= maxPlayers,
       minPlayers: MIN_PLAYERS,
       maxPlayers,
-      // Le switch est cliquable seulement par l'hôte (imposé aussi côté
-      // serveur dans le handler dédié) ; tous les autres le voient en
-      // lecture seule via ce même champ.
-      extensionEnabled: Boolean(room.extensionEnabled),
+      // Les extensions sont cliquables seulement par l'hôte (imposé aussi
+      // côté serveur dans les handlers dédiés) ; tous les autres les voient
+      // en lecture seule via ces mêmes champs. La liste des modules part
+      // avec l'état plutôt que d'être recopiée dans l'écran : elle décide du
+      // libellé, du nombre de cartes et de l'ordre des lignes, et le salon
+      // n'a plus qu'à la dérouler.
+      extensions,
+      extensionModules: EXTENSION_MODULES,
+      // La taille du paquet est calculée là où il se construit : l'écran la
+      // recopierait sinon à partir des lignes cochées, et les deux comptes
+      // finiraient par diverger le jour où une carte change de camp.
+      deckSize: deckSizeFor(extensions),
       // Le paquet : même régime que le switch d'extension — choisi par
       // l'hôte, vu en lecture seule par les autres.
       deckStyle: sanitizeDeckStyle(room.deckStyle),
@@ -329,7 +352,7 @@ function allBidsIn(room) {
 
 function startRound(io, room) {
   const cardsInRound = room.roundSequence[room.roundIndex];
-  const { hands, residualPile } = dealRound(room.players.length, cardsInRound, room.extensionEnabled);
+  const { hands, residualPile } = dealRound(room.players.length, cardsInRound, extensionsOf(room));
   room.players.forEach((p, i) => {
     p.hand = hands[i];
     p.tricksWon = 0;
@@ -434,7 +457,10 @@ function stateFor(room, p) {
     totalRounds: room.roundSequence.length,
     cardsInRound: room.cardsInRound,
     scoreboard: scoreboard(room),
-    extensionEnabled: Boolean(room.extensionEnabled),
+    // Les extensions retenues : elles ne changent plus une fois la partie
+    // lancée, mais un joueur qui se reconnecte n'a peut-être jamais vu le
+    // salon — et les règles affichées en cours de partie s'y accordent.
+    extensions: extensionsOf(room),
     // Le paquet retenu dans le salon : il habille les cartes jusqu'à la fin
     // de la partie, y compris pour un joueur qui se reconnecte en cours de
     // route et n'a jamais vu le salon.
@@ -936,7 +962,9 @@ function registerSkullKingHandlers(io, socket) {
       code,
       phase: 'lobby',
       hostId: socket.id,
-      extensionEnabled: false,
+      // Aucune extension au départ : le paquet de base, celui des règles
+      // que tout le monde connaît. L'hôte ouvre ce qu'il veut, ligne à ligne.
+      extensions: Object.fromEntries(EXTENSION_KEYS.map((key) => [key, false])),
       deckStyle: DEFAULT_DECK_STYLE,
       totalRounds: MAX_ROUNDS,
       players: [
@@ -974,7 +1002,7 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, 'Cette partie a déjà commencé.');
       return;
     }
-    const maxPlayers = maxPlayersFor(room.extensionEnabled);
+    const maxPlayers = maxPlayersFor(extensionsOf(room));
     if (room.players.length >= maxPlayers) {
       sendError(socket, `Cette partie est complète (${maxPlayers} joueurs max).`);
       return;
@@ -1001,19 +1029,39 @@ function registerSkullKingHandlers(io, socket) {
     broadcastLobby(io, room);
   });
 
-  // Le switch d'extension : seul l'hôte peut le basculer, uniquement en
-  // lobby (verrouillé dès que la partie démarre, room.extensionEnabled
-  // n'est plus modifié nulle part ailleurs). Diffusé à tous via
-  // broadcastLobby comme le reste de l'état du salon, pas de système de
-  // sync dédié.
+  // L'interrupteur maître : tout ou rien d'un geste. Il n'allume les huit
+  // que s'il en manquait au moins une — sinon il éteint tout. C'est le geste
+  // qu'on fait neuf fois sur dix, les lignes servant ensuite à s'écarter du
+  // bloc. Diffusé à tous via broadcastLobby comme le reste de l'état du
+  // salon, pas de système de sync dédié.
   socket.on('skullking-toggle-extension', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
-    room.extensionEnabled = !room.extensionEnabled;
-    // Si l'extension vient d'être désactivée et que la salle dépassait déjà
-    // le plafond de base, on laisse l'hôte constater l'incompatibilité via
-    // canStart plutôt que d'expulser qui que ce soit.
+    const actives = extensionsOf(room);
+    const toutes = EXTENSION_KEYS.every((key) => actives[key]);
+    room.extensions = Object.fromEntries(EXTENSION_KEYS.map((key) => [key, !toutes]));
+    // Si des extensions viennent d'être coupées et que la salle dépassait
+    // déjà le plafond que le paquet réduit permet, on laisse l'hôte
+    // constater l'incompatibilité via canStart plutôt que d'expulser qui que
+    // ce soit.
+    broadcastLobby(io, room);
+  });
+
+  // Une extension à la fois : même régime que le maître — hôte seulement,
+  // lobby seulement (verrouillé dès que la partie démarre, room.extensions
+  // n'est plus modifié nulle part ailleurs). Une clé inconnue est ignorée
+  // plutôt que ramenée à une valeur par défaut : un message malformé ne doit
+  // pas changer un réglage sous les yeux de l'hôte.
+  socket.on('skullking-toggle-extension-module', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    const key = payload && payload.module;
+    if (!EXTENSION_KEYS.includes(key)) return;
+    const actives = extensionsOf(room);
+    actives[key] = !actives[key];
+    room.extensions = actives;
     broadcastLobby(io, room);
   });
 
@@ -1106,7 +1154,7 @@ function registerSkullKingHandlers(io, socket) {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby' || !bots) return;
     if (socket.id !== room.hostId) return;
-    if (room.players.length >= maxPlayersFor(room.extensionEnabled)) return;
+    if (room.players.length >= maxPlayersFor(extensionsOf(room))) return;
     if (bots.addBot(io, room, registerSkullKingHandlers)) broadcastLobby(io, room);
   });
 
@@ -1114,7 +1162,7 @@ function registerSkullKingHandlers(io, socket) {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby') return;
     if (socket.id !== room.hostId) return;
-    const maxPlayers = maxPlayersFor(room.extensionEnabled);
+    const maxPlayers = maxPlayersFor(extensionsOf(room));
     if (room.players.length < MIN_PLAYERS || room.players.length > maxPlayers) return;
     recordGameStarted('skullking');
     startGame(io, room);

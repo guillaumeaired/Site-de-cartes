@@ -30,8 +30,50 @@ const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 7; // le deck de base (74 cartes) suffit pour 7 joueurs à la manche 10 (70 cartes)
 const MAX_PLAYERS_EXTENDED = 9; // deck étendu (93 cartes) : 9 joueurs à la manche 10 = 90 cartes
 
-function maxPlayersFor(extensionEnabled) {
-  return extensionEnabled ? MAX_PLAYERS_EXTENDED : MAX_PLAYERS;
+// L'extension officielle n'est plus un bloc : chacun de ses apports s'active
+// séparément dans le salon. Une table plutôt qu'une suite de booléens, parce
+// qu'elle sert trois fois — construire le paquet, compter ce que chaque ligne
+// ajoute, et remplir la planche du salon sans que l'écran ait à redire les
+// libellés. L'ordre est celui de la planche : le plus courant en premier.
+const EXTENSION_MODULES = [
+  { key: 'numerotees', label: 'Les 7, 8 et 0/14', cards: 12 },
+  { key: 'joker', label: 'Le Joker', cards: 1 },
+  { key: 'marythorne', label: 'Mary Thorne', cards: 1 },
+  { key: 'firstmate', label: 'Mat le Forban', cards: 1 },
+  { key: 'stingray', label: 'La Raie Tachetée', cards: 1 },
+  { key: 'lastvolley', label: 'La Dernière Salve', cards: 1 },
+  { key: 'plank', label: 'Marcher sur la Planche', cards: 1 },
+  { key: 'davyjones', label: 'Le Coffre de Davy Jones', cards: 1 },
+];
+const EXTENSION_KEYS = EXTENSION_MODULES.map((m) => m.key);
+
+// Ce que les fonctions du paquet acceptent : le jeu de clés, mais aussi
+// l'ancien booléen « tout ou rien ». Les appels internes et les tests
+// continuent de dire `true`, et une salle enregistrée avant la découpe se
+// relit sans conversion.
+function extensionSet(extensions) {
+  if (extensions === true) return new Set(EXTENSION_KEYS);
+  if (!extensions) return new Set();
+  const brutes = extensions instanceof Set || Array.isArray(extensions)
+    ? [...extensions]
+    : EXTENSION_KEYS.filter((key) => extensions[key]);
+  return new Set(brutes.filter((key) => EXTENSION_KEYS.includes(key)));
+}
+
+// Le plafond de joueurs n'est pas une constante mais une division. La manche
+// 10 se joue à 10 cartes par joueur : c'est elle qui charge le plus le
+// paquet, et c'est donc elle qui décide combien de monde peut s'asseoir. 74
+// cartes donnent 7 joueurs, 93 en donnent 9 — exactement les deux valeurs
+// qu'on écrivait à la main tant que l'extension était indivisible. Écrite
+// ainsi, la règle continue de tomber juste sur une extension à la carte :
+// n'ajouter que les douze numérotées fait 86 cartes, donc 8 joueurs.
+function deckSizeFor(extensions) {
+  return createDeck(extensions).length;
+}
+
+function maxPlayersFor(extensions) {
+  const cartes = deckSizeFor(extensions);
+  return Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS_EXTENDED, Math.floor(cartes / MAX_ROUNDS)));
 }
 
 // Nombre de manches : réglable par l'hôte dans le salon. La manche N se joue
@@ -59,7 +101,8 @@ function buildRoundSequence(total = MAX_ROUNDS) {
 // Joker/Wild 15, +1 Mary Thorne (comptée dans la boucle des pirates
 // ci-dessus), +1 Mat le Forban, +1 Raie Tachetée, +1 Dernière Salve, +1
 // Marcher sur la Planche, +1 Coffre de Davy Jones = +19 cartes (93 total).
-function createDeck(extensionEnabled) {
+function createDeck(extensions) {
+  const ext = extensionSet(extensions);
   const deck = [];
   let uid = 0;
   for (const suit of SUITS) {
@@ -71,7 +114,7 @@ function createDeck(extensionEnabled) {
   // que par leur illustration, d'où ce numéro de variante — sans lui, le
   // paquet classique poserait deux fois la même sirène sur le tapis.
   for (let i = 0; i < 2; i++) deck.push({ id: `s${uid++}`, kind: 'siren', variant: i + 1 });
-  const pirateNames = extensionEnabled ? [...PIRATE_NAMES, EXTENSION_PIRATE_NAME] : PIRATE_NAMES;
+  const pirateNames = ext.has('marythorne') ? [...PIRATE_NAMES, EXTENSION_PIRATE_NAME] : PIRATE_NAMES;
   for (const name of pirateNames) deck.push({ id: `s${uid++}`, kind: 'pirate', name });
   deck.push({ id: `s${uid++}`, kind: 'skullking' });
   for (let i = 0; i < 5; i++) deck.push({ id: `s${uid++}`, kind: 'escape' });
@@ -80,7 +123,7 @@ function createDeck(extensionEnabled) {
   deck.push({ id: `s${uid++}`, kind: 'kraken' });
   deck.push({ id: `s${uid++}`, kind: 'whale' });
 
-  if (extensionEnabled) {
+  if (ext.has('numerotees')) {
     for (const suit of SUITS) {
       deck.push({ id: `s${uid++}`, kind: 'number', suit, value: 7, ext: true });
       deck.push({ id: `s${uid++}`, kind: 'number', suit, value: 8, ext: true });
@@ -91,15 +134,18 @@ function createDeck(extensionEnabled) {
       // jamais .value, seulement .kind et .suit).
       deck.push({ id: `s${uid++}`, kind: 'number', suit, value: null, ext: true, wild14: true });
     }
-    // Joker/Wild 15 : reste toujours jouable en main (kind !== 'number'),
-    // sa couleur/valeur définitive est fixée au moment de la pose.
-    deck.push({ id: `s${uid++}`, kind: 'wild15' });
-    deck.push({ id: `s${uid++}`, kind: 'firstmate' }); // Mat le Forban
-    deck.push({ id: `s${uid++}`, kind: 'stingray' }); // Raie Tachetée
-    deck.push({ id: `s${uid++}`, kind: 'lastvolley' }); // Dernière Salve
-    deck.push({ id: `s${uid++}`, kind: 'plank' }); // Marcher sur la Planche
-    deck.push({ id: `s${uid++}`, kind: 'davyjones' }); // Coffre de Davy Jones
   }
+  // Une carte spéciale absente du paquet emporte sa règle avec elle : toute
+  // la résolution de pli est branchée sur le `kind` de la carte posée, il n'y
+  // a donc rien à débrancher ailleurs quand une ligne du salon est éteinte.
+  // Joker/Wild 15 : reste toujours jouable en main (kind !== 'number'),
+  // sa couleur/valeur définitive est fixée au moment de la pose.
+  if (ext.has('joker')) deck.push({ id: `s${uid++}`, kind: 'wild15' });
+  if (ext.has('firstmate')) deck.push({ id: `s${uid++}`, kind: 'firstmate' }); // Mat le Forban
+  if (ext.has('stingray')) deck.push({ id: `s${uid++}`, kind: 'stingray' }); // Raie Tachetée
+  if (ext.has('lastvolley')) deck.push({ id: `s${uid++}`, kind: 'lastvolley' }); // Dernière Salve
+  if (ext.has('plank')) deck.push({ id: `s${uid++}`, kind: 'plank' }); // Marcher sur la Planche
+  if (ext.has('davyjones')) deck.push({ id: `s${uid++}`, kind: 'davyjones' }); // Coffre de Davy Jones
   return deck;
 }
 
@@ -108,8 +154,8 @@ function createDeck(extensionEnabled) {
 // pouvoirs de Juanita Jade et Will le Bandit — elles disparaissent ensuite,
 // sans incidence sur les manches suivantes puisque le deck est entièrement
 // recréé à chaque fois.
-function dealRound(playerCount, cardsPerPlayer, extensionEnabled) {
-  const deck = shuffle(createDeck(extensionEnabled));
+function dealRound(playerCount, cardsPerPlayer, extensions) {
+  const deck = shuffle(createDeck(extensions));
   const hands = Array.from({ length: playerCount }, () => []);
   for (let i = 0; i < cardsPerPlayer * playerCount; i++) {
     hands[i % playerCount].push(deck[i]);
@@ -392,6 +438,10 @@ module.exports = {
   MIN_PLAYERS,
   MAX_PLAYERS,
   MAX_PLAYERS_EXTENDED,
+  EXTENSION_MODULES,
+  EXTENSION_KEYS,
+  extensionSet,
+  deckSizeFor,
   MIN_ROUNDS,
   MAX_ROUNDS,
   clampRounds,

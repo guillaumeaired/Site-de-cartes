@@ -813,10 +813,115 @@ h3 {
   transform: translateX(18px);
 }
 
-.sk-extension-hint {
+/* --- La planche des extensions -------------------------------------
+   Huit lignes là où il n'y avait qu'un interrupteur. Le grand bouton reste
+   en tête, mais il ne dit plus « jouer avec l'extension » : il allume ou
+   éteint les huit d'un geste, ce qu'on fait neuf fois sur dix. Les lignes
+   servent à s'écarter du bloc, pas à le composer.
+   -------------------------------------------------------------------- */
+/* La planche des extensions se contente de moins de largeur que les autres :
+   ses libellés sont courts, et ce qu'elle rendait aux Réglages leur manquait
+   — sous 298px la rangée des dix manches laisse le « 10 » retomber seul sur
+   une deuxième ligne. */
+.sk-ext-card {
+  flex: 0.9 1 258px;
   max-width: 300px;
-  margin: 0 auto 6px;
-  font-size: 0.82rem;
+}
+
+.sk-ext-master {
+  width: 100%;
+  margin: 0 0 10px;
+  justify-content: flex-start;
+}
+
+.sk-ext-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid rgba(184, 137, 53, 0.24);
+}
+
+.sk-ext-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 0;
+}
+
+/* L'interrupteur de ligne est le même objet que le grand, en plus petit et
+   sans sa plaque de bois : la planche fait déjà le fond, une deuxième
+   épaisseur par ligne aurait donné huit boutons empilés au lieu d'une
+   liste. Il garde en revanche ses classes d'état — le rail et le bouton
+   dorés viennent tels quels de .sk-extension-toggle--on. */
+.sk-ext-switch {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--sk-cream-2);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.sk-ext-switch:not(:disabled):hover {
+  color: var(--sk-cream);
+}
+
+/* Vu par les autres joueurs : la planche reste lisible mais se retire d'un
+   cran, comme le grand interrupteur et le choix du paquet. C'est le même
+   signal partout dans le salon — ce qui est terni ne se règle pas d'ici. */
+.sk-ext-switch:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.sk-ext-switch .sk-extension-toggle-track {
+  width: 30px;
+  height: 16px;
+}
+
+.sk-ext-switch .sk-extension-toggle-knob {
+  top: 2.5px;
+  left: 2.5px;
+  width: 11px;
+  height: 11px;
+}
+
+.sk-ext-switch.sk-extension-toggle--on .sk-extension-toggle-knob {
+  transform: translateX(14px);
+}
+
+.sk-ext-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ce que la ligne ajoute au paquet. C'est ce chiffre qui explique le pied de
+   planche : douze cartes de plus ouvrent un huitième siège, une seule non. */
+.sk-ext-count {
+  flex-shrink: 0;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-brass-hi);
+  opacity: 0.75;
+}
+
+.sk-ext-tally {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid rgba(184, 137, 53, 0.24);
+  text-align: center;
 }
 
 /* Panneaux de choix au moment de la pose (Joker, 0/14, Marcher sur la
@@ -4075,6 +4180,27 @@ h3 {
   margin-bottom: 10px;
 }
 
+/* Le verdict s'empile : la pièce du vainqueur, puis son nom. C'est la même
+   disposition qu'à son siège et sur la roue — le médaillon annonce le nom,
+   il ne se met pas à côté. */
+.sk-end-verdict {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Portée à la taille d'un trophée, et dorée par un halo de bougie : c'est
+   la pièce qu'on a suivie toute la partie, elle finit en haut de l'écran. */
+.sk-end-winner-piece {
+  display: block;
+  width: 62px;
+  height: 62px;
+  filter:
+    drop-shadow(0 0 10px rgba(250, 204, 21, 0.45))
+    drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+}
+
 /* Une planche par bloc du récap (classement, courbe, faits marquants) :
    même chêne cerclé de laiton que le salon et les parchemins de la table,
    pour qu'aucun de ces trois blocs ne flotte sur le fond. */
@@ -4233,6 +4359,86 @@ h3 {
   border: 1px solid rgba(232, 206, 146, 0.11);
 }
 
+/* La vignette est cliquable : un bouton nu qui ne porte que la courbe, avec
+   la mention « Agrandir » gravée dans un coin. Sans elle, rien ne dit qu'il
+   y a quelque chose derrière — un tracé n'a pas l'air d'un bouton. */
+.sk-curve-zoom {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  cursor: zoom-in;
+  position: relative;
+  font: inherit;
+  color: inherit;
+}
+
+.sk-curve-zoom:hover .sk-curve,
+.sk-curve-zoom:focus-visible .sk-curve {
+  border-color: rgba(232, 206, 146, 0.34);
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.sk-curve-zoom:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: 2px;
+}
+
+.sk-curve-loupe {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sk-brass-hi);
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.34);
+  opacity: 0.5;
+  transition: opacity 0.16s;
+}
+
+.sk-curve-zoom:hover .sk-curve-loupe,
+.sk-curve-zoom:focus-visible .sk-curve-loupe {
+  opacity: 1;
+}
+
+/* Le quadrillage de la version agrandie : un fond de plan, pas un tracé. Il
+   doit se voir assez pour qu'on suive une valeur jusqu'à la marge, et pas
+   plus — sinon il concurrence les lignes des joueurs. */
+.sk-curve-grid {
+  stroke: rgba(232, 206, 146, 0.13);
+  stroke-width: 1;
+}
+
+.sk-curve-axis {
+  stroke: rgba(232, 206, 146, 0.42);
+  stroke-width: 1.4;
+}
+
+.sk-curve-axis-name {
+  fill: rgba(232, 206, 146, 0.6);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-anchor: middle;
+}
+
+/* Un point par manche, agrandie : c'est ce qui permet de poser une valeur
+   sur une graduation, et de la nommer au survol. */
+.sk-curve-dot {
+  stroke: rgba(10, 6, 3, 0.75);
+  stroke-width: 1;
+}
+
 .sk-curve-line {
   fill: none;
   stroke-width: 2.2;
@@ -4279,6 +4485,49 @@ h3 {
 
 .sk-curve-round {
   text-anchor: middle;
+}
+
+/* Agrandie, la courbe est lue de plus loin : les chiffres des axes doivent
+   suivre, sinon le quadrillage porte des valeurs illisibles. */
+.sk-curve--grand .sk-curve-tick,
+.sk-curve--grand .sk-curve-round {
+  fill: rgba(232, 206, 146, 0.8);
+  font-size: 13px;
+}
+
+.sk-curve--grand .sk-curve-line {
+  stroke-width: 3;
+}
+
+.sk-curve--grand .sk-curve-line--me {
+  stroke-width: 4.6;
+}
+
+/* --- La planche agrandie ------------------------------------------- */
+.sk-curve-content {
+  max-width: min(1120px, 94vw);
+}
+
+.sk-curve-modal-body {
+  margin-bottom: 16px;
+}
+
+.sk-curve-modal-body .sk-curve {
+  border-radius: 6px;
+}
+
+.sk-curve-modal-body .sk-curve-legend {
+  margin-top: 10px;
+}
+
+.sk-curve-modal-body .sk-curve-key {
+  font-size: 0.82rem;
+  opacity: 1;
+}
+
+.sk-curve-modal-body .sk-curve-key i {
+  width: 18px;
+  height: 4px;
 }
 
 .sk-curve-legend {
@@ -5530,9 +5779,24 @@ h3 {
   display: none;
 }
 
+/* Sauf sur la planche des extensions. Les autres intertitres nomment une
+   COLONNE, et une colonne n'existe qu'en paysage — empilés, ils redisaient
+   ce que la page montre déjà. Celui-ci nomme un RÉGLAGE, comme « Nombre de
+   manches » : sans lui, huit interrupteurs arrivent sur le téléphone sans
+   qu'aucun mot ne dise de quoi ils parlent. */
+.sk-ext-card .sk-lobby-col-title {
+  display: block;
+  margin: 16px 0 8px;
+}
+
 @media (min-width: 1000px) {
+  /* Le salon tenait sur 1080px tant qu'il portait trois planches. La
+     quatrième — l'extension — les faisait passer à la ligne, et l'équipage
+     se retrouvait seul sur un deuxième rang alors que c'est la planche qu'on
+     regarde le plus. La grille garde son flex-wrap : sous cette largeur elle
+     se replie toute seule, comme avant. */
   .app.sk-app:has(#sk-screen-waiting:not(.hidden)) {
-    max-width: 1080px;
+    max-width: 1320px;
   }
 
   .app.sk-app:has(#sk-screen-end:not(.hidden)) {
@@ -5614,9 +5878,13 @@ h3 {
      quelle pièce) : elle a droit à plus de largeur que les deux autres. */
   /* La rangée des dix manches fait 298px à elle seule : sous cette largeur
      le « 10 » retombe seul sur une deuxième ligne. */
+  /* La rangée des dix manches fait 298px de contenu à elle seule, soit 330px
+     de planche : c'est un plancher, pas une préférence. Il était tenu tant
+     que trois planches se partageaient la largeur ; la quatrième l'a ramené
+     au pixel près, et le « 10 » retombait seul sur une deuxième ligne. */
   .sk-lobby-col--settings {
-    flex: 1.1 1 300px;
-    max-width: 350px;
+    flex: 1.1 1 336px;
+    max-width: 360px;
   }
 
   .sk-lobby-col--crew {
@@ -5624,7 +5892,11 @@ h3 {
     max-width: 400px;
   }
 
-  .sk-lobby-col-title {
+  .sk-lobby-col-title,
+  /* En paysage, l'intertitre de l'extension redevient un intertitre de
+     planche comme les trois autres : même marge, sinon son titre pendrait
+     plus bas que ses voisins. */
+  .sk-ext-card .sk-lobby-col-title {
     display: block;
     margin: 0 0 12px;
   }
@@ -5694,6 +5966,11 @@ h3 {
   #sk-end-title {
     margin: 0;
     font-size: 1.6rem;
+  }
+
+  .sk-end-winner-piece {
+    width: 74px;
+    height: 74px;
   }
 
   .sk-end-grid {

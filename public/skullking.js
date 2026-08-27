@@ -661,6 +661,7 @@ btnAddBot.addEventListener('click', () => socket.emit('skullking-add-bot'));
 const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
+const extList = document.getElementById('sk-ext-list');
 const roundsGrid = document.getElementById('sk-rounds-grid');
 const roundsHint = document.getElementById('sk-rounds-hint');
 const deckGrid = document.getElementById('sk-deck-grid');
@@ -785,6 +786,75 @@ const DECK_CHOICES = [
   },
 ];
 
+// Chaque ligne de la planche des extensions se survole comme une carte : la
+// bulle qui s'ouvre est le texte de règle de la carte elle-même, celui que
+// l'infobulle affiche déjà en jeu. Rien à réécrire, rien à tenir en phase —
+// il suffit de dire quelle carte représente la ligne. Les numérotées font
+// exception : elles en couvrent trois d'un coup.
+const EXTENSION_APERCU = {
+  numerotees: "Ajoute à chaque couleur un 7, un 8 et une carte 0/14. Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5, et le 0/14 se déclare au moment de la pose : 0 perd toujours, 14 est une carte forte.",
+  joker: { kind: 'wild15' },
+  marythorne: { kind: 'pirate', name: 'Mary Thorne' },
+  firstmate: { kind: 'firstmate' },
+  stingray: { kind: 'stingray' },
+  lastvolley: { kind: 'lastvolley' },
+  plank: { kind: 'plank' },
+  davyjones: { kind: 'davyjones' },
+};
+
+// La planche des extensions : un interrupteur maître, puis une ligne par
+// apport. Le maître ne s'allume que si les huit le sont — un interrupteur à
+// moitié allumé mentirait sur ce qu'il y a dans le paquet. Les autres joueurs
+// voient tout en lecture seule, comme le paquet et les manches.
+function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) {
+  const actives = extensions || {};
+  const lignes = modules || [];
+  const toutes = lignes.length > 0 && lignes.every((m) => actives[m.key]);
+
+  btnExtension.classList.toggle('sk-extension-toggle--on', toutes);
+  btnExtension.setAttribute('aria-pressed', String(toutes));
+  btnExtension.disabled = !isHost;
+  btnExtension.classList.toggle('sk-extension-toggle--readonly', !isHost);
+
+  extList.innerHTML = '';
+  lignes.forEach((module) => {
+    const on = Boolean(actives[module.key]);
+    const li = document.createElement('li');
+    li.className = 'sk-ext-line';
+
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sk-ext-switch' + (on ? ' sk-extension-toggle--on' : '');
+    b.disabled = !isHost;
+    b.setAttribute('aria-pressed', String(on));
+    b.innerHTML =
+      '<span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>' +
+      `<span class="sk-ext-name">${escapeHTML(module.label)}</span>`;
+    const apercu = EXTENSION_APERCU[module.key];
+    const texte = typeof apercu === 'string' ? apercu : apercu && cardPowerText(apercu);
+    if (texte) {
+      b.title = texte;
+      attachTooltip(b, texte);
+    }
+    if (isHost) {
+      b.addEventListener('click', () => socket.emit('skullking-toggle-extension-module', { module: module.key }));
+    }
+    li.appendChild(b);
+
+    const n = document.createElement('span');
+    n.className = 'sk-ext-count';
+    n.textContent = `+${module.cards}`;
+    li.appendChild(n);
+    extList.appendChild(li);
+  });
+
+  // Le pied de planche : la seule conséquence des huit lignes qui ne se
+  // devine pas en les lisant. Le plafond de joueurs sort du paquet lui-même
+  // (sa taille divisée par la manche la plus chargée), pas d'une constante —
+  // douze cartes de plus ouvrent un huitième siège, une seule non.
+  extensionHint.textContent = `${deckSize} cartes — 3 à ${maxPlayers} joueurs`;
+}
+
 function renderDeckPicker(style, isHost) {
   const choisi = style === 'perso' ? 'perso' : 'classique';
   deckGrid.innerHTML = '';
@@ -834,7 +904,7 @@ function renderRoundsPicker(total, mini, maxi, isHost) {
     : `${choisi} manches.`;
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensionEnabled, deckStyle: deck, totalRounds, minRounds, maxRounds, myId: id }) => {
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, myId: id }) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
@@ -866,18 +936,10 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   lobbyCount.textContent = players.length;
   lobbyRange.textContent = `${minPlayers} à ${maxPlayers}`;
 
-  // Switch d'extension : cliquable par l'hôte uniquement (imposé aussi côté
+  // Extensions : cliquables par l'hôte uniquement (imposé aussi côté
   // serveur), lecture seule pour les autres - tout le monde voit le même
   // état en temps réel via ce même événement de lobby.
-  btnExtension.classList.toggle('sk-extension-toggle--on', extensionEnabled);
-  btnExtension.setAttribute('aria-pressed', String(extensionEnabled));
-  btnExtension.disabled = !isHost;
-  btnExtension.classList.toggle('sk-extension-toggle--readonly', !isHost);
-  extensionHint.textContent = extensionEnabled
-    ? "12 numérotées, un Joker, 6 nouvelles cartes spéciales — jusqu'à 9 joueurs."
-    : isHost
-      ? "Active l'extension officielle pour plus de cartes et jusqu'à 9 joueurs."
-      : '';
+  renderExtensionCard(extensions, extensionModules, deckSize, maxPlayers, isHost);
 
   // Le paquet est appliqué tout de suite, pas seulement au lancement : les
   // vignettes du salon en sont déjà tirées.
@@ -2886,43 +2948,107 @@ function renderFactsPanel(ranking) {
 // pièce (même repère que sur le tapis, on retrouve la sienne sans lire de
 // légende). Tracée en SVG à la main plutôt qu'avec une bibliothèque : c'est
 // une polyligne et deux axes, rien qui justifie une dépendance.
-function renderScoreCurve(ranking) {
-  const series = ranking.filter((r) => r.curve && r.curve.length);
-  if (series.length < 1) return '';
+//
+// Deux formats sortent du même tracé. La vignette du récap tient dans un
+// tiers d'écran : elle ne garde que la ligne du zéro, tout le reste serait
+// illisible à cette taille. La planche agrandie (au clic sur la vignette) a
+// la place de porter le quadrillage complet et les valeurs des deux axes —
+// c'est là qu'on va chercher « il était à combien à la manche 6 ». Une seule
+// fonction de géométrie pour les deux : dédoublée, elles auraient divergé au
+// premier réglage.
 
-  const W = 460;
-  const H = 190;
-  const PAD_L = 38;
+// Un pas de graduation rond plutôt que l'étendue brute découpée en parts
+// égales : « -50, 0, 50, 100 » se lit d'un coup d'œil, « -47, 3, 53 » non.
+// On vise `cible` intervalles et on arrondit à 1, 2 ou 5 fois une puissance
+// de dix.
+function pasGraduation(etendue, cible) {
+  const brut = etendue / Math.max(1, cible);
+  const mag = Math.pow(10, Math.floor(Math.log10(brut || 1)));
+  const norm = brut / mag;
+  return (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+}
+
+function courbeSVG(series, grand) {
+  const W = grand ? 940 : 460;
+  const H = grand ? 470 : 190;
+  const PAD_L = grand ? 64 : 38;
   // Assez de marge à droite pour que le médaillon posé sur le dernier point
   // tienne entier dans le cadre : il déborderait avec l'ancienne valeur (10).
-  const PAD_R = 16;
-  const PAD_T = 12;
-  const PAD_B = 22;
+  const PAD_R = grand ? 40 : 16;
+  const PAD_T = grand ? 22 : 12;
+  const PAD_B = grand ? 50 : 22;
 
   const maxRound = Math.max(...series.map((r) => r.curve.length));
   const totaux = series.flatMap((r) => r.curve.map((c) => c.total));
   let min = Math.min(0, ...totaux);
   let max = Math.max(0, ...totaux);
   if (max === min) max = min + 10; // partie à 0 partout : évite une division par zéro
-  // Marge haute et basse pour que les lignes ne collent pas au cadre.
-  const span = max - min;
-  min -= span * 0.08;
-  max += span * 0.08;
+  const ticks = [];
+  if (grand) {
+    // Agrandie, l'échelle se cale sur des bornes rondes : les lignes du
+    // quadrillage doivent tomber sur des valeurs qu'on peut écrire en marge.
+    // Le pas est calculé sur l'étendue RÉELLE, avant toute marge — la marge
+    // ajoutée d'abord fait sauter d'un cran et laisse un tiers de champ vide.
+    const pas = pasGraduation(max - min, 7);
+    min = Math.floor(min / pas) * pas;
+    max = Math.ceil(max / pas) * pas;
+    // Les bornes rondes servent déjà de marge, sauf quand un score tombe
+    // pile dessus : on ouvre alors d'un pas pour que la ligne ne longe pas
+    // le cadre.
+    if (Math.max(...totaux) >= max - pas * 1e-6) max += pas;
+    if (Math.min(...totaux) <= min + pas * 1e-6) min -= pas;
+    for (let v = min; v <= max + pas * 1e-6; v += pas) ticks.push(Math.round(v * 1000) / 1000);
+  } else {
+    // Marge haute et basse pour que les lignes ne collent pas au cadre.
+    const span = max - min;
+    min -= span * 0.08;
+    max += span * 0.08;
+  }
 
   const x = (i) => PAD_L + (maxRound === 1 ? 0 : (i / (maxRound - 1)) * (W - PAD_L - PAD_R));
   const y = (v) => PAD_T + (1 - (v - min) / (max - min)) * (H - PAD_T - PAD_B);
 
-  // Ligne du zéro : le repère qui compte, on passe son temps à repasser
-  // au-dessus et en dessous.
-  const zeroY = y(0);
-  let svg = `<svg class="sk-curve" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des scores manche par manche">`;
-  svg += `<line x1="${PAD_L}" y1="${zeroY}" x2="${W - PAD_R}" y2="${zeroY}" class="sk-curve-zero" />`;
-  svg += `<text x="${PAD_L - 6}" y="${zeroY + 3}" class="sk-curve-tick">0</text>`;
+  let svg =
+    `<svg class="sk-curve${grand ? ' sk-curve--grand' : ''}" viewBox="0 0 ${W} ${H}"` +
+    ` role="img" aria-label="Évolution des scores manche par manche">`;
 
-  // Repères de manche en bas (1, puis tous les 3).
+  // Le quadrillage passe sous tout le reste : c'est un fond de plan, pas un
+  // tracé. Les lignes verticales tombent sur les manches, les horizontales
+  // sur les graduations rondes calculées plus haut.
+  if (grand) {
+    ticks.forEach((v) => {
+      const yy = y(v).toFixed(1);
+      svg += `<line x1="${PAD_L}" y1="${yy}" x2="${W - PAD_R}" y2="${yy}" class="sk-curve-grid" />`;
+      svg += `<text x="${PAD_L - 12}" y="${(y(v) + 4).toFixed(1)}" class="sk-curve-tick">${v}</text>`;
+    });
+    for (let i = 0; i < maxRound; i++) {
+      const xx = x(i).toFixed(1);
+      svg += `<line x1="${xx}" y1="${PAD_T}" x2="${xx}" y2="${H - PAD_B}" class="sk-curve-grid" />`;
+    }
+    // Les deux axes, plus marqués que le quadrillage : ils ferment le champ.
+    svg += `<line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="sk-curve-axis" />`;
+    svg += `<line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="sk-curve-axis" />`;
+  }
+
+  // Ligne du zéro : le repère qui compte, on passe son temps à repasser
+  // au-dessus et en dessous. Elle se pose après le quadrillage pour rester
+  // lisible quand une graduation tombe au même endroit.
+  const zeroY = y(0);
+  svg += `<line x1="${PAD_L}" y1="${zeroY}" x2="${W - PAD_R}" y2="${zeroY}" class="sk-curve-zero" />`;
+  if (!grand) svg += `<text x="${PAD_L - 6}" y="${zeroY + 3}" class="sk-curve-tick">0</text>`;
+
+  // Repères de manche en bas : toutes les manches quand on a la place,
+  // sinon la première, la dernière et tous les trois pas.
   for (let i = 0; i < maxRound; i++) {
-    if (i !== 0 && (i + 1) % 3 !== 0 && i !== maxRound - 1) continue;
-    svg += `<text x="${x(i)}" y="${H - 6}" class="sk-curve-round">${i + 1}</text>`;
+    if (!grand && i !== 0 && (i + 1) % 3 !== 0 && i !== maxRound - 1) continue;
+    svg += `<text x="${x(i)}" y="${H - (grand ? 26 : 6)}" class="sk-curve-round">${i + 1}</text>`;
+  }
+
+  // Le nom des deux axes : sans lui, agrandie, la courbe reste un dessin.
+  if (grand) {
+    svg += `<text x="${(PAD_L + (W - PAD_R)) / 2}" y="${H - 6}" class="sk-curve-axis-name">Manche</text>`;
+    svg += `<text x="18" y="${(PAD_T + (H - PAD_B)) / 2}" class="sk-curve-axis-name"` +
+      ` transform="rotate(-90 18 ${((PAD_T + (H - PAD_B)) / 2).toFixed(1)})">Points</text>`;
   }
 
   // Les médaillons se posent APRÈS toutes les lignes, dans une seconde passe :
@@ -2931,7 +3057,9 @@ function renderScoreCurve(ranking) {
   // Taille du médaillon de bout de ligne : il doit rester lisible, mais à 9
   // joueurs neuf médaillons pleine taille ne tiennent pas dans les 156 px
   // utiles du cadre. On les rétrécit donc à mesure que la table se remplit.
-  const dBase = series.length <= 5 ? 22 : series.length <= 7 ? 18 : 15;
+  const dBase = grand
+    ? (series.length <= 5 ? 40 : series.length <= 7 ? 34 : 29)
+    : (series.length <= 5 ? 22 : series.length <= 7 ? 18 : 15);
   const bouts = [];
   series.forEach((r) => {
     const piece = PIECE_BY_KEY[r.piece] || pieceFor(r);
@@ -2939,6 +3067,18 @@ function renderScoreCurve(ranking) {
     const pts = r.curve.map((c, i) => `${x(i)},${y(c.total)}`).join(' ');
     const moi = r.id === myId ? ' sk-curve-line--me' : '';
     svg += `<polyline points="${pts}" class="sk-curve-line${moi}" style="stroke:${couleur}" />`;
+    // Agrandie, chaque manche porte son point : c'est ce qui permet de lire
+    // une valeur sur le quadrillage, et de la nommer au survol.
+    if (grand) {
+      svg += r.curve
+        .map(
+          (c, i) =>
+            `<circle cx="${x(i).toFixed(1)}" cy="${y(c.total).toFixed(1)}" r="${r.id === myId ? 4.4 : 3.4}"` +
+            ` class="sk-curve-dot" style="fill:${couleur}">` +
+            `<title>${escapeHTML(r.nickname)} — manche ${i + 1} : ${c.total}</title></circle>`
+        )
+        .join('');
+    }
     const dernier = r.curve[r.curve.length - 1];
     // Le bout de ligne porte la pièce du joueur plutôt qu'un point de
     // couleur : la couleur seule ne suffisait pas à trois rouges voisins, et
@@ -2977,15 +3117,39 @@ function renderScoreCurve(ranking) {
     )
     .join('');
   svg += '</svg>';
+  return svg;
+}
 
-  const legende = series
+function courbeLegende(series) {
+  return series
     .map((r) => {
       const couleur = couleurJoueur(r);
       return `<span class="sk-curve-key" style="color:${couleur}"><i style="background:${couleur}"></i>${escapeHTML(r.nickname)}</span>`;
     })
     .join('');
+}
 
-  return `<p class="sk-end-panel-title">Évolution des scores</p><div class="sk-curve-wrap">${svg}<div class="sk-curve-legend">${legende}</div></div>`;
+function seriesCourbe(ranking) {
+  return ranking.filter((r) => r.curve && r.curve.length);
+}
+
+// La vignette du récap. Elle est cliquable : c'est un vrai bouton, pas une
+// image avec un écouteur — on veut le focus au clavier et l'annonce au
+// lecteur d'écran sans les réécrire à la main.
+function renderScoreCurve(ranking) {
+  const series = seriesCourbe(ranking);
+  if (series.length < 1) return '';
+  return (
+    `<p class="sk-end-panel-title">Évolution des scores</p>` +
+    `<div class="sk-curve-wrap">` +
+    `<button type="button" id="sk-curve-zoom" class="sk-curve-zoom"` +
+    ` aria-label="Agrandir l'évolution des scores">` +
+    courbeSVG(series, false) +
+    `<span class="sk-curve-loupe" aria-hidden="true">Agrandir</span>` +
+    `</button>` +
+    `<div class="sk-curve-legend">${courbeLegende(series)}</div>` +
+    `</div>`
+  );
 }
 
 function renderGameEnd(state) {
@@ -2993,10 +3157,19 @@ function renderGameEnd(state) {
   const winner = ranking[0];
   // Le vainqueur est nommé à la couleur de sa pièce jusque dans le titre :
   // c'est la première ligne qu'on lit, autant qu'elle porte déjà le repère.
-  endTitle.innerHTML =
+  // Et sa pièce est posée au-dessus du nom, en grand : c'est son médaillon
+  // qu'on a suivi toute la partie — sur la roue, au tapis, au bout de sa
+  // courbe. Le verdict le rend une dernière fois, à la taille d'un trophée.
+  const piece = PIECE_BY_KEY[winner.piece] || pieceFor(winner);
+  const trophee =
+    `<img class="sk-end-winner-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
+  const vainqueur =
     winner.id === myId
-      ? 'Tu remportes la partie !'
-      : `${nomColore(winner)} remporte la partie !`;
+      ? `<span class="sk-nom" style="color:${couleurJoueur(winner)}">Tu</span>`
+      : nomColore(winner);
+  endTitle.innerHTML =
+    `<span class="sk-end-winner">${trophee}${vainqueur}</span>` +
+    (winner.id === myId ? ' remportes la partie !' : ' remporte la partie !');
   endBody.innerHTML = ranking
     .map((r, i) => {
       const rang = ROMAN[i + 1] || `${i + 1}`;
@@ -3013,9 +3186,49 @@ function renderGameEnd(state) {
   const courbe = renderScoreCurve(ranking);
   endCurveEl.innerHTML = courbe;
   endCurveEl.classList.toggle('hidden', !courbe);
+  // La vignette est refaite à chaque fin de partie : son écouteur aussi.
+  // Le classement est retenu de côté, la planche agrandie le retrace à
+  // l'ouverture plutôt que de garder un second SVG en mémoire.
+  dernierClassement = ranking;
+  const zoom = document.getElementById('sk-curve-zoom');
+  if (zoom) zoom.addEventListener('click', ouvrirCourbeAgrandie);
   const faits = renderFactsPanel(ranking);
   endFactsEl.innerHTML = faits;
   endFactsEl.classList.toggle('hidden', !faits);
+}
+
+// --- La courbe agrandie -----------------------------------------------
+// La vignette du récap répond à « qui a décroché quand » ; agrandie, elle
+// répond à « il était à combien à la manche 6 ». D'où le quadrillage et les
+// valeurs des deux axes, qui n'auraient aucun sens à la taille du panneau.
+let dernierClassement = null;
+const curveModal = document.getElementById('sk-curve-modal');
+const curveModalBody = document.getElementById('sk-curve-modal-body');
+
+function ouvrirCourbeAgrandie() {
+  if (!curveModal || !dernierClassement) return;
+  const series = seriesCourbe(dernierClassement);
+  if (!series.length) return;
+  curveModalBody.innerHTML =
+    courbeSVG(series, true) + `<div class="sk-curve-legend">${courbeLegende(series)}</div>`;
+  curveModal.classList.remove('hidden');
+}
+
+function fermerCourbeAgrandie() {
+  if (curveModal) curveModal.classList.add('hidden');
+}
+
+if (curveModal) {
+  document.getElementById('sk-btn-close-curve').addEventListener('click', fermerCourbeAgrandie);
+  // Le fond fait office de bouton « fermer » : c'est un agrandissement, on
+  // en sort comme on sort d'une loupe. Seul un clic SUR le fond compte, pas
+  // un clic sur la planche qu'il porte.
+  curveModal.addEventListener('click', (e) => {
+    if (e.target === curveModal) fermerCourbeAgrandie();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !curveModal.classList.contains('hidden')) fermerCourbeAgrandie();
+  });
 }
 
 document.getElementById('sk-btn-rematch').addEventListener('click', () => socket.emit('skullking-rematch'));
