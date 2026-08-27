@@ -1695,25 +1695,6 @@ function renderSeats(state) {
       seat.title = p.id === myId ? "C'est à toi d'agir" : `C'est à ${p.nickname} d'agir`;
     }
 
-    if (p.id !== myId) {
-      const cards = document.createElement('div');
-      cards.className = 'sk-seat-cards';
-      if (p.revealedCard) {
-        // Manche 1 : on voit la carte de chacun sauf la sienne (l'inverse
-        // du dos de carte habituel) - l'annonce se base là-dessus.
-        const el = document.createElement('div');
-        el.className = `sk-card sk-seat-reveal-card ${cardClass(p.revealedCard)}`;
-        el.innerHTML = cardFaceHTML(p.revealedCard);
-        attachPowerTooltip(el, p.revealedCard);
-        cards.appendChild(el);
-      }
-      // Plus de dos de cartes décoratifs : chevauchés, ils formaient une tache
-      // illisible et n'apprenaient rien (le compte de cartes se lit dans le
-      // panneau de droite). Le bloc ne sert plus qu'à la carte révélée de la
-      // manche 1.
-      if (cards.childElementCount) seat.appendChild(cards);
-    }
-
     // Plis gagnés / annoncés, posé au-dessus du jeton : c'est l'information
     // qu'on cherche en regardant un adversaire (« il en a fait combien sur
     // ce qu'il a annoncé ? »), elle vivait jusqu'ici uniquement dans le
@@ -1915,6 +1896,30 @@ function echelleCouronne(effectif, largeurPleine, L, H) {
   return Math.max(0.55, Math.min(1, hauteur, arc));
 }
 
+// Manche 1 : chacun tient sa carte tournée vers les autres. Tout le monde la
+// voit sauf son porteur, et c'est là-dessus qu'on annonce. Elle était posée en
+// vignette de 44 px contre le médaillon du siège, penchée de quatre degrés :
+// à cette taille l'illustration d'un Pirate ne se distinguait plus d'une
+// numérotée, et c'était la seule manche où les cartes ne se lisaient pas là
+// où on a appris à les chercher.
+//
+// On fabrique donc un pli qui n'en est pas un : les cartes révélées passent
+// par la couronne comme n'importe quel pli, chacune à l'extérieur du nom de
+// qui la porte. La mienne rejoint le lot, face cachée — c'est la seule chose
+// que la manche 1 change, et elle se voit mieux ainsi qu'en creux.
+function cartesDeLaManche1(state) {
+  if (state.phase !== 'bidding') return [];
+  const cartes = state.players
+    .filter((p) => p.revealedCard)
+    .map((p) => ({ playerId: p.id, card: p.revealedCard }));
+  if (!cartes.length) return [];
+  // La mienne : le serveur ne m'en envoie que l'id (voir stateFor), ce qui
+  // est exactement ce qu'il faut pour poser un dos de carte.
+  const mienne = (state.hand || []).find((c) => c.kind === 'hidden');
+  if (mienne) cartes.push({ playerId: myId, card: mienne });
+  return cartes;
+}
+
 // La couronne : chaque carte du pli se pose CONTRE le nom de qui l'a jouée,
 // du côté extérieur au tapis — au-dessus des sièges du haut, à gauche de
 // ceux de gauche, à droite de ceux de droite. Seule la mienne fait l'inverse
@@ -1933,8 +1938,8 @@ function echelleCouronne(effectif, largeurPleine, L, H) {
 // vide, et c'est là que s'écrit l'issue du pli.
 function renderTrick(state) {
   tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
-  const trick = state.currentTrick || [];
   const { map } = seatLayout(state);
+  const trick = state.currentTrick && state.currentTrick.length ? state.currentTrick : cartesDeLaManche1(state);
 
   const boite = tableEl.getBoundingClientRect();
   const L = boite.width || 1;
@@ -2391,6 +2396,11 @@ function updateWillConfirmButton() {
 
 function renderHand(state) {
   handEl.innerHTML = '';
+  // Manche 1, pendant l'annonce : ma carte est posée sur le tapis, face
+  // cachée, devant mon nom. La garder AUSSI dans l'éventail la montrait deux
+  // fois — deux dos de carte pour la seule carte que j'aie en main. Elle
+  // revient dans la main dès qu'il faut la jouer.
+  if (state.phase === 'bidding' && (state.hand || []).some((c) => c.kind === 'hidden')) return;
   const hand = sortHandForDisplay(state.hand || []);
   const canPlay = state.phase === 'playing' && state.isMyTurn;
   const willMode = state.phase === 'power' && state.pendingPower && state.pendingPower.kind === 'will' && state.pendingPower.mine;

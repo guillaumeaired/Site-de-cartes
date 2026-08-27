@@ -25,12 +25,15 @@
     ?joues=3        combien ont déjà posé leur carte (défaut : tous)
     ?scene=2        la seconde scène peinte
     ?phase=playing  playing (défaut) | bidding | paused (pli remporté)
+    ?manche=1       la manche 1 pendant l'annonce : la carte de chacun est
+                    tournée vers les autres, la mienne face cachée
 -->
 <script>
 const P = new URLSearchParams(location.search);
 const N = Math.max(2, Math.min(9, Number(P.get('n') || 5)));
 const PHASE = P.get('phase') || 'playing';
 const JOUES = P.get('joues') === null ? N : Math.max(0, Math.min(N, Number(P.get('joues'))));
+const MANCHE1 = P.get('manche') === '1';
 
 // --- Le bouchon de socket ---------------------------------------------
 const auditeurs = new Map();
@@ -68,23 +71,33 @@ const joueurs = Array.from({ length: N }, (_, i) => ({
 
 const pli = Array.from({ length: JOUES }, (_, i) => ({ playerId: `p${i}`, card: carte(i) }));
 
+// Manche 1 : le serveur ne m'envoie que l'id de ma carte (kind 'hidden') et
+// donne à voir celle de chacun des autres. Voir stateFor.
+if (MANCHE1) {
+  joueurs.forEach((p, i) => {
+    if (i > 0) p.revealedCard = carte(i);
+    p.bid = undefined;
+    p.hasBid = i % 2 === 0;
+  });
+}
+
 const etat = {
-  phase: PHASE === 'bidding' ? 'bidding' : 'playing',
+  phase: MANCHE1 || PHASE === 'bidding' ? 'bidding' : 'playing',
   myId: 'p0',
   isHost: true,
   players: joueurs,
   chat: [],
   leaderPlayerId: 'p1',
-  roundNumber: 6,
+  roundNumber: MANCHE1 ? 1 : 6,
   totalRounds: 10,
-  cardsInRound: 6,
+  cardsInRound: MANCHE1 ? 1 : 6,
   scoreboard: joueurs.map((p, i) => ({ id: p.id, nickname: p.nickname, score: 90 - i * 17, piece: p.piece })),
   extensions: [],
   deckStyle: 'classique',
   lootAllies: [],
-  hand: Array.from({ length: 6 }, (_, i) => carte(i + 10)),
-  myBid: 2,
-  currentTrick: pli,
+  hand: MANCHE1 ? [{ id: 'c-moi', kind: 'hidden' }] : Array.from({ length: 6 }, (_, i) => carte(i + 10)),
+  myBid: MANCHE1 ? undefined : 2,
+  currentTrick: MANCHE1 ? [] : pli,
   turnPlayerId: `p${JOUES % N}`,
   isMyTurn: JOUES === 0,
   trickNumber: 3,
