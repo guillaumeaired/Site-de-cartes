@@ -214,12 +214,16 @@ socket.on('rami-room-created', ({ code }) => {
   shareBlock.classList.remove('hidden');
 });
 
-socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart, matchFormat, raceTarget, myId: id }) => {
+socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart, matchFormat, raceTarget, chat, myId: id }) => {
   if (id) myId = id;
   // Avant tout rendu : c'est ici qu'on apprend de quel salon on est, et donc
-  // s'il faut effacer le fil du précédent avant que son historique n'arrive
-  // avec l'état.
+  // s'il faut effacer le fil du précédent avant de poser celui-ci.
   if (code) suivreSalonChat(code);
+  // Puis l'historique, qui arrive avec le salon : sans ça, en rejoignant une
+  // partie on ne voyait la conversation déjà en cours qu'au lancement, quand
+  // le premier état de jeu la portait enfin. Le serveur l'envoyait pourtant
+  // depuis toujours. renderChat écarte tout seul ce qui a déjà été posé.
+  renderChat({ chat });
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
