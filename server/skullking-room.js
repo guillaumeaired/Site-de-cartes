@@ -202,25 +202,16 @@ function sanitizeDeckStyle(style) {
 // Salon d'attente uniquement (voir handleDisconnecting) : délai de grâce
 // avant de considérer le joueur vraiment parti.
 const DISCONNECT_GRACE_MS = 45_000;
+// Les cinq durées qui suivent ne sont plus que des VALEURS D'ORIGINE : elles
+// nomment le rythme d'un salon qui n'a rien réglé, et le tableau PACE_SETTINGS
+// plus bas s'en sert comme point de départ. Ce qui s'applique vraiment à une
+// partie se lit toujours par paceMs(room, clé), jamais par ces constantes.
 const TRICK_REVEAL_MS = 2_600;
-// Un pli englouti par le Kraken se raconte plus longtemps qu'un pli ramassé :
-// il vient prendre le centre du feutre, avale les cartes une à une, se
-// retourne, puis s'efface — et la ligne qui dit « personne ne le remporte »
-// n'apparaît qu'ensuite, sur un feutre vide (voir playKrakenAnimation). À
-// 2,6 s elle n'avait plus qu'un souffle avant que la manche reparte.
-const TRICK_KRAKEN_MS = 3_600;
 // Filet de sécurité si le joueur n'interagit jamais (déconnexion, inactivité) -
 // pas la vraie limite de lecture : celle-ci est maintenant pilotée par le
 // client lui-même (skullking-power-juanita-done), déclenchée une fois toutes
 // les cartes retournées + une pause de lecture.
 const POWER_REVEAL_MS = 25_000;
-// Le temps qu'on laisse au cadre d'annonce d'un pouvoir avant de ramasser le
-// pli. Il ne sert QUE sur le dernier pli d'une manche : ailleurs le cadre
-// tient ses 3,6 s par-dessus le pli suivant qui s'installe, personne ne le
-// coupe. Sur le dernier, `finishTrickCollection` enchaînait sur `endRound`
-// dans la foulée du broadcast, et la planche de fin de manche recouvrait
-// l'annonce avant qu'on ait lu de quel Pirate il s'agissait.
-const POWER_ANNOUNCE_MS = 2_600;
 const ROUND_END_MS = 7_000;
 
 // Déconnexion en pleine partie : pause indéfinie, plus de délai de grâce fixe
@@ -235,6 +226,161 @@ const ROUND_END_MS = 7_000;
 // là) reçoit un simple signal visible de tous, sans saut de tour ni
 // exclusion automatique.
 const INACTIVITY_WARN_MS = 120_000;
+
+// Le délai laissé au joueur de « Marcher sur la Planche » pour désigner sa
+// victime. Déclaré ici avec les autres durées parce que le tableau des
+// réglages ci-dessous s'en sert comme valeur d'origine ; la règle qu'il sert,
+// elle, est expliquée bien plus bas (voir demanderCiblePlanche).
+const PLANK_CHOICE_MS = 20_000;
+
+// --- LE RYTHME DE LA PARTIE -------------------------------------------
+//
+// Toutes les durées ci-dessus étaient des constantes : la table les subissait
+// sans jamais pouvoir en discuter. Or elles n'arrangent pas tout le monde — la
+// même table de quatre lit le reliquat de Juanita Jade en dix secondes le
+// mardi entre initiés et n'a pas fini en quarante le dimanche avec les
+// beaux-parents, et le tableau de fin de manche qu'on trouve interminable à la
+// dixième partie est celui qu'on n'a pas eu le temps de lire à la première.
+//
+// Elles deviennent donc des réglages de salon, du même régime que le paquet et
+// le nombre de manches : l'hôte choisit, tout le monde voit, plus rien ne
+// bouge une fois la partie lancée (les valeurs sont relues sur `room` à chaque
+// usage, mais le salon est le seul endroit où on les écrit).
+//
+// Une LISTE de valeurs proposées plutôt qu'un curseur ou un champ libre : on
+// ne règle pas ça au dixième de seconde, et une liste fermée est aussi ce qui
+// garde le serveur à l'abri d'un « 0 » ou d'un « 999999 » envoyé à la main.
+// Les libellés voyagent avec les valeurs — c'est le serveur qui sait ce que
+// chaque durée veut dire, l'écran n'a plus qu'à dérouler la liste.
+const PACE_SETTINGS = [
+  {
+    key: 'juanita',
+    label: 'Regard de Juanita Jade',
+    hint: 'Le temps laissé pour lire le reliquat avant que le pli reparte.',
+    default: POWER_REVEAL_MS,
+    options: [
+      { value: 12_000, label: '12 s' },
+      { value: 25_000, label: '25 s' },
+      { value: 45_000, label: '45 s' },
+      { value: 90_000, label: '90 s' },
+    ],
+  },
+  {
+    key: 'trick',
+    label: 'Pli sur le tapis',
+    // Le Kraken garde sa seconde de rab (KRAKEN_EXTRA_MS) : son pli se
+    // raconte plus longtemps qu'un pli ramassé, quel que soit le réglage.
+    hint: 'Combien de temps le pli complet reste visible avant d’être ramassé.',
+    default: TRICK_REVEAL_MS,
+    options: [
+      { value: 1_400, label: '1,4 s' },
+      { value: 2_600, label: '2,6 s' },
+      { value: 4_000, label: '4 s' },
+      { value: 6_000, label: '6 s' },
+    ],
+  },
+  {
+    key: 'roundEnd',
+    label: 'Tableau de fin de manche',
+    hint: 'La planche des scores entre deux manches. L’hôte peut toujours l’écourter.',
+    default: ROUND_END_MS,
+    options: [
+      { value: 4_000, label: '4 s' },
+      { value: 7_000, label: '7 s' },
+      { value: 12_000, label: '12 s' },
+      { value: 25_000, label: '25 s' },
+    ],
+  },
+  {
+    key: 'plank',
+    label: 'Choix de la Planche',
+    hint: 'Le délai pour désigner le Pirate qui passe par-dessus bord. Passé ce délai, c’est le premier Pirate posé qui tombe.',
+    default: PLANK_CHOICE_MS,
+    options: [
+      { value: 10_000, label: '10 s' },
+      { value: 20_000, label: '20 s' },
+      { value: 40_000, label: '40 s' },
+      { value: 90_000, label: '90 s' },
+    ],
+  },
+  {
+    key: 'inactivity',
+    label: 'Rappel d’inactivité',
+    hint: 'Au bout de combien de temps la table est prévenue qu’un joueur ne joue pas. Aucun tour n’est jamais sauté.',
+    default: INACTIVITY_WARN_MS,
+    options: [
+      { value: 45_000, label: '45 s' },
+      { value: 120_000, label: '2 min' },
+      { value: 300_000, label: '5 min' },
+      // Zéro veut dire « ne jamais prévenir » : le seul réglage de la liste
+      // qui éteint son mécanisme au lieu de l'allonger. Une partie entre gens
+      // qui se parlent n'a pas besoin d'un serveur pour dire qui traîne.
+      { value: 0, label: 'Jamais' },
+    ],
+  },
+];
+const PACE_KEYS = PACE_SETTINGS.map((r) => r.key);
+// Un pli englouti par le Kraken se raconte plus longtemps qu'un pli ramassé :
+// il vient prendre le centre du feutre, avale les cartes une à une, se
+// retourne, puis s'efface — et la ligne qui dit « personne ne le remporte »
+// n'apparaît qu'ensuite, sur un feutre vide (voir playKrakenAnimation). Cette
+// seconde s'AJOUTE au réglage au lieu d'être une durée à part : sur un salon
+// réglé « Vif », un Kraken figé à 3,6 s aurait duré plus du double d'un pli
+// normal. Ce n'est pas un réglage de plus, c'est le même avec son animation
+// en supplément.
+const KRAKEN_EXTRA_MS = 1_000;
+
+// Trois allures toutes faites. Personne n'ouvre un salon pour arbitrer cinq
+// durées une par une : on veut « ça va trop vite » ou « ça traîne ». Les
+// réglages fins restent là pour qui veut, en dessous.
+const PACE_PRESETS = [
+  {
+    key: 'vif',
+    label: 'Vif',
+    hint: 'Pour une table qui connaît le jeu et veut enchaîner.',
+    values: { juanita: 12_000, trick: 1_400, roundEnd: 4_000, plank: 10_000, inactivity: 45_000 },
+  },
+  {
+    key: 'normal',
+    label: 'Normal',
+    hint: 'Le rythme d’origine du jeu.',
+    values: { juanita: 25_000, trick: 2_600, roundEnd: 7_000, plank: 20_000, inactivity: 120_000 },
+  },
+  {
+    key: 'tranquille',
+    label: 'Tranquille',
+    hint: 'Pour une table qui découvre, ou qui joue en discutant.',
+    values: { juanita: 45_000, trick: 4_000, roundEnd: 12_000, plank: 40_000, inactivity: 300_000 },
+  },
+];
+
+// Les valeurs effectives : ce que l'hôte a choisi, chaque réglage manquant ou
+// inconnu retombant sur sa valeur d'origine. Lu à chaque usage plutôt que figé
+// au lancement — une partie créée avant ce réglage (ou un salon rechargé) n'a
+// pas de `room.pace` du tout, et doit se jouer exactement comme avant.
+function paceOf(room) {
+  const choix = (room && room.pace) || {};
+  return Object.fromEntries(
+    PACE_SETTINGS.map((reglage) => {
+      const valeur = Number(choix[reglage.key]);
+      const connue = reglage.options.some((o) => o.value === valeur);
+      return [reglage.key, connue ? valeur : reglage.default];
+    })
+  );
+}
+
+function paceMs(room, key) {
+  return paceOf(room)[key];
+}
+
+// L'allure toute faite qui correspond aux cinq valeurs en cours, ou null si
+// l'hôte a bricolé la sienne. C'est ce qui allume (ou n'allume pas) l'un des
+// trois boutons du haut : mentir là-dessus serait pire que ne rien allumer.
+function pacePresetOf(room) {
+  const actuel = paceOf(room);
+  const trouve = PACE_PRESETS.find((preset) => PACE_KEYS.every((k) => preset.values[k] === actuel[k]));
+  return trouve ? trouve.key : null;
+}
 
 // Pirates ciblables par "Marcher sur la Planche" dans un pli en cours :
 // identité choisie (effectiveKind, gère la Tigresse-Pirate), pas le type
@@ -568,6 +714,15 @@ function broadcastLobby(io, room) {
       totalRounds: room.totalRounds || MAX_ROUNDS,
       minRounds: MIN_ROUNDS,
       maxRounds: MAX_ROUNDS,
+      // Le rythme : même régime que le paquet et les manches — réglé par
+      // l'hôte, lu par tout le monde. La liste des réglages part avec l'état
+      // plutôt que d'être recopiée dans l'écran, exactement comme celle des
+      // modules d'extension : c'est le serveur qui applique ces durées, c'est
+      // donc lui qui dit lesquelles existent et ce qu'elles valent.
+      pace: paceOf(room),
+      paceSettings: PACE_SETTINGS,
+      pacePresets: PACE_PRESETS,
+      pacePreset: pacePresetOf(room),
     });
   }
 }
@@ -827,7 +982,7 @@ function stateFor(room, p) {
   }
   if (room.phase === 'round-end') {
     base.roundSummary = room.lastRoundSummary;
-    base.roundEndMs = ROUND_END_MS;
+    base.roundEndMs = paceMs(room, 'roundEnd');
   }
   if (room.phase === 'game-end') {
     base.finalRanking = room.finalRanking;
@@ -847,10 +1002,14 @@ function broadcastState(io, room) {
 
 // Voir la constante INACTIVITY_WARN_MS : seule la phase 'playing', hors
 // pause de révélation de pli, a un joueur unique dont c'est vraiment le tour.
+// Le délai est réglable dans le salon, et « Jamais » (0) éteint le rappel : on
+// ne programme alors rien du tout plutôt que de programmer un rappel immédiat.
 function scheduleInactivityCheck(io, room) {
   clearTimeout(room.inactivityTimer);
   room.inactivityTimer = null;
   if (room.phase !== 'playing' || room.trickPaused) return;
+  const delai = paceMs(room, 'inactivity');
+  if (!delai) return;
   const playerId = playerAtTurn(room).id;
   room.inactivityTimer = setTimeout(() => {
     if (rooms.get(room.code) !== room) return;
@@ -859,7 +1018,7 @@ function scheduleInactivityCheck(io, room) {
     const player = findPlayer(room, playerId);
     if (!player || player.connected === false) return; // déjà couvert par la bannière de déconnexion
     broadcastToRoom(io, room, 'skullking-inactivity-notice', { id: playerId, nickname: player.nickname });
-  }, INACTIVITY_WARN_MS);
+  }, delai);
 }
 
 function endRound(io, room) {
@@ -945,7 +1104,7 @@ function endRound(io, room) {
 
   room.roundEndTimer = setTimeout(() => {
     if (rooms.get(room.code) === room && room.phase === 'round-end') advanceRound(io, room);
-  }, ROUND_END_MS);
+  }, paceMs(room, 'roundEnd'));
 }
 
 // Fin de la pause de révélation d'un pli (ou d'un pouvoir de pirate) : le
@@ -1010,10 +1169,11 @@ function startPiratePower(io, room, powerKey, playerId, leaderId) {
     // était en arrière-plan. Le temps restant est recalculé à chaque état
     // envoyé plutôt que d'expédier une date : les horloges des deux machines
     // n'ont aucune raison d'être d'accord, la durée si.
-    room.pendingPower.revealUntil = Date.now() + POWER_REVEAL_MS;
+    const regard = paceMs(room, 'juanita');
+    room.pendingPower.revealUntil = Date.now() + regard;
     room.powerTimer = setTimeout(() => {
       if (rooms.get(room.code) === room && room.phase === 'power') resolvePowerDone(io, room);
-    }, POWER_REVEAL_MS);
+    }, regard);
   }
 }
 
@@ -1095,9 +1255,14 @@ function resolvePowerDone(io, room) {
     return;
   }
   // Dernier pli de la manche : on laisse l'annonce se lire avant que la
-  // planche de fin de manche ne prenne l'écran (voir POWER_ANNOUNCE_MS).
+  // planche de fin de manche ne prenne l'écran. Elle tient exactement le temps
+  // d'un pli sur le tapis (réglage 'trick') : ailleurs le cadre s'affiche
+  // par-dessus le pli suivant qui s'installe et personne ne le coupe, mais sur
+  // le dernier `finishTrickCollection` enchaînait sur `endRound` dans la foulée
+  // du broadcast, et la planche de fin de manche recouvrait l'annonce avant
+  // qu'on ait lu de quel Pirate il s'agissait.
   //
-  // Le pouvoir est marqué résolu avant l'attente : pendant ces 2,6 s la
+  // Le pouvoir est marqué résolu avant l'attente : pendant cette pause la
   // manche est encore en phase `power`, et un second envoi du même pouvoir
   // (double clic, client rejoué) repasserait sinon `guardPower` et
   // relancerait un timer par-dessus le premier. On le marque plutôt que de
@@ -1108,7 +1273,7 @@ function resolvePowerDone(io, room) {
     room.trickTimer = setTimeout(() => {
       if (rooms.get(room.code) !== room) return;
       finishTrickCollection(io, room, leaderId);
-    }, POWER_ANNOUNCE_MS);
+    }, paceMs(room, 'trick'));
     return;
   }
   finishTrickCollection(io, room, leaderId);
@@ -1372,7 +1537,7 @@ function resoudreLePliComplet(io, room) {
       }
     }
     finishTrickCollection(io, room, leaderId);
-  }, result.destroyed && result.krakenIdx >= 0 ? TRICK_KRAKEN_MS : TRICK_REVEAL_MS);
+  }, paceMs(room, 'trick') + (result.destroyed && result.krakenIdx >= 0 ? KRAKEN_EXTRA_MS : 0));
 }
 
 // --- MARCHER SUR LA PLANCHE : LA CIBLE SE DÉSIGNE À LA FIN DU PLI ------
@@ -1393,8 +1558,8 @@ function resoudreLePliComplet(io, room) {
 //
 // Trois cas : aucun Pirate (rien à faire), un seul (il n'y a rien à
 // choisir, on l'impose), plusieurs (le joueur de la Planche désigne, via la
-// phase de pouvoir - le pli attend).
-const PLANK_CHOICE_MS = 20_000;
+// phase de pouvoir - le pli attend). Le délai de désignation est un réglage
+// de salon comme les autres (PACE_SETTINGS, clé 'plank').
 
 function planchePosee(room) {
   return room.currentTrick.find((t) => t.card.kind === 'plank') || null;
@@ -1425,7 +1590,7 @@ function demanderCiblePlanche(io, room) {
     if (rooms.get(room.code) !== room) return;
     if (room.phase !== 'power' || !room.pendingPower || room.pendingPower.kind !== 'plank') return;
     validerCiblePlanche(io, room, room.pendingPower.plankTargetIds[0]);
-  }, PLANK_CHOICE_MS);
+  }, paceMs(room, 'plank'));
   broadcastState(io, room);
   return true;
 }
@@ -1460,6 +1625,9 @@ function registerSkullKingHandlers(io, socket) {
       extensions: Object.fromEntries(EXTENSION_KEYS.map((key) => [key, ESSAI])),
       deckStyle: DEFAULT_DECK_STYLE,
       totalRounds: MAX_ROUNDS,
+      // Le rythme d'origine, celui des constantes : un salon qu'on n'a pas
+      // réglé se joue exactement comme avant l'existence de ces réglages.
+      pace: Object.fromEntries(PACE_SETTINGS.map((r) => [r.key, r.default])),
       players: [
         {
           id: socket.id,
@@ -1595,6 +1763,37 @@ function registerSkullKingHandlers(io, socket) {
     const total = clampRounds(payload && payload.totalRounds);
     if (total === room.totalRounds) return;
     room.totalRounds = total;
+    broadcastLobby(io, room);
+  });
+
+  // Le rythme, réglage par réglage. Hôte seulement, salon seulement — comme
+  // le paquet et les manches. Une clé ou une valeur inconnue est ignorée sans
+  // bruit plutôt que ramenée à la valeur d'origine : un message malformé ne
+  // doit pas changer un réglage sous les yeux de l'hôte.
+  socket.on('skullking-set-pace', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    const reglage = PACE_SETTINGS.find((r) => r.key === (payload && payload.key));
+    if (!reglage) return;
+    const valeur = Number(payload && payload.value);
+    if (!reglage.options.some((o) => o.value === valeur)) return;
+    const actuel = paceOf(room);
+    if (actuel[reglage.key] === valeur) return;
+    room.pace = { ...actuel, [reglage.key]: valeur };
+    broadcastLobby(io, room);
+  });
+
+  // Une allure toute faite : les cinq réglages d'un coup. C'est le geste que
+  // fera l'immense majorité des hôtes — les lignes du dessous sont là pour
+  // qui veut discuter le détail.
+  socket.on('skullking-set-pace-preset', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    const preset = PACE_PRESETS.find((p) => p.key === (payload && payload.preset));
+    if (!preset) return;
+    room.pace = { ...preset.values };
     broadcastLobby(io, room);
   });
 
@@ -1930,10 +2129,11 @@ function registerSkullKingHandlers(io, socket) {
     resolvePowerDone(io, room);
   });
 
-  // Juanita Jade : le client déclenche lui-même la fin du pouvoir une fois
-  // que le joueur a retourné toutes les cartes (+ une pause de lecture) -
-  // POWER_REVEAL_MS ne sert plus qu'à ne pas bloquer la partie si personne
-  // n'interagit (déconnexion, inactivité).
+  // Juanita Jade : le joueur ferme lui-même le pouvoir quand il a fini de
+  // lire (bouton « J'ai fini de regarder ») - le réglage 'juanita' est la
+  // limite haute, celle que la barre du panneau décompte, et le filet qui
+  // empêche une table de rester bloquée si personne n'interagit
+  // (déconnexion, inactivité).
   socket.on('skullking-power-juanita-done', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!guardPower(room, socket, 'juanita')) return;
@@ -2037,4 +2237,12 @@ module.exports = {
   donneTruquee,
   setBotAdapter,
   getStats,
+  // Le rythme : exporté pour pouvoir éprouver la garde de lecture (un salon
+  // sans réglage, un réglage inconnu, une valeur hors liste) sans avoir à
+  // monter un vrai salon.
+  PACE_SETTINGS,
+  PACE_PRESETS,
+  paceOf,
+  paceMs,
+  pacePresetOf,
 };

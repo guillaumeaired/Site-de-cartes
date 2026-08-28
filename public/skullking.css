@@ -5943,6 +5943,158 @@ h3 {
   margin-top: 7px;
 }
 
+/* --- LE RYTHME DE LA PARTIE ------------------------------------------
+   Cinq durées d'attente réglables, en pied de la planche des Réglages. Elles
+   ne touchent ni aux règles ni au paquet : c'est du confort de table, et le
+   bloc est bâti pour se lire d'un coup d'œil puis se laisser oublier — trois
+   allures toutes faites en tête, le détail replié en lignes serrées dessous,
+   sous le filet qui le sépare du nombre de manches. */
+.sk-pace-field {
+  margin: 14px auto 0;
+  padding-top: 12px;
+  max-width: 336px;
+  border-top: 1px solid rgba(184, 137, 53, 0.24);
+}
+
+.sk-pace-presets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* Même laiton frappé que les jetons de manche (.sk-round-choice), mais en
+   pastille : « Tranquille » ne tient pas dans un rond de 32 px. */
+.sk-pace-preset {
+  padding: 6px 13px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  color: var(--sk-cream-3);
+  background: radial-gradient(circle at 50% 34%, #1c1108, #0c0703);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 0 rgba(184, 137, 53, 0.16),
+    0 1px 0 rgba(232, 206, 146, 0.08);
+  transition: transform 0.1s, filter 0.12s;
+}
+
+.sk-pace-preset:hover:not(:disabled) {
+  filter: brightness(1.35);
+}
+
+.sk-pace-preset:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.sk-pace-preset.is-on {
+  color: #2a1b06;
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.36), rgba(0, 0, 0, 0.24) 56%),
+    linear-gradient(160deg, var(--sk-brass), var(--sk-brass-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 226, 0.6),
+    inset 0 -1px 0 rgba(42, 27, 6, 0.55),
+    0 0 0 2px rgba(184, 137, 53, 0.35),
+    0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.sk-pace-preset:disabled {
+  cursor: default;
+}
+
+/* Le détail : même filet de séparation que la liste des extensions, pour que
+   les deux planches se lisent comme un même meuble. */
+.sk-pace-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid rgba(184, 137, 53, 0.24);
+}
+
+.sk-pace-row + .sk-pace-row {
+  margin-top: 7px;
+}
+
+/* Le nom au-dessus de ses valeurs, et non à côté : côte à côte, « Tableau de
+   fin de manche » et quatre durées ne laissaient que deux mots par ligne dans
+   une colonne de 330 px. Le pointillé sous le nom annonce la bulle qui dit à
+   quoi sert la durée — le même signe que partout ailleurs dans le salon. */
+.sk-pace-name {
+  /* En `inline-block` le pointillé s'arrête au bout du texte : en `block` il
+     courait sur toute la largeur et se lisait comme un filet de séparation,
+     pas comme le signe « survole-moi » qu'il est partout ailleurs. */
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--sk-cream-3);
+  border-bottom: 1px dotted rgba(184, 137, 53, 0.4);
+  cursor: help;
+}
+
+.sk-pace-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Les valeurs se partagent la largeur à parts égales : une rangée régulière
+   se compare d'un regard, là où des pastilles taillées sur leur texte
+   faisaient danser « 1,4 s » et « 2 min » d'une ligne à l'autre. */
+.sk-pace-choice {
+  flex: 1 1 0;
+  min-width: 44px;
+  padding: 5px 4px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.7rem;
+  color: var(--sk-cream-3);
+  background: linear-gradient(180deg, rgba(28, 17, 8, 0.95), rgba(12, 7, 3, 0.95));
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0 rgba(184, 137, 53, 0.14);
+  transition: transform 0.1s, filter 0.12s;
+}
+
+.sk-pace-choice:hover:not(:disabled) {
+  filter: brightness(1.4);
+}
+
+.sk-pace-choice:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.sk-pace-choice.is-on {
+  color: #2a1b06;
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.36), rgba(0, 0, 0, 0.24) 56%),
+    linear-gradient(160deg, var(--sk-brass), var(--sk-brass-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 226, 0.6),
+    inset 0 -1px 0 rgba(42, 27, 6, 0.55),
+    0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.sk-pace-choice:disabled {
+  cursor: default;
+}
+
+/* Un pied de bloc, pas de planche : le filet du haut sépare déjà le rythme
+   des manches, un second en bas aurait encadré ces cinq lignes comme si elles
+   pesaient plus que le reste de la colonne. */
+.sk-pace-hint {
+  margin: 9px 0 0;
+  text-align: center;
+}
+
 /* =====================================================================
    LA SCÈNE — une seule image peinte qui fait le décor ET la table. Il
    n'y a plus de fond d'un côté et de plateau de l'autre : le feutre est

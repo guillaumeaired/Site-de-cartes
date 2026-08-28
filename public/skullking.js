@@ -918,6 +918,9 @@ const roundsHint = document.getElementById('sk-rounds-hint');
 const lobbyChatLog = document.getElementById('sk-lobby-chat-log');
 const deckGrid = document.getElementById('sk-deck-grid');
 const deckHint = document.getElementById('sk-deck-hint');
+const pacePresetsEl = document.getElementById('sk-pace-presets');
+const paceList = document.getElementById('sk-pace-list');
+const paceHint = document.getElementById('sk-pace-hint');
 
 const joinModal = document.getElementById('sk-join-modal');
 const joinModalNickname = document.getElementById('sk-join-modal-nickname');
@@ -1286,7 +1289,89 @@ function renderRoundsPicker(total, mini, maxi, isHost) {
     : `${choisi} manches.`;
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, chat, myId: id }) => {
+// Le rythme de la partie. Rien de ce qui est ici ne touche aux règles : ce
+// sont les cinq durées d'attente du jeu, celles qu'on ne remarque que quand
+// elles ne vont pas — trop courtes on n'a pas fini de lire, trop longues on
+// attend en regardant un écran figé.
+//
+// La liste des réglages, leurs valeurs et leurs libellés viennent tous du
+// serveur (voir PACE_SETTINGS) : c'est lui qui applique ces durées, l'écran ne
+// fait que les dérouler. Les recopier ici, c'était s'engager à les changer à
+// deux endroits — et à afficher « 25 s » le jour où le serveur en applique 20.
+function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
+  const valeurs = pace || {};
+  const liste = reglages || [];
+
+  // Les trois allures. Aucune n'est allumée quand l'hôte a bricolé ses
+  // propres durées : mieux vaut n'en désigner aucune que d'en désigner une
+  // qui ne correspond plus à ce que la table va vivre.
+  pacePresetsEl.innerHTML = '';
+  (presets || []).forEach((preset) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sk-pace-preset' + (preset.key === presetActif ? ' is-on' : '');
+    b.textContent = preset.label;
+    b.disabled = !isHost;
+    b.setAttribute('aria-pressed', String(preset.key === presetActif));
+    if (preset.hint) attachTooltip(b, preset.hint);
+    if (isHost) {
+      b.addEventListener('click', () => socket.emit('skullking-set-pace-preset', { preset: preset.key }));
+    }
+    pacePresetsEl.appendChild(b);
+  });
+
+  // Le détail, une ligne par réglage. L'explication passe en bulle de survol
+  // plutôt qu'en texte sous chaque ligne : cinq phrases empilées auraient
+  // fait de cette planche la plus haute du salon pour ce qui reste le réglage
+  // le moins important de tous.
+  paceList.innerHTML = '';
+  liste.forEach((reglage) => {
+    const li = document.createElement('li');
+    li.className = 'sk-pace-row';
+
+    const nom = document.createElement('span');
+    nom.className = 'sk-pace-name';
+    nom.textContent = reglage.label;
+    if (reglage.hint) {
+      nom.title = reglage.hint;
+      attachTooltip(nom, reglage.hint);
+    }
+    li.appendChild(nom);
+
+    const choix = document.createElement('div');
+    choix.className = 'sk-pace-choices';
+    choix.setAttribute('role', 'group');
+    choix.setAttribute('aria-label', reglage.label);
+    (reglage.options || []).forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      const actif = valeurs[reglage.key] === o.value;
+      b.className = 'sk-pace-choice' + (actif ? ' is-on' : '');
+      b.textContent = o.label;
+      b.disabled = !isHost;
+      b.setAttribute('aria-pressed', String(actif));
+      if (isHost) {
+        b.addEventListener('click', () =>
+          socket.emit('skullking-set-pace', { key: reglage.key, value: o.value })
+        );
+      }
+      choix.appendChild(b);
+    });
+    li.appendChild(choix);
+    paceList.appendChild(li);
+  });
+
+  const preset = (presets || []).find((p) => p.key === presetActif);
+  if (preset) {
+    paceHint.textContent = preset.hint || '';
+  } else {
+    paceHint.textContent = isHost
+      ? 'Sur mesure — tes durées ne correspondent à aucune des trois allures.'
+      : 'Rythme sur mesure, choisi par l’hôte.';
+  }
+}
+
+socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
@@ -1347,6 +1432,7 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   renderDeckPicker(deck, isHost);
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
+  renderPacePicker(pace, paceSettings, pacePresets, pacePreset, isHost);
 
   // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
   // ajouterMessage écarte tout seul ce qui a déjà été posé. Les couleurs

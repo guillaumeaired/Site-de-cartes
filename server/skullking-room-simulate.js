@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -547,5 +547,65 @@ const pliSansPirate = roomAvecPli([
 check('aucun Pirate : la Planche ne retire rien', demanderCiblePlanche(ioMuet, pliSansPirate), false);
 check('et ne désigne personne', pliSansPirate.currentTrick[0].card.removesId, undefined);
 clearTimeout(pliSansPirate.inactivityTimer);
+
+// --- LE RYTHME DE LA PARTIE : ce que le salon a le droit de régler -----
+//
+// Cinq durées réglables par l'hôte, donc cinq valeurs qui arrivent par le
+// réseau. Tout l'enjeu est là : une valeur hors liste ne doit jamais devenir
+// un délai réel, et un salon qui n'a rien réglé (ou qui date d'avant ces
+// réglages) doit se jouer exactement comme avant.
+
+check(
+  'un salon sans rien de réglé retombe sur les durées d\'origine',
+  paceOf({}),
+  Object.fromEntries(PACE_SETTINGS.map((r) => [r.key, r.default]))
+);
+
+check(
+  "les durées d'origine sont exactement l'allure « Normal »",
+  paceOf({}),
+  PACE_PRESETS.find((p) => p.key === 'normal').values
+);
+
+check(
+  'une valeur hors liste est ignorée au profit de la durée d\'origine',
+  paceMs({ pace: { juanita: 3 } }, 'juanita'),
+  PACE_SETTINGS.find((r) => r.key === 'juanita').default
+);
+
+check(
+  'une valeur bricolée ne contamine pas les autres réglages',
+  paceMs({ pace: { juanita: 999_999, trick: 4_000 } }, 'trick'),
+  4_000
+);
+
+check(
+  '« Jamais » (0) est une vraie valeur du rappel d\'inactivité, pas un trou',
+  paceMs({ pace: { inactivity: 0 } }, 'inactivity'),
+  0
+);
+
+check(
+  "l'allure se reconnaît quand les cinq durées correspondent",
+  pacePresetOf({ pace: PACE_PRESETS.find((p) => p.key === 'vif').values }),
+  'vif'
+);
+
+check(
+  "et aucune n'est désignée dès qu'une seule durée sort du lot",
+  pacePresetOf({ pace: { ...PACE_PRESETS.find((p) => p.key === 'vif').values, juanita: 90_000 } }),
+  null
+);
+
+// Chaque allure doit rester composée de valeurs réellement proposées : sans
+// ça, un préréglage poserait une durée que paceOf refuserait de relire, et le
+// bouton s'allumerait sur une valeur qui ne s'applique pas.
+PACE_PRESETS.forEach((preset) => {
+  check(
+    `l'allure « ${preset.label} » n'utilise que des valeurs proposées`,
+    paceOf({ pace: preset.values }),
+    preset.values
+  );
+});
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);
