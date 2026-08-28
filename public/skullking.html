@@ -273,7 +273,15 @@
 
             <div class="sk-carnet">
               <p class="sk-side-title">Registre de bord</p>
-              <div id="sk-scoreboard-rows" class="sk-scoreboard-rows"></div>
+              <!-- La page se clique pour s'ouvrir en grand : `tabindex` parce
+                   qu'elle est déjà une zone qui défile, et qu'une zone qui
+                   défile se prend au clavier de toute façon. Pas de
+                   `role="button"` — il rendrait les lignes du classement
+                   présentationnelles pour un lecteur d'écran, et c'est
+                   justement ce qu'on vient y lire. -->
+              <div id="sk-scoreboard-rows" class="sk-scoreboard-rows" tabindex="0"
+                   aria-label="Classement — ouvrir le registre en grand"
+                   title="Agrandir le classement"></div>
               <button class="sk-defiler sk-defiler--haut" type="button" aria-label="Voir le haut du classement">&#9650;</button>
               <button class="sk-defiler sk-defiler--bas" type="button" aria-label="Voir le bas du classement">&#9660;</button>
             </div>
@@ -440,6 +448,17 @@
            légende ne bouge pas. -->
       <div id="sk-curve-modal-legend" class="sk-curve-legend sk-curve-legend--grande"></div>
       <button id="sk-btn-close-curve" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Le registre agrandi : le même classement que la colonne, mais chaque
+       pièce y porte enfin le nom de celui qui la joue. -->
+  <div id="sk-ranking-modal" class="modal hidden">
+    <div class="modal-content sk-ranking-content">
+      <button id="sk-btn-close-ranking-x" class="sk-modal-x" type="button" aria-label="Fermer">&times;</button>
+      <h2>Registre de bord</h2>
+      <div id="sk-ranking-body" class="sk-grand-registre"></div>
+      <button id="sk-btn-close-ranking" class="btn btn-primary">Fermer</button>
     </div>
   </div>
 

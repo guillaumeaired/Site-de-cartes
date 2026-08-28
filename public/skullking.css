@@ -2346,11 +2346,28 @@ h3 {
   text-shadow: none;
 }
 
+/* Le registre s'ouvre d'un clic : à la taille de la colonne il ne porte que
+   les médaillons et les chiffres, et « qui est ce bronze-là » est justement
+   la question qu'on ne peut pas y répondre. La main du curseur est tout ce
+   qui l'annonce — un bouton posé sur la page peinte y ferait une pièce
+   rapportée. */
 .sk-scoreboard-rows {
   display: flex;
   flex-direction: column;
   gap: 0;
   padding: 0;
+  cursor: pointer;
+}
+
+/* Au survol, la page se réchauffe à peine : c'est un papier qu'on touche du
+   doigt, pas un bouton qui s'allume. */
+.sk-scoreboard-rows:hover {
+  background: rgba(90, 67, 24, 0.07);
+}
+
+.sk-scoreboard-rows:focus-visible {
+  outline: 2px solid rgba(90, 67, 24, 0.55);
+  outline-offset: 1px;
 }
 
 .sk-score-row {
@@ -2401,15 +2418,26 @@ h3 {
    Deux anneaux : la couleur, puis un cheveu d'encre autour. Sans le second,
    un cerclage clair posé à même le papier n'avait pas de bord et flottait ;
    avec, il se lit comme un émail serti, le vocabulaire des pièces. */
+/* Les deux anneaux sont peints DEDANS, en `inset` : posés à l'extérieur en
+   `box-shadow`, ils débordaient de la boîte du médaillon et se faisaient
+   trancher net par le premier bord venu — l'`overflow` du nom, celui de la
+   page du registre qui défile, la marge de la colonne. On voyait un
+   cerclage carré d'un côté, plus rien de l'autre. Rien ne dépasse plus :
+   la boîte s'agrandit de l'épaisseur des anneaux, la figure se rétrécit
+   d'autant (le `padding` la retient), et le médaillon reste rond partout.
+   L'ordre compte : le cheveu d'encre est listé en premier, donc peint
+   par-dessus, et occupe le pixel le plus extérieur. */
 .sk-score-row-piece {
   flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  padding: 3px;
   display: block;
   border-radius: 50%;
   box-shadow:
-    0 0 0 2px var(--sk-piece-couleur, transparent),
-    0 0 0 3px rgba(53, 33, 8, 0.4);
+    inset 0 0 0 1px rgba(53, 33, 8, 0.4),
+    inset 0 0 0 3px var(--sk-piece-couleur, transparent);
 }
 
 .sk-score-row-piece .sk-piece-img {
@@ -2417,8 +2445,8 @@ h3 {
 }
 
 .sk-score-row--me .sk-score-row-piece {
-  width: 25px;
-  height: 25px;
+  width: 31px;
+  height: 31px;
 }
 
 .sk-score-row-total {
@@ -2429,6 +2457,150 @@ h3 {
 
 .sk-score-row--me .sk-score-row-total {
   color: #5a1512;
+}
+
+
+/* --- Le registre agrandi -----------------------------------------------
+   La page de la colonne répond à « où j'en suis » ; ouverte, elle répond à
+   « qui est où ». D'où les deux choses qu'elle ne peut pas porter à la
+   taille du carnet : le pseudo écrit en toutes lettres à côté de sa pièce,
+   et de l'air entre les lignes.
+
+   Le classement est un feuillet de parchemin CERCLÉ DE LAITON posé dans la
+   planche de bois — un cadre, comme la fiche des cartes et les panneaux de
+   la colonne. Sans lui, les lignes flottaient sur le fond sombre de la
+   modale et ne se lisaient plus comme un registre mais comme une liste. */
+.sk-ranking-content {
+  width: min(560px, 100%);
+  max-width: min(560px, 100%);
+}
+
+.sk-grand-registre {
+  max-height: 58vh;
+  overflow-y: auto;
+  padding: 6px 14px 8px;
+  border-radius: 2px;
+  background: linear-gradient(176deg, var(--sk-parch-hi), var(--sk-parch) 58%, var(--sk-parch-lo));
+  box-shadow:
+    0 0 0 1px var(--sk-brass),
+    0 0 0 2px rgba(30, 18, 6, 0.8),
+    inset 0 2px 6px rgba(90, 67, 24, 0.22);
+  color: var(--sk-parch-ink);
+}
+
+/* Cinq colonnes tenues à la même gouttière pour l'en-tête et les lignes :
+   le rang, la pièce, le nom, les plis, le score. Le nom est la seule qui
+   s'étire — c'est la colonne pour laquelle on a ouvert la planche. */
+.sk-grand-row {
+  display: grid;
+  grid-template-columns: 2.1em 34px minmax(0, 1fr) 3.4em 3.2em;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 2px;
+  border-bottom: 1px solid rgba(90, 67, 24, 0.22);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: #33240f;
+}
+
+.sk-grand-row:last-child {
+  border-bottom: 0;
+}
+
+/* L'en-tête est écrit à la plume, en petites capitales : il nomme les
+   colonnes sans peser autant qu'une ligne de joueur. */
+.sk-grand-row--tete {
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(90, 67, 24, 0.45);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #6b4c1d;
+}
+
+/* Ma ligne, à l'encre rouge du registre — la même marque que dans la
+   colonne, pour qu'on la retrouve d'un écran à l'autre. */
+.sk-grand-row--me {
+  color: #5a1512;
+  font-weight: 700;
+}
+
+.sk-grand-rank {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.86rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  color: #6b4c1d;
+}
+
+.sk-grand-row--me .sk-grand-rank {
+  color: #5a1512;
+}
+
+/* Mêmes anneaux peints dedans que dans la colonne, à l'échelle de la
+   planche : c'est le même médaillon, il ne doit pas changer de vocabulaire
+   en s'agrandissant. */
+.sk-grand-piece {
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  padding: 3px;
+  display: block;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 1px rgba(53, 33, 8, 0.4),
+    inset 0 0 0 3px var(--sk-piece-couleur, transparent);
+}
+
+.sk-grand-piece .sk-piece-img {
+  filter: drop-shadow(0 1px 1px rgba(53, 33, 8, 0.45));
+}
+
+/* Le pseudo entier, sur une ligne. Tronqué s'il le faut, mais à 560 px de
+   planche il faut un nom très long pour y arriver. */
+.sk-grand-nom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+}
+
+/* Le joueur déconnecté est pâli, comme à son siège. */
+.sk-grand-row--absent {
+  opacity: 0.55;
+}
+
+.sk-grand-bid,
+.sk-grand-total {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sk-grand-bid {
+  font-size: 0.86rem;
+  color: #5c4620;
+}
+
+.sk-grand-bid--hit {
+  color: #2f6130;
+  font-weight: 700;
+}
+
+.sk-grand-bid--over {
+  color: #8d3712;
+  font-weight: 700;
+}
+
+.sk-grand-total {
+  font-weight: 700;
+  font-size: 1.02rem;
 }
 
 
@@ -5335,7 +5507,8 @@ h3 {
 }
 
 /* Le titre laisse la place à la croix : centré, il passerait dessous. */
-.sk-curve-content h2 {
+.sk-curve-content h2,
+.sk-ranking-content h2 {
   padding: 0 34px;
 }
 
@@ -6945,6 +7118,13 @@ h3 {
 .sk-scene .sk-scoreboard-rows::-webkit-scrollbar,
 .sk-scene .sk-chat-log::-webkit-scrollbar {
   display: none;
+}
+
+/* Sur la scène, la page du registre est peinte dans le décor : un aplat au
+   survol, même pâle, se verrait comme une tache sur le papier. Le curseur
+   suffit à dire que ça s'ouvre. */
+.sk-scene .sk-scoreboard-rows:hover {
+  background: none;
 }
 
 .sk-scene .sk-carnet .sk-side-title,

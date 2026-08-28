@@ -3776,26 +3776,27 @@ CHAT_VUES.forEach((vue) => {
   });
 });
 
-function renderScoreboard(state) {
-  renderObjective(state);
-  renderChat(state);
-  scoreboardRows.innerHTML = '';
+// Le registre est CLASSÉ, le meilleur en haut. Il portait l'ordre du tour de
+// table, figé pour la partie, et seul le rang gravé bougeait : il fallait
+// parcourir les neuf lignes et comparer les chiffres romains pour savoir qui
+// menait, alors que c'est la première question qu'on pose à un tableau des
+// scores. Ma propre ligne reste trouvable sans la chercher, elle est marquée.
+//
+// L'ordre ne bouge qu'entre deux manches : les totaux ne changent qu'au
+// décompte, jamais pendant qu'on joue. Aucune ligne ne saute sous les yeux
+// au milieu d'un pli.
+//
+// Le tri part de l'ordre du tour de table et `sort` est stable : deux
+// joueurs à égalité restent donc dans cet ordre-là, et non dans celui,
+// arbitraire, où le serveur les a énumérés.
+//
+// Calculé à part parce que le registre se lit à deux tailles : la page de la
+// colonne et la planche agrandie. Deux classements calculés chacun de son
+// côté, c'est deux occasions de ne pas dire la même chose.
+function classementDuRegistre(state) {
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  // Le registre est CLASSÉ, le meilleur en haut. Il portait l'ordre du tour de
-  // table, figé pour la partie, et seul le rang gravé bougeait : il fallait
-  // parcourir les neuf lignes et comparer les chiffres romains pour savoir qui
-  // menait, alors que c'est la première question qu'on pose à un tableau des
-  // scores. Ma propre ligne reste trouvable sans la chercher, elle est marquée.
-  //
-  // L'ordre ne bouge qu'entre deux manches : les totaux ne changent qu'au
-  // décompte, jamais pendant qu'on joue. Aucune ligne ne saute sous les yeux
-  // au milieu d'un pli.
-  //
-  // Le tri part de l'ordre du tour de table et `sort` est stable : deux
-  // joueurs à égalité restent donc dans cet ordre-là, et non dans celui,
-  // arbitraire, où le serveur les a énumérés.
-  const classement = state.players
-    .map((p) => state.scoreboard.find((s) => s.id === p.id))
+  const lignes = (state.players || [])
+    .map((p) => (state.scoreboard || []).find((s) => s.id === p.id))
     .filter(Boolean)
     .sort((a, b) => b.total - a.total);
   // Les ex æquo PARTAGENT leur rang, comme au récap de fin : deux joueurs au
@@ -3805,10 +3806,35 @@ function renderScoreboard(state) {
   // l'ordre, deux I l'un sur l'autre disent ce que I puis II laissait croire
   // faux.
   const ranks = new Map();
-  classement.forEach((s, i) => {
-    const precedent = classement[i - 1];
+  lignes.forEach((s, i) => {
+    const precedent = lignes[i - 1];
     ranks.set(s.id, precedent && precedent.total === s.total ? ranks.get(precedent.id) : i + 1);
   });
+  return { byId, lignes, ranks };
+}
+
+// La case plis/annonce, écrite une fois pour les deux tailles du registre.
+// « 2/3 » se lit, mais ne se dit pas : la barre oblique s'annonce « deux
+// barre oblique trois » à la synthèse vocale. La phrase reste donc en titre,
+// où elle sert aussi au survol.
+function celluleAnnonce(state, p) {
+  const sansAnnonce = p.bid === undefined || p.bid === null;
+  return {
+    suffix: bidStateSuffix(state, p),
+    texte: state.phase === 'bidding'
+      ? (p.hasBid ? '✓' : '…')
+      : (sansAnnonce ? '–' : `${p.tricksWon}/${p.bid}`),
+    titre: sansAnnonce
+      ? 'Annonce inconnue'
+      : `${p.tricksWon} pli(s) remporté(s) sur ${p.bid} annoncé(s)`,
+  };
+}
+
+function renderScoreboard(state) {
+  renderObjective(state);
+  renderChat(state);
+  scoreboardRows.innerHTML = '';
+  const { byId, lignes: classement, ranks } = classementDuRegistre(state);
   classement
     .forEach((s) => {
       const row = document.createElement('div');
@@ -3850,17 +3876,11 @@ function renderScoreboard(state) {
       // pilotage, on y lit d'un coup qui tient son contrat et qui l'a déjà raté.
       const p = byId.get(s.id);
       if (p) {
-        const bidState = bidStateSuffix(state, p);
+        const annonce = celluleAnnonce(state, p);
         const bidEl = document.createElement('span');
-        bidEl.className = 'sk-score-row-bid' + (bidState ? ` sk-score-row-bid${bidState}` : '');
-        if (state.phase === 'bidding') bidEl.textContent = p.hasBid ? '✓' : '…';
-        else bidEl.textContent = p.bid === undefined || p.bid === null ? '–' : `${p.tricksWon}/${p.bid}`;
-        // « 2/3 » se lit, mais ne se dit pas : la barre oblique s'annonce
-        // « deux barre oblique trois » à la synthèse vocale. La phrase reste
-        // donc en titre, où elle sert aussi au survol.
-        bidEl.title = p.bid === undefined || p.bid === null
-          ? 'Annonce inconnue'
-          : `${p.tricksWon} pli(s) remporté(s) sur ${p.bid} annoncé(s)`;
+        bidEl.className = 'sk-score-row-bid' + (annonce.suffix ? ` sk-score-row-bid${annonce.suffix}` : '');
+        bidEl.textContent = annonce.texte;
+        bidEl.title = annonce.titre;
         row.appendChild(bidEl);
       }
 
@@ -3870,6 +3890,118 @@ function renderScoreboard(state) {
 
   // Rien à consulter tant qu'aucune manche n'est terminée.
   btnHistory.classList.toggle('hidden', state.roundNumber <= 1);
+
+  // La planche ouverte suit la partie : un pli remporté pendant qu'on la
+  // consulte s'y inscrit, sinon on lit un classement qui a déjà vieilli.
+  renderRegistreAgrandi(state);
+}
+
+// --- Le registre agrandi ------------------------------------------------
+// La page de la colonne ne porte que la pièce du joueur : à 9 joueurs, un
+// pseudo y tenait sur trois lettres et ne servait plus à rien (voir plus
+// haut). Le prix à payer, c'est qu'on ne peut plus mettre un nom sur un
+// bronze sans aller le chercher au bord du tapis. La planche agrandie rend
+// les deux d'un coup — même classement, même marque sur ma ligne, et le
+// pseudo écrit à côté de sa pièce.
+const rankingModal = document.getElementById('sk-ranking-modal');
+const rankingBody = document.getElementById('sk-ranking-body');
+
+function renderRegistreAgrandi(state) {
+  if (!rankingModal || !rankingBody || rankingModal.classList.contains('hidden')) return;
+  if (!state || !state.players || !state.scoreboard) return;
+  const { byId, lignes, ranks } = classementDuRegistre(state);
+  rankingBody.innerHTML = '';
+
+  const tete = document.createElement('div');
+  tete.className = 'sk-grand-row sk-grand-row--tete';
+  tete.setAttribute('aria-hidden', 'true');
+  ['Rang', '', 'Équipage', 'Plis', 'Score'].forEach((libelle) => {
+    const c = document.createElement('span');
+    c.textContent = libelle;
+    tete.appendChild(c);
+  });
+  rankingBody.appendChild(tete);
+
+  lignes.forEach((s) => {
+    const p = byId.get(s.id);
+    const row = document.createElement('div');
+    row.className = 'sk-grand-row'
+      + (s.id === myId ? ' sk-grand-row--me' : '')
+      + (p && p.connected === false ? ' sk-grand-row--absent' : '');
+
+    const rank = document.createElement('span');
+    rank.className = 'sk-grand-rank';
+    rank.textContent = ROMAN[ranks.get(s.id)] || '';
+    row.appendChild(rank);
+
+    // Le cerclage prend la couleur BRUTE de la pièce, comme dans la colonne :
+    // le feuillet est un parchemin clair, c'est l'encre saturée qui s'y
+    // détache, pas la teinte éclaircie pour le bois sombre.
+    const piece = pieceFor(p || s);
+    const medaillon = document.createElement('span');
+    medaillon.className = 'sk-grand-piece';
+    medaillon.style.setProperty('--sk-piece-couleur', piece.color);
+    medaillon.innerHTML = pieceSVG(piece);
+    row.appendChild(medaillon);
+
+    // Le pseudo est écrit à l'encre du registre, pas à la couleur du joueur :
+    // c'est le médaillon d'à côté qui porte déjà l'émail, et neuf noms peints
+    // chacun de sa teinte sur un parchemin, ça ne se lit plus comme une liste.
+    const nom = document.createElement('span');
+    nom.className = 'sk-grand-nom';
+    nom.textContent = s.nickname;
+    nom.title = s.nickname;
+    row.appendChild(nom);
+
+    const bid = document.createElement('span');
+    const annonce = p ? celluleAnnonce(state, p) : null;
+    bid.className = 'sk-grand-bid' + (annonce && annonce.suffix ? ` sk-grand-bid${annonce.suffix}` : '');
+    bid.textContent = annonce ? annonce.texte : '–';
+    if (annonce) bid.title = annonce.titre;
+    row.appendChild(bid);
+
+    const total = document.createElement('span');
+    total.className = 'sk-grand-total';
+    total.textContent = s.total;
+    row.appendChild(total);
+
+    rankingBody.appendChild(row);
+  });
+}
+
+function ouvrirRegistreAgrandi() {
+  if (!rankingModal || !latestState) return;
+  // Montrée d'abord, remplie ensuite : `renderRegistreAgrandi` ne dessine
+  // rien tant que la planche est cachée, c'est ce qui lui évite de travailler
+  // à chaque état pendant toute la partie.
+  rankingModal.classList.remove('hidden');
+  renderRegistreAgrandi(latestState);
+}
+
+function fermerRegistreAgrandi() {
+  if (rankingModal) rankingModal.classList.add('hidden');
+}
+
+if (rankingModal) {
+  scoreboardRows.addEventListener('click', ouvrirRegistreAgrandi);
+  // Au clavier : Entrée ouvre. Espace est laissé au défilement de la page,
+  // qui est le premier usage de cette zone.
+  scoreboardRows.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      ouvrirRegistreAgrandi();
+    }
+  });
+  document.getElementById('sk-btn-close-ranking').addEventListener('click', fermerRegistreAgrandi);
+  document.getElementById('sk-btn-close-ranking-x').addEventListener('click', fermerRegistreAgrandi);
+  // Le fond ferme, comme pour la courbe agrandie : on sort d'une loupe comme
+  // on y est entré. Seul un clic SUR le fond compte, pas sur la planche.
+  rankingModal.addEventListener('click', (e) => {
+    if (e.target === rankingModal) fermerRegistreAgrandi();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !rankingModal.classList.contains('hidden')) fermerRegistreAgrandi();
+  });
 }
 
 // --- Pouvoirs des pirates nommés ---
