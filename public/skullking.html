@@ -468,6 +468,20 @@
       <p class="sk-settings-valeur"><output id="sk-range-taille-valeur" for="sk-range-taille"></output></p>
       <p class="hint sk-settings-note">Le tapis est peint en plongée : au-delà, les cartes de deux joueurs
         voisins se recouvrent. Le réglage est gardé sur cet appareil.</p>
+
+      <!-- Second réglage : la fiche de règle au survol des cartes qu'on
+           tient. Elle apprend le jeu, puis elle s'ouvre au-dessus de
+           l'éventail à chaque hésitation et masque les cartes entre
+           lesquelles on hésite. L'interrupteur est celui des lignes du
+           salon : même rail, même bouton de laiton. -->
+      <hr class="sk-settings-trait" />
+      <button id="sk-toggle-survol" class="sk-settings-switch" type="button" aria-pressed="true">
+        <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+        <span class="sk-settings-switch-nom">Règles au survol des cartes en main</span>
+      </button>
+      <p class="hint sk-settings-note">Les cartes posées sur le tapis gardent leur fiche : ce réglage ne coupe
+        que celle des cartes que tu tiens — au doigt, l'appui long avec. Gardé sur cet appareil.</p>
+
       <div class="sk-settings-actions">
         <button id="sk-btn-settings-apply" class="btn btn-primary">Appliquer</button>
         <button id="sk-btn-settings-close" class="btn-link">Annuler</button>
