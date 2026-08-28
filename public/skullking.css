@@ -8354,3 +8354,70 @@ h3 {
   background: radial-gradient(circle at 38% 30%, #fbefcc, var(--sk-brass) 52%, #5a4318 100%);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(16, 9, 3, 0.7);
 }
+
+/* Le trait qui sépare les deux réglages : le même filet de laiton que sous
+   le titre de la planche des extensions. Deux réglages sans rien entre eux
+   se lisaient comme un seul, la note du premier passant pour celle du
+   second. */
+.sk-settings-trait {
+  height: 0;
+  margin: 20px 0 14px;
+  border: 0;
+  border-top: 1px solid rgba(184, 137, 53, 0.24);
+}
+
+/* Un interrupteur et non un curseur : la fiche est là ou elle n'est pas.
+   C'est celui des lignes d'extension du salon — rail et bouton repris tels
+   quels de .sk-extension-toggle-* — mais centré, la planche des réglages
+   l'étant, là où la liste du salon est chassée à gauche. */
+.sk-settings-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto;
+  padding: 3px 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--sk-cream-2);
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.sk-settings-switch:hover {
+  color: var(--sk-cream);
+}
+
+.sk-settings-switch:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: 3px;
+}
+
+/* Le libellé tient sur deux lignes plutôt que de déborder de la planche :
+   380 px de large, et « Règles au survol des cartes en main » en capitales
+   espacées n'y entre pas d'un trait sur un écran étroit. */
+.sk-settings-switch-nom {
+  min-width: 0;
+  white-space: normal;
+}
+
+.sk-settings-switch .sk-extension-toggle-track {
+  width: 30px;
+  height: 16px;
+}
+
+.sk-settings-switch .sk-extension-toggle-knob {
+  top: 2.5px;
+  left: 2.5px;
+  width: 11px;
+  height: 11px;
+}
+
+.sk-settings-switch.sk-extension-toggle--on .sk-extension-toggle-knob {
+  transform: translateX(14px);
+}

@@ -557,27 +557,63 @@ function hideCardTooltip() {
   cardTooltip.classList.add('hidden');
 }
 
+// --- Réglage : la fiche au survol des cartes de MA main ---------------
+// La fiche est une aide d'apprentissage : elle dit ce que fait la carte
+// qu'on s'apprête à poser. Passé quelques parties elle n'apprend plus rien,
+// mais elle s'ouvre toujours au-dessus de l'éventail à chaque hésitation —
+// et masque justement les cartes entre lesquelles on hésite. Elle se coupe
+// donc, mais POUR LA MAIN SEULE — l'éventail et le troc de Will, qui est la
+// main dans un autre cadre. Les cartes du tapis et celles que Juanita révèle
+// gardent la leur : on ne les survole que pour les lire, jamais pour les
+// jouer.
+//
+// Réglage LOCAL, comme la taille des cartes : il tient à l'écran et à ce que
+// le joueur sait déjà du jeu, pas à la partie. Rien n'est envoyé au serveur,
+// rien n'est imposé aux autres.
+const REGLES_MAIN_CLE = 'guimams-sk-regles-main';
+let reglesEnMain = null;
+
+function reglesEnMainActives() {
+  // Par défaut : affichées. Une main neuve doit expliquer ses cartes ; c'est
+  // au joueur qui n'en veut plus d'aller le dire.
+  if (reglesEnMain === null) reglesEnMain = lireReglage(REGLES_MAIN_CLE) !== '0';
+  return reglesEnMain;
+}
+
 // La bulle au survol, sur n'importe quel élément : la fiche de parchemin
 // vaut pour tout ce qui demande un mot d'explication, pas seulement pour les
 // cartes à pouvoir. Le title natif est laissé en place par les appelants qui
 // en posent un — il sert au clavier et aux technologies d'assistance, que la
 // bulle, elle, ne touche pas.
-function attachTooltip(el, text) {
+//
+// estCoupee, facultatif : une fonction interrogée À CHAQUE survol, qui dit
+// si la bulle doit rester fermée. Un prédicat et non un booléen, pour que le
+// réglage qui la coupe prenne effet tout de suite — les écouteurs, eux, sont
+// posés une fois pour toutes au dessin de la carte.
+function attachTooltip(el, text, estCoupee) {
   el.addEventListener('mouseenter', (e) => {
+    if (estCoupee && estCoupee()) return;
     cardTooltip.textContent = text;
     cardTooltip.classList.remove('hidden');
     positionCardTooltip(e);
   });
-  el.addEventListener('mousemove', positionCardTooltip);
+  el.addEventListener('mousemove', (e) => {
+    if (estCoupee && estCoupee()) return;
+    positionCardTooltip(e);
+  });
   el.addEventListener('mouseleave', hideCardTooltip);
 }
 
 // Attache l'explication d'une carte à un élément : rien n'est fait si la
 // carte n'a pas de texte particulier (numérotées hors atout/extension).
-function attachPowerTooltip(el, card) {
+//
+// main : cette carte est une carte que JE tiens (l'éventail, le troc de
+// Will). C'est la seule famille que le réglage des règles au survol coupe.
+function attachPowerTooltip(el, card, { main = false } = {}) {
   const text = cardPowerText(card);
   if (!text) return;
-  attachTooltip(el, text);
+  const coupee = main ? () => !reglesEnMainActives() : null;
+  attachTooltip(el, text, coupee);
 
   // Appui long : la fiche s'ouvre, la carte ne se joue pas. Le clic qui
   // suit le relâchement est avalé (voir suppressNextTap), sinon consulter
@@ -586,6 +622,9 @@ function attachPowerTooltip(el, card) {
   let startX = 0;
   let startY = 0;
   el.addEventListener('touchstart', (e) => {
+    // Au doigt, l'appui long EST le survol : le réglage le coupe donc aussi,
+    // sinon il ne ferait rien sur un écran tactile.
+    if (coupee && coupee()) return;
     const t = e.touches[0];
     startX = t.clientX;
     startY = t.clientY;
@@ -783,6 +822,17 @@ const historyBody = document.getElementById('sk-history-body');
 const settingsModal = document.getElementById('sk-settings-modal');
 const rangeTaille = document.getElementById('sk-range-taille');
 const rangeTailleValeur = document.getElementById('sk-range-taille-valeur');
+const toggleSurvol = document.getElementById('sk-toggle-survol');
+
+// Ce que la planche MONTRE, et non ce qui est en vigueur : comme la taille,
+// le réglage n'est pris qu'à « Appliquer » — « Annuler » doit pouvoir le
+// laisser tel qu'il était.
+let survolEnMain = true;
+
+function afficherToggleSurvol() {
+  toggleSurvol.classList.toggle('sk-extension-toggle--on', survolEnMain);
+  toggleSurvol.setAttribute('aria-pressed', String(survolEnMain));
+}
 
 function afficherValeurTaille() {
   rangeTailleValeur.textContent = `${rangeTaille.value} %`;
@@ -793,6 +843,8 @@ function ouvrirReglages() {
   rangeTaille.max = Math.round(TAILLE_CARTES_MAX * 100);
   rangeTaille.value = Math.round(tailleDesCartes() * 100);
   afficherValeurTaille();
+  survolEnMain = reglesEnMainActives();
+  afficherToggleSurvol();
   settingsModal.classList.remove('hidden');
 }
 
@@ -803,6 +855,10 @@ function fermerReglages() {
 document.getElementById('sk-btn-settings').addEventListener('click', ouvrirReglages);
 document.getElementById('sk-btn-settings-close').addEventListener('click', fermerReglages);
 rangeTaille.addEventListener('input', afficherValeurTaille);
+toggleSurvol.addEventListener('click', () => {
+  survolEnMain = !survolEnMain;
+  afficherToggleSurvol();
+});
 settingsModal.addEventListener('click', (e) => {
   if (e.target === settingsModal) fermerReglages();
 });
@@ -816,6 +872,11 @@ document.getElementById('sk-btn-settings-apply').addEventListener('click', () =>
     Math.max(TAILLE_CARTES_MIN, Number(rangeTaille.value) / 100)
   );
   ecrireReglage(TAILLE_CARTES_CLE, String(tailleCartesChoisie));
+  // Le survol se lit au moment du survol : rien à redessiner pour lui, la
+  // valeur en mémoire suffit — le stockage n'est là que pour la prochaine
+  // fois qu'on ouvrira la table.
+  reglesEnMain = survolEnMain;
+  ecrireReglage(REGLES_MAIN_CLE, survolEnMain ? '1' : '0');
   fermerReglages();
   // Le tapis est redessiné de force : renderTrick ne redessine pas un pli
   // qu'il a déjà posé (voir l'empreinte), et l'empreinte ne connaît pas la
@@ -2216,17 +2277,22 @@ function zoneDesCartes(boite) {
 // ne peuvent pas remplir l'écran. Mais 42 % de la hauteur du feutre les
 // laissait petites sur un grand écran, où c'est justement l'illustration
 // qu'on veut lire — et il reste de la place dans les angles hauts du feutre,
-// que personne n'occupe. Le socle passe donc à 52 %, et le joueur peut
-// s'écarter de ±30 % autour de là, par le réglage de la barre latérale.
+// que personne n'occupe. Le socle passe donc à 52 %, et le joueur s'écarte
+// de là comme il veut, par le réglage de la barre latérale.
 //
 // Bornes, tenues au rendu à neuf joueurs — la table la plus serrée — sur une
 // fenêtre de 1400x800 : en dessous de 0,8 les chiffres des cartes numérotées
-// ne se lisent plus au fond du tapis ; à 1,15 tout reste lisible mais les
-// cartes de deux sièges voisins commencent à se mordre, et à 1,3 elles se
-// recouvrent franchement. Le maximum est donc 1,15, pas un cran de plus.
+// ne se lisent plus au fond du tapis. Vers le haut, 1,15 était le dernier
+// cran où neuf cartes ne se mordent pas, et le plafond s'y arrêtait. Il monte
+// à 2 : le chevauchement n'est pas une avarie, c'est un choix, et il ne
+// concerne de toute façon que les grandes tables. À trois ou quatre joueurs
+// la couronne est vide aux trois quarts, l'écran est parfois loin, et c'est
+// là qu'on veut lire une illustration — le réglage existe pour ça. Le plafond
+// dit donc jusqu'où le joueur PEUT aller, pas ce qui tient sans se toucher :
+// ce dernier chiffre est écrit sous le curseur, à lui de s'en servir.
 const HAUTEUR_CARTE_PLI = 0.52;
 const TAILLE_CARTES_MIN = 0.8;
-const TAILLE_CARTES_MAX = 1.15;
+const TAILLE_CARTES_MAX = 2;
 const TAILLE_CARTES_CLE = 'guimams-sk-taille-cartes';
 let tailleCartesChoisie = null;
 
@@ -2282,7 +2348,8 @@ function echelleCouronne(effectif, largeurPleine, L, H) {
   // feutre, voir la CSS) : au-delà on l'agrandit, ce qui est exactement ce
   // que demande le réglage du joueur — d'où le facteur, appliqué après les
   // deux bornes et non dedans. Les bornes disent ce qui tient sans se
-  // chevaucher ; le réglage dit ce que le joueur préfère voir.
+  // chevaucher ; le réglage dit ce que le joueur préfère voir, jusqu'au
+  // double, quitte à ce que les voisines se touchent.
   return Math.max(0.55, Math.min(1, hauteur, arc)) * tailleDesCartes();
 }
 
@@ -3432,7 +3499,7 @@ function renderHand(state) {
     const el = document.createElement('div');
     el.className = `sk-card ${cardClass(card)}`;
     el.innerHTML = cardFaceHTML(card);
-    attachPowerTooltip(el, card);
+    attachPowerTooltip(el, card, { main: true });
     // Pouvoir de Mary Thorne : une seule carte précise reste jouable, peu
     // importe la couleur imposée ou tout autre effet.
     const playable = !canPlay || (state.forcedCardId ? card.id === state.forcedCardId : isCardPlayable(card, hand, trick));
@@ -4120,7 +4187,9 @@ function renderWillTroc(state, pending, hint) {
     const el = document.createElement('div');
     el.className = `sk-card ${cardClass(card)}` + (piochee ? ' sk-card--will-drawn' : '');
     el.innerHTML = cardFaceHTML(card);
-    attachPowerTooltip(el, card);
+    // Le troc porte toute la main : ce sont des cartes que je tiens, le
+    // réglage les couvre comme celles de l'éventail.
+    attachPowerTooltip(el, card, { main: true });
 
     // Le bandeau de gabier, celui qui dit déjà « Suis le vert » sur une carte
     // bloquée : c'est là que l'œil vient chercher l'état d'une carte.
