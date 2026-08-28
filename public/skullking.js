@@ -983,7 +983,6 @@ const btnLeaveWaiting = document.getElementById('sk-btn-leave-waiting');
 const lobbyPlayers = document.getElementById('sk-lobby-players');
 const lobbyList = document.getElementById('sk-lobby-list');
 const lobbyRange = document.getElementById('sk-lobby-range');
-const lobbyEffectif = document.getElementById('sk-lobby-effectif');
 const btnStartGame = document.getElementById('sk-btn-start-game');
 const btnAddBot = document.getElementById('sk-btn-add-bot');
 
@@ -1640,9 +1639,6 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   // paquet, pas les arrivées — sans extension on joue à sept, et le
   // cinquième rang n'aurait jamais servi qu'à faire du bois nu.
   lobbyList.style.setProperty('--sk-crew-rangs', Math.ceil(maxPlayers / 2));
-  // L'effectif en tête de salon, à côté des réglages : le nombre et le mot,
-  // rien d'autre. Les bornes du paquet restent sur la planche de l'équipage.
-  lobbyEffectif.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
 
   // Extensions : cliquables par l'hôte uniquement (imposé aussi côté
   // serveur), lecture seule pour les autres - tout le monde voit le même
@@ -1659,12 +1655,19 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   // Le résumé de la planche : ce à quoi on va jouer, en une ligne. Le rythme
   // n'y est plus — il règle la vitesse des pauses, pas la partie, et son
   // libellé faisait déborder la ligne sur trois mots qu'on ne relit jamais.
-  // Le nombre de manches passe en gras : c'est la seule des deux valeurs
-  // qu'on change vraiment d'une partie à l'autre.
+  // L'effectif ouvre la ligne, devant les manches : il était en étiquette à
+  // côté du titre, à part du reste, alors que c'est la même phrase — on est
+  // tant, on joue tant de manches, avec tel paquet. Il garde son cerclage de
+  // laiton (voir .sk-lobby-effectif) parce que c'est la seule des trois
+  // valeurs qui bouge pendant qu'on attend. Le nombre de manches passe en
+  // gras : c'est celle qu'on change vraiment d'une partie à l'autre.
   const deckLabel = deck === 'perso' ? 'Paquet perso' : 'Paquet classique';
+  const effectif = document.createElement('span');
+  effectif.className = 'sk-lobby-effectif';
+  effectif.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
   const manches = document.createElement('strong');
   manches.textContent = `${totalRounds} manches`;
-  lobbySettingsSummary.replaceChildren(manches, ` · ${deckLabel}`);
+  lobbySettingsSummary.replaceChildren(effectif, ' · ', manches, ` · ${deckLabel}`);
 
   // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
   // ajouterMessage écarte tout seul ce qui a déjà été posé. Les couleurs

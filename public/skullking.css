@@ -8564,14 +8564,24 @@ h3 {
     margin: 0 auto 4px;
   }
 
-  /* L'étiquette tient le coin haut droit, « Quitter » le coin haut gauche :
-     tous deux hors du flux, si bien que l'enseigne centrée récupère toute la
-     bande du haut qui les sépare. */
+  /* La rangée de tête : trois colonnes dont deux vides, pour que la planche
+     des réglages reste centrée SUR L'ÉCRAN — et non sur ce que l'étiquette
+     lui laisse. Le code se pose au bout de la troisième, à mi-hauteur de la
+     planche : la même ligne, la même bande. Si l'étiquette est plus large que
+     sa colonne de vide (fenêtre juste au-dessus du seuil), les `1fr` cèdent
+     et les réglages glissent d'autant vers la gauche plutôt que de passer
+     dessous. Seul « Quitter » reste hors du flux, et l'enseigne centrée garde
+     toute la bande du haut. */
+  .sk-lobby-headline {
+    display: grid;
+    grid-template-columns: 1fr minmax(0, 520px) 1fr;
+    align-items: center;
+    gap: 12px;
+  }
+
   #sk-screen-waiting #sk-share-block {
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: auto;
+    grid-column: 3;
+    justify-self: end;
   }
 
   #sk-screen-waiting .sk-rounds-card {
@@ -8582,17 +8592,21 @@ h3 {
     padding-top: 22px;
   }
 
+  /* Colonne du milieu de la rangée de tête, posée à la main : sans ça
+     l'auto-placement la mettait dans la première colonne libre — celle du
+     vide de gauche — et l'étiquette du code restait seule à droite. */
   #sk-screen-waiting .sk-lobby-settings-card {
+    grid-column: 2;
     flex: none;
-    width: min(520px, 100%);
-    max-width: 520px;
-    margin: 0 auto 4px;
+    width: auto;
+    max-width: none;
+    margin: 0 0 4px;
     padding: 22px 16px 13px;
   }
 
   #sk-screen-waiting .sk-lobby-settings-card .sk-lobby-summary {
     min-height: 0;
-    margin: 0 0 8px;
+    margin: 0;
   }
 
   #sk-screen-waiting .sk-lobby-grid {
@@ -9221,24 +9235,47 @@ h3 {
   transform: translateX(14px);
 }
 
-.sk-lobby-settings-head {
+/* La rangée de tête du salon (réglages + code de la partie). Empilée sur
+   téléphone, elle n'est qu'un conteneur ; en paysage elle devient une rangée
+   de trois colonnes (voir plus haut). `flex: none` parce que le salon est une
+   colonne flex à hauteur fixe : sans ça la rangée se serait tassée pour faire
+   de la place aux planches. */
+.sk-lobby-headline {
+  flex: none;
+}
+
+/* La planche des réglages se lit en deux blocs côte à côte : ce qu'on a réglé
+   à gauche (le titre et sa ligne de résumé), le bouton qui le change à
+   droite. `center` sur l'axe transversal : le bouton se pose alors à
+   mi-hauteur de la planche, en face du texte entier, et non contre le bord
+   haut où il s'alignait sur les capitales du titre en laissant le résumé
+   courir seul sous lui. */
+.sk-lobby-settings-card {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
 }
 
-.sk-lobby-settings-head .sk-lobby-col-title {
+.sk-lobby-settings-text {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
-/* L'effectif, à côté du titre des réglages : le nombre et le mot, rien de
+/* La ligne de résumé est la dernière du bloc : sa marge de pied ferait
+   pencher le centrage d'un demi-interligne. */
+.sk-lobby-settings-text .sk-lobby-summary {
+  margin-bottom: 0;
+}
+
+/* L'effectif, en tête de la ligne de résumé : le nombre et le mot, rien de
    plus. Le minimum et le maximum restent sur la planche de l'équipage —
    c'est là qu'on les lit, en regardant qui manque ; ici on veut juste savoir
-   combien on est sans compter les lignes. */
+   combien on est sans compter les lignes. Cerclé de laiton au milieu du
+   texte : c'est la seule valeur de la ligne qui change pendant qu'on attend,
+   et l'œil doit pouvoir y revenir sans relire la phrase. */
 .sk-lobby-effectif {
-  flex: none;
-  margin-top: -1px;
-  padding: 3px 9px;
+  display: inline-block;
+  padding: 2px 8px;
   border-radius: 2px;
   border: 1px solid rgba(184, 137, 53, 0.42);
   background: linear-gradient(180deg, rgba(255, 236, 196, 0.07), rgba(0, 0, 0, 0.32));
@@ -9253,7 +9290,7 @@ h3 {
 
 .sk-lobby-edit {
   flex: none;
-  margin: -2px 0 0;
+  margin: 0;
   padding: 5px 9px;
   font-size: 0.66rem;
 }
@@ -9277,11 +9314,22 @@ h3 {
   .sk-lobby-config-modal { width: min(560px, 100%); }
   .sk-config-section + .sk-config-section { margin-top: 18px; padding-top: 15px; border-top: 1px solid rgba(184, 137, 53, 0.28); }
 
-  /* L'étiquette reste dans le flux, au bout de la rangée que « Quitter »
-     ouvre : sur une colonne où la hauteur est comptée, la mettre à côté du
-     lien plutôt qu'en dessous économise une ligne entière. */
+  /* Empilée, la rangée de tête redevient deux blocs l'un sous l'autre :
+     les réglages, puis le code — juste sous l'enseigne, là où on le cherche
+     en arrivant. Centré et au gabarit des blocs voisins : à gauche d'une
+     colonne étroite, une étiquette de deux lignes se lisait de travers. */
   #sk-screen-waiting #sk-share-block {
-    flex: 0 1 auto;
-    max-width: 66vw;
+    width: fit-content;
+    max-width: 300px;
+    margin: 10px auto 0;
+    justify-items: center;
+    text-align: center;
+  }
+
+  /* La planche des réglages garde ses deux blocs côte à côte, mais le
+     bouton se resserre : sur une colonne de téléphone, « Modifier » et une
+     ligne de résumé de trois valeurs se disputent la largeur. */
+  .sk-lobby-settings-card {
+    gap: 10px;
   }
 }

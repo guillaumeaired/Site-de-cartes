@@ -44,16 +44,51 @@
     </section>
 
     <section id="sk-screen-waiting" class="screen hidden">
-      <!-- Le coin haut gauche du salon : ce qu'on quitte, puis le code, juste
-           dessous. Le code ne vit plus dans la grille des planches — c'est la
-           première chose qu'on vient chercher en arrivant, et la dernière
-           qu'on relit pour la dicter à quelqu'un. « Quitter » garde son coin,
-           le même que sur l'écran de jeu : on sort d'une partie par la même
-           porte quel que soit l'écran. En paysage les deux passent en absolu
-           (la rangée retombe à zéro et l'enseigne occupe toute la bande) ;
-           sous 1000px elles restent dans le flux, au-dessus de l'enseigne. -->
+      <!-- Le coin haut gauche du salon : ce qu'on quitte, et rien d'autre.
+           « Quitter » garde le même coin que sur l'écran de jeu — on sort
+           d'une partie par la même porte quel que soit l'écran. En paysage il
+           passe en absolu, l'enseigne occupe alors toute la bande du haut.
+           Le code, lui, est descendu d'un cran : il tient la droite de la
+           rangée des réglages, juste sous l'enseigne. -->
       <div class="sk-waiting-top">
         <button id="sk-btn-leave-waiting" class="btn-link">← Quitter</button>
+      </div>
+
+      <!-- L'enseigne, en grand : le salon était le seul écran de la partie
+           où la marque n'apparaissait nulle part — on arrivait par un lien
+           d'invitation sur trois planches de bois sans savoir à quoi on
+           venait de s'asseoir. -->
+      <img class="sk-waiting-logo" src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
+
+      <!-- La rangée de tête du salon : les réglages au centre, le code de la
+           partie à leur droite. Le code campait auparavant tout en haut, à
+           hauteur du « Quitter », si loin du reste qu'il se lisait comme un
+           en-tête de page ; il se pose maintenant sur la même ligne que la
+           planche des réglages — la bande où l'on dit ce qu'est cette partie
+           et comment on y entre. Les planches de la grille, elles, gardent
+           toute leur hauteur : la discussion repart du haut de la rangée,
+           à hauteur de « Ta pièce ». -->
+      <div class="sk-lobby-headline">
+        <!-- La planche des réglages ne porte plus que leur RÉSUMÉ : les trois
+             réglages de partie (manches, paquet, rythme) vivent ensemble dans
+             la modale que « Modifier » ouvre. Le nombre de manches faisait
+             exception — dix jetons de laiton en travers du salon pour un
+             réglage qu'on touche une fois — et il coupait la seule ligne qui
+             dit d'un coup d'œil à quoi on va jouer. -->
+        <section class="sk-lobby-col sk-lobby-settings-card">
+          <!-- Le titre et le résumé font un bloc, « Modifier » se pose à
+               côté : le bouton se cale alors au MILIEU de la planche et non
+               contre son bord haut, où il pendait à hauteur du titre pendant
+               que la ligne de résumé courait toute seule en dessous.
+               L'effectif, lui, a rejoint le résumé (voir renderLobby) : c'est
+               une des trois valeurs de la partie, pas une étiquette de
+               titre. -->
+          <div class="sk-lobby-settings-text">
+            <p class="invite-label sk-lobby-col-title">Réglages de la partie</p>
+            <p id="sk-lobby-settings-summary" class="sk-lobby-summary"></p>
+          </div>
+          <button id="sk-btn-lobby-settings" class="btn sk-lobby-edit" type="button">Modifier</button>
+        </section>
 
         <div id="sk-share-block" class="sk-share-chip hidden">
           <p class="sk-share-chip-label">Code de la partie</p>
@@ -63,35 +98,10 @@
         </div>
       </div>
 
-      <!-- L'enseigne, en grand : le salon était le seul écran de la partie
-           où la marque n'apparaissait nulle part — on arrivait par un lien
-           d'invitation sur trois planches de bois sans savoir à quoi on
-           venait de s'asseoir. -->
-      <img class="sk-waiting-logo" src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
-
-      <!-- La planche des réglages ne porte plus que leur RÉSUMÉ : les trois
-           réglages de partie (manches, paquet, rythme) vivent ensemble dans
-           la modale que « Modifier » ouvre. Le nombre de manches faisait
-           exception — dix jetons de laiton en travers du salon pour un
-           réglage qu'on touche une fois — et il coupait la seule ligne qui
-           dit d'un coup d'œil à quoi on va jouer. -->
-      <section class="sk-lobby-col sk-lobby-settings-card">
-        <div class="sk-lobby-settings-head">
-          <p class="invite-label sk-lobby-col-title">Réglages de la partie</p>
-          <!-- L'effectif se lit ici, en tête de salon : c'est la seule
-               donnée qu'on surveille en attendant, et elle était jusque-là
-               noyée dans le libellé de la liste, au milieu de la planche. -->
-          <span id="sk-lobby-effectif" class="sk-lobby-effectif">1 joueur</span>
-          <button id="sk-btn-lobby-settings" class="btn sk-lobby-edit" type="button">Modifier</button>
-        </div>
-        <p id="sk-lobby-settings-summary" class="sk-lobby-summary"></p>
-      </section>
-
       <!-- Le salon se lit en trois planches côte à côte dès qu'il y a de la
            largeur : les extensions à gauche, l'équipage au milieu, et la
-           discussion au bout. Le code, lui, a quitté la grille pour la barre
-           du haut. Sous 1000px la grille redevient une simple colonne et
-           l'ordre du DOM suffit — la discussion en pied. -->
+           discussion au bout. Sous 1000px la grille redevient une simple
+           colonne et l'ordre du DOM suffit — la discussion en pied. -->
       <div class="sk-lobby-grid">
         <div class="sk-lobby-pile">
           <section class="sk-lobby-col sk-ext-card">
@@ -109,7 +119,7 @@
           </div>
 
           <div id="sk-lobby-players" class="lobby-players hidden">
-            <!-- Le compte est passé en tête de salon, à côté des réglages
+            <!-- Le compte est passé dans la ligne de résumé des réglages
                  (voir .sk-lobby-effectif) : il ne reste ici que les bornes
                  du paquet, la seule chose que ce libellé disait de plus. -->
             <p class="invite-label">Joueurs — <span id="sk-lobby-range">3 à 7</span></p>
