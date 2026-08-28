@@ -515,6 +515,30 @@ function assignMissingPieces(room) {
   }
 }
 
+// Un bot s'assied avec sa pièce. Il n'a pas d'écran pour la choisir, et une
+// pièce laissée à null n'est réservée qu'au lancement (assignMissingPieces) :
+// jusque-là la sienne restait offerte aux humains, qui pouvaient s'installer
+// dessus. Il en prend donc une tout de suite, au hasard parmi les libres,
+// exactement comme un joueur qui aurait cliqué.
+function giveFreePiece(room, player) {
+  if (!player || player.piece) return;
+  const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
+  const libres = PIECE_KEYS.filter((k) => !prises.has(k));
+  player.piece = libres[Math.floor(Math.random() * libres.length)] || null;
+}
+
+// Le seul chemin d'ajout d'un bot : le bouton de l'hôte et le mode essai
+// passent tous les deux par ici, pour que la pièce soit prise dans les deux
+// cas. Renvoie le joueur ajouté, ou null si la salle a refusé.
+function addBotToRoom(io, room) {
+  if (!bots) return null;
+  const id = bots.addBot(io, room, registerSkullKingHandlers);
+  if (!id) return null;
+  const bot = findPlayer(room, id);
+  giveFreePiece(room, bot);
+  return bot;
+}
+
 // --- Chat de salon ---
 // L'historique vit sur le salon, pas sur la partie : il traverse les manches
 // et les revanches, et ne disparaît qu'avec le salon lui-même. Plafonné pour
@@ -1689,7 +1713,7 @@ function registerSkullKingHandlers(io, socket) {
     if (ESSAI && ESSAI_BOTS && bots) {
       const maxPlayers = maxPlayersFor(extensionsOf(room));
       for (let i = 0; i < ESSAI_BOTS && room.players.length < maxPlayers; i++) {
-        bots.addBot(io, room, registerSkullKingHandlers);
+        addBotToRoom(io, room);
       }
     }
     broadcastLobby(io, room);
@@ -1896,11 +1920,10 @@ function registerSkullKingHandlers(io, socket) {
     if (!room || room.phase !== 'lobby' || !bots) return;
     if (socket.id !== room.hostId) return;
     if (room.players.length >= maxPlayersFor(extensionsOf(room))) return;
-    if (bots.addBot(io, room, registerSkullKingHandlers)) {
-      const ajoute = room.players[room.players.length - 1];
-      if (ajoute) pushSystemChat(io, room, `${ajoute.nickname} a rejoint le salon.`);
-      broadcastLobby(io, room);
-    }
+    // L'arrivée s'annonce toute seule : le bot entre par le vrai handler
+    // `skullking-join-room`, qui pousse déjà « Untel a rejoint le salon. »
+    // Une seconde ligne ici l'écrivait deux fois dans le fil.
+    if (addBotToRoom(io, room)) broadcastLobby(io, room);
   });
 
   // OUTIL DE TEST, pendant du précédent : retire un bot du salon. Un bot

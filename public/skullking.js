@@ -1692,6 +1692,15 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     nom.style.color = couleurJoueur(p);
     li.appendChild(nom);
     if (p.id === hostId) li.classList.add('lobby-host');
+    // Un bot le dit sur sa ligne, à droite, là où l'hôte porte sa barre de
+    // capitaine : sans ça, « Anne Bonny » se lisait comme un matelot de plus
+    // et on comptait les humains de travers.
+    if (p.isBot) {
+      const marque = document.createElement('span');
+      marque.className = 'sk-lobby-bot';
+      marque.textContent = 'BOT';
+      li.appendChild(marque);
+    }
     // Renvoyer un bot au port. Même régime que le bouton qui les ajoute :
     // outil de test, hôte seulement — et jamais sur un joueur humain, ce que
     // le serveur revérifie de son côté. Sans ça, un bot ajouté en trop

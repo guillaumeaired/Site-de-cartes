@@ -1034,6 +1034,30 @@ h3 {
   color: var(--sk-brass);
 }
 
+/* Un joueur automatique porte son nom de pirate comme les autres : rien, sur
+   sa ligne, ne disait que ce n'en était pas un. Cette marque tient la même
+   place que la barre du capitaine, à droite du rang, mais en laiton éteint —
+   c'est une mention, pas une distinction. */
+.sk-lobby-bot {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px 5px;
+  border: 1px solid var(--sk-brass-dead);
+  border-radius: 2px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.3;
+  color: var(--sk-brass-lo);
+}
+
+/* Les deux ensemble (l'hôte teste avec ses bots) : la croix se range contre
+   la marque au lieu de partager l'espace libre avec elle. */
+.sk-lobby-bot + .sk-lobby-vire {
+  margin-left: 6px;
+}
+
 /* Le renvoi d'un bot : discret tant qu'on ne le cherche pas, franc au
    survol. Il ne s'affiche que pour l'hôte, et seulement sur les lignes de
    bots (voir DEV_TOOLS côté client). */
@@ -8420,6 +8444,13 @@ h3 {
   .sk-lobby-col .lobby-list li.lobby-host::after {
     padding-left: 6px;
     letter-spacing: 0.1em;
+  }
+
+  /* Même resserrement pour la marque des bots : sur une demi-largeur, elle
+     mangeait le pseudo qu'elle qualifie. */
+  .sk-lobby-col .lobby-list .sk-lobby-bot {
+    padding: 0 3px;
+    letter-spacing: 0.08em;
   }
 
   /* L'enseigne de la planche. Au corps des autres libellés (0,62 rem, la
