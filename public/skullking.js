@@ -3920,6 +3920,11 @@ const CHAT_VUES = [
     form: document.getElementById('sk-lobby-chat-form'),
     input: document.getElementById('sk-lobby-chat-input'),
   },
+  {
+    log: document.getElementById('sk-chat-modal-log'),
+    form: document.getElementById('sk-chat-modal-form'),
+    input: document.getElementById('sk-chat-modal-input'),
+  },
 ].filter((v) => v.log && v.form && v.input);
 
 
@@ -3997,6 +4002,45 @@ CHAT_VUES.forEach((vue) => {
     vue.input.value = '';
   });
 });
+
+// Le carnet de la colonne n'a que quelques lignes : un clic l'ouvre comme
+// un vrai livre. Le champ et les boutons de défilement gardent leur geste
+// propre, ils ne déclenchent donc pas l'ouverture.
+const chatModal = document.getElementById('sk-chat-modal');
+const tableChatOpen = document.getElementById('sk-chat-open');
+const chatModalInput = document.getElementById('sk-chat-modal-input');
+
+function ouvrirChatAgrandi() {
+  if (!chatModal) return;
+  chatModal.classList.remove('hidden');
+  const log = document.getElementById('sk-chat-modal-log');
+  if (log) log.scrollTop = log.scrollHeight;
+  if (chatModalInput) chatModalInput.focus();
+}
+
+function fermerChatAgrandi() {
+  if (chatModal) chatModal.classList.add('hidden');
+}
+
+if (chatModal && tableChatOpen) {
+  tableChatOpen.addEventListener('click', (e) => {
+    if (!e.target.closest('.sk-defiler')) ouvrirChatAgrandi();
+  });
+  tableChatOpen.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      ouvrirChatAgrandi();
+    }
+  });
+  document.getElementById('sk-btn-close-chat').addEventListener('click', fermerChatAgrandi);
+  document.getElementById('sk-btn-close-chat-x').addEventListener('click', fermerChatAgrandi);
+  chatModal.addEventListener('click', (e) => {
+    if (e.target === chatModal) fermerChatAgrandi();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !chatModal.classList.contains('hidden')) fermerChatAgrandi();
+  });
+}
 
 // Le registre est CLASSÉ, le meilleur en haut. Il portait l'ordre du tour de
 // table, figé pour la partie, et seul le rang gravé bougeait : il fallait
@@ -4137,7 +4181,7 @@ function renderRegistreAgrandi(state) {
   const tete = document.createElement('div');
   tete.className = 'sk-grand-row sk-grand-row--tete';
   tete.setAttribute('aria-hidden', 'true');
-  ['Rang', '', 'Équipage', 'Plis', 'Score'].forEach((libelle) => {
+  ['Rang', '', 'Équipage', 'Annonces', 'Plis', 'Score'].forEach((libelle) => {
     const c = document.createElement('span');
     c.textContent = libelle;
     tete.appendChild(c);
@@ -4175,12 +4219,18 @@ function renderRegistreAgrandi(state) {
     nom.title = s.nickname;
     row.appendChild(nom);
 
-    const bid = document.createElement('span');
-    const annonce = p ? celluleAnnonce(state, p) : null;
-    bid.className = 'sk-grand-bid' + (annonce && annonce.suffix ? ` sk-grand-bid${annonce.suffix}` : '');
-    bid.textContent = annonce ? annonce.texte : '–';
-    if (annonce) bid.title = annonce.titre;
-    row.appendChild(bid);
+    const recap = p && p.recap;
+    const annonces = document.createElement('span');
+    annonces.className = 'sk-grand-annonces';
+    annonces.textContent = recap && recap.rounds ? `${recap.exact}/${recap.rounds}` : '–';
+    annonces.title = recap ? `${recap.exact} contrat(s) respecté(s) sur ${recap.rounds} manche(s)` : 'Aucune manche terminée';
+    row.appendChild(annonces);
+
+    const plis = document.createElement('span');
+    plis.className = 'sk-grand-plis';
+    plis.textContent = recap && recap.rounds ? recap.tricks : '–';
+    plis.title = recap ? `${recap.tricks} pli(s) remporté(s) sur toute la partie` : 'Aucune manche terminée';
+    row.appendChild(plis);
 
     const total = document.createElement('span');
     total.className = 'sk-grand-total';
@@ -4188,6 +4238,22 @@ function renderRegistreAgrandi(state) {
     row.appendChild(total);
 
     rankingBody.appendChild(row);
+
+    // Les détails du récap final, par joueur : série, zéros, meilleure et
+    // pire manche. Ils restent compacts sous la ligne sans alourdir le
+    // classement, mais sont disponibles avant la fin de la partie.
+    if (recap && recap.rounds) {
+      const stats = document.createElement('p');
+      stats.className = 'sk-grand-stats';
+      const morceaux = [
+        recap.zeros ? `${recap.zeros} zéro${recap.zeros > 1 ? 's' : ''} tenu${recap.zeros > 1 ? 's' : ''}` : null,
+        recap.bestStreak >= 2 ? `série de ${recap.bestStreak}` : null,
+        recap.bestRound ? `meilleure manche ${recap.bestRound.delta >= 0 ? '+' : ''}${recap.bestRound.delta}` : null,
+        recap.worstRound && recap.worstRound.delta !== recap.bestRound?.delta ? `pire ${recap.worstRound.delta}` : null,
+      ].filter(Boolean);
+      stats.textContent = morceaux.join(' · ');
+      if (stats.textContent) rankingBody.appendChild(stats);
+    }
   });
 }
 

@@ -874,6 +874,11 @@ function stateFor(room, p) {
       connected: pp.connected !== false,
       handCount: pp.hand ? pp.hand.length : 0,
       tricksWon: pp.tricksWon || 0,
+      // Les chiffres cumulés ne révèlent aucune information sur la manche en
+      // cours : ils ne décrivent que les manches déjà terminées. Ils servent
+      // au registre agrandi, afin qu'il offre le même bilan que la fin de
+      // partie sans attendre le dernier tour.
+      recap: playerRecap(pp),
       hasBid: room.bids ? Object.prototype.hasOwnProperty.call(room.bids, pp.id) : false,
       // Les annonces sont cachées tant que tout le monde n'a pas choisi : on
       // ne révèle que la sienne (pour confirmer son propre choix) pendant la

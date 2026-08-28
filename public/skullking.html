@@ -313,9 +313,10 @@
             </div>
             <button id="sk-btn-history" class="sk-history-link hidden" type="button">Manches précédentes</button>
 
-            <div class="sk-chat">
+            <div id="sk-table-chat" class="sk-chat">
               <p class="sk-side-title">Discussion</p>
-              <div class="sk-chat-livre">
+              <div id="sk-chat-open" class="sk-chat-livre" tabindex="0"
+                   aria-label="Discussion — ouvrir en grand" title="Agrandir la discussion">
                 <div id="sk-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
                 <button class="sk-defiler sk-defiler--haut" type="button" aria-label="Remonter dans la discussion">&#9650;</button>
                 <button class="sk-defiler sk-defiler--bas" type="button" aria-label="Redescendre dans la discussion">&#9660;</button>
@@ -501,6 +502,23 @@
       <h2>Registre de bord</h2>
       <div id="sk-ranking-body" class="sk-grand-registre"></div>
       <button id="sk-btn-close-ranking" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
+
+  <!-- La discussion de la colonne est un extrait : ouverte, elle donne de la
+       place à tout l'historique tout en restant le même fil et le même champ
+       d'envoi que sur la table. -->
+  <div id="sk-chat-modal" class="modal hidden">
+    <div class="modal-content sk-chat-content">
+      <button id="sk-btn-close-chat-x" class="sk-modal-x" type="button" aria-label="Fermer">&times;</button>
+      <h2>Discussion de l'équipage</h2>
+      <div id="sk-chat-modal-log" class="sk-chat-modal-log" role="log" aria-live="polite"></div>
+      <form id="sk-chat-modal-form" class="sk-chat-form sk-chat-modal-form" autocomplete="off">
+        <label for="sk-chat-modal-input" class="visually-hidden">Message</label>
+        <input id="sk-chat-modal-input" type="text" maxlength="200" placeholder="Écrire à la table…" />
+        <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
+      </form>
+      <button id="sk-btn-close-chat" class="btn btn-primary" type="button">Fermer</button>
     </div>
   </div>
 
