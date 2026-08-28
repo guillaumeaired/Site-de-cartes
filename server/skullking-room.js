@@ -39,6 +39,144 @@ const { recordGameStarted } = require('./play-counts');
 // diffuser, pour que tout le monde autour du tapis voie le même jeu.
 const DECK_STYLES = ['classique', 'perso'];
 
+// --- Donne truquée, pour l'essai des pouvoirs -------------------------
+// Essayer les sept pouvoirs de Pirate et leurs animations dans l'ordre qu'on
+// veut suppose de les avoir tous en main : en jeu normal c'est une affaire de
+// chance, et il faut des dizaines de parties pour tomber sur le cas qu'on
+// cherchait.
+//
+// Ce mode s'ouvre par l'ENVIRONNEMENT du serveur, et par rien d'autre :
+// SK_ESSAI=1. Aucun message du protocole ne le déclenche, aucun réglage de
+// salon ne l'expose — un client ne peut pas y entrer, même en local, même en
+// se disant hôte. Un serveur lancé normalement l'ignore.
+//
+// SK_ESSAI_CARTES fixe le nombre de cartes par manche : la séquence normale
+// commence à 1, où il n'y a rien à essayer.
+const ESSAI = process.env.SK_ESSAI === '1';
+const ESSAI_CARTES = Math.max(0, Math.min(20, Number(process.env.SK_ESSAI_CARTES) || 0));
+// SK_ESSAI_BOTS remplit le salon tout seul à l'ouverture : autant de clics en
+// moins avant chaque essai, et surtout le même équipage d'une fois sur
+// l'autre — une table à cinq et une table à neuf ne montrent pas les mêmes
+// chevauchements ni les mêmes pouvoirs.
+const ESSAI_BOTS = Math.max(0, Math.min(MAX_PLAYERS - 1, Number(process.env.SK_ESSAI_BOTS) || 0));
+// SK_ESSAI_CARTE braque le mode sur une carte, ou sur quelques-unes : toute
+// la main en est faite, autant d'exemplaires que la manche a de cartes. Le
+// tour d'horizon des pouvoirs est bon pour vérifier qu'ils existent tous ;
+// pour reprendre le même écran vingt fois de suite — le troc de Will le
+// Bandit, où l'on retouche un espacement puis on recommence — il faut le
+// déclencher à chaque pli, pas une fois par partie.
+//
+// Chaque valeur est soit la clé courte d'un pouvoir de Pirate (`will`,
+// `rosie`, `juanita`, `rascal`, `harry`, `marythorne`), soit un `kind` de
+// carte (`tigress`, `plank`, `davyjones`, `wild15`…).
+//
+// Plusieurs valeurs séparées par des virgules — `will,juanita` — remplissent
+// la main en alternance : un pli sur deux ouvre l'un, un pli sur deux ouvre
+// l'autre. C'est ce qu'il faut quand on met deux écrans au point dans la
+// même passe, sans avoir à relancer le serveur entre les deux.
+const ESSAI_CARTES_VISEES = (process.env.SK_ESSAI_CARTE || '')
+  .split(',')
+  .map((v) => v.trim())
+  .filter(Boolean);
+
+// Les cartes du paquet que SK_ESSAI_CARTE désigne, dans l'ordre donné. Une
+// valeur qui ne correspond à rien est ignorée en silence plutôt que de vider
+// la main : le mode reste jouable même sur une faute de frappe.
+function cartesVisees(paquet) {
+  return ESSAI_CARTES_VISEES.map(
+    (cle) =>
+      paquet.find((c) => c.kind === 'pirate' && PIRATE_POWER_BY_NAME[c.name] === cle) ||
+      paquet.find((c) => c.kind === cle) ||
+      null
+  ).filter(Boolean);
+}
+
+// Ce qui va dans MA main, dans cet ordre : les pouvoirs d'abord, puis ce qui
+// se joue contre eux. Les numérotées ordinaires vont aux bots.
+const ORDRE_ESSAI = [
+  'pirate',      // les cinq nommés, un pouvoir chacun
+  'tigress',     // le choix Pirate / Fuite au moment de la pose
+  'firstmate',   // Mat le Forban, qui hérite des pouvoirs qu'il capture
+  'skullking',   // qui en hérite aussi, et dévore les Pirates
+  'siren',
+  'plank', 'davyjones', 'lastvolley', 'wild15',
+  'kraken', 'whale', 'stingray', 'loot',
+  'escape',
+];
+
+// Le 0/14 est une numérotée pour le moteur, mais il demande un choix à la
+// pose comme une carte à pouvoir : il reste de mon côté.
+function estUnPouvoir(carte) {
+  return carte.kind !== 'number' || carte.wild14;
+}
+
+function melanger(liste) {
+  for (let i = liste.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [liste[i], liste[j]] = [liste[j], liste[i]];
+  }
+  return liste;
+}
+
+// Rend la pioche (le reliquat), comme dealRound : Will le Bandit et Juanita
+// Jade y puisent, elle ne peut pas être vide.
+function donneTruquee(room, cardsInRound) {
+  const paquet = createDeck(extensionsOf(room));
+  const rang = (c) => {
+    const i = ORDRE_ESSAI.indexOf(c.kind);
+    return i === -1 ? ORDRE_ESSAI.length : i;
+  };
+  const pouvoirs = paquet.filter(estUnPouvoir).sort((a, b) => rang(a) - rang(b));
+  // La liste tourne d'une manche à l'autre : triée toujours pareil, elle
+  // aurait servi les mêmes dix cartes à chaque donne, et la Planche, le
+  // Coffre, le Joker ou le 0/14 — qui viennent après les Pirates dans
+  // l'ordre — ne seraient jamais tombés. Vingt-neuf cartes à pouvoir avec
+  // l'extension : tout passe en trois manches à dix cartes.
+  const depart = pouvoirs.length ? ((room.roundIndex || 0) * cardsInRound) % pouvoirs.length : 0;
+  pouvoirs.push(...pouvoirs.splice(0, depart));
+  const numerotees = melanger(paquet.filter((c) => !estUnPouvoir(c)));
+
+  // Qui est un bot ne se lit pas sur le joueur : le module de salle ne pose
+  // pas de drapeau, il demande à l'adaptateur (voir broadcastLobby, qui
+  // calcule `isBot` de la même façon pour le salon).
+  const estUnBot = (p) => Boolean(bots && bots.isBot(p.id));
+  // Les humains servis les premiers ; s'il n'y en a aucun (table de bots),
+  // le premier joueur tient le rôle, sans quoi personne n'aurait de pouvoir
+  // et le mode ne servirait à rien.
+  const servis = room.players.filter((p) => !estUnBot(p));
+  const cible = new Set((servis.length ? servis : room.players.slice(0, 1)).map((p) => p.id));
+
+  // Mode braqué : ma main n'est que des copies des cartes visées, en
+  // alternance quand il y en a plusieurs. Le paquet n'en porte qu'un
+  // exemplaire de chaque — il n'y a qu'un seul Will le Bandit — donc on les
+  // duplique, avec des identifiants neufs : tout le jeu désigne les cartes
+  // par leur `id`, deux cartes qui le partageraient seraient la même pour la
+  // pose, pour la défausse et pour le pli.
+  //
+  // Les originaux restent dans le reliquat, où Will peut les repiocher et où
+  // Juanita les montre : c'est sans conséquence, les copies ne portent pas
+  // leur identifiant.
+  const visees = cartesVisees(paquet);
+  const copies = (n) =>
+    Array.from({ length: n }, (_, i) => {
+      const modele = visees[i % visees.length];
+      return { ...modele, id: `${modele.id}-e${room.roundIndex || 0}-${i}` };
+    });
+
+  room.players.forEach((p) => {
+    const main = cible.has(p.id)
+      ? (visees.length ? copies(cardsInRound) : pouvoirs.splice(0, cardsInRound))
+      : numerotees.splice(0, cardsInRound);
+    // Le paquet ne porte que 64 numérotées : à huit bots et dix cartes il en
+    // faudrait 80. Plutôt qu'une main tronquée — qui casserait l'annonce et
+    // le compte des plis — on complète avec ce qui reste de pouvoirs. Le
+    // mode perd un peu de sa pureté, la partie reste jouable.
+    while (main.length < cardsInRound && pouvoirs.length) main.push(pouvoirs.pop());
+    p.hand = main;
+  });
+  return melanger([...pouvoirs, ...numerotees]);
+}
+
 // Les extensions actives d'une salle, en objet plat prêt à partir dans un
 // message : c'est cette forme que la planche du salon coche. Passe par
 // extensionSet pour qu'une salle d'avant la découpe — qui portait un simple
@@ -428,14 +566,18 @@ function allBidsIn(room) {
 
 function startRound(io, room) {
   const cardsInRound = room.roundSequence[room.roundIndex];
-  const { hands, residualPile } = dealRound(room.players.length, cardsInRound, extensionsOf(room));
-  room.players.forEach((p, i) => {
-    p.hand = hands[i];
+  if (ESSAI) {
+    room.residualPile = donneTruquee(room, cardsInRound);
+  } else {
+    const { hands, residualPile } = dealRound(room.players.length, cardsInRound, extensionsOf(room));
+    room.players.forEach((p, i) => { p.hand = hands[i]; });
+    room.residualPile = residualPile;
+  }
+  room.players.forEach((p) => {
     p.tricksWon = 0;
     p.pendingBonus = 0;
     p.rascalStake = 0;
   });
-  room.residualPile = residualPile;
   room.lootAlliances = [];
   room.cardsInRound = cardsInRound;
   room.bids = {};
@@ -994,7 +1136,9 @@ function finishGame(io, room) {
 
 function startGame(io, room) {
   assignMissingPieces(room);
-  room.roundSequence = buildRoundSequence(room.totalRounds);
+  room.roundSequence = ESSAI_CARTES
+    ? Array.from({ length: clampRounds(room.totalRounds) }, () => ESSAI_CARTES)
+    : buildRoundSequence(room.totalRounds);
   room.roundIndex = 0;
   // Le donneur de la première manche est tiré au sort, comme au Rami : il
   // était figé sur le premier de la liste, donc le meneur du tout premier pli
@@ -1108,7 +1252,10 @@ function registerSkullKingHandlers(io, socket) {
       hostId: socket.id,
       // Aucune extension au départ : le paquet de base, celui des règles
       // que tout le monde connaît. L'hôte ouvre ce qu'il veut, ligne à ligne.
-      extensions: Object.fromEntries(EXTENSION_KEYS.map((key) => [key, false])),
+      // En mode essai, tout est ouvert d'entrée : Mat le Forban, la Planche,
+      // le Coffre et le Joker n'existent que dans l'extension, et c'est
+      // justement ce qu'on vient éprouver.
+      extensions: Object.fromEntries(EXTENSION_KEYS.map((key) => [key, ESSAI])),
       deckStyle: DEFAULT_DECK_STYLE,
       totalRounds: MAX_ROUNDS,
       players: [
@@ -1131,6 +1278,15 @@ function registerSkullKingHandlers(io, socket) {
     rooms.set(code, room);
     socket.data.skullkingRoom = code;
     socket.emit('skullking-room-created', { code });
+    // Mode essai : l'équipage s'assied tout seul (voir ESSAI_BOTS). Les mêmes
+    // gardes que le bouton « Ajouter un bot » — l'adaptateur doit être là, et
+    // la table ne doit pas déborder.
+    if (ESSAI && ESSAI_BOTS && bots) {
+      const maxPlayers = maxPlayersFor(extensionsOf(room));
+      for (let i = 0; i < ESSAI_BOTS && room.players.length < maxPlayers; i++) {
+        bots.addBot(io, room, registerSkullKingHandlers);
+      }
+    }
     broadcastLobby(io, room);
   });
 
@@ -1737,11 +1893,14 @@ module.exports = {
   eligiblePlankTargets,
   activeOrderThisTrick,
   capturedPirateKeys,
-  devouredPirateIds,
+  devoreesParLeVainqueur,
   plankedCardIds,
   davyJonesSwallow,
   powerResultMessage,
   stateFor,
+  // Exporté pour pouvoir l'éprouver : la donne truquée n'est pilotée que par
+  // l'environnement du serveur, elle est donc invérifiable depuis un client.
+  donneTruquee,
   setBotAdapter,
   getStats,
 };
