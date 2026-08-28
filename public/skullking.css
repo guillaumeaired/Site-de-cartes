@@ -7021,6 +7021,88 @@ h3 {
   gap: 4px;
 }
 
+/* --- Le cadre de la discussion ----------------------------------------
+   Le cuir peint disait « il y a un carnet ici », pas « c'est ici qu'on se
+   parle » : sans bord ni fond propres, les messages flottaient sur la
+   couverture et se noyaient dans ses reflets. On pose donc une vitre par
+   dessus le cuir :
+
+   - un liseré de laiton, qui borne la zone comme le reste de la colonne
+     et donne enfin un bord à la discussion ;
+   - un fond sombre TRANSLUCIDE, pas opaque — le cuir reste lisible en
+     dessous, il perd seulement les hautes lumières qui mangeaient le
+     texte crème.
+
+   L'alpha est le vrai réglage ici : au-delà de ~0,6 la couverture peinte
+   disparaît et on retrouve la boîte grise d'avant l'habillage ; en deçà
+   de ~0,35 elle ne rattrape plus le contraste. */
+.sk-scene .sk-chat-livre {
+  border-radius: 0.55cqw;
+  background: linear-gradient(180deg, rgba(10, 6, 3, 0.54) 0%, rgba(26, 16, 8, 0.44) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 137, 53, 0.5),
+    inset 0 0 0.9cqw rgba(0, 0, 0, 0.5),
+    0 0.12cqw 0.5cqw rgba(0, 0, 0, 0.5);
+}
+
+/* Le texte ne colle plus au liseré : la fenêtre de défilement rentre d'un
+   demi-pas de chaque côté. `inset` et non `padding` — le journal est en
+   position absolue, un padding sur le carnet ne le repousserait pas. */
+.sk-scene .sk-chat-log {
+  inset: 0.5cqw 0.75cqw;
+  /* Le halo de la bougie passe par-dessus les lignes ; une ombre portée
+     leur garde leur dessin quand elle les traverse. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
+}
+
+/* Tant que personne n'a parlé, la fenêtre dirait « cadre vide » : elle dit
+   plutôt à quoi elle sert. Même formule que le salon. */
+.sk-scene .sk-chat-log:empty::before {
+  content: 'Personne n\2019 a encore parlé.';
+  display: block;
+  font-style: italic;
+  color: var(--sk-cream-3);
+  opacity: 0.75;
+}
+
+/* Les flèches de laiton se rangeaient sur le bord du carnet : elles y
+   chevauchent maintenant le liseré. Un cran vers l'intérieur. */
+.sk-scene .sk-chat-livre .sk-defiler {
+  right: 5%;
+}
+
+.sk-scene .sk-chat-livre .sk-defiler--haut { top: 4%; }
+.sk-scene .sk-chat-livre .sk-defiler--bas  { bottom: 4%; }
+
+/* --- « Écrire à la table… » -------------------------------------------
+   L'invite était en #6e5c42 italique sur un champ presque noir, posé sur
+   une scène sombre : deux crans au-dessus de son fond, illisible dès que
+   la bougie ne tombait pas dessus. Elle passe en crème pleine, droite —
+   c'est le seul mot qui dit où l'on écrit, il doit se voir de loin.
+   Le champ reprend par ailleurs le liseré de la fenêtre du dessus : les
+   deux se lisent alors comme un seul bloc « la discussion ». */
+.sk-scene .sk-chat-form input {
+  border-radius: 0.35cqw;
+  background: linear-gradient(180deg, rgba(9, 5, 2, 0.74) 0%, rgba(28, 18, 9, 0.64) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 137, 53, 0.52),
+    inset 0 2px 5px rgba(0, 0, 0, 0.55);
+  color: var(--sk-cream);
+}
+
+.sk-scene .sk-chat-form input::placeholder {
+  color: var(--sk-cream);
+  opacity: 0.86;
+  font-style: normal;
+}
+
+.sk-scene .sk-chat-form input:focus {
+  box-shadow:
+    inset 0 0 0 1px var(--sk-brass-hi),
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    0 0 0 2px rgba(184, 137, 53, 0.3);
+}
+
 /* --- Les flèches : elles n'apparaissent que si ça déborde -------------
    Le bouton porte lui-même l'information « il y a autre chose au-dessus /
    en dessous ». Une barre de défilement peinte n'aurait aucun sens dans
