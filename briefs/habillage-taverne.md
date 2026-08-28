@@ -572,3 +572,27 @@ beaucoup plus pour désigner le voisin. Les poignées, elles, montent : la
 flèche dépasse donc moins qu'avant (0,113 du demi-côté au lieu de 0,235),
 mais les médaillons se posent à 236 px pour une pointe à 207 — ils restent
 au large, rien à régler.
+
+### Correction — 28/08/2026 ✅ les pastilles 0/14 recentrées
+
+Les quatre cartes 0/14 sont fabriquées, pas peintes : `briefs/composer-cartes-0-14.py`
+recouvre les deux médaillons du 5 de chaque famille par la pastille de sa
+couleur. Les boîtes des médaillons, relevées à la grille, étaient fausses —
+d'où un ancien médaillon d'or qui ressortait à côté de la pastille :
+
+| carte | coin | écart du centre relevé |
+|---|---|---|
+| Carte (violet) | bas-droit | 34 px vers la droite, 10 vers le bas |
+| Trésor (jaune) | bas-droit | 28 px vers la droite, 9 vers le bas |
+| Pavillon (noir) | bas-droit | 23 px vers la droite, 9 vers le bas |
+| Perroquet (vert) | haut-gauche | 14 px vers la gauche, et 36 px trop étroite |
+| Perroquet (vert) | bas-droit | 7 px vers la droite |
+
+Les quatre boîtes du bas étaient toutes décalées du même côté — elles avaient
+été lues sur le coin de la carte, pas sur le médaillon.
+
+Deuxième correction, de méthode : la pastille épouse désormais la **boîte** du
+médaillon au lieu d'être posée en rond sur son plus grand côté. Les médaillons
+sont peints en perspective, donc elliptiques, et le Perroquet est le cas
+extrême — 121 x 86 px au coin haut. Un rond de 121 de diamètre le couvre, mais
+sortait de neuf pixels par le haut de la carte et se retrouvait coupé net.

@@ -19,14 +19,21 @@ différent. Le 5 n'a aucun effet.
 
 Les médaillons sont RELEVÉS sur chaque carte, pas supposés : elles sont
 peintes une par une, et leurs médaillons ne tombent ni au même endroit ni à la
-même taille d'une famille à l'autre — 85 px de large sur le Perroquet, 128 sur
-le Pavillon, soit la moitié en plus.
+même taille ni dans la même forme d'une famille à l'autre — 121 x 86 px au coin
+haut du Perroquet, 125 x 121 sur la Carte, presque un rond.
 
 Ils sont relevés à la main, à la grille. Un repérage automatique a été essayé
 et jeté : le médaillon est un ANNEAU d'or autour d'un chiffre sombre, et une
 fois le liseré du cadre effacé par érosion, l'anneau se brise en arcs. Le plus
 gros arc n'est pas le médaillon — la pastille se posait décalée et trop
 petite, laissant le 5 dépasser sur trois cartes sur quatre.
+
+La pastille épouse la BOÎTE du médaillon, elle n'est pas posée en rond sur son
+plus grand côté. Les médaillons sont peints en perspective, donc elliptiques, et
+un rond assez large pour couvrir le grand axe déborde du petit : au coin haut du
+Perroquet il sortait de neuf pixels par le haut de la carte et se retrouvait
+coupé net. Une pastille étirée à la boîte suit la perspective du dessin, comme
+les médaillons peints qu'elle recouvre.
 
     python3 briefs/composer-cartes-0-14.py
 """
@@ -55,10 +62,10 @@ MARGE = 1.06        # la pastille déborde un peu du médaillon : rien ne doit d
 # Les deux médaillons de chaque carte modèle, en pixels de l'image (434 x 620),
 # relevés à la grille. Coin haut-gauche puis coin bas-droit.
 MEDAILLONS = {
-    'tresor-5':    [(18, 14, 132, 122), (322, 490, 434, 600)],
-    'perroquet-5': [(20, 22, 105, 97), (317, 502, 411, 587)],
-    'carte-5':     [(22, 20, 142, 130), (318, 492, 430, 600)],
-    'pavillon-5':  [(22, 22, 150, 140), (320, 494, 432, 600)],
+    'tresor-5':    [(21, 15, 136, 125), (290, 480, 410, 592)],
+    'perroquet-5': [(16, 12, 137, 98),  (301, 500, 413, 588)],
+    'carte-5':     [(20, 19, 145, 140), (281, 478, 411, 595)],
+    'pavillon-5':  [(25, 22, 139, 132), (294, 482, 412, 594)],
 }
 PAGE = np.array([255.0, 255.0, 255.0])
 
@@ -120,12 +127,13 @@ def main():
         brut.unlink()
 
         for x0, y0, x1, y1 in MEDAILLONS[f'{prefixe}-{MODELE}']:
-            cote = int(round(max(x1 - x0, y1 - y0) * MARGE))
+            larg = int(round((x1 - x0) * MARGE))
+            haut = int(round((y1 - y0) * MARGE))
             cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
-            p = pastille.resize((cote, cote), Image.LANCZOS)
+            p = pastille.resize((larg, haut), Image.LANCZOS)
             # `paste` et pas `alpha_composite` : le médaillon du bas touche le
             # bord de la carte sur trois familles, la pastille déborde donc.
-            carte.paste(p, (cx - cote // 2, cy - cote // 2), p)
+            carte.paste(p, (cx - larg // 2, cy - haut // 2), p)
 
         dest = CARTES / f'{prefixe}-014.webp'
         tmp = dest.with_suffix('.tmp.png')
