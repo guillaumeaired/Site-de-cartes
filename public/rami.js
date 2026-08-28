@@ -1007,6 +1007,18 @@ function renderChat(state) {
 
 socket.on('rami-chat-message', ajouterMessage);
 
+// Cliquer n'importe où dans la colonne donne le focus au champ : viser la
+// petite bulle de saisie demandait trop de précision. Les clics sur le
+// journal passent, pour pouvoir y sélectionner du texte.
+const chatPanelEl = document.querySelector('.rami-chat');
+if (chatPanelEl && chatInputEl) {
+  chatPanelEl.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.rami-chat-log') || e.target.closest('button') || e.target === chatInputEl) return;
+    e.preventDefault();
+    chatInputEl.focus();
+  });
+}
+
 if (chatFormEl) {
   chatFormEl.addEventListener('submit', (e) => {
     e.preventDefault();
