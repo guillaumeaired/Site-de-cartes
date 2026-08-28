@@ -52,16 +52,16 @@
            venait de s'asseoir. -->
       <img class="sk-waiting-logo" src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
 
-      <!-- Le nombre de manches a sa propre planche, en travers, sous
-           l'enseigne. Il était le troisième réglage d'une colonne repliée :
-           c'est pourtant la seule décision que toute la table regarde avant
-           de s'asseoir — elle dit combien de temps on en a. Les trois autres
-           planches se déplient au besoin, celle-ci est toujours ouverte. -->
-      <div id="sk-rounds-field" class="sk-lobby-col sk-rounds-card">
-        <p class="invite-label sk-lobby-col-title">Nombre de manches</p>
+      <section class="sk-lobby-col sk-lobby-settings-card">
+        <div class="sk-lobby-settings-head">
+          <p class="invite-label sk-lobby-col-title">Réglages de la partie</p>
+          <button id="sk-btn-lobby-settings" class="btn sk-lobby-edit" type="button">Modifier</button>
+        </div>
+        <p class="invite-label">Nombre de manches</p>
         <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
         <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
-      </div>
+        <p id="sk-lobby-settings-summary" class="sk-lobby-summary"></p>
+      </section>
 
       <!-- Le salon se lit en quatre planches côte à côte dès qu'il y a de la
            largeur : l'équipage à gauche, le code, les réglages (extensions
@@ -81,85 +81,13 @@
           <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
         </div>
 
-        <!-- Les réglages et les extensions partagent une colonne : les
-             extensions ne disent rien d'autre que ce qu'il y a dans le
-             paquet, et le paquet est le premier réglage juste au-dessus.
-             Deux planches et non une seule — l'une se règle en trois volets,
-             l'autre s'ouvre sur huit interrupteurs, les empiler dans le même
-             bois aurait fait un mur. -->
         <div class="sk-lobby-pile">
-          <div class="sk-lobby-col sk-lobby-col--settings">
-            <p class="invite-label sk-lobby-col-title">Réglages</p>
-
-            <!-- Le paquet, en premier : c'est le seul réglage qui se voit dès
-                 la donne, et il se choisit sur pièce — deux cartes posées
-                 côte à côte plutôt que deux libellés. -->
-            <details id="sk-deck-field" class="sk-deck-field sk-fold">
-              <summary class="invite-label sk-fold-tete">
-                <span class="sk-fold-nom">Paquet de cartes</span>
-                <span id="sk-deck-etat" class="sk-fold-etat"></span>
-              </summary>
-              <div class="sk-fold-corps">
-                <div id="sk-deck-grid" class="sk-deck-grid" role="group" aria-label="Paquet de cartes"></div>
-                <p id="sk-deck-hint" class="hint sk-deck-hint"></p>
-              </div>
-            </details>
-
-            <!-- Le rythme : les cinq durées d'attente que la table subissait
-                 jusqu'ici sans pouvoir en discuter (le regard de Juanita Jade,
-                 le pli sur le tapis, le tableau de fin de manche, le choix de
-                 la Planche, le rappel d'inactivité). Elles vivent ici et non
-                 sur une cinquième planche : le salon en porte déjà quatre et
-                 une cinquième serait retombée seule sur un deuxième rang.
-                 Elles ne changent d'ailleurs ni les règles, ni le paquet, ni
-                 le score — ce sont bien des réglages, et le réglage le moins
-                 important de tous : c'est le premier qu'on referme. Replié,
-                 le volet dit quand même l'allure retenue ; ouvert, il donne
-                 les trois allures toutes faites puis le détail des cinq
-                 durées. -->
-            <details id="sk-pace-field" class="sk-pace-field sk-fold">
-              <summary class="invite-label sk-fold-tete">
-                <span class="sk-fold-nom">Rythme de la partie</span>
-                <span id="sk-pace-etat" class="sk-fold-etat"></span>
-              </summary>
-              <div class="sk-fold-corps">
-                <div id="sk-pace-presets" class="sk-pace-presets" role="group" aria-label="Allure de la partie"></div>
-                <ul id="sk-pace-list" class="sk-pace-list"></ul>
-                <p id="sk-pace-hint" class="hint sk-pace-hint"></p>
-              </div>
-            </details>
-          </div>
-
-          <!-- L'extension a sa propre planche : c'était un interrupteur unique
-               qui ajoutait dix-neuf cartes d'un coup, ce sont maintenant huit
-               lignes qu'on ouvre séparément. Elle vient sous les Réglages, dans
-               la même colonne : ce qu'elle décide, c'est le contenu du paquet —
-               le réglage qui la précède justement. Huit lignes, c'est aussi ce
-               qui faisait du salon un mur de leviers dès l'arrivée : la planche
-               est repliée au départ et n'annonce que l'essentiel (combien de
-               modules sont pris). La grille s'enroule d'elle-même quand la
-               place manque. -->
-          <div class="sk-lobby-col sk-ext-card">
-            <details class="sk-fold sk-ext-fold">
-              <summary class="invite-label sk-lobby-col-title sk-fold-tete">
-                <span class="sk-fold-nom">Rajouter les extensions</span>
-                <span id="sk-ext-etat" class="sk-fold-etat"></span>
-              </summary>
-              <div class="sk-fold-corps">
-                <button id="sk-btn-extension" class="sk-extension-toggle sk-ext-master" type="button" aria-pressed="false">
-                  <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
-                  <span class="sk-extension-toggle-label">Tout activer</span>
-                </button>
-
-                <ul id="sk-ext-list" class="sk-ext-list"></ul>
-
-                <!-- Ce que pèse le paquet, et donc combien de monde peut
-                     s'asseoir : c'est la seule conséquence des huit lignes qui
-                     ne se devine pas en les lisant. -->
-                <p id="sk-extension-hint" class="hint sk-ext-tally"></p>
-              </div>
-            </details>
-          </div>
+          <section class="sk-lobby-col sk-ext-card">
+            <p class="invite-label sk-lobby-col-title">Extensions</p>
+            <p id="sk-ext-etat" class="sk-lobby-summary">Aucune</p>
+            <div id="sk-active-extensions" class="sk-active-extensions" aria-live="polite"></div>
+            <button id="sk-btn-lobby-extensions" class="btn sk-lobby-open" type="button">Extensions</button>
+          </section>
         </div>
 
         <div class="sk-lobby-col sk-lobby-col--crew">
@@ -527,6 +455,39 @@
       <h2>Manches précédentes</h2>
       <div id="sk-history-body" class="sk-history-body"></div>
       <button id="sk-btn-close-history" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Les réglages de salon quittent le flux : le lobby reste compact et les
+       boutons d'action ne peuvent plus être repoussés vers le bas. -->
+  <div id="sk-lobby-settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sk-lobby-settings-title">
+    <div class="modal-content sk-lobby-config-modal">
+      <button class="sk-modal-x" type="button" data-close-lobby-modal aria-label="Fermer">&times;</button>
+      <h2 id="sk-lobby-settings-title">Réglages de la partie</h2>
+      <section class="sk-config-section">
+        <p class="invite-label">Paquet de cartes</p>
+        <div id="sk-deck-grid" class="sk-deck-grid" role="group" aria-label="Paquet de cartes"></div>
+        <p id="sk-deck-hint" class="hint sk-deck-hint"></p>
+      </section>
+      <section class="sk-config-section">
+        <p class="invite-label">Rythme de la partie</p>
+        <div id="sk-pace-presets" class="sk-pace-presets" role="group" aria-label="Allure de la partie"></div>
+        <ul id="sk-pace-list" class="sk-pace-list"></ul>
+        <p id="sk-pace-hint" class="hint sk-pace-hint"></p>
+      </section>
+    </div>
+  </div>
+
+  <div id="sk-lobby-extensions-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sk-lobby-extensions-title">
+    <div class="modal-content sk-lobby-config-modal">
+      <button class="sk-modal-x" type="button" data-close-lobby-modal aria-label="Fermer">&times;</button>
+      <h2 id="sk-lobby-extensions-title">Extensions</h2>
+      <button id="sk-btn-extension" class="sk-extension-toggle sk-ext-master" type="button" aria-pressed="false">
+        <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+        <span class="sk-extension-toggle-label">Tout activer</span>
+      </button>
+      <ul id="sk-ext-list" class="sk-ext-list"></ul>
+      <p id="sk-extension-hint" class="hint sk-ext-tally"></p>
     </div>
   </div>
 

@@ -8175,9 +8175,198 @@ h3 {
     margin: 0;
   }
 
-  .sk-lobby-actions .hint {
-    margin: 0;
+.sk-lobby-actions .hint {
+  margin: 0;
+}
+
+/* Le salon est une vue, pas une page à parcourir : les actions restent dans
+   la dernière rangée de la fenêtre, quelle que soit la taille de l'équipage.
+   Les réglages détaillés vivent dans leurs modales, ce qui laisse au lobby
+   uniquement les informations à surveiller avant le départ. */
+#sk-screen-waiting:not(.hidden) {
+  height: calc(100dvh - 32px);
+  max-height: 900px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#sk-screen-waiting .sk-lobby-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#sk-screen-waiting .sk-lobby-actions {
+  flex: none;
+  margin-top: 12px;
+  padding: 8px 0 2px;
+  background: linear-gradient(180deg, transparent, rgba(20, 13, 7, 0.88) 35%);
+}
+
+.sk-lobby-summary {
+  min-height: 2.8em;
+  margin: 0 0 11px;
+  color: var(--sk-cream-3);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.sk-lobby-open {
+  width: 100%;
+  margin: 0;
+}
+
+.sk-active-extensions {
+  display: flex;
+  min-height: 74px;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 1px 6px;
+}
+
+.sk-active-extensions:empty::before {
+  content: 'Aucune carte d’extension.';
+  color: var(--sk-cream-3);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.sk-active-extension {
+  flex: 0 0 auto;
+  width: 43px;
+  height: 62px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(184, 137, 53, 0.62);
+  border-radius: 3px;
+  cursor: pointer;
+  background: #160e08;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.sk-active-extension .sk-card {
+  width: 100%;
+  height: 100%;
+  transform: none;
+  pointer-events: none;
+}
+
+.sk-active-extension:hover,
+.sk-active-extension:focus-visible {
+  border-color: var(--sk-brass-hi);
+  filter: brightness(1.12);
+  outline: none;
+}
+
+.sk-lobby-config-modal {
+  width: min(560px, 100%);
+}
+
+.sk-config-section + .sk-config-section {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(184, 137, 53, 0.28);
+}
+
+.sk-config-section > .invite-label {
+  margin-top: 0;
+}
+
+/* Hiérarchie du salon : l'enseigne et le code coiffent la table, les manches
+   viennent juste après. La pièce est le choix central ; les variantes du jeu
+   restent dans la colonne de droite. */
+@media (min-width: 1000px) {
+  #sk-screen-waiting .sk-waiting-logo {
+    width: 390px;
+    margin: 0 auto 4px;
   }
+
+  #sk-screen-waiting #sk-share-block {
+    position: absolute;
+    top: 10px;
+    right: 0;
+    width: 245px;
+    min-width: 245px;
+    max-width: 245px;
+    padding: 25px 12px 10px;
+  }
+
+  #sk-screen-waiting .sk-rounds-card {
+    flex: none;
+    width: 420px;
+    max-width: 420px;
+    margin: 0 auto 4px;
+    padding-top: 22px;
+  }
+
+  #sk-screen-waiting .sk-lobby-settings-card {
+    flex: none;
+    width: min(520px, 100%);
+    max-width: 520px;
+    margin: 0 auto 4px;
+    padding: 22px 16px 13px;
+  }
+
+  #sk-screen-waiting .sk-lobby-settings-card .invite-label:not(.sk-lobby-col-title) {
+    margin: 0 0 5px;
+  }
+
+  #sk-screen-waiting .sk-lobby-settings-card .sk-rounds-hint {
+    margin: 6px 0 8px;
+  }
+
+  #sk-screen-waiting .sk-lobby-settings-card .sk-lobby-summary {
+    min-height: 0;
+    margin: 0 0 8px;
+  }
+
+  #sk-screen-waiting .sk-lobby-grid {
+    display: grid;
+    grid-template-columns: minmax(230px, 320px) minmax(340px, 440px) minmax(260px, 360px);
+    align-items: start;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  #sk-screen-waiting .sk-lobby-chat { grid-column: 3; grid-row: 1; max-width: none; }
+  #sk-screen-waiting .sk-lobby-col--crew { grid-column: 2; grid-row: 1; order: 0; max-width: none; }
+  #sk-screen-waiting .sk-lobby-pile { grid-column: 1; grid-row: 1; max-width: none; }
+}
+
+@media (max-width: 999px) {
+  #sk-screen-waiting:not(.hidden) {
+    height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #sk-screen-waiting .sk-waiting-logo {
+    width: min(270px, 62vw);
+    margin-bottom: 7px;
+  }
+
+  #sk-screen-waiting .sk-lobby-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 3px;
+  }
+
+  #sk-screen-waiting .sk-lobby-actions {
+    flex: none;
+    margin-top: 6px;
+    padding-top: 8px;
+    background: linear-gradient(180deg, transparent, rgba(20, 13, 7, 0.92) 38%);
+  }
+
+  .sk-lobby-summary {
+    min-height: 0;
+  }
+}
 
   /* --- Le récap : classement / courbe / faits marquants de front --- */
 
@@ -8757,4 +8946,45 @@ h3 {
 
 .sk-settings-switch.sk-extension-toggle--on .sk-extension-toggle-knob {
   transform: translateX(14px);
+}
+
+.sk-lobby-settings-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sk-lobby-settings-head .sk-lobby-col-title {
+  flex: 1 1 auto;
+}
+
+.sk-lobby-edit {
+  flex: none;
+  margin: -2px 0 0;
+  padding: 5px 9px;
+  font-size: 0.66rem;
+}
+
+/* Variante compacte du salon pour téléphone : la page elle-même ne défile
+   jamais, seules les informations secondaires peuvent défiler dans la zone
+   centrale tandis que les actions restent présentes. */
+@media (max-width: 999px) {
+  #sk-screen-waiting:not(.hidden) {
+    height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #sk-screen-waiting .sk-waiting-logo { width: min(270px, 62vw); margin-bottom: 7px; }
+  #sk-screen-waiting .sk-lobby-grid { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: 3px; }
+  #sk-screen-waiting .sk-lobby-actions { flex: none; margin-top: 6px; padding-top: 8px; background: linear-gradient(180deg, transparent, rgba(20, 13, 7, 0.92) 38%); }
+  .sk-lobby-summary { min-height: 0; margin: 0 0 11px; color: var(--sk-cream-3); font-size: 0.88rem; line-height: 1.35; }
+  .sk-lobby-open { width: 100%; margin: 0; }
+  .sk-active-extensions { display: flex; min-height: 74px; align-items: center; gap: 7px; overflow-x: auto; padding: 2px 1px 6px; }
+  .sk-active-extensions:empty::before { content: 'Aucune carte d’extension.'; color: var(--sk-cream-3); font-size: 0.82rem; font-style: italic; }
+  .sk-active-extension { flex: 0 0 auto; width: 43px; height: 62px; padding: 0; overflow: hidden; border: 1px solid rgba(184, 137, 53, 0.62); border-radius: 3px; background: #160e08; }
+  .sk-active-extension .sk-card { width: 100%; height: 100%; transform: none; pointer-events: none; }
+  .sk-lobby-config-modal { width: min(560px, 100%); }
+  .sk-config-section + .sk-config-section { margin-top: 18px; padding-top: 15px; border-top: 1px solid rgba(184, 137, 53, 0.28); }
 }

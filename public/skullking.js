@@ -999,6 +999,10 @@ const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
 const extList = document.getElementById('sk-ext-list');
+const activeExtensions = document.getElementById('sk-active-extensions');
+const lobbySettingsSummary = document.getElementById('sk-lobby-settings-summary');
+const lobbySettingsModal = document.getElementById('sk-lobby-settings-modal');
+const lobbyExtensionsModal = document.getElementById('sk-lobby-extensions-modal');
 const cardModal = document.getElementById('sk-card-modal');
 const cardModalArt = document.getElementById('sk-card-modal-art');
 const cardModalTitle = document.getElementById('sk-card-modal-title');
@@ -1023,8 +1027,6 @@ const deckGrid = document.getElementById('sk-deck-grid');
 const deckHint = document.getElementById('sk-deck-hint');
 // Ce qui reste lisible quand le volet est refermé : sans ça, replier le
 // paquet reviendrait à cacher lequel on joue (voir .sk-fold dans la CSS).
-const deckEtat = document.getElementById('sk-deck-etat');
-const paceEtat = document.getElementById('sk-pace-etat');
 const extEtat = document.getElementById('sk-ext-etat');
 const pacePresetsEl = document.getElementById('sk-pace-presets');
 const paceList = document.getElementById('sk-pace-list');
@@ -1036,6 +1038,25 @@ const btnJoinModal = document.getElementById('sk-btn-join-modal');
 const joinModalError = document.getElementById('sk-join-modal-error');
 
 let myIsHost = false;
+
+function ouvrirModalSalon(modal) {
+  modal.classList.remove('hidden');
+}
+
+function fermerModalesSalon() {
+  lobbySettingsModal.classList.add('hidden');
+  lobbyExtensionsModal.classList.add('hidden');
+}
+
+document.getElementById('sk-btn-lobby-settings').addEventListener('click', () => ouvrirModalSalon(lobbySettingsModal));
+document.getElementById('sk-btn-lobby-extensions').addEventListener('click', () => ouvrirModalSalon(lobbyExtensionsModal));
+document.querySelectorAll('[data-close-lobby-modal]').forEach((button) => button.addEventListener('click', fermerModalesSalon));
+[lobbySettingsModal, lobbyExtensionsModal].forEach((modal) => modal.addEventListener('click', (e) => {
+  if (e.target === modal) modal.classList.add('hidden');
+}));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fermerModalesSalon();
+});
 
 function goHome() {
   clearActiveRoom();
@@ -1346,13 +1367,28 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
   // s'il faut ouvrir — lesquels exactement, c'est la question qu'on se pose
   // en ouvrant, pas avant.
   const prises = lignes.filter((m) => actives[m.key]).length;
-  if (extEtat) {
-    extEtat.textContent = !prises
-      ? 'Aucune'
-      : toutes
-        ? `Toutes (${lignes.length})`
-        : `${prises} sur ${lignes.length}`;
-  }
+  extEtat.textContent = !prises
+    ? 'Aucune extension utilisée'
+    : toutes
+      ? `Toutes les extensions (${lignes.length})`
+      : `${prises} extension${prises > 1 ? 's' : ''} utilisée${prises > 1 ? 's' : ''}`;
+
+  // Le cadre du lobby ne montre que les cartes réellement dans le paquet.
+  // Cliquer l'une d'elles reprend la même fiche détaillée que dans le jeu.
+  activeExtensions.innerHTML = '';
+  lignes.filter((module) => actives[module.key]).forEach((module) => {
+    const fiche = ficheExtension(module);
+    if (!fiche.cartes.length) return;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'sk-active-extension';
+    card.title = `Voir la règle : ${module.label}`;
+    card.setAttribute('aria-label', `Voir la règle : ${module.label}`);
+    const apercu = fiche.cartes[0];
+    card.innerHTML = `<span class="sk-card ${cardClass(apercu)}">${cardFaceHTML(apercu)}</span>`;
+    card.addEventListener('click', () => ouvrirFiche(module.label, fiche));
+    activeExtensions.appendChild(card);
+  });
 }
 
 function renderDeckPicker(style, isHost) {
@@ -1374,7 +1410,6 @@ function renderDeckPicker(style, isHost) {
   });
   const actif = DECK_CHOICES.find((d) => d.key === choisi);
   deckHint.textContent = actif ? actif.hint : '';
-  if (deckEtat) deckEtat.textContent = actif ? actif.label : '';
 }
 
 // Le nombre de manches, réglé par l'hôte. Un bouton par valeur plutôt qu'un
@@ -1398,11 +1433,9 @@ function renderRoundsPicker(total, mini, maxi, isHost) {
     }
     roundsGrid.appendChild(b);
   }
-  // La dernière manche est la plus longue : elle dit à elle seule la durée
-  // de la partie mieux que le nombre de manches.
-  roundsHint.textContent = isHost
-    ? `${choisi} manches — la dernière se joue à ${choisi} cartes par joueur.`
-    : `${choisi} manches.`;
+  // Le choix lui-même suffit dans la planche compacte du lobby : afficher la
+  // durée de la dernière manche répétait inutilement l'information.
+  roundsHint.textContent = '';
 }
 
 // Le rythme de la partie. Rien de ce qui est ici ne touche aux règles : ce
@@ -1481,7 +1514,6 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
   // Volet fermé : l'allure retenue, en un mot. « Sur mesure » quand l'hôte a
   // bricolé ses propres durées — c'est justement le cas où on veut savoir
   // qu'il y a quelque chose à ouvrir.
-  if (paceEtat) paceEtat.textContent = preset ? preset.label : 'Sur mesure';
   if (preset) {
     paceHint.textContent = preset.hint || '';
   } else {
@@ -1553,6 +1585,9 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
   renderPacePicker(pace, paceSettings, pacePresets, pacePreset, isHost);
+  const deckLabel = deck === 'perso' ? 'Paquet perso' : 'Paquet classique';
+  const paceLabel = (pacePresets || []).find((preset) => preset.key === pacePreset)?.label || 'Rythme sur mesure';
+  lobbySettingsSummary.textContent = `${totalRounds} manches · ${deckLabel} · ${paceLabel}`;
 
   // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
   // ajouterMessage écarte tout seul ce qui a déjà été posé. Les couleurs
