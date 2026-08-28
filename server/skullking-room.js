@@ -22,6 +22,7 @@ const {
   MAX_ROUNDS,
   clampRounds,
   dealRound,
+  createDeck,
   isValidBid,
   isCardPlayable,
   ledSuitOf,
@@ -250,18 +251,53 @@ function capturedPirateKeys(trick, excludedIdx, isLastTrick) {
     .filter((k) => k && (k === 'harry' || !isLastTrick));
 }
 
-// Pirates « mangés » par le Skull King quand il remporte le pli : sert
-// uniquement à l'animation côté client (voir playDevourAnimation). On lit
-// l'identité choisie (effectiveKind), donc une Tigresse annoncée en Pirate
-// est dévorée elle aussi - c'est ce que le joueur voit sur le tapis. Les
-// Pirates déjà retirés par la Planche (excludedIdx) ne sont plus là pour
-// être mangés. Vide si le pli est détruit ou gagné par autre chose.
-function devouredPirateIds(cards, result) {
-  if (result.destroyed) return [];
-  if (cards[result.winnerIdx].kind !== 'skullking') return [];
-  return cards
-    .filter((c, i) => i !== result.winnerIdx && !result.excludedIdx.has(i) && effectiveKind(c) === 'pirate')
+// QUI DÉVORE QUI. La hiérarchie des cartes de personnage n'est pas une
+// échelle de valeurs abstraite : elle raconte quelque chose, et le tapis peut
+// le montrer. Le Skull King mange les Pirates, un Pirate mange les Sirènes,
+// une Sirène emporte le Skull King. Rien de tout ça ne se voyait sauf le
+// premier cas — les autres cartes restaient posées, intactes, à côté de celle
+// qui venait pourtant de les battre.
+//
+// On lit l'identité CHOISIE (effectiveKind) : une Tigresse annoncée en Pirate
+// est dévorée comme un Pirate et dévore comme un Pirate — c'est ce que le
+// joueur voit sur le tapis. Les cartes déjà retirées (Planche, Davy Jones)
+// n'y sont plus.
+//
+// AU MOMENT DE LA RÉSOLUTION, jamais avant. Montrer une Sirène avalée dès
+// qu'un Pirate la rejoint dans le pli serait un mensonge une fois sur deux :
+// si le Skull King arrive ensuite, la boucle se referme et c'est la SIRÈNE
+// qui remporte le pli. Tant que le pli n'est pas complet, personne n'a mangé
+// personne.
+//
+// Renvoie { devoreurId, ids } - le client a besoin de savoir vers QUELLE
+// carte faire converger les autres, et ce n'est plus toujours le Skull King.
+const DEVORE = {
+  // Le Skull King prend tout le rang Pirate, Mat le Forban compris : c'est
+  // exactement ce que le bonus de capture compte déjà (+30 chacun).
+  skullking: ['pirate', 'firstmate'],
+  // Un Pirate bat les Sirènes. S'il gagne, c'est qu'aucun Mat le Forban
+  // n'était là (il les bat tous) : rien d'autre à avaler.
+  pirate: ['siren'],
+  // Mat le Forban bat tous les Pirates. S'il gagne, ni Sirène ni Skull King
+  // n'étaient du pli - ils le battent.
+  firstmate: ['pirate'],
+  // La Sirène séduit le Skull King, et emporte Mat le Forban. Pas les
+  // Pirates : elle ne les bat pas. Quand les trois sont réunis (Pirate +
+  // Skull King + Sirène), elle remporte le pli par la règle de la boucle,
+  // pas en battant le Pirate - qui reste donc entier sur le tapis.
+  siren: ['skullking', 'firstmate'],
+};
+
+function devoreesParLeVainqueur(cards, result) {
+  const vide = { devoreurId: null, ids: [] };
+  if (result.destroyed || result.winnerIdx == null) return vide;
+  const vainqueur = cards[result.winnerIdx];
+  const proies = DEVORE[effectiveKind(vainqueur)];
+  if (!proies) return vide;
+  const ids = cards
+    .filter((c, i) => i !== result.winnerIdx && !result.excludedIdx.has(i) && proies.includes(effectiveKind(c)))
     .map((c) => c.id);
+  return ids.length ? { devoreurId: vainqueur.id, ids } : vide;
 }
 
 // Cartes jetées par-dessus bord par « Marcher sur la Planche ». Le calcul
@@ -1008,13 +1044,17 @@ function powerResultMessage(room) {
       };
     }
     case 'harry': {
+      // Ne rien changer est un vrai choix — c'est même souvent le bon, et le
+      // bouton existe pour ça. « modifie son annonce (±0) » disait donc le
+      // contraire de ce qui venait de se passer, et laissait les autres
+      // chercher ce qui avait bougé. Même chose quand le minuteur expire sans
+      // réponse : rien n'a bougé, on le dit.
       const delta = pending.harryDelta || 0;
       const newBid = room.bids[pending.playerId];
-      const sign = delta > 0 ? '+1' : delta < 0 ? '-1' : '±0';
-      return {
-        title: 'Harry le Géant',
-        detail: `${name} modifie son annonce (${sign}) : nouvelle annonce ${newBid}.`,
-      };
+      const detail = delta === 0
+        ? `${name} ne bouge pas son annonce : elle reste à ${newBid}.`
+        : `${name} ${delta > 0 ? 'monte' : 'descend'} son annonce d'un pli : ${newBid - delta} → ${newBid}.`;
+      return { title: 'Harry le Géant', detail };
     }
     case 'marythorne': {
       const target = findPlayer(room, pending.marythorneTargetId);
@@ -1647,10 +1687,13 @@ function registerSkullKingHandlers(io, socket) {
       });
     }
     const leaderId = room.currentTrick[result.leaderIdx].playerId;
+    const devorees = devoreesParLeVainqueur(cards, result);
     room.lastTrickResult = {
       destroyed: result.destroyed,
       winnerId,
-      devouredCardIds: devouredPirateIds(cards, result),
+      // Qui dévore qui : le vainqueur et ce qu'il emporte (voir DEVORE).
+      devourerCardId: devorees.devoreurId,
+      devouredCardIds: devorees.ids,
       plankedCardIds: plankedCardIds(cards),
       davyJones: davyJonesSwallow(cards),
       // La carte qui engloutit le pli, quand c'est le Kraken : l'écran s'en

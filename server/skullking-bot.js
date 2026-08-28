@@ -18,6 +18,16 @@ const { EventEmitter } = require('events');
 // l'écran pendant un test, pas voir la manche se dérouler d'un coup.
 const BOT_THINK_MS = 700;
 
+// La manche 1 a son rythme à elle, et ce n'est pas un rythme de bot : les
+// cartes de tout le monde sont sur le tapis depuis l'annonce, personne n'a
+// rien à décider, et chaque client pose la sienne tout seul après un temps de
+// lecture (MANCHE1_LECTURE_MS, côté skullking.js). Un bot qui répondrait à
+// son pas habituel jouerait trois fois plus vite que l'humain assis à côté de
+// lui : la manche se déroulerait à SA cadence, et le temps de lecture réglé
+// pour les joueurs ne se verrait que dans une partie entre humains — soit
+// jamais pendant un test. Les deux valeurs vont donc ensemble.
+const BOT_MANCHE1_MS = 2200;
+
 const BOT_NAMES = ['Barbe-Rousse', 'Anne Bonny', 'Le Borgne', 'Calico Jack', 'Mary Read', 'Flint', 'Jack le Rouge', 'La Buse'];
 
 // Un faux socket par bot, indexé par son id — sert à ré-émettre ses actions.
@@ -148,13 +158,19 @@ function driveBots(io, room, stateFor) {
       continue;
     }
     if (pending.has(player.id)) continue; // une action est déjà programmée
+    // Seule la POSE de la manche 1 prend le temps long : l'annonce, elle, se
+    // fait à couvert et en même temps que celle des autres, il n'y a rien à
+    // regarder tomber.
+    const attente = state.roundNumber === 1 && action[0] === 'skullking-play-card'
+      ? BOT_MANCHE1_MS
+      : BOT_THINK_MS;
     const timer = setTimeout(() => {
       pending.delete(player.id);
       // L'état a pu changer entre-temps : on recalcule avant d'agir.
       const fresh = stateFor(room, player);
       const now = decide(fresh);
       if (now) socket.emit(now[0], now[1]);
-    }, BOT_THINK_MS);
+    }, attente);
     pending.set(player.id, timer);
   }
 }

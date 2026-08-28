@@ -1002,11 +1002,12 @@ h3 {
   text-align: center;
 }
 
-/* Panneaux de choix au moment de la pose (Joker, 0/14, Marcher sur la
-   Planche) : le texte explicatif passe sur toute la largeur, les boutons
-   se répartissent en dessous — même structure que .sk-bid-choices. */
-#sk-joker-choice .hint,
-#sk-plank-choice .hint {
+/* Panneau de choix au moment de la pose : le texte explicatif passe sur toute
+   la largeur, les boutons se répartissent en dessous — même structure que
+   .sk-bid-choices. Il ne reste que le Joker : le 0/14 et la Planche ont
+   quitté la pilule pour un cadre plein écran, ils ne précisent pas une carte,
+   ils décident de ce qu'elle est ou de ce qu'une autre devient. */
+#sk-joker-choice .hint {
   flex-basis: 100%;
   margin: 0 0 4px;
 }
@@ -1932,77 +1933,144 @@ h3 {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
-/* --- MARCHER SUR LA PLANCHE : DÉSIGNER SA CIBLE ----------------------
-   Le tapis passe en mode « qui passe par-dessus bord ». Les Pirates visés
-   s'allument et se soulèvent ; tout le reste du pli s'éteint, parce qu'une
-   carte qu'on ne peut pas cliquer ne doit pas avoir l'air cliquable. C'est
-   le même vocabulaire que la main quand ce n'est pas son tour. */
-.sk-table--ciblage .sk-trick-card:not(.sk-trick-card--visee) {
-  filter: brightness(0.42) saturate(0.5);
-  transition: filter 0.18s ease-out;
+/* --- MARCHER SUR LA PLANCHE : QUI PASSE PAR-DESSUS BORD --------------
+   Même cadre que le choix de la Tigresse, et pour la même raison : le geste
+   décide de ce qu'un autre joueur a joué, et rien ne le reprend. Les Pirates
+   du pli y sont montrés EN GRAND, chacun sous le nom de qui l'a posé — la
+   carte répond à « lequel », le nom à « à qui ».
+   ------------------------------------------------------------------- */
+.sk-plank-choice {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 8, 10, 0.76);
 }
 
-.sk-trick-card--visee {
-  cursor: pointer;
-  z-index: 6;
+.sk-plank-choice.hidden {
+  display: none;
 }
 
-.sk-trick-card--visee .sk-card {
+.sk-plank-cadre {
+  position: relative;
+  max-width: 620px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px 26px 18px;
+  border-radius: 5px;
+  text-align: center;
+  color: var(--sk-cream);
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
   box-shadow:
-    /* Rouge vif, pas le grenat des Pirates : c'est une MISE EN JOUE, elle ne
-       doit pas se confondre avec le bandeau de la carte qu'elle vise. */
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 18px 40px rgba(0, 0, 0, 0.65);
+  /* Centré sur le plateau comme les autres messages du jeu. */
+  translate: var(--sk-plateau-dx, 0px) var(--sk-plateau-dy, 0px);
+}
+
+.sk-plank-titre {
+  margin: 0 0 14px;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.16rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+/* Les cibles s'enroulent : à neuf joueurs le pli peut porter cinq Pirates,
+   plus la Tigresse jouée comme Pirate. */
+.sk-plank-cibles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sk-plank-cible {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+  transition: background 0.16s ease;
+}
+
+/* La carte est le bouton : elle se soulève et s'allume au survol, le nom ne
+   fait que dire à qui elle est. Rouge vif et pas le grenat des Pirates —
+   c'est une mise en joue, elle ne doit pas se confondre avec le bandeau de
+   la carte qu'elle vise. */
+.sk-plank-cible .sk-card {
+  --sk-w: clamp(84px, 12vw, 116px);
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.16s ease;
+}
+
+.sk-plank-cible:hover .sk-card,
+.sk-plank-cible:focus-visible .sk-card {
+  transform: translateY(-8px) scale(1.05);
+  box-shadow:
     0 0 0 3px #d6543d,
     0 0 0 4px rgba(20, 12, 5, 0.85),
     0 0 22px rgba(214, 84, 61, 0.55),
-    0 12px 26px rgba(0, 0, 0, 0.6);
-  animation: sk-visee 1.4s ease-in-out infinite;
+    0 14px 28px rgba(0, 0, 0, 0.6);
 }
 
-/* Le liseré rouge PULSE plutôt qu'il ne brille en continu : posé fixe, il se
-   confondait avec le cerclage de laiton de la carte qui mène le pli — deux
-   liserés de la même épaisseur qui ne disent pas du tout la même chose. */
-@keyframes sk-visee {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-5px) scale(1.04); }
+.sk-plank-cible:hover,
+.sk-plank-cible:focus-visible {
+  background: rgba(255, 236, 196, 0.05);
 }
 
-.sk-trick-card--visee:hover .sk-card,
-.sk-trick-card--visee:focus-visible .sk-card {
-  animation: none;
-  transform: translateY(-7px) scale(1.07);
-  transition: transform 0.14s ease-out;
-}
-
-.sk-trick-card--visee:focus-visible {
+.sk-plank-cible:focus-visible {
   outline: 2px solid var(--sk-brass-hi);
-  outline-offset: 5px;
+  outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sk-trick-card--visee .sk-card { animation: none; }
+.sk-plank-nom {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-/* Ce panneau se pose au milieu du feutre, là où sont justement les cartes
-   qu'il faut cliquer : il ne porte donc que la porte de sortie, la consigne
-   étant écrite au-dessus du feutre (voir appliquerCiblagePlanche). */
-.sk-plank-choice .sk-tigress-annuler {
-  margin-top: 0;
+.sk-plank-note {
+  margin: 12px 0 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.76rem;
+  color: var(--sk-cream-2);
+  opacity: 0.68;
 }
 
-/* Pendant la désignation, la consigne passe DEVANT les cartes du pli. Elles
-   s'en écartent déjà (voir les bandes dans renderTrick), mais une carte du
-   fond posée au ras de la bande la mordrait encore d'un ou deux pixels — et
-   c'est la seule ligne qui dit quoi faire. */
-body.sk-ciblage .sk-turn-indicator {
-  /* Rien d'autre que l'empilement et un fond plus dense : la consigne garde
-     sa pastille et sa position (elle est en `absolute` sur la scène, la
-     repasser en `relative` la renvoyait en pleine largeur, barre noire en
-     travers de la taverne). Elle passe simplement DEVANT les cartes du pli —
-     elles s'en écartent déjà, mais une carte du fond posée au ras de la
-     bande la mordrait encore, et c'est la seule ligne qui dit quoi faire. */
-  z-index: 8;
-  background: rgba(10, 6, 3, 0.9);
-  box-shadow: inset 0 0 0 1px rgba(232, 206, 146, 0.4);
+/* Écran bas : les portraits rapetissent plutôt que de sortir du cadre. */
+@media (max-height: 560px) {
+  .sk-plank-cadre {
+    padding: 12px 20px 10px;
+  }
+
+  .sk-plank-titre {
+    margin-bottom: 8px;
+    font-size: 1rem;
+  }
+
+  .sk-plank-cible .sk-card {
+    --sk-w: clamp(64px, 16vh, 96px);
+  }
+
+  .sk-plank-note {
+    margin-top: 8px;
+  }
 }
 
 /* --- LE KRAKEN ENGLOUTIT LE PLI -------------------------------------
@@ -2325,11 +2393,26 @@ body.sk-ciblage .sk-turn-indicator {
 /* Le médaillon tient la place du pseudo. Assez grand pour qu'on distingue la
    figure gravée (une ancre d'un gouvernail) et pas seulement l'émail, assez
    petit pour ne pas creuser la ligne du registre. */
+/* Le médaillon du registre, cerclé de la couleur du joueur — la même qui
+   porte son pseudo, son siège et le bout de sa courbe. Le cerclage est posé
+   sur le SPAN et l'ombre sur l'image : une `filter` sur le span mangerait le
+   `box-shadow` avec elle, les deux se peignent dans le même passage.
+
+   Deux anneaux : la couleur, puis un cheveu d'encre autour. Sans le second,
+   un cerclage clair posé à même le papier n'avait pas de bord et flottait ;
+   avec, il se lit comme un émail serti, le vocabulaire des pièces. */
 .sk-score-row-piece {
   flex: 0 0 auto;
   width: 22px;
   height: 22px;
   display: block;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px var(--sk-piece-couleur, transparent),
+    0 0 0 3px rgba(53, 33, 8, 0.4);
+}
+
+.sk-score-row-piece .sk-piece-img {
   filter: drop-shadow(0 1px 1px rgba(53, 33, 8, 0.45));
 }
 
@@ -2909,6 +2992,11 @@ body.sk-ciblage .sk-turn-indicator {
 
 .sk-card__bonus--10 { --sk-bonus: url('assets/skin/bonus-10.webp'); }
 .sk-card__bonus--20 { --sk-bonus: url('assets/skin/bonus-20.webp'); }
+/* Le 7 et le 8 d'extension : même pièce, même place, même taille — c'est le
+   même geste de règle, il doit se lire au même endroit. Étain et non laiton :
+   elles ne rapportent pas toujours, et l'une fait perdre. */
+.sk-card__bonus--plus5 { --sk-bonus: url('assets/skin/bonus-plus-5.webp'); }
+.sk-card__bonus--moins5 { --sk-bonus: url('assets/skin/bonus-moins-5.webp'); }
 
 /* --- Cartes spéciales ------------------------------------------------
    .sk-card--special est le fourre-tout : il vient EN PREMIER pour que les
@@ -3476,12 +3564,13 @@ body.sk-ciblage .sk-turn-indicator {
   gap: 4px;
 }
 
-/* Le rapport est celui de la plaque peinte (283 x 480), pas celui d'une
-   carte à jouer : ce n'en est pas une, et la rogner pour l'y ramener
-   couperait les ferrures des deux bords. */
+/* Le rapport 7:10 des cartes du jeu, celui du dos qu'on retourne. Il suivait
+   avant celui de la plaque peinte (283 x 480), qui n'est plus là : le dos,
+   lui, est bien une carte, et sur un cadre trop haut il était rogné en haut
+   et en bas. Même largeur qu'une carte en main, à un cheveu près. */
 .sk-bid-card {
   width: 84px;
-  height: 142px;
+  height: 120px;
   perspective: 700px;
 }
 
@@ -3521,68 +3610,110 @@ body.sk-ciblage .sk-turn-indicator {
     0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* La face révélée est la plaque peinte, posée telle quelle : le chiffre y est
-   gravé dans le laiton, il n'y a rien à écrire par-dessus. Pas de liseré
-   ajouté non plus — la plaque porte déjà son cadre, en poser un second en
-   ferait deux. */
+/* La face révélée est SOBRE, et c'est tout son travail : neuf annonces se
+   découvrent d'un coup et il faut les lire avant de jouer. Une face crème, le
+   chiffre en brun-gris posé dessus, la pièce du joueur dessous — le seul
+   contraste fort de la face tombe donc sur la seule chose qui change d'une
+   annonce à l'autre. Le décor est ailleurs : le dos peint qui se retourne
+   juste avant, et le panneau de bois qui les porte toutes.
+
+   Un liseré d'encre plutôt qu'un cadre de laiton : il détache le crème du
+   fond sombre du panneau, sans rien ajouter à regarder. */
 .sk-bid-card-front {
   transform: rotateY(180deg);
-  background: #100a05 var(--sk-annonce) 50% 50% / 100% 100% no-repeat;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-}
-
-/* La pièce du joueur, posée sur le crâne casqué du bas de la plaque —
-   coordonnées relevées sur l'image, pas estimées : centre à 50 % / 83,5 %,
-   large comme 30 % de la plaque. Les sabres croisés du décor dépassent tout
-   autour, la pièce a l'air sertie plutôt que collée. */
-.sk-bid-piece {
-  position: absolute;
-  left: 50%;
-  top: 82%;
-  /* 46 % et non 32 % : c'est le médaillon qui dit DE QUI est l'annonce, et
-     à 27 px sur une plaque de 84 il fallait le chercher. Il déborde
-     maintenant du crâne casqué sur les sabres qui l'encadrent — sertie, la
-     pièce est plus lisible que posée bien au centre d'un cartouche trop
-     petit pour elle. */
-  width: 46%;
-  transform: translate(-50%, -50%);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
-}
-
-/* Repli pour une annonce de 10, que la planche ne peint pas — seulement
-   possible à la dernière manche, et seulement si quelqu'un annonce tous les
-   plis. Le chiffre est écrit, pas gravé, mais la plaque reste du cuir cerclé
-   de laiton : en parchemin clair, elle criait au milieu de ses voisines
-   bronze. */
-.sk-bid-card-front--nombre {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(120% 90% at 30% 12%, #6b3a17 0%, #47240d 52%, #2a1408 100%);
+  gap: 4px;
+  /* Crème et non parchemin : le parchemin des cartes tire sur le doré et
+     porte son grain, ces plaques-ci ne sont pas des cartes. Le dégradé est
+     à peine là — juste de quoi éviter l'aplat mort. */
+  background: linear-gradient(180deg, #F5EBD6, #E8DBBE);
   box-shadow:
-    inset 0 0 0 2px var(--sk-brass-lo),
-    inset 0 0 0 4px rgba(20, 11, 4, 0.9),
+    0 0 0 1px rgba(38, 27, 16, 0.75),
     0 8px 16px rgba(0, 0, 0, 0.5);
-  color: var(--sk-brass-hi);
 }
 
+/* La pièce du joueur, dans le flux sous le chiffre : c'est elle qui dit DE
+   QUI est l'annonce — le même médaillon que sur son siège, sur la roue et au
+   bout de sa courbe du récap. Elle était sertie dans le crâne casqué de la
+   plaque peinte, elle est maintenant simplement posée, et elle garde son
+   ombre portée pour ne pas flotter sur le crème. */
+.sk-bid-piece {
+  width: 40%;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+/* Le chiffre : gros, au corps de la face, en brun-gris foncé. Pas d'ombre
+   portée — sur un fond clair elle ne creuse rien, elle salit le tracé. */
 .sk-bid-card-num {
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 2.1rem;
+  font-size: 2.4rem;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9);
+  color: #473E36;
 }
 
-/* Le pseudo, sous la plaque, dans la couleur de la pièce du joueur : la même
+/* LA CARTE DU TOTAL. Elle ferme la rangée et se retourne en dernier : elle
+   n'a de sens qu'une fois toutes les annonces découvertes. Elle se distingue
+   des plaques de joueurs sans changer de forme — un fond de laiton pâle
+   plutôt que la crème, parce que ce n'est l'annonce de personne. */
+.sk-bid-card--total .sk-bid-card-front {
+  gap: 2px;
+  background: linear-gradient(180deg, #E9D9AE, #D6C08C);
+}
+
+.sk-bid-total-titre {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(71, 62, 54, 0.72);
+}
+
+/* Trois glyphes au lieu d'un : à 2,4 rem le « 5/6 » débordait de la plaque.
+   Il reste la plus grosse chose de la carte, c'est ce qu'on vient y lire. */
+.sk-bid-total-num {
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+
+/* Le Total prend TOUJOURS sa propre ligne, sous un filet. Ce n'est pas une
+   annonce de plus au bout de la rangée : c'est ce que la rangée donne une
+   fois additionnée. Glissé à la suite des plaques il se lisait comme un
+   joueur de plus — et il passait à la ligne par accident ou non selon
+   l'effectif, ce qui est la pire des deux options. */
+.sk-bid-slot--total {
+  flex-basis: 100%;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(232, 206, 146, 0.16);
+}
+
+/* Pas de couleur de joueur ici : ce total n'appartient à personne. Et pas de
+   troncature non plus — la borne de 106 px vaut pour des pseudos qu'on
+   raccourcit sans perte, pas pour un libellé de deux mots. */
+/* Sélecteur en deux classes, et pas `.sk-bid-nom--total` seul : la règle
+   générale des pseudos est déclarée plus bas dans la feuille et gagnerait à
+   spécificité égale. */
+.sk-bid-slot--total .sk-bid-nom {
+  max-width: none;
+  color: var(--sk-cream-2);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+/* Le pseudo, sous la carte, dans la couleur de la pièce du joueur : la même
    qui l'identifie sur son siège, sur la roue et au bout de sa courbe. La
    couleur est posée en ligne par showBidReveal (elle est propre à chacun),
    d'où l'absence de `color` ici. Il se coupe proprement plutôt que d'élargir
    la colonne : c'est le chiffre qu'on vient lire, le nom le rattache. */
 .sk-bid-nom {
-  /* Un peu plus large que la plaque, et au corps d'un vrai libellé : à
+  /* Un peu plus large que la carte, et au corps d'un vrai libellé : à
      0,6 rem le nom se lisait comme une mention de pied de page alors que
      c'est la moitié de l'information — le chiffre ne vaut rien sans lui. */
   max-width: 106px;
@@ -3597,11 +3728,20 @@ body.sk-ciblage .sk-turn-indicator {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-/* --- Roue de tirage au sort (qui mène le premier pli), même DA que celle
-   du Rami : secteurs fixes, seule la flèche tourne. Généralisée à N joueurs
-   (3 à 9) au lieu du split à deux du Rami - un secteur par joueur, étiquette
-   posée à l'extérieur de la roue plutôt que dessus. Ne joue qu'une fois, au
-   tout début de la partie (voir playStartReveal côté JS). --- */
+/* --- Roue de tirage au sort (qui mène le premier pli) : un gouvernail peint
+   d'une seule pièce, flèche comprise, qui tourne sur lui-même et s'arrête sur
+   la pièce d'un joueur. Ne joue qu'une fois, au tout début de la partie (voir
+   playStartReveal côté JS).
+
+   Elle avait avant la DA de celle du Rami : un camembert de feutres sous un
+   cadre de bois immobile, et une barre rapportée qui pivotait seule au
+   centre. Trois objets pour une seule idée, dont deux qui ne bougeaient pas —
+   et un camembert dont les parts changeaient de taille avec le nombre de
+   joueurs, donc un dessin différent à chaque partie. Il n'en reste qu'un, et
+   c'est celui qu'on lance : le gouvernail entier. Les pièces des joueurs sont
+   posées autour, fixes, et c'est sur elles que la flèche vient s'arrêter —
+   comme sur une roue de fortune, où ce qui tourne désigne ce qui ne tourne
+   pas. --- */
 
 .sk-start-reveal {
   position: fixed;
@@ -3615,87 +3755,59 @@ body.sk-ciblage .sk-turn-indicator {
   background: radial-gradient(60% 50% at 50% 44%, rgba(20, 12, 5, 0.88), rgba(3, 8, 10, 0.95));
 }
 
-/* Le gouvernail peint est le cadre lui-même. Son trou central mesure
-   52,1 % de la largeur de l'image (relevé au masque) : c'est la borne du
-   camembert, qui doit s'y loger sans mordre le bois. */
+/* Le cadre ne porte plus rien : c'est une boîte carrée, du diamètre du
+   gouvernail flèche comprise, dans laquelle la roue tourne et autour de
+   laquelle les pièces se posent. Le fichier est cadré sur son MOYEU (voir
+   briefs/detourer-volant.py, qui le relève et recentre l'image dessus) :
+   le centre de rotation et le centre de la boîte sont donc le même point,
+   et il n'y a plus de --sk-roue-cx/cy à tenir en phase avec l'image. */
 .sk-wheel-frame {
   position: relative;
-  width: 320px;
-  height: 320px;
-  /* Le centre du trou n'est PAS le centre du fichier : relevé au masque, il
-     tombe à 49,9 % / 50,7 %. Tout ce qui gravite dans la roue s'accroche à
-     ces deux nombres — le camembert, la barre, les étiquettes — sinon rien
-     n'est d'aplomb et la barre tourne autour d'un axe décalé. */
-  --sk-roue-cx: 49.9%;
-  --sk-roue-cy: 50.7%;
-  /* Rayon des étiquettes, posé par playStartReveal : elles sont sur le bois
-     tant que la table est petite, et s'écartent au-delà quand il y a trop
-     de monde pour qu'elles y tiennent côte à côte. */
-  --sk-roue-etiquettes: 124px;
-  background: url('assets/skin/roue-gouvernail.webp') 50% 50% / 100% 100% no-repeat;
+  /* La boîte du TOUT, pièces comprises, et non celle de la roue : les
+     médaillons sortent largement du gouvernail, et une boîte à la taille de
+     la roue ne réservait pas leur place — la plaque du joueur du bas passait
+     alors sur « X ouvre la manche », qui se pose juste en dessous. 560 =
+     2 x (236 de rayon + 44 de demi-étiquette). */
+  width: 560px;
+  height: 560px;
+  /* Rayon des pièces, posé par playStartReveal : au moins de quoi les tenir
+     juste au-delà de la course de la flèche, plus de quoi que deux plaques de
+     nom voisines ne se touchent pas quand la table se remplit. */
+  --sk-roue-etiquettes: 236px;
+}
+
+/* La roue entière, flèche comprise. Elle occupe toute la boîte : le fichier
+   est calé sur la pointe de la flèche (rayon 0,984 du demi-côté), donc la
+   pointe affleure le bord quel que soit l'angle (elle balaie donc 207 px sur
+   les 420 de la roue), et les poignées tiennent à 0,749 — c'est l'espace
+   entre les deux qui laisse la flèche se détacher.
+
+   Départ vif puis très longue traîne : la roue part d'un coup et n'arrête
+   plus vraiment de ralentir. La durée vient de --sk-roue-duree, posée par
+   playStartReveal, pour qu'elle ne puisse pas diverger de ses minuteries. */
+.sk-wheel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 420px;
+  height: 420px;
+  /* `translate` et non `transform` : c'est une propriété à part, composée
+     AVANT `transform`. Le centrage ne consomme donc pas la transformation,
+     qui reste libre pour la seule rotation — et cette rotation tourne bien
+     autour du moyeu, puisque le fichier est cadré dessus. */
+  translate: -50% -50%;
+  transform: rotate(0deg);
+  transform-origin: 50% 50%;
+  transition: transform var(--sk-roue-duree, 5400ms) cubic-bezier(0.08, 0.86, 0.06, 1);
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.7));
 }
 
-.sk-wheel {
-  position: absolute;
-  left: var(--sk-roue-cx);
-  top: var(--sk-roue-cy);
-  transform: translate(-50%, -50%);
-  /* 50 % du cadre : un cheveu de moins que le trou (52,1 %), pour que le
-     bois du gouvernail recouvre le bord du camembert au lieu de laisser
-     apparaître une couture entre les deux. */
-  width: 50%;
-  height: 50%;
-  border-radius: 50%;
-  overflow: hidden;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.55);
-}
-
-.sk-wheel-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.sk-wheel-seam {
-  fill: none;
-  stroke: rgba(12, 7, 3, 0.55);
-  stroke-width: 0.7;
-}
-
-/* La barre rouge pivote sur le centre du gouvernail. Elle pointe vers le
-   HAUT au repos, comme l'ancienne flèche SVG : la rotation calculée par
-   playStartReveal reste donc valable telle quelle. */
-.sk-wheel-needle {
-  position: absolute;
-  left: var(--sk-roue-cx);
-  top: var(--sk-roue-cy);
-  /* Le pivot est le centre du moyeu de laiton que la barre porte à son pied,
-     pas le milieu de l'image. briefs/recentrer-aiguille.py recadre le
-     fichier sur ce moyeu (il tombe donc à 50 % en largeur) et imprime sa
-     hauteur : 74,02 %. C'est le seul nombre à reporter ici — la LARGEUR est
-     laissée au rapport du fichier (width: auto), il n'y a donc plus de
-     proportion à garder en phase avec l'image.
-
-     Longueur : 0,7402 x 32,4 % = 24 % du cadre entre le pivot et la pointe,
-     soit un cheveu de moins que le rayon du trou (26 %), pour que la barre
-     ne vienne pas taper dans le bois du gouvernail. */
-  height: 32.4%;
-  width: auto;
-  translate: -50% -74.02%;
-  transform-origin: 50% 74.02%;
-  transform: rotate(0deg);
-  /* Départ vif puis très longue traîne : la barre part d'un coup et n'arrête
-     plus vraiment de ralentir. La durée vient de --sk-roue-duree, posée par
-     playStartReveal, pour qu'elle ne puisse pas diverger de ses minuteries. */
-  transition: transform var(--sk-roue-duree, 5400ms) cubic-bezier(0.08, 0.86, 0.06, 1);
-  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6));
-  z-index: 3;
-}
-
+/* Les pièces par-dessus la roue : si la flèche vient les frôler, c'est le
+   médaillon qu'on doit continuer de lire, pas la pointe. */
 .sk-wheel-labels {
   position: absolute;
   inset: 0;
+  z-index: 2;
 }
 
 /* Une étiquette par joueur : sa pièce au-dessus de son nom, pour qu'on
@@ -3706,8 +3818,8 @@ body.sk-ciblage .sk-turn-indicator {
    bas. */
 .sk-wheel-tag {
   position: absolute;
-  left: var(--sk-roue-cx);
-  top: var(--sk-roue-cy);
+  left: 50%;
+  top: 50%;
   translate: -50% -50%;
   transform: rotate(var(--sk-tag-angle, 0deg))
     translateY(calc(-1 * var(--sk-roue-etiquettes)))
@@ -3719,11 +3831,15 @@ body.sk-ciblage .sk-turn-indicator {
 }
 
 /* Le médaillon est posé au-dessus de la plaque, pas dessus : son cerclage
-   émaillé porte déjà la couleur du secteur, sur le parchemin il aurait l'air
-   collé. */
+   émaillé se suffit, sur le parchemin il aurait l'air collé.
+
+   46 px et non 30 : c'est LUI que la flèche désigne maintenant, il n'est plus
+   la vignette d'un secteur de feutre. À 30 px sur une roue de 340 il fallait
+   le chercher, et la pointe s'arrêtait devant quelque chose de plus petit
+   qu'elle. */
 .sk-wheel-tag-piece {
-  width: 30px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75));
   transition: filter 0.25s;
 }
@@ -3755,12 +3871,13 @@ body.sk-ciblage .sk-turn-indicator {
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 10px rgba(232, 206, 146, 0.9));
 }
 
-/* Neuf étiquettes autour d'un cadre de 320 px débordent d'un téléphone : on
+/* Neuf étiquettes autour d'une roue de 420 px débordent d'un téléphone : on
    rapetisse toute la roue d'un bloc plutôt que de reprendre chaque nombre —
-   les étiquettes qui dépassent du cadre suivent. */
+   les pièces et les plaques, posées dans le cadre, suivent. Un cran plus bas
+   qu'avant : les pièces ont grossi et sortent plus loin du bois. */
 @media (max-width: 560px), (max-height: 600px) {
   .sk-wheel-frame {
-    scale: 0.74;
+    scale: 0.6;
   }
 }
 
@@ -4009,20 +4126,48 @@ body.sk-ciblage .sk-turn-indicator {
   padding-left: 7px;
 }
 
-/* Pictogramme d'alliance Butin sur une ligne du récapitulatif de manche. */
-.sk-round-popup-loot {
-  margin-left: 6px;
-  font-size: 0.85rem;
+/* Le pictogramme d'alliance Butin : le tas de doublons peint. Il vaut aux
+   deux endroits — à côté du pseudo sur le tapis, de la formation de
+   l'alliance jusqu'à la fin de la manche, et sur la ligne du récapitulatif,
+   une fois par Butin noué.
+
+   Dimensionné en `em` : il suit le corps du texte auquel il est accroché,
+   qui n'est pas le même sur la scène peinte (en cqw) et dans la planche de
+   fin de manche. Le ratio est celui de l'image, 231x192. Calé sur le BAS
+   (`50% 100%`) : un tas de pièces pose sur la ligne, il ne flotte pas. */
+.sk-round-popup-loot,
+.sk-seat-loot {
+  display: inline-block;
+  background: url('assets/skin/tas-butin.webp') 50% 100% / contain no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
   animation: sk-loot-coin-pop 0.4s ease forwards;
 }
 
-/* Le même, à côté du pseudo sur le tapis : il reste affiché de la formation
-   de l'alliance jusqu'à la fin de la manche. */
+/* Le récapitulatif est une planche à taille fixe : le tas s'y mesure en rem,
+   comme le reste de la planche. */
+.sk-round-popup-loot {
+  width: 2.1rem;
+  height: 1.75rem;
+  margin-left: 7px;
+  vertical-align: -0.5rem;
+}
+
+/* Sur la scène peinte, tout est à l'échelle du tapis et le pseudo lui-même
+   est en cqw : le tas se mesure donc en `em`, sur le corps du pseudo auquel
+   il est accroché, sinon il resterait de la même taille sur une scène deux
+   fois plus grande. */
 .sk-seat-loot {
-  margin-left: 4px;
-  font-size: 0.85rem;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
-  animation: sk-loot-coin-pop 0.4s ease forwards;
+  width: 2.6em;
+  height: 2.16em;
+  margin-left: 5px;
+  vertical-align: -0.72em;
+}
+
+/* Alliance formée mais restée sans effet : le même tas, terni. Le trésor est
+   là, il n'a simplement rien rapporté. */
+.sk-round-popup-loot--sans {
+  filter: grayscale(0.6) brightness(0.62) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+  opacity: 0.8;
 }
 
 @keyframes sk-loot-coin-pop {
@@ -5406,32 +5551,28 @@ body.sk-ciblage .sk-turn-indicator {
   line-height: 1.5;
 }
 
+/* Le nom, sur la même ligne que le message et juste avant lui. La couleur
+   est posée en ligne par ligneChat (elle est propre à chacun) ; celle d'ici
+   n'est que le repli, pour un auteur dont on n'a pas la pièce — un message
+   d'avant la reconnexion, par exemple. Les petites capitales et le corps
+   plus serré suffisent à détacher le nom du texte : pas besoin de deux-points
+   ni de gras par-dessus. */
 .sk-chat-who {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+  display: inline;
+  margin-right: 5px;
   font-family: 'Cinzel', Georgia, serif;
-  font-weight: 600;
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--sk-brass);
 }
 
-.sk-chat-line--me .sk-chat-who {
-  color: var(--sk-brass-hi);
-}
-
-.sk-chat-time {
-  font-family: 'Bitter', Georgia, serif;
-  font-weight: 500;
-  font-size: 0.56rem;
-  color: var(--sk-cream-3);
-}
-
 /* Le message peut contenir n'importe quoi : on force la coupure pour qu'une
-   suite de caractères sans espace ne déborde pas du carnet. */
+   suite de caractères sans espace ne déborde pas du carnet. Il reste crème
+   pour tout le monde — voir ligneChat. */
 .sk-chat-text {
-  display: block;
+  display: inline;
   color: var(--sk-cream-2);
   overflow-wrap: anywhere;
 }
@@ -6018,10 +6159,11 @@ body.sk-ciblage .sk-turn-indicator {
    Les pourcentages sont ceux du feutre, moitié de sa largeur et de sa
    hauteur ajoutées à son origine — ils suivent donc `.sk-table` si la scène
    change. */
-/* Le 0/14 a quitté cette liste : il ne précise plus un détail, il décide de
-   ce que la carte EST, et il a donc son cadre plein écran comme la Tigresse. */
-.sk-scene #sk-joker-choice:not(.hidden),
-.sk-scene #sk-plank-choice:not(.hidden) {
+/* Le 0/14 puis la Planche ont quitté cette liste : ils ne précisent plus un
+   détail, ils décident de ce qu'une carte EST — la sienne ou celle d'un
+   autre. Ils ont donc leur cadre plein écran, comme la Tigresse. Le Joker,
+   qui ne fait que choisir une famille, reste dans la pilule. */
+.sk-scene #sk-joker-choice:not(.hidden) {
   left: 42.66%;   /* 23.35 % + 38.61 % / 2 */
   top: 59.83%;    /* 41.55 % + 36.56 % / 2 */
   right: auto;
@@ -6644,18 +6786,17 @@ body.sk-ciblage .sk-turn-indicator {
    c'est là que traîne la plume, et c'est la seule bande de la colonne où
    poser une commande ne recouvre aucun texte. Sélecteur plus précis que la
    règle ci-dessus, pour ne pas dépendre de l'ordre des blocs. */
-.sk-scene .sk-history-link.sk-reglages-link {
-  display: block;
-  position: absolute;
-  left: 84.2%;
-  top: 58.6%;
-  width: 12.6%;
-  z-index: 5;
-  margin: 0;
-  padding: 0.55cqw 0 0.65cqw;
-  font-size: 0.8cqw;
-  letter-spacing: 0.12em;
-  text-align: center;
+/* Le bouton des réglages vit maintenant dans la barre du haut, en `btn-link`
+   comme « Quitter » : il n'a plus rien à faire poser sur la scène peinte.
+   Un cran plus discret que son voisin, parce qu'entre « ouvrir les réglages »
+   et « terminer la partie » il n'y a pas photo sur ce qui doit se remarquer. */
+.sk-game-header .sk-reglages-link {
+  opacity: 0.82;
+}
+
+.sk-game-header .sk-reglages-link:hover,
+.sk-game-header .sk-reglages-link:focus-visible {
+  opacity: 1;
 }
 
 /* Le parchemin porte son titre, comme un vrai ordre de mission. */

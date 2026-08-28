@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
-"""Découpe les deux pièces de bonus des 14 : +10 et +20.
+"""Découpe les pièces de bonus posées contre le chiffre des cartes.
 
-Elles se posent contre le médaillon d'angle des cartes de valeur 14, qui
-rapportent 10 points à qui remporte le pli — 20 pour le noir. Le bonus était
-une règle qu'il fallait connaître ; il est maintenant sur la carte.
+Deux planches, même format et même traitement : deux sujets ronds sur page
+blanche, côte à côte.
+
+- `bonus-14-sk.png` -> +10 et +20, pour les cartes de valeur 14, qui
+  rapportent 10 points à qui remporte le pli — 20 pour le noir ;
+- `bonus-5-sk.png` -> +5 et -5, pour le 7 et le 8 que l'extension ajoute à
+  chaque couleur : le 8 rapporte 5 points au vainqueur du pli, le 7 lui en
+  coûte 5. Ces deux-là partagent leur dessin avec le 7 et le 8 de base — la
+  pièce est le seul signe qui les en distingue, et c'est assez : c'est elle
+  qui porte l'information.
+
+Dans les deux cas le bonus était une règle qu'il fallait connaître ; il est
+maintenant sur la carte.
 
 Rien à voir avec les planches de cartes : deux sujets ronds sur page blanche,
 et une découpe RONDE plutôt qu'un détourage. La page est blanche, le liseré
@@ -21,10 +31,14 @@ import numpy as np
 from PIL import Image
 
 RACINE = Path(__file__).resolve().parent.parent
-SOURCE = RACINE / 'public/assets/skin/src/bonus-14-sk.png'
+SRC = RACINE / 'public/assets/skin/src'
 OUT = RACINE / 'public/assets/skin'
 
-NOMS = ['bonus-10', 'bonus-20']
+# planche -> les pièces qu'elle porte, de gauche à droite.
+PLANCHES = {
+    'bonus-14-sk.png': ['bonus-10', 'bonus-20'],
+    'bonus-5-sk.png': ['bonus-plus-5', 'bonus-moins-5'],
+}
 COTE = 256          # la pièce ne dépasse jamais 16 % de la largeur d'une carte
 PAGE = np.array([255.0, 255.0, 255.0])
 SEUIL = 60          # l'ombre portée reste sous ce seuil, la pièce le dépasse
@@ -73,17 +87,18 @@ def masque_rond(cote):
     return Image.fromarray((np.clip((1.0 - d) * (cote / 2), 0, 1) * 255).astype(np.uint8), 'L')
 
 
-def main():
-    if not SOURCE.exists():
-        print(f'absent : {SOURCE}', file=sys.stderr)
+def decouper(source, noms):
+    chemin = SRC / source
+    if not chemin.exists():
+        print(f'absent : {chemin}', file=sys.stderr)
         return 1
-    im = Image.open(SOURCE).convert('RGB')
+    im = Image.open(chemin).convert('RGB')
     boites = list(pieces(np.asarray(im).astype(np.float32)))
-    if len(boites) != len(NOMS):
-        print(f'{len(boites)} pièces repérées au lieu de {len(NOMS)}', file=sys.stderr)
+    if len(boites) != len(noms):
+        print(f'{source} : {len(boites)} pièces repérées au lieu de {len(noms)}', file=sys.stderr)
         return 1
 
-    for nom, (x, y, cote) in zip(NOMS, boites):
+    for nom, (x, y, cote) in zip(noms, boites):
         piece = im.crop((x, y, x + cote, y + cote)).convert('RGBA')
         piece.putalpha(masque_rond(cote))
         piece = piece.resize((COTE, COTE), Image.LANCZOS)
@@ -94,8 +109,13 @@ def main():
         # alpha approximée s'y verrait comme une dentelure.
         subprocess.run(['cwebp', '-quiet', '-q', '90', '-alpha_q', '100', str(tmp), '-o', str(dest)], check=True)
         tmp.unlink()
-        print(f'  {dest.name:16} {cote}px -> {COTE}px  {dest.stat().st_size / 1024:5.1f} Ko')
+        print(f'  {dest.name:18} {cote}px -> {COTE}px  {dest.stat().st_size / 1024:5.1f} Ko')
     return 0
+
+
+def main():
+    cibles = sys.argv[1:] or list(PLANCHES)
+    return 1 if sum(decouper(s, PLANCHES[s]) for s in cibles) else 0
 
 
 if __name__ == '__main__':

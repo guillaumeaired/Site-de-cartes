@@ -174,10 +174,15 @@
         </div>
 
         <div id="sk-start-reveal" class="sk-start-reveal hidden">
+          <!-- Le gouvernail est d'une seule pièce, flèche comprise, et c'est
+               LUI qui tourne : plus de camembert de feutres sous un cadre
+               fixe, plus de barre rapportée qui pivote toute seule. Un objet
+               qu'on lance, qui ralentit, et qui finit par désigner une
+               pièce — ce que fait une roue de fortune, et rien d'autre.
+               Les pièces des joueurs, elles, ne bougent pas : c'est sur
+               elles que la flèche vient s'arrêter. -->
           <div class="sk-wheel-frame">
-            <div id="sk-wheel" class="sk-wheel"></div>
-            <img id="sk-wheel-needle" class="sk-wheel-needle" src="assets/skin/aiguille-roue.webp" alt="" aria-hidden="true" />
-            
+            <img id="sk-wheel" class="sk-wheel" src="assets/skin/roue-volant.webp" alt="" aria-hidden="true" />
             <div id="sk-wheel-labels" class="sk-wheel-labels"></div>
           </div>
           <p id="sk-start-reveal-text" class="sk-start-reveal-text"></p>
@@ -202,6 +207,16 @@
               <span id="sk-mine-v" class="sk-mine-v"></span>
               <span id="sk-mine-score" class="sk-mine-score">0</span>
             </div>
+            <!-- Les réglages sont à la barre du haut, pas au panneau latéral :
+                 ils ne parlent pas de la partie mais de l'écran, comme
+                 « Quitter » en face. Le panneau, lui, ne porte que ce qui se
+                 joue — l'objectif, le registre, la discussion — et un bouton
+                 d'affichage glissé entre le registre et le carnet s'y lisait
+                 comme une septième information de partie.
+                 En `btn-link` comme « Quitter », et à sa gauche : ce qui
+                 termine la partie garde le bord, et le seul vrai bouton de la
+                 rangée. -->
+            <button id="sk-btn-settings" class="btn-link sk-reglages-link" type="button">Réglages</button>
             <button id="sk-btn-end-game" class="btn btn-small hidden">Terminer</button>
           </div>
           <p id="sk-round-indicator" class="sk-round-indicator" role="status" aria-live="polite"></p>
@@ -246,10 +261,6 @@
               <button class="sk-defiler sk-defiler--bas" type="button" aria-label="Voir le bas du classement">&#9660;</button>
             </div>
             <button id="sk-btn-history" class="sk-history-link hidden" type="button">Manches précédentes</button>
-            <!-- Sur la scène peinte, « Manches précédentes » n'a pas de place et
-                 disparaît ; celui-ci en a une, dans le vide entre le registre
-                 et le carnet, là où traîne la plume. -->
-            <button id="sk-btn-settings" class="sk-history-link sk-reglages-link" type="button">Réglages</button>
 
             <div class="sk-chat">
               <p class="sk-side-title">Discussion</p>
@@ -327,14 +338,20 @@
             <button id="sk-btn-declare-annuler" class="sk-declare-annuler" type="button">Reposer la carte</button>
           </div>
         </div>
-        <!-- Marcher sur la Planche : le Pirate se désigne SUR LE TAPIS, pas
-             dans une liste de noms. Il ne reste donc ici que la consigne et
-             la porte de sortie ; les cibles, ce sont les cartes elles-mêmes
-             (voir appliquerCiblagePlanche). Une liste obligeait à retrouver à
-             qui appartenait « Harry le Géant » alors que sa carte est posée
-             devant son joueur, à l'écran, au même instant. -->
-        <div id="sk-plank-choice" class="sk-bid-choices sk-plank-choice hidden">
-          <button id="sk-btn-plank-cancel" class="sk-tigress-annuler" type="button">Reposer la carte</button>
+        <!-- Marcher sur la Planche : les Pirates du pli sont montrés EN GRAND
+             dans un cadre, chacun sous le nom de qui l'a joué, et on clique
+             celui qu'on jette. Ce sont les vraies cartes, pas des libellés :
+             « Harry le Géant » ne dit rien à qui ne l'a pas en tête, son
+             portrait, si. Le nom en dessous répond à l'autre moitié de la
+             question — à qui je prends le pli. -->
+        <div id="sk-plank-choice" class="sk-plank-choice hidden" role="dialog" aria-modal="true" aria-labelledby="sk-plank-titre">
+          <div class="sk-plank-cadre">
+            <p id="sk-plank-titre" class="sk-plank-titre">Qui passe par-dessus bord ?</p>
+            <div id="sk-plank-cibles" class="sk-plank-cibles"></div>
+            <p class="sk-plank-note">Le Pirate jeté ne remporte plus le pli, ne vaut plus de bonus,
+              et son pouvoir ne se déclenche pas.</p>
+            <button id="sk-btn-plank-cancel" class="sk-tigress-annuler" type="button">Reposer la carte</button>
+          </div>
         </div>
         <div id="sk-hand" class="sk-hand"></div>
       </div>

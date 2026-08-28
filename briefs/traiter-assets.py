@@ -76,6 +76,10 @@ ASSETS = {
     # briefs/recentrer-aiguille.py, qui le recadre sur son moyeu et donne le
     # pourcentage de pivot à reporter dans .sk-wheel-needle.
     'aiguille-roue':     ('pointeur-fleche.png', True),       # sur magenta
+    # Le tas de doublons : le pictogramme d'alliance Butin, à côté du pseudo
+    # sur le tapis et sur la ligne du récapitulatif de manche. Livré détouré,
+    # recadré sur sa boîte englobante par la branche `elif` de main().
+    'tas-butin':         ('butin-tas.png', False),
 }
 
 # Certains PNG bruts arrivent bien plus grands que leur usage. Le dos de carte
@@ -84,6 +88,10 @@ ASSETS = {
 # ratio est conservé.
 LARGEURS = {
     'dos-carte': 512,
+    # 231 px, soit 192 de haut : le tas s'affiche à ~30 px dans le récap et
+    # à ~20 px sur un siège. Deux fois la taille rétine, et rien de plus —
+    # c'est un pictogramme, pas une illustration.
+    'tas-butin': 231,
 }
 
 

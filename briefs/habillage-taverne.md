@@ -432,3 +432,123 @@ Sous 420 px de large les disques s'empilent et le slash devient horizontal ;
 sous 560 px de **haut** — téléphone couché, la position de jeu la plus
 courante — ils restent côte à côte et rapetissent, sinon un des deux choix
 tombe hors champ au moment de trancher.
+
+### Sorti d'usage — 28/08/2026 : les plaques d'annonce
+
+`annonce-0.webp` … `annonce-9.webp` (découpées par
+`briefs/decouper-planche-annonce.py`) ne sont plus référencées. Elles servaient
+de face révélée au panneau « Annonces ! » : un chiffre gravé dans un cartouche
+de laiton, sabres croisés et crâne casqué compris. Sept à neuf côte à côte, le
+décor se répétait et le chiffre — la seule chose qui change d'une plaque à
+l'autre — se cherchait ; et la planche s'arrêtant à 9, une annonce de 10
+tombait sur un repli de cuir, donc la seule annonce à ne pas ressembler aux
+autres était la plus rare. La face est maintenant crème, chiffre en brun-gris,
+pièce du joueur dessous — les onze valeurs se lisent pareil.
+
+Les fichiers restent en place : la planche est peinte, le découpage écrit, et
+c'est une décision d'habillage qui peut se reprendre.
+
+### Lot 4 — 28/08/2026 ✅ le tas de doublons
+
+| brut (`skin/src/`) | sortie (`skin/`) | dimensions | poids |
+|---|---|---|---|
+| `butin-tas.png` | `tas-butin.webp` | 231×192 | 13 Ko |
+
+Ajouté à `briefs/traiter-assets.py` (recadrage sur la boîte englobante, largeur
+bornée par `LARGEURS`) plutôt que découpé à la main : il n'y a pas de planche à
+débiter, seulement un détourage déjà fait et une mise à l'échelle.
+
+**Il remplace deux emojis**, aux deux endroits où une alliance Butin se
+signale : le 💰 posé à côté du pseudo sur le tapis, de la formation de
+l'alliance jusqu'à la fin de la manche, et le couple 💰/🤝 du récapitulatif.
+Un emoji change de dessin d'un système à l'autre — et le seul or de cette
+table est peint.
+
+Deux conséquences de forme :
+
+- **un tas par Butin**, et non un pictogramme unique : la boucle passe une
+  fois par alliance, un joueur qui en a noué deux voit donc deux tas. C'est le
+  compte qui parle ;
+- **l'alliance sans effet garde le même tas, terni** (`grayscale` + baisse de
+  luminosité) au lieu des mains serrées. Le trésor est là, il n'a simplement
+  rien rapporté — deux dessins pour une seule idée, c'était un de trop.
+
+La taille se mesure en `rem` dans le récapitulatif (planche à taille fixe) et
+en `em` sur le tapis, où le pseudo lui-même est en `cqw` : sans quoi le tas
+resterait identique sur une scène deux fois plus grande.
+
+### Lot 5 — 28/08/2026 ✅ les pièces du 7 et du 8 d'extension
+
+| brut (`skin/src/`) | sortie (`skin/`) | dimensions | poids |
+|---|---|---|---|
+| `bonus-5-sk.png` | `bonus-plus-5.webp` | 256×256 | 21 Ko |
+| ” | `bonus-moins-5.webp` | 256×256 | 20 Ko |
+
+Même planche et même traitement que les pièces des 14 : deux sujets ronds sur
+page blanche, découpe RONDE plutôt que détourage — la page est blanche et le
+liseré extérieur des pièces est clair, un seuil sur la couleur laisserait un
+feston tout autour. `briefs/decouper-pieces-bonus.py` sert maintenant les deux
+planches, avec une table `PLANCHES` au lieu d'une source unique.
+
+**Ce qu'elles corrigent.** L'extension ajoute un 7 et un 8 à chaque couleur :
+le 8 rapporte 5 points à qui remporte le pli, le 7 lui en coûte 5. Ils
+partagent leur dessin avec le 7 et le 8 de base — les planches ne peignent
+qu'un dessin par valeur — et rien ne les en distinguait à l'écran. Deux 8
+verts côte à côte dans la main, l'un valant cinq points et l'autre non, sans
+qu'on puisse dire lequel. La pièce est donc le seul signe qui les sépare, et
+c'est le bon : c'est elle qui porte la règle.
+
+Étain et non laiton, contrairement aux pièces des 14 : celles-ci ne rapportent
+pas toujours, et l'une fait perdre. Même place et même taille que le bonus des
+14 (contre le médaillon d'angle, 22 % de la carte) — c'est le même geste de
+règle, il doit se lire au même endroit. Le 0/14 en est exclu comme là-bas : il
+ne vaut ni 7 ni 8, quoi qu'il déclare.
+
+### Lot 6 — 28/08/2026 ✅ le gouvernail de la roue de tirage
+
+| brut (`skin/src/`) | sortie (`skin/`) | dimensions | poids |
+|---|---|---|---|
+| `volant-sk.png` | `roue-volant.webp` | 1000×1000 | 147 Ko |
+
+`briefs/detourer-volant.py`. La planche arrive avec un faux fond transparent —
+le damier gris est PEINT dans l'image, alpha plein partout — et un gouvernail
+livré **flèche comprise**, peinte de biais dans le bois. Trois mesures, jamais
+des constantes en dur :
+
+1. **le détourage** : le fond est clair (>222) *et* désaturé (<14 d'écart entre
+   canaux), le laiton monte haut en luminance mais reste jaune. Les régions
+   claires sont classées par aire — le fond extérieur (1,08 M px) et les huit
+   jours entre les rayons (~13 k chacun) partent, les 126 éclats de lumière de
+   moins de 300 px restent ;
+2. **le recentrage sur le MOYEU**, relevé à (615,2 ; 653,4) : c'est le point
+   qui doit rester immobile quand la roue tourne. Il vient des poignées
+   opposées (ligne la plus large / colonne la plus large), confirmé au
+   barycentre de la roue privée de sa flèche ;
+3. **l'angle de la flèche au repos : 43,95°** (0 = haut, sens horaire), à
+   reporter dans `ROUE_FLECHE_DEG` côté `skullking.js`. Sans cette
+   soustraction la roue s'arrête un huitième de tour trop loin — sur une table
+   à huit, elle désigne pile le joueur suivant.
+
+Le carré de sortie est calé sur la POINTE : elle affleure le bord (rayon
+0,984 du demi-côté), la roue tourne donc dans une boîte qui ne la rogne jamais.
+Les poignées tiennent à 0,749 — c'est l'espace entre les deux qui laisse la
+flèche se détacher.
+
+**À l'écran** : la roue entière tourne, sept tours puis la flèche s'arrête sur
+la pièce du joueur tiré. Les pièces sont posées autour, fixes, à 236 px du
+moyeu — juste au-delà de la course de la pointe (207 px), et à 46 px au lieu
+de 30 : c'est elles que la flèche désigne maintenant, elles ne sont plus la
+vignette d'un secteur.
+
+### Sorti d'usage — 28/08/2026 : l'ancienne roue
+
+`roue-gouvernail.webp` (le cadre fixe), `aiguille-roue.webp` (la barre qui
+pivotait seule) et les neuf `feutre-*.webp` (le camembert de tapis, un secteur
+par joueur) ne sont plus référencés. Trois objets pour une seule idée, dont
+deux qui ne bougeaient pas — et un camembert dont les parts changeaient de
+taille avec le nombre de joueurs, donc un dessin différent à chaque partie. Il
+n'en reste qu'un, celui qu'on lance.
+
+Les fichiers et leurs scripts (`recentrer-aiguille.py`, `decouper-feutres.py`)
+restent en place : les planches sont peintes, les découpages écrits, et c'est
+une décision d'habillage qui peut se reprendre.

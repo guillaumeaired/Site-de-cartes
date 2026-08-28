@@ -28,6 +28,7 @@
                     | fin (l'écran de fin ; &exaequo=4, &loupe=0)
                     | kraken (pli englouti, l'animation part au chargement)
     ?pouvoir=juanita  le reliquat de Juanita Jade ; &reste=40, &ms=25000
+    ?duel=pirate,sirene  un pli de personnages résolu ; &gagnant=0&devore=1
     ?salve=1        la Dernière Salve + la carte en plus de son joueur
     ?planche=cible  la Planche en main, deux Pirates au tapis (désignation)
     ?planche=avale  le même pli résolu, le Pirate poussé par-dessus bord
@@ -132,11 +133,35 @@ const joueurs = Array.from({ length: N }, (_, i) => ({
 // bord — le cas qui règle l'animation.
 const PLANCHE = P.get('planche');
 
+// `?duel=pirate,sirene,sk` : un pli de personnages fabriqué carte par carte,
+// résolu et en pause — le seul moyen de regarder qui dévore qui sans attendre
+// que la hiérarchie se présente d'elle-même dans une vraie partie.
+const DUEL = P.get('duel');
+const CARTE_DUEL = {
+  pirate: () => ({ kind: 'pirate', name: 'Harry le Géant' }),
+  rosie: () => ({ kind: 'pirate', name: "Rosie D'Laney" }),
+  sirene: () => ({ kind: 'siren' }),
+  sk: () => ({ kind: 'skullking' }),
+  forban: () => ({ kind: 'firstmate', ext: true }),
+  tigresse: () => ({ kind: 'tigress', chosenAs: 'pirate' }),
+  num: () => ({ kind: 'number', suit: 'vert', value: 9 }),
+};
+const pliDuel = DUEL
+  ? DUEL.split(',').map((cle, i) => ({
+      playerId: `p${i}`,
+      card: { id: `d${i}`, ...(CARTE_DUEL[cle.trim()] || CARTE_DUEL.num)() },
+    }))
+  : null;
+const DUEL_GAGNANT = Number(P.get('gagnant') || 0);
+const DUEL_DEVORE = (P.get('devore') || '').split(',').filter((s) => s !== '').map((i) => `d${Number(i)}`);
+
 // `?salve=1` : le pli contient la Dernière Salve ET la carte supplémentaire
 // de son joueur — deux cartes du MÊME joueur, le seul cas où ça se produit.
 const SALVE = P.get('salve') === '1';
 
-const pli = SALVE
+const pli = DUEL
+  ? pliDuel
+  : SALVE
   ? [
       { playerId: 'p1', card: { id: 's-a', kind: 'number', suit: 'vert', value: 6 } },
       { playerId: 'p0', card: { id: 's-salve', kind: 'lastvolley', ext: true } },
@@ -213,13 +238,22 @@ const etat = {
   turnPlayerId: PLANCHE ? 'p0' : `p${JOUES % N}`,
   isMyTurn: PLANCHE === 'cible' || JOUES === 0,
   trickNumber: 3,
-  leadingPlayerId: 'p1',
+  leadingPlayerId: DUEL ? `p${DUEL_GAGNANT}` : 'p1',
   trickWillBeDestroyed: false,
-  trickPaused: PHASE === 'paused' || KRAKEN || RAIE || PLANCHE === 'avale',
+  trickPaused: !!DUEL || PHASE === 'paused' || KRAKEN || RAIE || PLANCHE === 'avale',
   // Les cartes que le monstre met hors course : le serveur les calcule (voir
   // resolveTrick), on les nomme ici à la main pour la seule mise en scène.
   trickNeutralisedCardIds: BALEINE ? ['c0', 'c1'] : RAIE ? ['c0', 'c1', 'c3', 'c4'] : [],
-  lastTrickResult: PLANCHE === 'avale'
+  lastTrickResult: DUEL
+    ? {
+        winnerId: `p${DUEL_GAGNANT}`,
+        destroyed: false,
+        devourerCardId: DUEL_DEVORE.length ? `d${DUEL_GAGNANT}` : null,
+        devouredCardIds: DUEL_DEVORE,
+        plankedCardIds: [],
+        davyJones: null,
+      }
+    : PLANCHE === 'avale'
     ? { winnerId: 'p1', destroyed: false, devouredCardIds: [], plankedCardIds: ['pir2'], davyJones: null }
     : KRAKEN
     ? { winnerId: null, destroyed: true, krakenCardId: 'c2', devouredCardIds: [], plankedCardIds: [], davyJones: null }
@@ -268,11 +302,24 @@ function pouvoirJuanita() {
     playerId: 'p0',
     mine: true,
     revealMs: Number(P.get('ms') || 25000),
-    revealCards: Array.from({ length: RELIQUAT }, (_, i) => (
-      i % 11 === 7
-        ? { id: `r${i}`, kind: 'escape' }
-        : { id: `r${i}`, kind: 'number', suit: familles[i % 4], value: 1 + (i % 14) }
-    )),
+    // Une poignée de spéciales de chaque famille, semées au milieu des
+    // numérotées : c'est le tri par groupes qu'on vient regarder, et il ne
+    // se voit pas sur un reliquat qui n'aurait que des Fuites.
+    revealCards: (() => {
+      const speciales = [
+        { kind: 'pirate', name: 'Harry le Géant' }, { kind: 'pirate', name: "Rosie D'Laney" },
+        { kind: 'firstmate', ext: true }, { kind: 'siren' }, { kind: 'skullking' },
+        { kind: 'tigress' }, { kind: 'kraken' }, { kind: 'whale' },
+        { kind: 'stingray', ext: true }, { kind: 'davyjones', ext: true },
+        { kind: 'plank', ext: true }, { kind: 'lastvolley', ext: true },
+        { kind: 'wild15', ext: true }, { kind: 'loot' }, { kind: 'escape' }, { kind: 'escape' },
+      ];
+      return Array.from({ length: RELIQUAT }, (_, i) => (
+        i % 3 === 2 && speciales.length
+          ? { id: `r${i}`, ...speciales.splice(i % speciales.length, 1)[0] }
+          : { id: `r${i}`, kind: 'number', suit: familles[i % 4], value: 1 + (i % 14) }
+      ));
+    })(),
   };
 }
 

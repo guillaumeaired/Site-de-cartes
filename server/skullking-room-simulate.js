@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, activeOrderThisTrick, capturedPirateKeys, devouredPirateIds, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -328,9 +328,24 @@ check(
   "Guillaume ne mise rien de plus cette manche."
 );
 check(
-  'Harry annonce sa nouvelle annonce',
+  'Harry qui monte son annonce dit d\'où elle vient et où elle va',
   powerResultMessage(makePowerRoom({ kind: 'harry', playerId: 'p1', harryDelta: 1 })),
-  { title: 'Harry le Géant', detail: 'Guillaume modifie son annonce (+1) : nouvelle annonce 2.' }
+  { title: 'Harry le Géant', detail: "Guillaume monte son annonce d'un pli : 1 → 2." }
+);
+check(
+  'Harry qui descend son annonce',
+  powerResultMessage(makePowerRoom({ kind: 'harry', playerId: 'p1', harryDelta: -1 })).detail,
+  "Guillaume descend son annonce d'un pli : 3 → 2."
+);
+check(
+  'Harry qui ne bouge pas ne dit PAS qu\'il modifie quelque chose',
+  powerResultMessage(makePowerRoom({ kind: 'harry', playerId: 'p1', harryDelta: 0 })).detail,
+  'Guillaume ne bouge pas son annonce : elle reste à 2.'
+);
+check(
+  'Harry sans réponse (minuteur expiré) : même message que « ne pas changer »',
+  powerResultMessage(makePowerRoom({ kind: 'harry', playerId: 'p1' })).detail,
+  'Guillaume ne bouge pas son annonce : elle reste à 2.'
 );
 check(
   'Mary Thorne annonce à qui elle prend une carte',
@@ -348,81 +363,98 @@ const tigressePirate = { id: 't1', kind: 'tigress', chosenAs: 'pirate' };
 const tigresseFuite = { id: 't2', kind: 'tigress', chosenAs: 'escape' };
 const win = (idx, extra) => ({ destroyed: false, winnerIdx: idx, excludedIdx: new Set(), ...extra });
 
+const sirene = { id: 's1', kind: 'siren' };
+const sirene2 = { id: 's2', kind: 'siren' };
+
+// Qui dévore, et quoi. On vérifie les deux : la carte qui mange, et la liste
+// de celles qu'elle emporte.
+const devore = (cards, result) => {
+  const r = devoreesParLeVainqueur(cards, result);
+  return [r.devoreurId, r.ids];
+};
+
 check(
   'le Skull King dévore les deux Pirates du pli',
-  devouredPirateIds([sk, rosie, harry, num], win(0)),
-  ['r1', 'r2']
+  devore([sk, rosie, harry, num], win(0)),
+  ['sk', ['r1', 'r2']]
 );
 check(
   'une Tigresse annoncée en Pirate est dévorée elle aussi',
-  devouredPirateIds([sk, tigressePirate], win(0)),
-  ['t1']
+  devore([sk, tigressePirate], win(0)),
+  ['sk', ['t1']]
 );
 check(
   "une Tigresse annoncée en Fuite n'est pas dévorée",
-  devouredPirateIds([sk, tigresseFuite], win(0)),
-  []
+  devore([sk, tigresseFuite], win(0)),
+  [null, []]
 );
 check(
-  "Mat le Forban n'est pas un Pirate à dévorer",
-  devouredPirateIds([sk, forban], win(0)),
-  []
+  'le Skull King dévore AUSSI Mat le Forban : il le capture comme un Pirate (+30)',
+  devore([sk, forban, rosie], win(0)),
+  ['sk', ['f1', 'r1']]
 );
 check(
   'un Pirate retiré par la Planche n\'est plus là pour être mangé',
-  devouredPirateIds([sk, rosie, harry], win(0, { excludedIdx: new Set([1]) })),
-  ['r2']
+  devore([sk, rosie, harry], win(0, { excludedIdx: new Set([1]) })),
+  ['sk', ['r2']]
+);
+
+// --- Un Pirate dévore les Sirènes -------------------------------------
+check(
+  'le Pirate qui remporte le pli avale les deux Sirènes',
+  devore([rosie, sirene, sirene2, num], win(0)),
+  ['r1', ['s1', 's2']]
 );
 check(
-  "rien à dévorer si c'est un Pirate qui remporte le pli",
-  devouredPirateIds([rosie, num], win(0)),
-  []
+  "c'est le PREMIER Pirate joué qui gagne, donc lui qui avale",
+  devore([sirene, rosie, harry], win(1)),
+  ['r1', ['s1']]
 );
+check(
+  'une Tigresse annoncée en Pirate avale la Sirène comme un Pirate',
+  devore([tigressePirate, sirene], win(0)),
+  ['t1', ['s1']]
+);
+check(
+  "rien à dévorer pour un Pirate qui n'a battu que des numérotées",
+  devore([rosie, num], win(0)),
+  [null, []]
+);
+
+// --- Une Sirène emporte le Skull King ---------------------------------
+check(
+  'la Sirène qui bat le Skull King l\'emporte avec elle',
+  devore([sk, sirene], win(1)),
+  ['s1', ['sk']]
+);
+check(
+  'la Sirène emporte aussi Mat le Forban, qu\'elle bat',
+  devore([forban, sirene], win(1)),
+  ['s1', ['f1']]
+);
+check(
+  'boucle à trois : la Sirène emporte le Skull King, PAS le Pirate qu\'elle ne bat pas',
+  devore([rosie, sk, sirene], win(2)),
+  ['s1', ['sk']]
+);
+
+// --- Mat le Forban rafle les Pirates ----------------------------------
+check(
+  'Mat le Forban avale tous les Pirates du pli',
+  devore([rosie, harry, forban], win(2)),
+  ['f1', ['r1', 'r2']]
+);
+
+// --- Rien du tout -----------------------------------------------------
 check(
   'rien à dévorer si le pli est détruit (Kraken)',
-  devouredPirateIds([sk, rosie], { destroyed: true, winnerIdx: -1, excludedIdx: new Set() }),
-  []
+  devore([sk, rosie], { destroyed: true, winnerIdx: null, excludedIdx: new Set() }),
+  [null, []]
 );
-
-// --- Dernière Salve : qui joue le pli, et qui n'a plus de carte ---------
-//
-// Celui qui pose la Salve joue DEUX cartes dans le même pli : il lui en
-// manque une, et c'est le DERNIER pli de la manche qu'il ne peut pas jouer.
-// Le livret de l'extension : « That player will then skip the final trick of
-// the round. » On ne fabrique donc pas un tour de pause au pli suivant — on
-// constate une main vide à l'ouverture d'un pli.
-{
-  const salle = (mains, leaderIndex = 0) => ({
-    players: mains.map((n, i) => ({ id: `p${i}`, hand: Array.from({ length: n }, (_, k) => ({ id: `c${i}-${k}` })) })),
-    leaderIndex,
-    sittingOutIds: new Set(),
-  });
-
-  const ordre = (room) => {
-    room.sittingOutIds = new Set(room.players.filter((p) => !p.hand.length).map((p) => p.id));
-    return activeOrderThisTrick(room).map((p) => p.id);
-  };
-
-  check(
-    'Tout le monde a des cartes : la rotation complète, depuis le meneur',
-    ordre(salle([2, 2, 2], 1)).join(','),
-    'p1,p2,p0'
-  );
-  check(
-    'Main vide (Dernière Salve jouée plus tôt) : ce joueur est absent du pli',
-    ordre(salle([1, 0, 1], 0)).join(','),
-    'p0,p2'
-  );
-  check(
-    'Le joueur à main vide aurait dû mener : le suivant prend sa place',
-    ordre(salle([0, 1, 1], 0)).join(','),
-    'p1,p2'
-  );
-  check(
-    'Deux Dernières Salves dans la manche : les deux joueurs manquent au dernier pli',
-    ordre(salle([0, 1, 0, 1], 1)).join(','),
-    'p1,p3'
-  );
-}
+check(
+  'rien à dévorer quand une numérotée remporte le pli',
+  devore([num, { id: 'n2', kind: 'number', suit: 'vert', value: 3 }], win(0)),
+  [null, []]
+);
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

@@ -80,25 +80,32 @@ const PIRATE_POWER_TEXT = {
 };
 
 // Tri d'affichage de la main : par couleur (vert/jaune/violet/noir) puis
-// par hauteur croissante, les cartes spéciales groupées à la fin (dans un
-// ordre fixe) - purement visuel, ne change rien à la logique de jeu.
+// par hauteur croissante, les cartes spéciales groupées à la fin - purement
+// visuel, ne change rien à la logique de jeu.
 const SUIT_DISPLAY_ORDER = ['vert', 'jaune', 'violet', 'noir'];
-const SPECIAL_DISPLAY_ORDER = [
-  'pirate',
-  'firstmate',
-  'siren',
-  'skullking',
-  'tigress',
-  'loot',
-  'kraken',
-  'whale',
-  'stingray',
-  'lastvolley',
-  'plank',
-  'davyjones',
-  'wild15',
-  'escape',
+
+// Les spéciales ne se suivent pas dans un ordre plat : elles se rangent par
+// FAMILLE, et les familles dans un ordre qui raconte le paquet. C'est ce
+// qui permet de compter d'un coup d'œil — « combien de Pirates dehors ? »,
+// « les monstres sont-ils tous sortis ? » — au lieu de balayer la rangée
+// entière, ce que le reliquat de Juanita Jade (jusqu'à 85 cartes) rendait
+// intenable.
+const SPECIAL_GROUPS = [
+  // 1. Les personnages : tout ce qui se bat pour remporter le pli, dans
+  //    l'ordre où ils se battent. Mat le Forban est ici et pas avec les
+  //    autres cartes d'extension : c'est un Pirate pour tout ce qui compte.
+  //    La Tigresse ferme le groupe — elle est l'un ou l'autre, au choix.
+  ['pirate', 'firstmate', 'siren', 'skullking', 'tigress'],
+  // 2. Les Monstres Marins, ceux qui défont le pli au lieu de le prendre.
+  ['kraken', 'whale', 'stingray'],
+  // 3. Le reste des cartes d'extension. Le Coffre ouvre le groupe : il est
+  //    voisin des Monstres puisqu'il les mange.
+  ['davyjones', 'plank', 'lastvolley', 'wild15'],
+  // 4. Celles qui ne veulent pas gagner, tout au bout — c'est là qu'on va
+  //    les chercher quand on cherche à ne pas prendre.
+  ['loot', 'escape'],
 ];
+const SPECIAL_DISPLAY_ORDER = SPECIAL_GROUPS.flat();
 // Le 0/14 garde une vraie couleur dès la donne (kind:'number', value:null
 // tant qu'il n'est pas déclaré) : il se trie donc avec sa famille de
 // couleur comme n'importe quelle numérotée, positionné en fin de groupe
@@ -1327,7 +1334,9 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
 
   // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
-  // ajouterMessage écarte tout seul ce qui a déjà été posé.
+  // ajouterMessage écarte tout seul ce qui a déjà été posé. Les couleurs
+  // d'abord : c'est d'elles que les noms du fil se peignent.
+  retenirCouleurs(players);
   renderChat({ chat });
 
   // Après tout le reste : le plafond se déduit de la hauteur des voisines,
@@ -1974,7 +1983,10 @@ function renderSeats(state) {
     if ((state.lootAllies || []).includes(p.id)) {
       const coin = document.createElement('span');
       coin.className = 'sk-seat-loot';
-      coin.textContent = '💰';
+      // Le tas de doublons peint, et non plus l'emoji bourse : celui-ci
+      // change de dessin d'un système à l'autre, et le seul or de la table
+      // qui vaille est celui des cartes. Le pictogramme n'a pas de texte —
+      // c'est le `title` qui le nomme, et l'image qui le montre.
       coin.title = 'Allié par un Butin cette manche';
       name.appendChild(coin);
     }
@@ -2249,7 +2261,21 @@ function empreinteDuTapis(state, trick, boite) {
     (state.players || []).map((p) => p.id).join(','),
     trick
       .map((t) => [t.playerId, t.card.id, t.card.kind, t.card.chosenAs || '',
-                   t.card.suit || '', t.card.value ?? ''].join(':'))
+                   t.card.suit || '', t.card.value ?? '',
+                   // TENUE OU POSÉE, et c'est indispensable en manche 1.
+                   // Là, une carte est sur le tapis AVANT d'être jouée : la
+                   // poser ne fait que la faire passer d'un lot à l'autre,
+                   // sans changer ni son porteur, ni son identifiant, ni son
+                   // dessin. L'empreinte était donc rigoureusement la même
+                   // avant et après — et comme la DERNIÈRE carte du pli
+                   // arrive avec `trickPaused`, le garde ci-dessous coupait
+                   // le rendu au seul moment où il fallait le faire. Le pli
+                   // restait figé sur l'avant-dernier état : la carte
+                   // gagnante ne prenait jamais son halo, la dernière restait
+                   // penchée comme une carte en main, et le ramassage — qui
+                   // se déclenche sur cette case-là — n'avait pas lieu. Les
+                   // six cartes disparaissaient d'un coup au récap.
+                   t.enAttente ? 'main' : 'tapis'].join(':'))
       .join('|'),
   ].join('#');
 }
@@ -2686,19 +2712,25 @@ function cleDuPli(state) {
   return `${state.roundNumber}-${state.trickNumber}`;
 }
 
-// --- Le Skull King dévore les Pirates du pli ---
+// --- La carte qui gagne dévore celles qu'elle a battues ---
+// Le Skull King prend les Pirates, un Pirate prend les Sirènes, une Sirène
+// emporte le Skull King, Mat le Forban rafle les Pirates. Le serveur dit qui
+// mange quoi (voir DEVORE côté skullking-room.js) : la hiérarchie a des
+// coins — la Tigresse selon ce qu'elle a déclaré, Mat le Forban qui n'est
+// pas tout à fait un Pirate, la boucle à trois où la Sirène gagne sans avoir
+// battu le Pirate — et aucun de ces coins ne se redevine depuis le tapis.
 function playDevourAnimation(state) {
   const res = state.lastTrickResult;
   const ids = (res && res.devouredCardIds) || [];
-  if (!state.trickPaused || !ids.length) return;
+  if (!state.trickPaused || !ids.length || !res.devourerCardId) return;
   const key = cleDuPli(state);
   if (lastDevouredTrick === key) return;
   lastDevouredTrick = key;
 
-  const king = tableEl.querySelector('.sk-trick-card[data-kind="skullking"]');
-  if (!king) return;
-  const avalees = avalerCartes(king, ids);
-  pulsationAvaleuse(king, avalees);
+  const devoreur = tableEl.querySelector(`.sk-trick-card[data-card-id="${CSS.escape(res.devourerCardId)}"]`);
+  if (!devoreur) return;
+  const avalees = avalerCartes(devoreur, ids);
+  pulsationAvaleuse(devoreur, avalees);
 }
 
 // --- Le Coffre de Davy Jones engloutit les Monstres Marins ---
@@ -2988,16 +3020,6 @@ function renderTurnIndicator(state) {
     }
     return;
   }
-  // Marcher sur la Planche : tant qu'on désigne sa cible, la consigne est
-  // celle-là et rien d'autre. Écrite ICI plutôt que dans appliquerCiblage-
-  // Planche parce que renderTurnIndicator passe AVANT renderTrick : les
-  // cartes du pli s'écartent des bandes de texte qu'elles trouvent en place,
-  // et une consigne posée après coup se serait retrouvée sous l'une d'elles.
-  // Courte pour la même raison : la bande ne doit pas s'élargir de moitié.
-  if (ciblagePlanche) {
-    turnIndicator.textContent = 'Clique le Pirate à jeter par-dessus bord.';
-    return;
-  }
   if (state.trickPaused) {
     // La consigne est écrite sur le bois, au-dessus du feutre : c'est le seul
     // endroit que l'engloutissement ne traverse pas. Elle dit ce qui est en
@@ -3041,7 +3063,27 @@ function renderTurnIndicator(state) {
 // et pas un choix de carte : la Tigresse (Pirate ou Fuite), le 0/14 (0 ou
 // 14), le Joker (sa couleur) et Marcher sur la Planche (sa cible). Les
 // poser d'office déciderait à la place du joueur.
-const MANCHE1_LECTURE_MS = 900;
+//
+// LE RYTHME. Chaque client attend ce temps-là quand vient SON tour : la
+// manche 1 se déroule donc comme un vrai tour de table, une carte après
+// l'autre, et non d'un bloc. À 900 ms puis à 1,5 s les cartes tombaient
+// encore trop vite : elles sont TOUTES visibles depuis l'annonce, on ne
+// découvre donc pas une carte, on regarde une carte connue changer de camp —
+// quitter la main de son porteur pour le tapis. C'est un déplacement, et un
+// déplacement se suit plus lentement qu'une image se lit. Il faut le temps de
+// voir la carte se redresser, de revenir aux autres, et d'avoir déjà repris
+// son souffle quand la suivante part.
+//
+// 2,2 s : en dessous de la beat de lecture du jeu (2,6 s, celle d'un fait
+// qu'on doit enregistrer avant de jouer — voir TRICK_REVEAL_MS côté serveur),
+// parce qu'ici rien n'est neuf, mais du même ordre. Une table à six y passe
+// treize secondes, et c'est la seule manche qui les mérite : c'est celle où
+// l'on ne joue pas, où l'on regarde.
+//
+// Les bots de test tiennent le même rythme en manche 1 (voir
+// BOT_MANCHE1_MS) : sinon la manche se déroule à leur pas à eux, et le
+// réglage ne se voit que dans une partie entre humains.
+const MANCHE1_LECTURE_MS = 2200;
 let carteAutoJouee = null;
 let carteAutoTimer = null;
 
@@ -3080,12 +3122,7 @@ function hideAllChoicePanels() {
   jokerChoiceEl.classList.add('hidden');
   declareChoiceEl.classList.add('hidden');
   plankChoiceEl.classList.add('hidden');
-  // Le ciblage de la Planche vit sur le tapis, pas dans le panneau : le
-  // cacher ne suffit pas à éteindre les cartes qu'il a allumées.
-  if (ciblagePlanche) {
-    ciblagePlanche = null;
-    appliquerCiblagePlanche();
-  }
+  ciblagePlanche = null;
 }
 
 function playCard(cardId, extra) {
@@ -3125,79 +3162,68 @@ document.addEventListener('keydown', (e) => {
 const jokerChoiceEl = document.getElementById('sk-joker-choice');
 const declareChoiceEl = document.getElementById('sk-declare-choice');
 const plankChoiceEl = document.getElementById('sk-plank-choice');
+const plankCiblesEl = document.getElementById('sk-plank-cibles');
 
-// --- MARCHER SUR LA PLANCHE : on désigne le Pirate SUR LE TAPIS ---------
+// --- MARCHER SUR LA PLANCHE : QUI PASSE PAR-DESSUS BORD ----------------
 //
-// C'était une rangée de boutons portant des noms — « Harry le Géant »,
-// « Tigresse ». Il fallait donc se rappeler qui avait joué quoi, alors que
-// les cartes sont posées devant leur joueur, à l'écran, au même instant. On
-// clique maintenant la carte elle-même : la question « qui passe par-dessus
-// bord » se répond en regardant le tapis, pas en lisant une liste.
+// Les Pirates du pli sont montrés EN GRAND dans un cadre au centre, chacun
+// sous le nom de qui l'a joué, et on clique celui qu'on jette. Ce sont les
+// vraies cartes et pas des libellés : « Harry le Géant » ne dit rien à qui ne
+// l'a pas en tête, son portrait, si — et le nom en dessous répond à l'autre
+// moitié de la question, à qui je prends le pli.
 //
-// Le ciblage est un état LOCAL : rien n'est envoyé au serveur tant que la
-// cible n'est pas choisie. Comme le pli est redessiné à chaque état reçu
-// (un message de discussion suffit), la décoration est réappliquée après
-// chaque rendu plutôt que posée une fois pour toutes.
+// Le choix est un état LOCAL : rien ne part au serveur tant que la cible
+// n'est pas désignée, et « Reposer la carte » rend la Planche à la main.
 let ciblagePlanche = null;
 
-function appliquerCiblagePlanche() {
-  tableEl.classList.toggle('sk-table--ciblage', !!ciblagePlanche);
-  // La consigne, elle, s'écrit sur le bois au-dessus du feutre (voir
-  // renderTurnIndicator) : posée sur le feutre, elle formait un pavé au
-  // milieu des cartes qu'elle demande justement de cliquer. Le panneau ne
-  // porte plus que la porte de sortie, qui n'a pas besoin de place.
-  document.body.classList.toggle('sk-ciblage', !!ciblagePlanche);
+function ouvrirChoixPlanche(carteId, pirates, state) {
+  ciblagePlanche = { carteId };
+  plankCiblesEl.innerHTML = '';
+  pirates.forEach((t) => {
+    const choix = document.createElement('button');
+    choix.type = 'button';
+    choix.className = 'sk-plank-cible';
+    choix.setAttribute(
+      'aria-label',
+      `Envoyer par-dessus bord la carte de ${nicknameOf(state, t.playerId)}`
+    );
 
-  tableEl.querySelectorAll('.sk-trick-card').forEach((slot) => {
-    const visee = !!ciblagePlanche && ciblagePlanche.cibles.has(slot.dataset.cardId);
-    slot.classList.toggle('sk-trick-card--visee', visee);
-    if (visee) {
-      slot.setAttribute('role', 'button');
-      slot.setAttribute('tabindex', '0');
-      slot.setAttribute('aria-label', `Envoyer ${slot.dataset.nomCarte || 'ce Pirate'} par-dessus bord`);
-    } else {
-      slot.removeAttribute('role');
-      slot.removeAttribute('tabindex');
-      slot.removeAttribute('aria-label');
-    }
+    const carte = document.createElement('div');
+    carte.className = `sk-card ${cardClass(t.card)}`;
+    carte.innerHTML = cardFaceHTML(t.card);
+    choix.appendChild(carte);
+
+    const nom = document.createElement('span');
+    nom.className = 'sk-plank-nom';
+    nom.textContent = t.playerId === myId ? 'Toi' : nicknameOf(state, t.playerId);
+    nom.style.color = couleurJoueur(state.players.find((p) => p.id === t.playerId) || {});
+    choix.appendChild(nom);
+
+    choix.addEventListener('click', () => {
+      if (!ciblagePlanche) return;
+      const carteDeLaPlanche = ciblagePlanche.carteId;
+      ciblagePlanche = null;
+      playCard(carteDeLaPlanche, { removesId: t.card.id });
+    });
+    plankCiblesEl.appendChild(choix);
   });
+  plankChoiceEl.classList.remove('hidden');
 }
 
+// Le cadre couvre l'écran : sans porte de sortie, un clic de travers sur la
+// Planche bloquerait le tour. Fermer ne joue rien — la carte revient en main.
 function annulerCiblagePlanche() {
   ciblagePlanche = null;
   plankChoiceEl.classList.add('hidden');
-  appliquerCiblagePlanche();
-  // La consigne reprend celle du tour : on a repris la carte en main.
-  if (dernierEtatJeu) renderTurnIndicator(dernierEtatJeu);
 }
 
-function choisirCiblePlanche(slot) {
-  if (!ciblagePlanche || !slot) return;
-  const removesId = slot.dataset.cardId;
-  if (!ciblagePlanche.cibles.has(removesId)) return;
-  const carteId = ciblagePlanche.carteId;
-  ciblagePlanche = null;
-  playCard(carteId, { removesId });
-}
-
-// Un seul écouteur, posé sur le tapis : les cases du pli sont recréées à
-// chaque rendu, leur en attacher un chacune les perdrait au premier état
-// reçu pendant qu'on hésite.
-tableEl.addEventListener('click', (e) => {
-  if (!ciblagePlanche) return;
-  choisirCiblePlanche(e.target.closest('.sk-trick-card--visee'));
-});
-tableEl.addEventListener('keydown', (e) => {
-  if (!ciblagePlanche || (e.key !== 'Enter' && e.key !== ' ')) return;
-  const slot = e.target.closest('.sk-trick-card--visee');
-  if (!slot) return;
-  e.preventDefault();
-  choisirCiblePlanche(slot);
+document.getElementById('sk-btn-plank-cancel').addEventListener('click', annulerCiblagePlanche);
+plankChoiceEl.addEventListener('click', (e) => {
+  if (e.target === plankChoiceEl) annulerCiblagePlanche();
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && ciblagePlanche) annulerCiblagePlanche();
 });
-document.getElementById('sk-btn-plank-cancel').addEventListener('click', annulerCiblagePlanche);
 let pendingJokerCardId = null;
 let pendingDeclareCardId = null;
 
@@ -3386,15 +3412,12 @@ function renderHand(state) {
           const piratesInTrick = trick.filter(
             (t) => t.card.kind === 'pirate' || t.card.kind === 'tigress'
           );
+          // Un seul Pirate (ou aucun) : rien à décider, la carte part et le
+          // serveur cible tout seul — c'est lui qui tranche de toute façon,
+          // voir eligiblePlankTargets.
           if (piratesInTrick.length > 1) {
             hideAllChoicePanels();
-            ciblagePlanche = {
-              carteId: card.id,
-              cibles: new Set(piratesInTrick.map((t) => t.card.id)),
-            };
-            appliquerCiblagePlanche();
-            renderTurnIndicator(state);
-            plankChoiceEl.classList.remove('hidden');
+            ouvrirChoixPlanche(card.id, piratesInTrick, state);
             bidChoices.classList.add('hidden');
             return;
           }
@@ -3586,11 +3609,6 @@ const CHAT_VUES = [
 ].filter((v) => v.log && v.form && v.input);
 
 
-function chatHeure(at) {
-  const d = new Date(at);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 function chatAuBas(log) {
   // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
   // quelqu'un en train de remonter l'historique.
@@ -3599,6 +3617,28 @@ function chatAuBas(log) {
 
 // Une ligne neuve à chaque vue : un même nœud ne peut pas être dans deux
 // endroits du document à la fois.
+// La couleur d'un joueur vient de sa PIÈCE, et un message de chat ne la porte
+// pas — le serveur n'y met que l'id, le pseudo et le texte. On retient donc
+// les couleurs au passage du salon et de chaque état de partie : un message
+// garde ainsi la bonne couleur même s'il arrive après que son auteur a quitté
+// la table, et le fil relu à la reconnexion est colorié comme le reste.
+const couleursDuChat = new Map();
+
+function retenirCouleurs(joueurs) {
+  (joueurs || []).forEach((p) => {
+    if (p && p.id) couleursDuChat.set(p.id, couleurJoueur(p));
+  });
+}
+
+// Le nom puis le message, sur la même ligne. C'était le nom et l'heure au
+// dessus, le message en dessous : deux lignes par message dans une colonne
+// qui n'en tient qu'une dizaine, et une heure que personne ne lit — on sait
+// quand un message est arrivé, on vient de le voir arriver.
+//
+// Seul le NOM porte la couleur du joueur, celle de sa pièce, la même qu'à son
+// siège et au registre. Le message reste crème pour tout le monde : coloré
+// lui aussi, le fil devenait un damier où plus rien ne se lisait, et la
+// couleur cessait de désigner qui parle pour ne plus dire que « du texte ».
 function ligneChat(m) {
   const ligne = document.createElement('div');
   ligne.className = 'sk-chat-line' + (m.playerId === myId ? ' sk-chat-line--me' : '');
@@ -3606,10 +3646,8 @@ function ligneChat(m) {
   const tete = document.createElement('span');
   tete.className = 'sk-chat-who';
   tete.textContent = m.playerId === myId ? 'Toi' : m.nickname;
-  const heure = document.createElement('span');
-  heure.className = 'sk-chat-time';
-  heure.textContent = chatHeure(m.at);
-  tete.appendChild(heure);
+  const couleur = couleursDuChat.get(m.playerId);
+  if (couleur) tete.style.color = couleur;
 
   const corps = document.createElement('span');
   corps.className = 'sk-chat-text';
@@ -3698,6 +3736,13 @@ function renderScoreboard(state) {
       const piece = pieceFor(byId.get(s.id) || s);
       const medaillon = document.createElement('span');
       medaillon.className = 'sk-score-row-piece';
+      // Le cerclage prend la couleur de la pièce — sa couleur BRUTE, pas
+      // celle qu'on éclaircit pour le bois sombre (couleurJoueur) : la page
+      // du registre est un parchemin clair, c'est l'encre saturée qui s'y
+      // détache. Neuf médaillons de bronze alignés sur du papier crème se
+      // ressemblaient tous, et il fallait lire le rang pour retrouver le
+      // sien alors qu'on le reconnaît d'un coup d'œil partout ailleurs.
+      medaillon.style.setProperty('--sk-piece-couleur', piece.color);
       medaillon.innerHTML = pieceSVG(piece);
       name.appendChild(medaillon);
       const nom = document.createElement('span');
@@ -4034,7 +4079,13 @@ function renderPower(state) {
       powerPanel.appendChild(btn);
     });
   } else if (pending.kind === 'juanita') {
-    const cards = pending.revealCards || [];
+    // Triées comme une main : par famille puis par hauteur, les spéciales
+    // groupées à la fin. Le reliquat arrivait dans l'ordre du mélange —
+    // jusqu'à 85 cartes en vrac, où répondre à « le 13 vert est-il encore
+    // dehors ? » demandait de balayer toute la grille. Rangées, la question
+    // se règle en regardant un endroit. La vague de retournement suit la
+    // grille, elle balaie donc famille après famille.
+    const cards = sortHandForDisplay(pending.revealCards || []);
     const key = cards.map((c) => c.id).join(',');
     if (juanitaSessionKey !== key) {
       juanitaSessionKey = key;
@@ -4220,30 +4271,35 @@ function showBidReveal(state) {
 
     const front = document.createElement('div');
     front.className = 'sk-bid-card-face sk-bid-card-front';
-    // Le chiffre est PEINT, une plaque par valeur : c'est ce que la planche
-    // des annonces sait faire de mieux et qu'aucune police ne rendra. Elle ne
-    // va que de 0 à 9 ; une annonce de 10 (possible à la dernière manche)
-    // retombe donc sur la plaque de parchemin d'avant, chiffre écrit en DOM.
-    if (p.bid >= 0 && p.bid <= 9) {
-      front.style.setProperty('--sk-annonce', `url('assets/skin/annonce-${p.bid}.webp')`);
-      // Le crâne casqué du bas de la plaque reçoit la pièce du joueur : le
-      // même médaillon que sur son siège, sur la roue et au bout de sa courbe
-      // du récap. C'est lui qui rattache l'annonce à quelqu'un, le pseudo
-      // en dessous ne fait que le nommer.
-      const piece = PIECE_BY_KEY[p.piece] || pieceFor(p);
-      const jeton = document.createElement('img');
-      jeton.className = 'sk-bid-piece';
-      jeton.src = `assets/skin/piece-${piece.key}.webp`;
-      jeton.alt = '';
-      jeton.setAttribute('aria-hidden', 'true');
-      front.appendChild(jeton);
-    } else {
-      front.classList.add('sk-bid-card-front--nombre');
-      const num = document.createElement('span');
-      num.className = 'sk-bid-card-num';
-      num.textContent = p.bid;
-      front.appendChild(num);
-    }
+    // Ce qu'on vient lire ici, c'est UN CHIFFRE, et il y en a jusqu'à neuf à
+    // enregistrer en deux secondes et demie. Les plaques peintes
+    // (annonce-0…9.webp) le gravaient au milieu d'un cartouche de laiton,
+    // sabres croisés et crâne casqué compris : côte à côte, elles faisaient
+    // un mur d'ornements où le chiffre — la seule chose qui change d'une
+    // plaque à l'autre — se cherchait. Et la planche s'arrêtant à 9, une
+    // annonce de 10 tombait sur un repli de cuir : la seule annonce à ne pas
+    // ressembler aux autres était justement la plus rare.
+    //
+    // Une face crème, le chiffre en brun-gris dessus, la pièce du joueur
+    // dessous. Rien d'autre. Les dix valeurs se lisent pareil, et le décor
+    // est ailleurs — le dos de la carte qui se retourne, le panneau qui les
+    // porte.
+    const num = document.createElement('span');
+    num.className = 'sk-bid-card-num';
+    num.textContent = p.bid;
+
+    // La pièce du joueur sous le chiffre : le même médaillon que sur son
+    // siège, sur la roue et au bout de sa courbe du récap. C'est lui qui
+    // rattache l'annonce à quelqu'un, le pseudo en dessous ne fait que le
+    // nommer.
+    const piece = PIECE_BY_KEY[p.piece] || pieceFor(p);
+    const jeton = document.createElement('img');
+    jeton.className = 'sk-bid-piece';
+    jeton.src = `assets/skin/piece-${piece.key}.webp`;
+    jeton.alt = '';
+    jeton.setAttribute('aria-hidden', 'true');
+
+    front.append(num, jeton);
 
     inner.append(back, front);
     card.appendChild(inner);
@@ -4256,6 +4312,50 @@ function showBidReveal(state) {
     slot.append(card, nom);
     bidRevealRows.appendChild(slot);
   });
+
+  // LA CARTE DU TOTAL, en bout de rangée et retournée en dernier — c'est la
+  // seule qui n'ait de sens qu'une fois toutes les autres découvertes.
+  //
+  // Ce qu'elle dit et que personne ne calculait de tête à neuf joueurs : la
+  // somme des annonces face au nombre de plis à distribuer. En dessous, la
+  // manche est sûre pour tout le monde ; au-dessus, il y en a forcément qui
+  // se rateront, et on n'annonce pas de la même façon selon le cas. Le
+  // chiffre était disponible depuis toujours — dispersé sur neuf plaques.
+  {
+    const totalMise = state.players.reduce((s, p) => s + (p.bid || 0), 0);
+    const slot = document.createElement('div');
+    slot.className = 'sk-bid-slot sk-bid-slot--total';
+
+    const card = document.createElement('div');
+    card.className = 'sk-bid-card sk-bid-card--total';
+    card.style.setProperty('--sk-bid-delay', `${state.players.length * STEP_MS}ms`);
+
+    const inner = document.createElement('div');
+    inner.className = 'sk-bid-card-inner';
+    const back = document.createElement('div');
+    back.className = 'sk-bid-card-face sk-bid-card-back';
+    const front = document.createElement('div');
+    front.className = 'sk-bid-card-face sk-bid-card-front';
+
+    const titre = document.createElement('span');
+    titre.className = 'sk-bid-total-titre';
+    titre.textContent = 'Total';
+
+    const compte = document.createElement('span');
+    compte.className = 'sk-bid-card-num sk-bid-total-num';
+    compte.textContent = `${totalMise}/${state.cardsInRound}`;
+
+    front.append(titre, compte);
+    inner.append(back, front);
+    card.appendChild(inner);
+
+    const nom = document.createElement('span');
+    nom.className = 'sk-bid-nom sk-bid-nom--total';
+    nom.textContent = 'plis annoncés';
+
+    slot.append(card, nom);
+    bidRevealRows.appendChild(slot);
+  }
 
   bidRevealEl.classList.remove('hidden');
 
@@ -4278,7 +4378,9 @@ function showBidReveal(state) {
   // enregistrer avant de jouer.
   const FLIP_MS = 550;      // durée de sk-bid-flip, côté CSS
   const LECTURE_MS = 2600;
-  const total = (state.players.length - 1) * STEP_MS + FLIP_MS + LECTURE_MS;
+  // players.length et non length - 1 : la carte du Total se retourne après
+  // la dernière plaque, c'est elle qui ferme la cascade.
+  const total = state.players.length * STEP_MS + FLIP_MS + LECTURE_MS;
   bidRevealTimer = setTimeout(() => bidRevealEl.classList.add('hidden'), total);
 }
 
@@ -4378,9 +4480,6 @@ function renderGame(state) {
   playDavyAnimation(state);
   playKrakenAnimation(state);
   playTrickWinAnimation(state);
-  // Les cases du pli viennent d'être recréées : si on est en train de
-  // désigner un Pirate, elles doivent se rallumer.
-  appliquerCiblagePlanche();
   renderBidChoices(state);
   renderHand(state);
   renderScoreboard(state);
@@ -4435,10 +4534,16 @@ function markLootRows(links) {
       if (!row) return;
       row.classList.add('sk-round-popup-row--loot');
       const coin = document.createElement('span');
-      coin.className = 'sk-round-popup-loot';
+      // Un tas par Butin : la boucle passe une fois par alliance, un joueur
+      // qui en a noué deux voit donc deux tas. C'est le compte qui parle,
+      // plus besoin d'un second pictogramme pour dire autre chose.
+      //
       // Alliance qui a payé (les deux annonces réussies) contre alliance
-      // formée mais restée sans effet : la distinction vaut d'être gardée.
-      coin.textContent = paid ? '💰' : '🤝';
+      // formée mais restée sans effet : la distinction vaut d'être gardée,
+      // et se fait maintenant sur le MÊME tas, terni plutôt que remplacé par
+      // des mains serrées — deux dessins pour une seule idée, c'était un de
+      // trop.
+      coin.className = 'sk-round-popup-loot' + (paid ? '' : ' sk-round-popup-loot--sans');
       coin.title = paid ? 'Alliance Butin réussie (+20)' : 'Alliance Butin formée, sans bonus';
       row.appendChild(coin);
     });
@@ -4992,13 +5097,25 @@ document.getElementById('sk-btn-rematch').addEventListener('click', () => socket
 // exactement le genre de paire qui se désynchronise au premier réglage.
 // C'est le JS qui pose la transition, les timings en découlent.
 const ROUE_DUREE = 5400;      // ms de rotation
-const ROUE_TOURS = 7;         // tours complets avant de viser le secteur
+const ROUE_TOURS = 7;         // tours complets avant de viser la pièce
 const ROUE_LECTURE = 2600;    // ms pendant lesquelles le nom reste affiché
+
+// L'angle de la flèche AU REPOS, dans l'image du gouvernail : elle est peinte
+// dedans, tournée vers le haut-droite, et pas vers le haut. Relevé sur le
+// fichier par briefs/detourer-volant.py — jamais estimé à l'œil, et réimprimé
+// à chaque passage du script si la planche est regénérée. Sans cette
+// soustraction la roue s'arrête un huitième de tour trop loin, ce qui, sur
+// une table à huit, désigne pile le joueur suivant.
+const ROUE_FLECHE_DEG = 43.95;
+
+// De quoi la flèche ne s'arrête jamais deux fois au même endroit du même
+// médaillon. La pièce en couvre une bonne dizaine de degrés vue du moyeu :
+// à ±5° on reste franchement dessus, mais l'arrêt n'a plus l'air calculé.
+const ROUE_JEU_DEG = 5;
 
 function playStartReveal(players, starterId) {
   const overlay = document.getElementById('sk-start-reveal');
   const wheel = document.getElementById('sk-wheel');
-  const needle = document.getElementById('sk-wheel-needle');
   const labelsEl = document.getElementById('sk-wheel-labels');
   const text = document.getElementById('sk-start-reveal-text');
   if (!overlay || !players.length) return;
@@ -5008,65 +5125,27 @@ function playStartReveal(players, starterId) {
   const winnerIndex = Math.max(0, players.findIndex((p) => p.id === starterId));
   const starter = players[winnerIndex];
 
-  // Les secteurs ne sont plus des aplats de couleur mais le TAPIS de chaque
-  // joueur : le feutre de sa pièce, frappé de sa figure (voir
-  // briefs/decouper-feutres.py). Un conic-gradient ne sait porter que des
-  // couleurs, d'où ce SVG : un chemin de camembert par joueur, qui découpe
-  // l'image de son feutre. Le découpage suit le nombre de joueurs, c'est le
-  // même pas d'angle que les étiquettes et que l'arrêt de la flèche.
-  const R = 50;
-  const point = (deg) => {
-    const a = (deg * Math.PI) / 180;
-    // 0° en haut, sens horaire — la convention du conic-gradient qu'on
-    // remplace, et celle de la rotation de la flèche plus bas.
-    return `${(50 + R * Math.sin(a)).toFixed(3)},${(50 - R * Math.cos(a)).toFixed(3)}`;
-  };
-  const secteurs = players.map((p, i) => ({
-    cle: pieceFor(p).key,
-    depart: point(i * step),
-    // Un camembert se trace en un arc ; au-delà d'un demi-tour il faut le
-    // dire à SVG (large-arc), sinon il prend le petit côté.
-    d: n === 1
-      ? `M50,0A${R},${R} 0 1 1 50,100A${R},${R} 0 1 1 50,0Z`
-      : `M50,50L${point(i * step)}A${R},${R} 0 ${step > 180 ? 1 : 0} 1 ${point((i + 1) * step)}Z`,
-  }));
-  wheel.style.background = 'none';
-  wheel.innerHTML =
-    '<svg class="sk-wheel-svg" viewBox="0 0 100 100" aria-hidden="true">' +
-    '<defs>' +
-    secteurs.map((s, i) => `<clipPath id="sk-roue-s${i}"><path d="${s.d}"/></clipPath>`).join('') +
-    '</defs>' +
-    secteurs
-      .map((s, i) =>
-        `<image href="assets/skin/feutre-${s.cle}.webp" x="0" y="0" width="100" height="100"` +
-        ` preserveAspectRatio="xMidYMid slice" clip-path="url(#sk-roue-s${i})"/>`)
-      .join('') +
-    // Une couture sombre sur chaque rayon : deux feutres voisins peuvent être
-    // proches de teinte, et sans elle on ne voit plus où l'un finit.
-    (n > 1
-      ? secteurs.map((s) => `<path class="sk-wheel-seam" d="M50,50L${s.depart}"/>`).join('')
-      : '') +
-    '</svg>';
-
-  // Étiquettes à l'angle du centre de leur secteur (0° = en haut, sens
-  // horaire) - même convention que la rotation de la flèche ci-dessous, pour
-  // que l'aiguille s'arrête pile devant le bon nom. On ne pose QUE l'angle :
-  // le placement polaire est fait en CSS, autour du même centre que la barre
-  // (--sk-roue-cx/cy) - c'était justement le décalage entre ce centre-ci et
-  // celui-là qui posait les noms de travers.
+  // Une pièce par joueur, à SON angle (0° = en haut, sens horaire) — même
+  // convention que la rotation de la roue plus bas, pour que la flèche
+  // s'arrête pile dessus. Le premier joueur est à midi, ce qui donne un
+  // repère fixe d'une partie à l'autre. On ne pose QUE l'angle : le placement
+  // polaire est fait en CSS, autour du centre du cadre — qui est aussi l'axe
+  // de la roue, le fichier étant cadré sur son moyeu.
   //
-  // Le rayon s'écarte quand la table se remplit : posées sur le bois, huit
-  // ou neuf étiquettes se chevaucheraient (il faut ~112 px entre deux voisines
-  // pour qu'elles ne se touchent pas). Elles sortent alors de la roue.
+  // Le rayon ne descend jamais sous 236 px : c'est ce qu'il faut pour tenir
+  // les médaillons juste au-delà de la course de la flèche, dont la pointe
+  // balaie 207 px (0,492 x 420). Il s'écarte au-delà quand la table se
+  // remplit — à huit ou neuf, deux plaques de nom voisines se toucheraient.
   labelsEl.innerHTML = '';
-  const rayonTags = Math.max(124, Math.round(56 / Math.sin(Math.PI / n)));
+  const rayonTags = Math.max(236, Math.round(65 / Math.sin(Math.PI / n)));
   labelsEl.style.setProperty('--sk-roue-etiquettes', `${rayonTags}px`);
   players.forEach((p, i) => {
     const tag = document.createElement('span');
     tag.className = 'sk-wheel-tag';
-    tag.style.setProperty('--sk-tag-angle', `${((i + 0.5) * step).toFixed(2)}deg`);
-    // La pièce au-dessus du nom : on retrouve son secteur à la figure autant
-    // qu'à la couleur, et c'est le même médaillon qu'au siège du joueur.
+    tag.style.setProperty('--sk-tag-angle', `${(i * step).toFixed(2)}deg`);
+    // La pièce au-dessus du nom : c'est elle que la flèche vient désigner, et
+    // c'est le même médaillon qu'au siège du joueur, sur ses annonces et au
+    // bout de sa courbe du récap. Le nom ne fait que la nommer.
     const piece = pieceFor(p);
     const medaillon = document.createElement('span');
     medaillon.className = 'sk-wheel-tag-piece';
@@ -5083,13 +5162,21 @@ function playStartReveal(players, starterId) {
   text.classList.remove('sk-visible');
   overlay.classList.remove('hidden');
 
-  const target = ROUE_TOURS * 360 + (winnerIndex + 0.5) * step;
+  // OÙ LA ROUE S'ARRÊTE. La flèche doit finir sur le médaillon du gagnant,
+  // qui est à winnerIndex x step. Elle part déjà tournée de ROUE_FLECHE_DEG
+  // (elle est peinte de biais dans l'image), on le débite donc. Le reste
+  // ramené entre 0 et 360 avant d'ajouter les tours complets : sans ça un
+  // angle négatif ferait partir la roue à l'envers sur presque un tour, ce
+  // qui se lit comme un faux départ.
+  const jeu = (Math.random() - 0.5) * 2 * Math.min(ROUE_JEU_DEG, step * 0.34);
+  const vise = (((winnerIndex * step + jeu - ROUE_FLECHE_DEG) % 360) + 360) % 360;
+  const target = ROUE_TOURS * 360 + vise;
 
   // Une seule source pour la durée : le CSS la lit ici.
   document.documentElement.style.setProperty('--sk-roue-duree', `${ROUE_DUREE}ms`);
 
-  needle.style.transition = 'none';
-  needle.style.transform = 'rotate(0deg)';
+  wheel.style.transition = 'none';
+  wheel.style.transform = 'rotate(0deg)';
 
   // Double rAF : garantit que l'angle de repos (0°) est bien peint avant que
   // l'angle cible ne soit posé, sinon le navigateur saute droit à l'état
@@ -5101,13 +5188,13 @@ function playStartReveal(players, starterId) {
   // d'accord avec les minuteries ci-dessous, qui en dépendent.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      needle.style.transition = '';
-      needle.style.transform = `rotate(${target}deg)`;
+      wheel.style.transition = '';
+      wheel.style.transform = `rotate(${target}deg)`;
     });
   });
 
-  // Le nom se pose quand la barre se pose : 150 ms avant la fin, le temps
-  // que l'oeil ait déjà vu où elle s'arrête.
+  // Le nom se pose quand la roue se pose : 150 ms avant la fin, le temps
+  // que l'oeil ait déjà vu où la flèche s'arrête.
   setTimeout(() => {
     const tags = labelsEl.querySelectorAll('.sk-wheel-tag');
     if (tags[winnerIndex]) tags[winnerIndex].classList.add('sk-wheel-tag--winner');
