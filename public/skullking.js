@@ -802,7 +802,7 @@ btnCreate.addEventListener('click', () => {
   myNickname = nickname;
   setCreateBusy(true, 'Création…');
   suivreSalonChat(null);
-  socket.emit('skullking-create-room', { nickname, token: getPlayerToken() });
+  socket.emit('skullking-create-room', { nickname, token: getPlayerToken(), piece: pieceMemorisee() });
 });
 
 formJoin.addEventListener('submit', (e) => {
@@ -826,7 +826,7 @@ formJoin.addEventListener('submit', (e) => {
     socket.emit('skullking-rejoin-room', { code, token: getPlayerToken() });
     return;
   }
-  socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken() });
+  socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken(), piece: pieceMemorisee() });
 });
 
 btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
@@ -1123,6 +1123,19 @@ const piecePicker = document.getElementById('sk-piece-picker');
 const pieceGrid = document.getElementById('sk-piece-grid');
 let piecePrefApplied = false;
 
+// Envoyée avec le pseudo à la création comme à l'arrivée : le serveur réserve
+// une pièce dès qu'on s'assied (sinon celle qu'on nous montre reste offerte au
+// voisin), et autant que ce soit celle qu'on avait la dernière fois. Le
+// stockage peut être fermé — navigation privée : pas de préférence, le hasard
+// tranchera.
+function pieceMemorisee() {
+  try {
+    return localStorage.getItem(PIECE_PREF_KEY) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // --- Son pseudo, en enseigne de la planche, et le champ qui le change ------
 // Le pseudo se tape une fois sur l'écran d'accueil — ou pas du tout quand on
 // arrive par un lien d'invitation, où il est demandé dans une fenêtre qu'on
@@ -1198,15 +1211,13 @@ function renderPiecePicker(players) {
   });
 
   // Une seule fois par salon : si la pièce gardée sur cet appareil est
-  // encore libre, on la reprend sans rien demander.
+  // encore libre, on la reprend sans rien demander. Le serveur l'a
+  // normalement déjà rendue à l'arrivée (voir giveFreePiece) — ce rattrapage
+  // ne sert plus qu'aux salons ouverts par un onglet resté sur l'ancienne
+  // version, qui n'envoie pas la préférence à la porte.
   if (!piecePrefApplied && me) {
     piecePrefApplied = true;
-    let pref = null;
-    try {
-      pref = localStorage.getItem(PIECE_PREF_KEY);
-    } catch (e) {
-      pref = null;
-    }
+    const pref = pieceMemorisee();
     if (pref && pref !== me.piece && PIECE_BY_KEY[pref] && !takenBy.has(pref)) {
       socket.emit('skullking-set-piece', { piece: pref });
       return; // le lobby suivant redessinera avec le bon choix
@@ -1950,7 +1961,7 @@ btnJoinModal.addEventListener('click', () => {
   btnJoinModal.disabled = true;
   myNickname = nickname;
   suivreSalonChat(roomFromUrl.toUpperCase());
-  socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken() });
+  socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken(), piece: pieceMemorisee() });
 });
 
 // --- Partie en cours ---
@@ -6278,7 +6289,7 @@ socket.on('skullking-rejoin-failed', (payload) => {
   rejoinFallback = null;
   if (fallback && fallback !== 'link') {
     myNickname = fallback.nickname;
-    socket.emit('skullking-join-room', { code: fallback.code, nickname: fallback.nickname, token: getPlayerToken() });
+    socket.emit('skullking-join-room', { code: fallback.code, nickname: fallback.nickname, token: getPlayerToken(), piece: pieceMemorisee() });
     return;
   }
   if (fallback === 'link') {

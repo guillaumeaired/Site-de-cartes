@@ -498,11 +498,10 @@ const PIECE_KEYS = [
   'coffre', 'barre', 'bouteille', 'crochet',
 ];
 
-// Personne ne démarre avec une pièce : le salon sert justement à la
-// choisir, et une pièce pré-cochée donne l'impression que la question est
-// déjà réglée. Ceux qui n'ont rien choisi au lancement en reçoivent une au
-// hasard parmi celles qui restent — au hasard et non la première libre,
-// sinon la même partie donnerait toujours le crâne au même distrait.
+// Filet de sécurité au lancement : si une pièce manque encore (partie reprise
+// d'un salon d'avant l'attribution à l'arrivée), on la comble au hasard parmi
+// celles qui restent — au hasard et non la première libre, sinon la même
+// partie donnerait toujours le crâne au même distrait.
 function assignMissingPieces(room) {
   const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
   const libres = PIECE_KEYS.filter((k) => !prises.has(k));
@@ -515,15 +514,26 @@ function assignMissingPieces(room) {
   }
 }
 
-// Un bot s'assied avec sa pièce. Il n'a pas d'écran pour la choisir, et une
-// pièce laissée à null n'est réservée qu'au lancement (assignMissingPieces) :
-// jusque-là la sienne restait offerte aux humains, qui pouvaient s'installer
-// dessus. Il en prend donc une tout de suite, au hasard parmi les libres,
-// exactement comme un joueur qui aurait cliqué.
-function giveFreePiece(room, player) {
+// PERSONNE NE S'ASSIED SANS PIÈCE. Le salon montre déjà une pièce à chaque
+// arrivant (le client en dérive une de son pseudo faute de choix), mais tant
+// qu'elle valait null côté serveur elle restait offerte : le voisin pouvait
+// cliquer dessus et deux matelots portaient le même crâne. On en réserve donc
+// une dès l'arrivée, au hasard parmi les libres — le joueur garde la main
+// pour en changer, la pièce libérée retombant aussitôt dans le lot. Les bots
+// passent par la même porte : ils n'ont pas d'écran pour choisir.
+//
+// `preferee` est la pièce que l'appareil du joueur a gardée de sa dernière
+// partie : on la lui rend si elle est encore libre, sinon le hasard tranche.
+// C'est le même souhait qu'exauçait le client une fois le salon dessiné —
+// exaucé à la porte, il ne peut plus lui passer sous le nez entre-temps.
+function giveFreePiece(room, player, preferee) {
   if (!player || player.piece) return;
   const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
   const libres = PIECE_KEYS.filter((k) => !prises.has(k));
+  if (libres.includes(preferee)) {
+    player.piece = preferee;
+    return;
+  }
   player.piece = libres[Math.floor(Math.random() * libres.length)] || null;
 }
 
@@ -1702,6 +1712,10 @@ function registerSkullKingHandlers(io, socket) {
       ],
     };
     rooms.set(code, room);
+    // Sa pièce est réservée avant même le premier dessin du salon (voir
+    // giveFreePiece) : l'hôte en a une, elle est à lui, et le suivant ne peut
+    // plus la prendre.
+    giveFreePiece(room, room.players[0], payload && payload.piece);
     socket.data.skullkingRoom = code;
     socket.emit('skullking-room-created', { code });
     // L'hôte ouvre le fil : sans cette ligne, celui qui arrive en second lit
@@ -1754,6 +1768,9 @@ function registerSkullKingHandlers(io, socket) {
       totalScore: 0,
       roundHistory: [],
     });
+    // Même règle que pour l'hôte : la pièce est prise à l'instant où il
+    // s'assied, donc jamais deux fois.
+    giveFreePiece(room, room.players[room.players.length - 1], payload && payload.piece);
     socket.data.skullkingRoom = code;
     // Après le push : broadcastToRoom parcourt room.players, et l'arrivant
     // doit lire sa propre arrivée comme les autres.
@@ -2329,6 +2346,11 @@ module.exports = {
   donneTruquee,
   setBotAdapter,
   getStats,
+  // La pièce prise à l'arrivée : exportée pour éprouver qu'aucune n'est
+  // distribuée deux fois, ce que les handlers socket ne permettent pas de
+  // vérifier ici.
+  giveFreePiece,
+  PIECE_KEYS,
   // Le rythme : exporté pour pouvoir éprouver la garde de lecture (un salon
   // sans réglage, un réglage inconnu, une valeur hors liste) sans avoir à
   // monter un vrai salon.

@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -607,5 +607,72 @@ PACE_PRESETS.forEach((preset) => {
     preset.values
   );
 });
+
+// --- La pièce est prise à l'arrivée, pas au lancement. Tant qu'elle valait
+// null en attendant le départ, l'écran en montrait une (dérivée du pseudo) que
+// le voisin pouvait s'approprier : deux matelots au même crâne.
+{
+  const salle = { players: [] };
+  for (let i = 0; i < PIECE_KEYS.length; i++) {
+    salle.players.push({ id: `p${i}`, nickname: `Matelot ${i}`, piece: null });
+    giveFreePiece(salle, salle.players[salle.players.length - 1]);
+  }
+  const prises = salle.players.map((p) => p.piece);
+
+  check(
+    "chaque arrivant repart avec une pièce, aucune n'est laissée en suspens",
+    prises.filter(Boolean).length,
+    PIECE_KEYS.length
+  );
+
+  check(
+    'et jamais deux fois la même, y compris à table pleine',
+    new Set(prises).size,
+    PIECE_KEYS.length
+  );
+
+  const deTrop = { id: 'p-detrop', nickname: 'Le passager clandestin', piece: null };
+  salle.players.push(deTrop);
+  giveFreePiece(salle, deTrop);
+  check(
+    "plus rien à distribuer : on laisse la pièce vide plutôt que d'en doubler une",
+    deTrop.piece,
+    null
+  );
+
+  const fidele = { id: 'p-fidele', nickname: 'Le fidèle', piece: null };
+  const salleLibre = { players: [fidele] };
+  giveFreePiece(salleLibre, fidele, 'boussole');
+  check(
+    "la pièce gardée du dernier salon est rendue à la porte si elle est libre",
+    fidele.piece,
+    'boussole'
+  );
+
+  const suivant = { id: 'p-suivant', nickname: 'Le suivant', piece: null };
+  salleLibre.players.push(suivant);
+  giveFreePiece(salleLibre, suivant, 'boussole');
+  check(
+    "la même préférence chez deux joueurs ne la donne qu'au premier arrivé",
+    suivant.piece !== 'boussole' && Boolean(suivant.piece),
+    true
+  );
+
+  const rusé = { id: 'p-ruse', nickname: 'Le malin', piece: null };
+  giveFreePiece({ players: [rusé] }, rusé, 'kraken');
+  check(
+    "une préférence inventée ne crée pas de pièce hors du lot",
+    PIECE_KEYS.includes(rusé.piece),
+    true
+  );
+
+  const dejaServi = { id: 'p-servi', nickname: 'Le revenant', piece: 'crane' };
+  giveFreePiece({ players: [dejaServi] }, dejaServi);
+  check(
+    'et celui qui en a déjà une la garde (reconnexion, choix déjà fait)',
+    dejaServi.piece,
+    'crane'
+  );
+}
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);
