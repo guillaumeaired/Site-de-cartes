@@ -982,8 +982,8 @@ const btnCopy = document.getElementById('sk-btn-copy');
 const btnLeaveWaiting = document.getElementById('sk-btn-leave-waiting');
 const lobbyPlayers = document.getElementById('sk-lobby-players');
 const lobbyList = document.getElementById('sk-lobby-list');
-const lobbyCount = document.getElementById('sk-lobby-count');
 const lobbyRange = document.getElementById('sk-lobby-range');
+const lobbyEffectif = document.getElementById('sk-lobby-effectif');
 const btnStartGame = document.getElementById('sk-btn-start-game');
 const btnAddBot = document.getElementById('sk-btn-add-bot');
 
@@ -1084,13 +1084,24 @@ btnCopy.addEventListener('click', async () => {
   }
 });
 
+// L'étiquette du code. Elle ne se remplissait que sur `skullking-room-created`
+// — un événement qui n'est envoyé qu'à l'hôte, et une seule fois, au moment
+// où il crée la salle. Résultat : quiconque REJOIGNAIT une partie ne voyait
+// jamais le code (il ne pouvait donc pas le passer à un troisième joueur), et
+// l'hôte lui-même le perdait au premier rafraîchissement de la page. Elle se
+// remplit maintenant depuis le salon, qui porte le code et arrive à tout le
+// monde, à chaque mise à jour comme à la reconnexion.
+function afficherCodeDePartie(code) {
+  if (!code) return;
+  shareLink.value = `${window.location.protocol}//${window.location.host}/skullking.html?room=${code}`;
+  shareCode.textContent = code;
+  shareBlock.classList.remove('hidden');
+}
+
 socket.on('skullking-room-created', ({ code }) => {
   setCreateBusy(false);
   saveActiveRoom(code, myNickname);
-  const url = `${window.location.protocol}//${window.location.host}/skullking.html?room=${code}`;
-  shareLink.value = url;
-  shareCode.textContent = code;
-  shareBlock.classList.remove('hidden');
+  afficherCodeDePartie(code);
 });
 
 // --- Choix de sa pièce dans le salon d'attente ---
@@ -1151,27 +1162,29 @@ function renderPiecePicker(players) {
   });
 }
 
-// LES BOUTONS DU BAS NE BOUGENT PLUS. « Lancer la partie » et « Ajouter un
-// bot » suivent la grille du salon, dont la hauteur est celle de sa planche
-// la plus haute. Passé quatre matelots c'était l'équipage : chaque arrivée
-// poussait les boutons d'une ligne, et au septième il fallait défiler pour
-// lancer la partie — au moment précis où tout le monde attend.
+// LE SALON NE BOUGE PLUS QUAND QUELQU'UN ARRIVE. La planche de l'équipage
+// tenait sur la hauteur de sa liste : chaque paire de matelots ajoutait une
+// rangée, la planche poussait la grille, et « Lancer la partie » descendait
+// d'un cran — au moment précis où tout le monde attend. On la bornait alors
+// à la hauteur de ses voisines, ce qui la laissait quand même grandir
+// jusqu'à cette borne.
 //
-// La liste se borne donc à ce que les autres planches laissent : mesuré, pas
-// codé en dur. La planche des extensions a déjà changé de hauteur deux fois
-// (huit lignes, puis des libellés sur deux lignes), un plafond en pixels
-// aurait vieilli avec elle. Avec le rôle sur deux colonnes, le plafond n'est
-// atteint qu'au-delà de huit joueurs — et là, la liste défile toute seule
-// plutôt que d'emporter le salon avec elle.
+// Elle réserve maintenant la place de ses cinq rangées dès le premier
+// joueur (neuf matelots au maximum, sur deux colonnes), en CSS. Le cadre est
+// le même du premier au neuvième, et ce fichier n'a plus qu'un cas à
+// mesurer : la fenêtre trop courte pour ces cinq rangs.
 const GRILLE_EN_RANGEE = '(min-width: 1000px)';
 
-// La place qu'un bloc réglable peut prendre pour que SA colonne s'arrête à
-// la hauteur visée : la cible, moins tout ce que la colonne mesure en dehors
-// de lui (titres, pièces, code, formulaire).
-function placeDisponible(bloc, colonne, cible) {
-  return cible - (colonne.offsetHeight - bloc.offsetHeight);
-}
-
+// Le rôle réserve la place de ses CINQ rangées (neuf matelots sur deux
+// colonnes) dès le premier joueur : la planche a donc la même hauteur qu'on
+// soit un ou neuf, et plus rien ne bouge en dessous — c'est le CSS qui la
+// pose, pas ce fichier (voir .sk-lobby-col .lobby-list).
+//
+// Il reste un cas à mesurer : la fenêtre trop courte pour les cinq rangs. La
+// planche déborderait alors du salon, qui ne défile pas. On rabote la liste
+// à ce que la fenêtre laisse — et c'est elle qui défile, dans son cadre.
+// Cette hauteur-là ne dépend que de la fenêtre, jamais du nombre de
+// matelots : le cadre ne bouge toujours pas quand quelqu'un arrive.
 function ajusterHauteurSalon() {
   const grille = document.querySelector('.sk-lobby-grid');
   if (!grille) return;
@@ -1179,40 +1192,37 @@ function ajusterHauteurSalon() {
 
   // Toujours remettre à zéro d'abord : les hauteurs se mesurent sur la mise
   // en page naturelle, pas sur celle du dernier passage.
-  lobbyList.style.maxHeight = '';
+  lobbyList.style.height = '';
+  ajusterCartesExtension();
 
-  // Sous 1000px les planches sont empilées : la grille fait leur somme, il
-  // n'y a plus de « planche la plus haute » à ne pas dépasser.
+  // Sous 1000px les planches sont empilées et la grille défile déjà d'un
+  // bloc : rien à raboter.
   if (!window.matchMedia(GRILLE_EN_RANGEE).matches) return;
-  const planches = [...grille.children].filter((c) => !c.classList.contains('hidden'));
-  // Fenêtre trop étroite pour les quatre colonnes : elles s'enroulent sur
-  // deux rangées, et il n'y a plus de hauteur commune à viser — borner la
-  // liste ne ferait que cacher des matelots pour rien.
-  if (new Set(planches.map((c) => c.offsetTop)).size > 1) return;
+  if (!equipage) return;
+  equipage.style.maxHeight = '';
 
-  // La hauteur visée est celle des colonnes qu'on NE règle pas (le code, la
-  // pile des réglages et des extensions, la discussion — toutes de hauteur
-  // libre ou fixe) : ce sont elles qui fixent la taille du salon, et
-  // l'équipage seul s'y ajuste.
-  const fixes = planches.filter((c) => c !== equipage).map((c) => c.offsetHeight);
-  if (!fixes.length) return;
-  const cible = Math.max(...fixes);
+  // Ce que la fenêtre laisse à la grille : la planche de l'équipage ne doit
+  // pas en sortir, le salon ne défile pas.
+  const dispo = grille.clientHeight;
+  const debord = equipage.offsetHeight - dispo;
+  if (debord <= 0) return;
 
-  if (equipage) {
-    let plafond = placeDisponible(lobbyList, equipage, cible);
-    // Le plafond tombe sur un nombre entier de rangées. Au pixel près, il
-    // coupait la suivante en deux et le liseré qui dépassait se lisait comme
-    // une barre de défilement collée en pied de planche.
-    const ligne = lobbyList.querySelector('li');
-    if (ligne) {
-      const ecart = parseFloat(getComputedStyle(lobbyList).rowGap) || 0;
-      const pas = ligne.offsetHeight + ecart;
-      if (pas > 0) plafond = Math.max(2, Math.floor((plafond + ecart) / pas)) * pas - ecart;
-    }
-    // Sous deux rangées de matelots, mieux vaut une planche un peu plus haute
-    // qu'une liste réduite à une fente.
-    if (plafond > 120) lobbyList.style.maxHeight = `${plafond}px`;
-  }
+  // D'abord le rôle : c'est lui qui prend le plus de place et le seul dont
+  // on puisse cacher une partie sans rien perdre — il défile dans son cadre.
+  const style = getComputedStyle(lobbyList);
+  const ecart = parseFloat(style.rowGap) || 0;
+  const pas = (parseFloat(style.gridAutoRows) || 0) + ecart;
+  let hauteur = lobbyList.offsetHeight - debord;
+  // La hauteur tombe sur un nombre entier de rangées. Au pixel près, elle
+  // coupait la suivante en deux et le liseré qui dépassait se lisait comme
+  // une barre de défilement collée en pied de planche.
+  if (pas > 0) hauteur = Math.max(2, Math.floor((hauteur + ecart) / pas)) * pas - ecart;
+  lobbyList.style.height = `${hauteur}px`;
+
+  // Fenêtre si basse que même deux rangées ne rentrent pas : plutôt que de
+  // couper la planche au ras du bois, c'est elle entière — les pièces avec
+  // le rôle — qui défile dans ce qu'il reste.
+  equipage.style.maxHeight = `${dispo}px`;
 
   // La discussion, elle, ne se mesure plus : sa hauteur est fixe, posée en
   // CSS (voir .sk-lobby-chat .sk-chat-log). Elle se calait autrefois sur la
@@ -1384,11 +1394,58 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
     card.className = 'sk-active-extension';
     card.title = `Voir la règle : ${module.label}`;
     card.setAttribute('aria-label', `Voir la règle : ${module.label}`);
+    // Un `div`, pas un `span` : .sk-card se dimensionne en largeur/hauteur, et
+    // ces deux propriétés ne s'appliquent pas à un inline. La carte se
+    // repliait donc sur rien et on ne voyait que le fond noir du bouton.
     const apercu = fiche.cartes[0];
-    card.innerHTML = `<span class="sk-card ${cardClass(apercu)}">${cardFaceHTML(apercu)}</span>`;
+    card.innerHTML = `<div class="sk-card ${cardClass(apercu)}">${cardFaceHTML(apercu)}</div>`;
     card.addEventListener('click', () => ouvrirFiche(module.label, fiche));
     activeExtensions.appendChild(card);
   });
+  ajusterCartesExtension();
+}
+
+// LE CREUX DES EXTENSIONS NE CHANGE PAS DE TAILLE, LES CARTES SI. Elles
+// avaient une largeur unique, taillée pour le cas le plus chargé : une seule
+// extension prise, on avait une vignette perdue au milieu du bois, et à huit
+// elles débordaient quand même le cadre en s'ajoutant des rangs.
+//
+// On cherche donc la plus grande carte qui rentre : pour chaque répartition
+// en colonnes possible, la largeur que le creux permet, et on garde la
+// meilleure. À une extension c'est la hauteur du creux qui commande (une
+// carte grande comme la main), à huit c'est sa largeur (quatre de front sur
+// deux rangs). Le flex peut en poser PLUS par rangée que la répartition
+// retenue — jamais moins : ça ne fait que retirer un rang, et tout tient
+// encore.
+const EXT_ECART = 6;       // px — l'écart entre deux cartes (voir .sk-active-extensions)
+const EXT_BORD = 2;        // px — le liseré de laiton du bouton, 1 de chaque côté
+const EXT_RATIO = 10 / 7;  // la hauteur d'une carte se déduit de sa largeur
+const EXT_REF = 84;        // px — la largeur de référence d'une .sk-card
+
+function ajusterCartesExtension() {
+  if (!activeExtensions) return;
+  const n = activeExtensions.childElementCount;
+  if (!n) return;
+  // clientWidth/Height comprennent le rembourrage du creux : on le retire.
+  const style = getComputedStyle(activeExtensions);
+  const cadreL = activeExtensions.clientWidth
+    - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+  const cadreH = activeExtensions.clientHeight
+    - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+  // Planche encore masquée (salon pas affiché) : rien à mesurer, on repassera.
+  if (cadreL <= 0 || cadreH <= 0) return;
+
+  let largeur = 0;
+  for (let colonnes = 1; colonnes <= n; colonnes++) {
+    const rangs = Math.ceil(n / colonnes);
+    const parLargeur = (cadreL - EXT_ECART * (colonnes - 1)) / colonnes - EXT_BORD;
+    const parHauteur = ((cadreH - EXT_ECART * (rangs - 1)) / rangs - EXT_BORD) / EXT_RATIO;
+    largeur = Math.max(largeur, Math.min(parLargeur, parHauteur));
+  }
+  // Un plancher pour que la gravure reste lisible, un plafond pour qu'une
+  // extension seule ne devienne pas une affiche.
+  largeur = Math.max(30, Math.min(largeur, 116));
+  activeExtensions.style.setProperty('--sk-ext-facteur', (largeur / EXT_REF).toFixed(4));
 }
 
 function renderDeckPicker(style, isHost) {
@@ -1433,9 +1490,14 @@ function renderRoundsPicker(total, mini, maxi, isHost) {
     }
     roundsGrid.appendChild(b);
   }
-  // Le choix lui-même suffit dans la planche compacte du lobby : afficher la
-  // durée de la dernière manche répétait inutilement l'information.
-  roundsHint.textContent = '';
+  // La dernière manche est la plus longue : elle dit à elle seule la durée
+  // de la partie mieux que le nombre de manches. Le repère avait sauté quand
+  // les jetons vivaient dans la planche compacte du salon ; dans la modale
+  // il a de nouveau la place, et ses deux sections voisines (paquet, rythme)
+  // portent la même ligne d'explication sous leur choix.
+  roundsHint.textContent = isHost
+    ? `${choisi} manches — la dernière se joue à ${choisi} cartes par joueur.`
+    : `${choisi} manches.`;
 }
 
 // Le rythme de la partie. Rien de ce qui est ici ne touche aux règles : ce
@@ -1526,6 +1588,7 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
 socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
   if (id) myId = id;
   saveActiveRoom(code, myNickname);
+  afficherCodeDePartie(code);
   showReconnectingOverlay(false);
   myIsHost = isHost;
   showScreen('waiting');
@@ -1570,8 +1633,16 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     lobbyList.appendChild(li);
   });
   renderPiecePicker(players);
-  lobbyCount.textContent = players.length;
   lobbyRange.textContent = `${minPlayers} à ${maxPlayers}`;
+  // La planche réserve d'avance la place de la table PLEINE, sur deux
+  // colonnes : elle a donc la même hauteur qu'on soit un ou au complet, et
+  // rien ne bouge sous elle quand quelqu'un arrive. Ce plafond-là suit le
+  // paquet, pas les arrivées — sans extension on joue à sept, et le
+  // cinquième rang n'aurait jamais servi qu'à faire du bois nu.
+  lobbyList.style.setProperty('--sk-crew-rangs', Math.ceil(maxPlayers / 2));
+  // L'effectif en tête de salon, à côté des réglages : le nombre et le mot,
+  // rien d'autre. Les bornes du paquet restent sur la planche de l'équipage.
+  lobbyEffectif.textContent = `${players.length} joueur${players.length > 1 ? 's' : ''}`;
 
   // Extensions : cliquables par l'hôte uniquement (imposé aussi côté
   // serveur), lecture seule pour les autres - tout le monde voit le même
@@ -1585,9 +1656,15 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
   renderPacePicker(pace, paceSettings, pacePresets, pacePreset, isHost);
+  // Le résumé de la planche : ce à quoi on va jouer, en une ligne. Le rythme
+  // n'y est plus — il règle la vitesse des pauses, pas la partie, et son
+  // libellé faisait déborder la ligne sur trois mots qu'on ne relit jamais.
+  // Le nombre de manches passe en gras : c'est la seule des deux valeurs
+  // qu'on change vraiment d'une partie à l'autre.
   const deckLabel = deck === 'perso' ? 'Paquet perso' : 'Paquet classique';
-  const paceLabel = (pacePresets || []).find((preset) => preset.key === pacePreset)?.label || 'Rythme sur mesure';
-  lobbySettingsSummary.textContent = `${totalRounds} manches · ${deckLabel} · ${paceLabel}`;
+  const manches = document.createElement('strong');
+  manches.textContent = `${totalRounds} manches`;
+  lobbySettingsSummary.replaceChildren(manches, ` · ${deckLabel}`);
 
   // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
   // ajouterMessage écarte tout seul ce qui a déjà été posé. Les couleurs
@@ -1673,12 +1750,14 @@ socket.on('skullking-power-result', ({ title, detail }) => {
   powerAnnounceTimer = setTimeout(() => powerAnnounceEl.classList.add('hidden'), 3600);
 });
 
+// Sans `reason`, c'est un départ du SALON : il s'écrit maintenant dans la
+// discussion, qui le garde (pushSystemChat côté serveur). Le toast n'en
+// disait pas plus et barrait le haut de l'écran par-dessus le code de la
+// partie. Avec `reason`, c'est un départ en pleine partie — celui-là met fin
+// à la manche pour tout le monde, et le fil de la table n'est pas l'endroit
+// où l'apprendre.
 socket.on('skullking-player-left', ({ nickname, reason }) => {
-  if (reason) {
-    showToast(`${nickname} a quitté la partie — retour au classement actuel.`);
-  } else {
-    showToast(`${nickname} a quitté le salon.`);
-  }
+  if (reason) showToast(`${nickname} a quitté la partie — retour au classement actuel.`);
 });
 
 btnStartGame.addEventListener('click', () => socket.emit('skullking-start-game'));
@@ -3979,8 +4058,30 @@ function chatAuBas(log) {
 const couleursDuChat = new Map();
 
 function retenirCouleurs(joueurs) {
+  let change = false;
   (joueurs || []).forEach((p) => {
-    if (p && p.id) couleursDuChat.set(p.id, couleurJoueur(p));
+    if (!p || !p.id) return;
+    const couleur = couleurJoueur(p);
+    if (couleursDuChat.get(p.id) !== couleur) change = true;
+    couleursDuChat.set(p.id, couleur);
+  });
+  if (change) repeindreLeChat();
+}
+
+// Une pièce se change tant que la partie n'a pas commencé, et la couleur d'un
+// joueur EST celle de sa pièce. Le nom était peint une fois pour toutes à la
+// création de la ligne : un joueur qui prenait une autre pièce laissait
+// derrière lui ses anciens messages dans l'ancienne couleur, et le même
+// pseudo se lisait en deux ou trois teintes dans le même fil — la couleur ne
+// désignait donc plus personne. On repeint tout ce qui est déjà posé.
+//
+// Le sélecteur balaie le document entier : la même conversation est écrite
+// dans trois vues (la table, le salon, la fenêtre agrandie), chacune avec ses
+// propres nœuds. Sans couleur connue on efface le style en ligne plutôt que
+// d'en poser une, pour retomber sur le laiton par défaut de .sk-chat-who.
+function repeindreLeChat() {
+  document.querySelectorAll('.sk-chat-who[data-joueur]').forEach((tete) => {
+    tete.style.color = couleursDuChat.get(tete.dataset.joueur) || '';
   });
 }
 
@@ -3994,12 +4095,27 @@ function retenirCouleurs(joueurs) {
 // lui aussi, le fil devenait un damier où plus rien ne se lisait, et la
 // couleur cessait de désigner qui parle pour ne plus dire que « du texte ».
 function ligneChat(m) {
+  // Les allées et venues du salon (voir pushSystemChat côté serveur). Elles
+  // n'ont pas d'auteur : ni pastille de nom, ni couleur de pièce — une note
+  // de marge en italique, qu'on distingue d'un coup d'œil de quelqu'un qui
+  // parle. Le retour anticipé compte aussi pour `--me` : sans playerId, la
+  // comparaison avec myId serait vraie tant que myId est indéfini.
+  if (m.system) {
+    const ligne = document.createElement('div');
+    ligne.className = 'sk-chat-line sk-chat-line--systeme';
+    ligne.textContent = m.text;
+    return ligne;
+  }
+
   const ligne = document.createElement('div');
   ligne.className = 'sk-chat-line' + (m.playerId === myId ? ' sk-chat-line--me' : '');
 
   const tete = document.createElement('span');
   tete.className = 'sk-chat-who';
   tete.textContent = m.playerId === myId ? 'Toi' : m.nickname;
+  // L'auteur reste inscrit sur la ligne : c'est ce qui permet de la repeindre
+  // plus tard, quand il change de pièce (voir repeindreLeChat).
+  if (m.playerId) tete.dataset.joueur = m.playerId;
   const couleur = couleursDuChat.get(m.playerId);
   if (couleur) tete.style.color = couleur;
 
@@ -4011,12 +4127,30 @@ function ligneChat(m) {
   return ligne;
 }
 
+// Le rang du message dans le fil. Le serveur numérote en continu (`c1`,
+// `c2`… — voir chatSeq), ce qui donne un ordre sûr là où l'heure d'arrivée
+// ne dit rien.
+function rangDuMessage(m) {
+  const n = Number(String(m.id).slice(1));
+  return Number.isFinite(n) ? n : 0;
+}
+
 function ajouterMessage(m) {
   if (!m || chatSeen.has(m.id)) return;
   chatSeen.add(m.id);
+  const rang = rangDuMessage(m);
   CHAT_VUES.forEach((vue) => {
     const colle = chatAuBas(vue.log);
-    vue.log.appendChild(ligneChat(m));
+    const ligne = ligneChat(m);
+    ligne.dataset.rang = String(rang);
+    // Le fil est chronologique, or l'ordre d'ARRIVÉE ne l'est pas : en
+    // rejoignant un salon on reçoit d'abord la diffusion en direct de sa
+    // propre arrivée, et seulement ensuite l'historique qui la précède —
+    // « Untel a rejoint » se posait donc avant « Untel a ouvert le salon ».
+    // On insère à sa place plutôt qu'en fin de liste ; à l'usage courant le
+    // message est le plus récent et la recherche s'arrête tout de suite.
+    const suivant = [...vue.log.children].find((n) => Number(n.dataset.rang) > rang);
+    vue.log.insertBefore(ligne, suivant || null);
     while (vue.log.childElementCount > 80) vue.log.removeChild(vue.log.firstChild);
     if (colle) vue.log.scrollTop = vue.log.scrollHeight;
   });

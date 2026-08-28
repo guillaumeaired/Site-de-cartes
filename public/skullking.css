@@ -676,77 +676,8 @@ h3 {
   border: 0;
 }
 
-/* Le bloc d'invitation est une planche punaisée : même objet que les
-   parchemins du panneau de droite, pour que le salon et la table
-   appartiennent visiblement au même monde. */
-.invite-card {
-  position: relative;
-  margin: 24px auto 0;
-  padding: 31px 20px 20px;   /* 7 + 16 du clou, plus 8 de jeu sous sa tête */
-  max-width: 300px;
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, rgba(255, 232, 190, 0.09), rgba(0, 0, 0, 0.34)),
-    linear-gradient(178deg, var(--sk-oak-hi) 0%, var(--sk-oak) 34%, var(--sk-oak-lo) 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
-    0 0 0 1px var(--sk-brass-lo),
-    0 16px 34px rgba(0, 0, 0, 0.55);
-}
-
-/* Le clou qui tient la planche. C'était un rond en dégradé radial : à cette
-   taille un dégradé fait une bulle, pas une tête de clou martelée. Le lot 2
-   en avait livré une, peinte, qui ne servait nulle part — c'est elle qui est
-   posée ici (`clou-laiton.webp`).
-
-   Il vit dans la marge haute de la planche, jamais dans le texte : le
-   `padding-top` de chaque planche lui réserve sa hauteur plus le jeu, sans
-   quoi il retombe sur les capitales du titre — c'est exactement ce qui se
-   passait avec 22 px de marge pour un clou qui descendait à 19. */
-.invite-card::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 50%;
-  margin-left: -8px;
-  width: 16px;
-  height: 16px;
-  background: url('assets/skin/clou-laiton.webp') 50% 50% / contain no-repeat;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
-}
-
 .invite-label {
   margin: 6px 0 12px;
-}
-
-.invite-card .code-badge {
-  display: block;
-  margin: 0 auto 18px;
-  font-size: 1.9rem;
-}
-
-/* Le code de partie est une plaque de laiton gravée. */
-.code-badge {
-  font-family: 'Bitter', Georgia, serif;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  border-radius: 2px;
-  padding: 11px 10px;
-  color: #241505;
-  background:
-    linear-gradient(180deg, rgba(255, 248, 226, 0.34), rgba(255, 255, 255, 0) 48%),
-    linear-gradient(180deg, #dcbe7e, var(--sk-brass) 52%, #7a5a20);
-  text-shadow: 0 1px 0 rgba(255, 244, 214, 0.5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 248, 226, 0.6),
-    inset 0 -2px 0 rgba(60, 42, 12, 0.5),
-    0 0 0 1px rgba(24, 14, 5, 0.85),
-    0 4px 12px rgba(0, 0, 0, 0.6);
-}
-
-.btn-copy-link {
-  width: 100%;
 }
 
 /* Switch « Jouer avec l'extension » : cliquable pour l'hôte (piste en
@@ -1047,12 +978,24 @@ h3 {
 }
 
 .lobby-list {
+  /* La cote d'une ligne d'équipage : le médaillon (26 px plus ses 2 px de
+     cerclage) et les 4 px de rembourrage au-dessus comme en dessous. Elle
+     est nommée ici parce que la planche du salon en déduit sa hauteur —
+     cinq rangs réservés d'avance, voir .sk-lobby-col .lobby-list. */
+  --sk-crew-ligne: 38px;
+  --sk-crew-ecart: 7px;
+  /* Le nombre de rangs réservés. Cinq par défaut, soit la table la plus
+     grande que le jeu connaisse (neuf matelots sur deux colonnes) ; le salon
+     le rabaisse selon le paquet réellement choisi — sept joueurs sans
+     extension, cela ne fait que quatre rangs, et le cinquième était un rang
+     de bois nu au milieu de la planche. */
+  --sk-crew-rangs: 5;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--sk-crew-ecart);
 }
 
 /* Le rôle d'équipage : une ligne de bois par matelot, marquée au laiton. */
@@ -5885,6 +5828,18 @@ h3 {
   line-height: 1.5;
 }
 
+/* Les arrivées et les départs. Ce n'est pas quelqu'un qui parle : pas de nom
+   en capitales de laiton, pas de couleur de pièce — de l'italique, un crème
+   éteint et un corps plus petit, pour que le fil garde son relief entre ce
+   qui se dit et ce qui se passe. Le fil est court (une dizaine de lignes
+   visibles), et ces lignes-là doivent pouvoir être sautées d'un coup d'œil. */
+.sk-chat-line--systeme {
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--sk-cream-3);
+  overflow-wrap: anywhere;
+}
+
 /* Le nom, sur la même ligne que le message et juste avant lui. La couleur
    est posée en ligne par ligneChat (elle est propre à chacun) ; celle d'ici
    n'est que le repli, pour un auteur dont on n'a pas la pièce — un message
@@ -7816,6 +7771,97 @@ h3 {
    l'ordre du DOM est déjà le bon.
    ===================================================================== */
 
+/* La barre du salon : « Quitter » à gauche, le code et son bouton de partage
+   à droite. Le code était une planche de la grille, quatrième colonne d'une
+   rangée qu'il déséquilibrait — et sous 1000px il repartait tout en haut de
+   la colonne unique, à gauche comme le reste. Il tient maintenant le coin
+   haut droit à toutes les largeurs, ce qui est l'endroit où on le cherche :
+   on arrive au salon pour le dicter, et on y revient pour le relire.
+   `align-items: flex-start` parce que les deux extrémités n'ont pas la même
+   hauteur — un lien d'un côté, une planche punaisée de l'autre. */
+.sk-waiting-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+/* L'ÉTIQUETTE DU CODE.
+   C'était une planche de chêne punaisée, clou de laiton compris, avec une
+   plaque gravée au milieu : le plus lourd des objets du salon pour la moins
+   durable de ses informations — quatre lettres qu'on lit une fois en
+   arrivant, qu'on dicte, et qu'on ne regarde plus. Elle campait en haut à
+   droite avec le poids d'un titre.
+   Elle se pose maintenant dans le coin haut gauche, sous « Quitter » : du
+   verre fumé cerclé d'un cheveu de laiton, aux angles franchement adoucis —
+   14px, de quoi lire une pastille et non un panneau. Présente quand on la
+   cherche, muette le reste du temps. */
+.sk-share-chip {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 7px 10px;
+  padding: 10px 15px 12px;
+  border-radius: 17px;
+  background: linear-gradient(180deg, rgba(255, 232, 190, 0.055), rgba(0, 0, 0, 0.28));
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 137, 53, 0.24),
+    0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.sk-share-chip-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sk-cream-3);
+}
+
+/* Le code reste la seule chose qu'on doit pouvoir lire de loin : il garde le
+   laiton, mais en ENCRE sur un creux d'ombre plutôt qu'en plaque pleine. Le
+   contraste suffit largement à quatre capitales très espacées, et l'étiquette
+   cesse d'être un éclat d'or dans un coin de l'écran. */
+.sk-share-chip-code {
+  padding: 5px 12px;
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3);
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--sk-brass-hi);
+}
+
+/* Le bouton n'est plus un bouton de laiton : un contour de cheveu, qui ne
+   s'allume qu'au survol. Copier le lien est un geste qu'on fait une fois. */
+.sk-share-chip-copy {
+  padding: 6px 13px;
+  border: 1px solid rgba(184, 137, 53, 0.3);
+  border-radius: 11px;
+  background: none;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sk-cream-3);
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+
+.sk-share-chip-copy:hover,
+.sk-share-chip-copy:focus-visible {
+  border-color: var(--sk-brass);
+  color: var(--sk-cream);
+}
+
 /* L'enseigne du salon. Le lettrage peint porte déjà son ombre et sa dorure :
    il n'a besoin d'aucun cadre, il se pose sur la cloison. */
 .sk-waiting-logo {
@@ -7832,14 +7878,13 @@ h3 {
   display: none;
 }
 
-/* Sauf ceux qui sont le SEUL libellé de leur bloc. Trois d'entre eux le sont
-   devenus en passant intertitres de planche — le code de la partie, la
-   pièce, la discussion : empilés sur un téléphone, les masquer laissait un
-   badge de code, une grille de médaillons et un fil de messages sans un mot
-   pour dire ce qu'ils sont. Ils gardent en revanche le petit corps du
-   téléphone : le filet et le corps d'intertitre ne valent qu'en paysage,
-   où ils coiffent une planche. */
-#sk-share-block .sk-lobby-col-title,
+/* Sauf ceux qui sont le SEUL libellé de leur bloc — la pièce, la discussion :
+   empilés sur un téléphone, les masquer laissait une grille de médaillons et
+   un fil de messages sans un mot pour dire ce qu'ils sont. Ils gardent en
+   revanche le petit corps du téléphone : le filet et le corps d'intertitre
+   ne valent qu'en paysage, où ils coiffent une planche. (Le code de la
+   partie était le troisième ; il porte maintenant son propre libellé, voir
+   .sk-share-chip-label.) */
 .sk-piece-picker .sk-lobby-col-title,
 .sk-lobby-chat .sk-lobby-col-title {
   display: block;
@@ -7861,6 +7906,15 @@ h3 {
 .sk-ext-card .sk-lobby-col-title {
   display: block;
   margin: 16px 0 8px;
+}
+
+/* Et sur celle des réglages, pour la même raison. Elle portait les jetons des
+   manches, qui disaient d'eux-mêmes de quoi il s'agissait ; depuis qu'ils
+   sont passés dans la modale, il ne reste sur le téléphone qu'un bouton
+   « Modifier » et une ligne de résumé — sans ce titre, on ne sait pas ce
+   qu'on modifierait. */
+.sk-lobby-settings-card .sk-lobby-col-title {
+  display: block;
 }
 
 @media (min-width: 1000px) {
@@ -7885,7 +7939,15 @@ h3 {
   }
 
   /* Le « Quitter » quitte le flux : centré, il poussait les trois planches
-     vers le bas pour une commande qu'on ne cherche qu'en dernier. */
+     vers le bas pour une commande qu'on ne cherche qu'en dernier. Le code
+     en fait autant à l'autre bout (voir plus bas) : la rangée qui les porte
+     retombe alors à zéro, et l'enseigne remonte occuper toute la bande
+     qu'ils laissent libre entre eux. */
+  .sk-waiting-top {
+    display: block;
+    margin: 0;
+  }
+
   #sk-btn-leave-waiting {
     position: absolute;
     left: 0;
@@ -7935,8 +7997,9 @@ h3 {
       0 16px 34px rgba(0, 0, 0, 0.55);
   }
 
-  /* Même clou peint que la planche d'invitation, mêmes cotes (voir
-     .invite-card::before). */
+  /* Le clou peint qui tient la planche, dans sa marge haute : le
+     `padding-top` de chaque planche lui réserve sa hauteur plus le jeu, sans
+     quoi il retombe sur les capitales du titre. */
   .sk-lobby-col::before {
     content: '';
     position: absolute;
@@ -8068,6 +8131,31 @@ h3 {
     order: -1;
     flex: 1.6 1 356px;
     max-width: 440px;
+    /* La planche est un CADRE, pas une pile qui s'allonge : les pièces
+       restent en tête, le rôle occupe ce qui reste et défile dedans. Sans
+       ça, la liste poussait le bas de la planche à chaque arrivée. */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Dernier recours, quand la fenêtre est trop basse même pour deux
+       rangées de matelots (le plafond est posé en JS, voir
+       ajusterHauteurSalon) : la planche entière défile plutôt que d'être
+       coupée au ras du bois. Sans plafond elle ne défile pas — la règle ne
+       coûte rien tant que tout rentre. */
+    overflow: hidden auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
+  }
+
+  .sk-lobby-col--crew > * {
+    flex: none;
+  }
+
+  .sk-lobby-col--crew .lobby-players {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   /* Le rôle d'équipage sur deux colonnes. Une seule, il grandissait de 51 px
@@ -8079,11 +8167,27 @@ h3 {
   .sk-lobby-col .lobby-list {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 7px;
+    /* Des rangées de hauteur FIXE, et leur place réservée d'avance : le
+       cadre fait le nombre de rangs qu'il faut pour la table PLEINE (le
+       maximum du paquet, sur deux colonnes — voir --sk-crew-rangs, posé en
+       JS). Il est donc le même du premier joueur au dernier : c'était le
+       seul bloc du salon qui changeait de taille pendant qu'on attend, et il
+       emportait les boutons du bas avec lui. Les rangées vides ne se voient
+       pas — le bois de la planche est le même dessous. */
+    grid-auto-rows: var(--sk-crew-ligne);
+    align-content: start;
+    gap: var(--sk-crew-ecart);
+    height: calc(
+      var(--sk-crew-rangs) * var(--sk-crew-ligne)
+      + (var(--sk-crew-rangs) - 1) * var(--sk-crew-ecart)
+    );
     /* Le plafond ne borne que la hauteur : en largeur la liste ne déborde
        jamais, et `auto` sur les deux axes lui donnait une barre horizontale
-       vide en pied de planche. */
+       vide en pied de planche. Quand la fenêtre est trop courte pour les
+       cinq rangs, c'est ici qu'on défile — dans le cadre, sans le déformer. */
     overflow: hidden auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
   }
 
   /* Deux fois moins large : le pseudo se coupe plutôt que de pousser la
@@ -8212,17 +8316,38 @@ h3 {
   line-height: 1.35;
 }
 
+/* Le nombre de manches se détache du reste de la ligne : c'est la seule des
+   deux valeurs qu'on change vraiment d'une partie à l'autre, et le crème
+   éteint du résumé rendait un gras seul à peine perceptible. */
+.sk-lobby-summary strong {
+  font-weight: 700;
+  color: var(--sk-cream);
+}
+
 .sk-lobby-open {
   width: 100%;
   margin: 0;
 }
 
+/* Les cartes réellement dans le paquet, dans le cadre du salon. Elles
+   défilaient sur une seule ligne : à huit modules, la moitié sortait du
+   cadre par la droite et on ne voyait pas ce qu'on venait de cocher. Elles
+   passent donc à la ligne — la planche s'allonge de deux rangs, ce qui est
+   exactement l'information qu'on lui demande. */
 .sk-active-extensions {
   display: flex;
-  min-height: 74px;
-  align-items: center;
-  gap: 7px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  /* Le creux garde la MÊME hauteur qu'il y ait une extension ou huit : ce
+     sont les cartes qui s'adaptent à lui, pas lui qui s'adapte à elles (la
+     largeur est calculée en JS, voir ajusterCartesExtension). Seule prise,
+     une extension se voit en grand ; à huit elles rapetissent juste assez
+     pour tenir toutes dans le cadre — on ne défile jamais pour savoir ce
+     qu'il y a dans le paquet. Centrées, parce qu'une carte seule au coin
+     d'un creux vide se lit comme un reste. */
+  align-content: center;
+  justify-content: center;
+  height: 168px;
+  gap: 6px;
   padding: 2px 1px 6px;
 }
 
@@ -8233,12 +8358,16 @@ h3 {
   font-style: italic;
 }
 
+/* Le bouton se moule sur sa carte plutôt que de lui imposer des cotes : la
+   hauteur d'une .sk-card se déduit de sa largeur par le ratio 7:10, et deux
+   jeux de mesures concurrents finissaient toujours par se contredire d'un
+   pixel. `line-height: 0` pour qu'il ne reste pas la place d'une ligne de
+   texte sous le dessin. */
 .sk-active-extension {
   flex: 0 0 auto;
-  width: 43px;
-  height: 62px;
   padding: 0;
   overflow: hidden;
+  line-height: 0;
   border: 1px solid rgba(184, 137, 53, 0.62);
   border-radius: 3px;
   cursor: pointer;
@@ -8246,11 +8375,22 @@ h3 {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
+/* Toutes les cotes de la carte suivent le même facteur, comme la carte
+   retournée du plateau (voir --sk-flip-k) : à ne mettre à l'échelle que la
+   largeur, le liseré et le pied gardaient la taille d'une vignette sur une
+   carte grande comme la main. Le repli — 0.52, soit les 44 px d'avant —
+   sert tant que le JS n'a pas mesuré le creux. */
 .sk-active-extension .sk-card {
-  width: 100%;
-  height: 100%;
+  --sk-ext-k: var(--sk-ext-facteur, 0.52);
+  --sk-w: calc(84px * var(--sk-ext-k));
+  --sk-pad: calc(4px * var(--sk-ext-k));
+  --sk-foot: calc(30px * var(--sk-ext-k));
+  --sk-fig: calc(2.9rem * var(--sk-ext-k));
+  display: block;
+  border-radius: 0;
   transform: none;
   pointer-events: none;
+  box-shadow: none;
 }
 
 .sk-active-extension:hover,
@@ -8283,14 +8423,14 @@ h3 {
     margin: 0 auto 4px;
   }
 
+  /* L'étiquette tient le coin haut droit, « Quitter » le coin haut gauche :
+     tous deux hors du flux, si bien que l'enseigne centrée récupère toute la
+     bande du haut qui les sépare. */
   #sk-screen-waiting #sk-share-block {
     position: absolute;
-    top: 10px;
+    top: 0;
     right: 0;
-    width: 245px;
-    min-width: 245px;
-    max-width: 245px;
-    padding: 25px 12px 10px;
+    left: auto;
   }
 
   #sk-screen-waiting .sk-rounds-card {
@@ -8307,14 +8447,6 @@ h3 {
     max-width: 520px;
     margin: 0 auto 4px;
     padding: 22px 16px 13px;
-  }
-
-  #sk-screen-waiting .sk-lobby-settings-card .invite-label:not(.sk-lobby-col-title) {
-    margin: 0 0 5px;
-  }
-
-  #sk-screen-waiting .sk-lobby-settings-card .sk-rounds-hint {
-    margin: 6px 0 8px;
   }
 
   #sk-screen-waiting .sk-lobby-settings-card .sk-lobby-summary {
@@ -8958,6 +9090,26 @@ h3 {
   flex: 1 1 auto;
 }
 
+/* L'effectif, à côté du titre des réglages : le nombre et le mot, rien de
+   plus. Le minimum et le maximum restent sur la planche de l'équipage —
+   c'est là qu'on les lit, en regardant qui manque ; ici on veut juste savoir
+   combien on est sans compter les lignes. */
+.sk-lobby-effectif {
+  flex: none;
+  margin-top: -1px;
+  padding: 3px 9px;
+  border-radius: 2px;
+  border: 1px solid rgba(184, 137, 53, 0.42);
+  background: linear-gradient(180deg, rgba(255, 236, 196, 0.07), rgba(0, 0, 0, 0.32));
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--sk-brass-hi);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
+
 .sk-lobby-edit {
   flex: none;
   margin: -2px 0 0;
@@ -8981,10 +9133,14 @@ h3 {
   #sk-screen-waiting .sk-lobby-actions { flex: none; margin-top: 6px; padding-top: 8px; background: linear-gradient(180deg, transparent, rgba(20, 13, 7, 0.92) 38%); }
   .sk-lobby-summary { min-height: 0; margin: 0 0 11px; color: var(--sk-cream-3); font-size: 0.88rem; line-height: 1.35; }
   .sk-lobby-open { width: 100%; margin: 0; }
-  .sk-active-extensions { display: flex; min-height: 74px; align-items: center; gap: 7px; overflow-x: auto; padding: 2px 1px 6px; }
-  .sk-active-extensions:empty::before { content: 'Aucune carte d’extension.'; color: var(--sk-cream-3); font-size: 0.82rem; font-style: italic; }
-  .sk-active-extension { flex: 0 0 auto; width: 43px; height: 62px; padding: 0; overflow: hidden; border: 1px solid rgba(184, 137, 53, 0.62); border-radius: 3px; background: #160e08; }
-  .sk-active-extension .sk-card { width: 100%; height: 100%; transform: none; pointer-events: none; }
   .sk-lobby-config-modal { width: min(560px, 100%); }
   .sk-config-section + .sk-config-section { margin-top: 18px; padding-top: 15px; border-top: 1px solid rgba(184, 137, 53, 0.28); }
+
+  /* L'étiquette reste dans le flux, au bout de la rangée que « Quitter »
+     ouvre : sur une colonne où la hauteur est comptée, la mettre à côté du
+     lien plutôt qu'en dessous économise une ligne entière. */
+  #sk-screen-waiting #sk-share-block {
+    flex: 0 1 auto;
+    max-width: 66vw;
+  }
 }

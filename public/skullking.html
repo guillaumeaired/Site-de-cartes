@@ -44,7 +44,24 @@
     </section>
 
     <section id="sk-screen-waiting" class="screen hidden">
-      <button id="sk-btn-leave-waiting" class="btn-link">← Quitter</button>
+      <!-- Le coin haut gauche du salon : ce qu'on quitte, puis le code, juste
+           dessous. Le code ne vit plus dans la grille des planches — c'est la
+           première chose qu'on vient chercher en arrivant, et la dernière
+           qu'on relit pour la dicter à quelqu'un. « Quitter » garde son coin,
+           le même que sur l'écran de jeu : on sort d'une partie par la même
+           porte quel que soit l'écran. En paysage les deux passent en absolu
+           (la rangée retombe à zéro et l'enseigne occupe toute la bande) ;
+           sous 1000px elles restent dans le flux, au-dessus de l'enseigne. -->
+      <div class="sk-waiting-top">
+        <button id="sk-btn-leave-waiting" class="btn-link">← Quitter</button>
+
+        <div id="sk-share-block" class="sk-share-chip hidden">
+          <p class="sk-share-chip-label">Code de la partie</p>
+          <div class="sk-share-chip-code" id="sk-share-code"></div>
+          <button id="sk-btn-copy" class="sk-share-chip-copy" type="button">Copier le lien</button>
+          <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+        </div>
+      </div>
 
       <!-- L'enseigne, en grand : le salon était le seul écran de la partie
            où la marque n'apparaissait nulle part — on arrivait par un lien
@@ -52,35 +69,30 @@
            venait de s'asseoir. -->
       <img class="sk-waiting-logo" src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
 
+      <!-- La planche des réglages ne porte plus que leur RÉSUMÉ : les trois
+           réglages de partie (manches, paquet, rythme) vivent ensemble dans
+           la modale que « Modifier » ouvre. Le nombre de manches faisait
+           exception — dix jetons de laiton en travers du salon pour un
+           réglage qu'on touche une fois — et il coupait la seule ligne qui
+           dit d'un coup d'œil à quoi on va jouer. -->
       <section class="sk-lobby-col sk-lobby-settings-card">
         <div class="sk-lobby-settings-head">
           <p class="invite-label sk-lobby-col-title">Réglages de la partie</p>
+          <!-- L'effectif se lit ici, en tête de salon : c'est la seule
+               donnée qu'on surveille en attendant, et elle était jusque-là
+               noyée dans le libellé de la liste, au milieu de la planche. -->
+          <span id="sk-lobby-effectif" class="sk-lobby-effectif">1 joueur</span>
           <button id="sk-btn-lobby-settings" class="btn sk-lobby-edit" type="button">Modifier</button>
         </div>
-        <p class="invite-label">Nombre de manches</p>
-        <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
-        <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
         <p id="sk-lobby-settings-summary" class="sk-lobby-summary"></p>
       </section>
 
-      <!-- Le salon se lit en quatre planches côte à côte dès qu'il y a de la
-           largeur : l'équipage à gauche, le code, les réglages (extensions
-           comprises), et la discussion au bout. Sous 1000px la grille
-           redevient une simple colonne et l'ordre du DOM suffit — le code
-           d'abord, la discussion en pied. -->
+      <!-- Le salon se lit en trois planches côte à côte dès qu'il y a de la
+           largeur : les extensions à gauche, l'équipage au milieu, et la
+           discussion au bout. Le code, lui, a quitté la grille pour la barre
+           du haut. Sous 1000px la grille redevient une simple colonne et
+           l'ordre du DOM suffit — la discussion en pied. -->
       <div class="sk-lobby-grid">
-        <!-- Le code garde une planche à lui : il est court, et c'est la
-             première chose qu'on va chercher en arrivant. La discussion lui
-             tenait compagnie dans la même colonne pour combler ce vide ;
-             elle est partie au bout de la rangée, là où l'on parle à
-             l'équipage qu'on a sous les yeux. -->
-        <div id="sk-share-block" class="invite-card sk-lobby-col hidden">
-          <p class="invite-label sk-lobby-col-title">Code de la partie</p>
-          <div class="code-badge" id="sk-share-code"></div>
-          <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
-          <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
-        </div>
-
         <div class="sk-lobby-pile">
           <section class="sk-lobby-col sk-ext-card">
             <p class="invite-label sk-lobby-col-title">Extensions</p>
@@ -97,7 +109,10 @@
           </div>
 
           <div id="sk-lobby-players" class="lobby-players hidden">
-            <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (<span id="sk-lobby-range">3 à 7</span>)</p>
+            <!-- Le compte est passé en tête de salon, à côté des réglages
+                 (voir .sk-lobby-effectif) : il ne reste ici que les bornes
+                 du paquet, la seule chose que ce libellé disait de plus. -->
+            <p class="invite-label">Joueurs — <span id="sk-lobby-range">3 à 7</span></p>
             <ul id="sk-lobby-list" class="lobby-list"></ul>
           </div>
         </div>
@@ -464,6 +479,13 @@
     <div class="modal-content sk-lobby-config-modal">
       <button class="sk-modal-x" type="button" data-close-lobby-modal aria-label="Fermer">&times;</button>
       <h2 id="sk-lobby-settings-title">Réglages de la partie</h2>
+      <!-- En tête : c'est le réglage dont on parle en premier quand on se
+           met d'accord sur une partie, et le seul dont dépend sa durée. -->
+      <section class="sk-config-section">
+        <p class="invite-label">Nombre de manches</p>
+        <div id="sk-rounds-grid" class="sk-rounds-grid" role="group" aria-label="Nombre de manches"></div>
+        <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
+      </section>
       <section class="sk-config-section">
         <p class="invite-label">Paquet de cartes</p>
         <div id="sk-deck-grid" class="sk-deck-grid" role="group" aria-label="Paquet de cartes"></div>

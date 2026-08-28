@@ -537,20 +537,37 @@ function sanitizeChatText(text) {
   return clean || null;
 }
 
-// Renvoie null si le joueur a le droit d'écrire, sinon la raison du refus.
+// Vrai si le message doit être écarté. Ce garde-fou renvoyait la RAISON du
+// refus, pour la dire au joueur ; elle finissait en toast au travers du haut
+// de l'écran (voir le handler skullking-chat). Il ne renvoie plus qu'un
+// verdict : le message n'apparaît pas, ce qui se voit tout seul.
 function chatRateLimit(player, now) {
-  if (player.chatLast && now - player.chatLast < CHAT_MIN_INTERVAL_MS) {
-    return 'Doucement — un message à la fois.';
-  }
+  if (player.chatLast && now - player.chatLast < CHAT_MIN_INTERVAL_MS) return true;
   const recents = (player.chatTimes || []).filter((t) => now - t < CHAT_BURST_WINDOW_MS);
-  if (recents.length >= CHAT_BURST_MAX) {
-    return 'Trop de messages d\'affilée, laisse souffler la table.';
-  }
+  if (recents.length >= CHAT_BURST_MAX) return true;
   player.chatTimes = recents;
-  return null;
+  return false;
 }
 
 let chatSeq = 0;
+
+// Les allées et venues du salon s'écrivent dans la discussion. Elles ne se
+// disaient qu'en toast — visible trois secondes, et seulement par ceux qui
+// regardaient l'écran à cet instant : qui arrivait pendant qu'on choisissait
+// sa pièce ne laissait aucune trace, et le fil qu'on relit en arrivant ne
+// disait pas qui était déjà là.
+//
+// Elles passent par le chat ordinaire, donc par son historique (renvoyé avec
+// le salon et avec l'état de jeu) : une reconnexion les retrouve comme le
+// reste. Pas de playerId ni de pseudo — ces lignes n'ont pas d'auteur, et
+// c'est `system` qui dit au client de les poser en italique, sans pastille
+// de nom (voir .sk-chat-line--systeme).
+function pushSystemChat(io, room, text) {
+  chatSeq += 1;
+  const message = { id: `c${chatSeq}`, system: true, text, at: Date.now() };
+  room.chat = [...(room.chat || []), message].slice(-CHAT_HISTORY);
+  broadcastToRoom(io, room, 'skullking-chat-message', message);
+}
 
 const rooms = new Map();
 
@@ -1396,6 +1413,9 @@ function removeFromLobby(io, room, id) {
   if (room.hostId === id) {
     room.hostId = room.players[Math.floor(Math.random() * room.players.length)].id;
   }
+  // Le seul chemin de sortie du salon : « Quitter » comme le délai de grâce
+  // d'une déconnexion y passent (finalizeSkullKingDisconnect).
+  pushSystemChat(io, room, `${removed.nickname} a quitté le salon.`);
   broadcastToRoom(io, room, 'skullking-player-left', { nickname: removed.nickname });
   broadcastLobby(io, room);
 }
@@ -1660,6 +1680,9 @@ function registerSkullKingHandlers(io, socket) {
     rooms.set(code, room);
     socket.data.skullkingRoom = code;
     socket.emit('skullking-room-created', { code });
+    // L'hôte ouvre le fil : sans cette ligne, celui qui arrive en second lit
+    // « Untel a rejoint le salon » sans savoir qui l'attendait déjà.
+    pushSystemChat(io, room, `${nickname} a ouvert le salon.`);
     // Mode essai : l'équipage s'assied tout seul (voir ESSAI_BOTS). Les mêmes
     // gardes que le bouton « Ajouter un bot » — l'adaptateur doit être là, et
     // la table ne doit pas déborder.
@@ -1708,6 +1731,9 @@ function registerSkullKingHandlers(io, socket) {
       roundHistory: [],
     });
     socket.data.skullkingRoom = code;
+    // Après le push : broadcastToRoom parcourt room.players, et l'arrivant
+    // doit lire sa propre arrivée comme les autres.
+    pushSystemChat(io, room, `${nickname} a rejoint le salon.`);
     broadcastLobby(io, room);
   });
 
@@ -1840,11 +1866,13 @@ function registerSkullKingHandlers(io, socket) {
     if (!text) return;
 
     const now = Date.now();
-    const refus = chatRateLimit(player, now);
-    if (refus) {
-      sendError(socket, refus);
-      return;
-    }
+    // Le garde-fou anti-flood reste, mais il se tait : son refus partait en
+    // `skullking-error`, et dans le salon un `skullking-error` devient un
+    // toast en haut de l'écran. On écrivait deux messages coup sur coup et
+    // « Doucement — un message à la fois. » venait barrer le haut du salon,
+    // par-dessus le code de la partie, pour dire quelque chose que la seule
+    // absence du message dit déjà. Le message est simplement écarté.
+    if (chatRateLimit(player, now)) return;
     player.chatLast = now;
     player.chatTimes = [...(player.chatTimes || []), now];
 
@@ -1868,7 +1896,11 @@ function registerSkullKingHandlers(io, socket) {
     if (!room || room.phase !== 'lobby' || !bots) return;
     if (socket.id !== room.hostId) return;
     if (room.players.length >= maxPlayersFor(extensionsOf(room))) return;
-    if (bots.addBot(io, room, registerSkullKingHandlers)) broadcastLobby(io, room);
+    if (bots.addBot(io, room, registerSkullKingHandlers)) {
+      const ajoute = room.players[room.players.length - 1];
+      if (ajoute) pushSystemChat(io, room, `${ajoute.nickname} a rejoint le salon.`);
+      broadcastLobby(io, room);
+    }
   });
 
   // OUTIL DE TEST, pendant du précédent : retire un bot du salon. Un bot
