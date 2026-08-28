@@ -979,6 +979,11 @@ const roundsHint = document.getElementById('sk-rounds-hint');
 const lobbyChatLog = document.getElementById('sk-lobby-chat-log');
 const deckGrid = document.getElementById('sk-deck-grid');
 const deckHint = document.getElementById('sk-deck-hint');
+// Ce qui reste lisible quand le volet est refermé : sans ça, replier le
+// paquet reviendrait à cacher lequel on joue (voir .sk-fold dans la CSS).
+const deckEtat = document.getElementById('sk-deck-etat');
+const paceEtat = document.getElementById('sk-pace-etat');
+const extEtat = document.getElementById('sk-ext-etat');
 const pacePresetsEl = document.getElementById('sk-pace-presets');
 const paceList = document.getElementById('sk-pace-list');
 const paceHint = document.getElementById('sk-pace-hint');
@@ -1113,7 +1118,6 @@ function ajusterHauteurSalon() {
   // Toujours remettre à zéro d'abord : les hauteurs se mesurent sur la mise
   // en page naturelle, pas sur celle du dernier passage.
   lobbyList.style.maxHeight = '';
-  if (lobbyChatLog) lobbyChatLog.style.height = '';
 
   // Sous 1000px les planches sont empilées : la grille fait leur somme, il
   // n'y a plus de « planche la plus haute » à ne pas dépasser.
@@ -1147,19 +1151,15 @@ function ajusterHauteurSalon() {
     if (plafond > 120) lobbyList.style.maxHeight = `${plafond}px`;
   }
 
-  // La discussion, elle, REMPLIT ce qui reste sous le code plutôt que de s'y
-  // borner : c'est ce qui met la colonne à la hauteur des autres au lieu de
-  // laisser du bois nu en dessous.
-  if (lobbyChatLog && pile) {
-    const place = placeDisponible(lobbyChatLog, pile, cible);
-    if (place > 90) lobbyChatLog.style.height = `${place}px`;
-    // Le fil est collé en bas APRÈS la mesure, jamais avant. `ajouterMessage`
-    // le fait déjà en posant chaque message, mais sur la hauteur d'alors —
-    // celle du plancher CSS. La planche grandit juste après, le `scrollTop`
-    // ne suit pas, et le dernier message se retrouvait coupé en deux au ras
-    // du formulaire : on voyait « Pablo 19:00 » sans lire ce qu'il disait.
-    lobbyChatLog.scrollTop = lobbyChatLog.scrollHeight;
-  }
+  // La discussion, elle, ne se mesure plus : sa hauteur est fixe, posée en
+  // CSS (voir .sk-lobby-chat .sk-chat-log). Elle se calait autrefois sur la
+  // planche la plus haute du salon ; depuis que le paquet, le rythme et
+  // l'extension se replient, cette hauteur-là change à chaque volet ouvert —
+  // le fil aurait grandi et rétréci sous les yeux de qui écrit dedans.
+  // Reste à le coller en bas : c'est ici qu'on repasse après chaque rendu du
+  // salon, et un dernier message coupé en deux au ras du formulaire se lit
+  // « Pablo 19:00 » sans qu'on sache ce qu'il disait.
+  if (lobbyChatLog) lobbyChatLog.scrollTop = lobbyChatLog.scrollHeight;
 }
 
 // Le paquet, réglé par l'hôte. Deux vignettes plutôt que deux libellés : ce
@@ -1299,6 +1299,18 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
   // (sa taille divisée par la manche la plus chargée), pas d'une constante —
   // douze cartes de plus ouvrent un huitième siège, une seule non.
   extensionHint.textContent = `${deckSize} cartes — 3 à ${maxPlayers} joueurs`;
+
+  // Volet fermé : combien de modules sont pris. Le compte suffit à savoir
+  // s'il faut ouvrir — lesquels exactement, c'est la question qu'on se pose
+  // en ouvrant, pas avant.
+  const prises = lignes.filter((m) => actives[m.key]).length;
+  if (extEtat) {
+    extEtat.textContent = !prises
+      ? 'Aucune'
+      : toutes
+        ? `Toutes (${lignes.length})`
+        : `${prises} sur ${lignes.length}`;
+  }
 }
 
 function renderDeckPicker(style, isHost) {
@@ -1320,6 +1332,7 @@ function renderDeckPicker(style, isHost) {
   });
   const actif = DECK_CHOICES.find((d) => d.key === choisi);
   deckHint.textContent = actif ? actif.hint : '';
+  if (deckEtat) deckEtat.textContent = actif ? actif.label : '';
 }
 
 // Le nombre de manches, réglé par l'hôte. Un bouton par valeur plutôt qu'un
@@ -1423,6 +1436,10 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
   });
 
   const preset = (presets || []).find((p) => p.key === presetActif);
+  // Volet fermé : l'allure retenue, en un mot. « Sur mesure » quand l'hôte a
+  // bricolé ses propres durées — c'est justement le cas où on veut savoir
+  // qu'il y a quelque chose à ouvrir.
+  if (paceEtat) paceEtat.textContent = preset ? preset.label : 'Sur mesure';
   if (preset) {
     paceHint.textContent = preset.hint || '';
   } else {
@@ -1528,6 +1545,13 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
 });
 
 window.addEventListener('resize', ajusterHauteurSalon);
+
+// Ouvrir un volet fait grandir sa planche : le plafond du rôle d'équipage se
+// déduit justement de la hauteur des planches voisines, il est donc à refaire.
+// `toggle` ne remonte pas (il ne bulle pas), d'où la capture à la racine.
+document.addEventListener('toggle', (e) => {
+  if (e.target instanceof Element && e.target.classList.contains('sk-fold')) ajusterHauteurSalon();
+}, true);
 
 btnExtension.addEventListener('click', () => {
   if (!myIsHost) return;

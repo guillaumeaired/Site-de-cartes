@@ -1027,6 +1027,25 @@ h3 {
   max-width: 300px;
 }
 
+/* Le fil du salon a une hauteur FIXE, et deux fois plus courte qu'avant. Il
+   se réglait jusqu'ici sur la planche la plus haute du salon (voir
+   ajusterHauteurSalon) : c'était juste tant que la colonne des réglages
+   déroulait tout son contenu, mais elle se replie maintenant en trois
+   lignes, et un fil qui se cale sur ses voisines aurait suivi — changeant de
+   taille à chaque volet ouvert, sous les yeux de qui écrit. Trois messages
+   visibles, le reste défile : c'est une salle d'attente, pas une messagerie.
+   Le `min-height` du fil de jeu est explicitement annulé — sans ça il
+   l'emportait sur la hauteur posée ici. */
+.sk-lobby-chat .sk-chat-log {
+  flex: none;
+  /* Hauteur de boîte, bordures comprises (box-sizing: border-box en tête de
+     feuille) : en paysage le creux prend 8 px de rembourrage de chaque côté,
+     il reste de quoi lire trois messages. */
+  height: 84px;
+  min-height: 0;
+  max-height: none;
+}
+
 .lobby-list {
   list-style: none;
   margin: 0;
@@ -6055,6 +6074,100 @@ h3 {
    au même rapport 7:10 que sur le tapis : on reconnaît ce qu'on prend. Le
    choix retenu est frappé en laiton, comme le nombre de manches juste en
    dessous. */
+/* --- LES VOLETS DU SALON ---------------------------------------------
+   Le salon présentait ses réglages tous ouverts : deux vignettes de paquet,
+   trois allures, cinq durées, huit interrupteurs d'extension — une trentaine
+   de commandes en travers de l'écran, alors qu'on n'en touche presque jamais
+   aucune. Le paquet, le rythme et l'extension arrivent maintenant repliés :
+   on voit trois lignes de titre, et ce qu'on va jouer se lit dans l'état
+   inscrit à droite de chacune (« Classiques », « Normal », « 8 modules »).
+
+   Un <details> natif, pas un bouton et une classe : c'est lui qui porte
+   l'ouverture, le clavier et l'annonce aux lecteurs d'écran, et il garde son
+   état tout seul entre deux rendus du salon — les réglages se redessinent à
+   chaque événement de lobby, un volet géré en JS se serait refermé sous les
+   doigts de l'hôte à chaque fois qu'un joueur arrive.
+   -------------------------------------------------------------------- */
+.sk-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  /* La zone de clic dépasse le texte : le titre fait 0,62 rem, viser une
+     ligne de 9 px au doigt n'est pas une cible. */
+  padding: 5px 0;
+  list-style: none;
+  user-select: none;
+}
+
+/* Le triangle du navigateur est remplacé par un chevron dessiné : celui de
+   Chrome est noir plein, il jurait sur le bois autant qu'il aurait juré sur
+   le laiton. */
+.sk-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sk-fold > summary::after {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  border-right: 2px solid var(--sk-brass);
+  border-bottom: 2px solid var(--sk-brass);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.sk-fold[open] > summary::after {
+  transform: translateY(1px) rotate(-135deg);
+}
+
+.sk-fold > summary:hover .sk-fold-nom {
+  color: var(--sk-brass-hi);
+}
+
+.sk-fold-nom {
+  flex: none;
+}
+
+/* L'état, chassé à droite du titre : c'est lui qui rend le repli gratuit.
+   Sans lui, refermer le paquet reviendrait à cacher lequel on joue, et il
+   faudrait rouvrir les trois volets pour savoir à quoi on s'assoit. */
+.sk-fold-etat {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-family: 'Spectral', Georgia, serif;
+  font-weight: 400;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--sk-cream-3);
+}
+
+/* Ouvert, l'état ne sert plus à rien : le contenu du volet le dit en entier,
+   et en double il se lisait comme un second réglage posé sur le titre. */
+.sk-fold[open] > summary .sk-fold-etat {
+  opacity: 0;
+}
+
+.sk-fold-corps {
+  padding-top: 4px;
+}
+
+/* Le volet de l'extension est coiffé par le TITRE de sa planche, pas par un
+   libellé de champ : il porte donc aussi .sk-lobby-col-title, qui le pose en
+   `block` (deux fois, dont une en paysage). Il faut plus spécifique que ces
+   deux-là pour lui rendre sa rangée titre / état / chevron. */
+.sk-ext-card .sk-fold > summary.sk-lobby-col-title {
+  display: flex;
+  padding-bottom: 7px;
+}
+
 .sk-deck-field {
   margin: 4px auto 2px;
   max-width: 320px;
@@ -6129,9 +6242,17 @@ h3 {
   margin-top: 7px;
 }
 
-.sk-rounds-field {
-  margin: 10px auto 4px;
-  max-width: 320px;
+/* LES MANCHES — leur propre planche, en travers, sous l'enseigne. Elles
+   étaient un réglage parmi d'autres dans la colonne du milieu ; c'est
+   pourtant la seule décision du salon que toute la table regarde (elle dit
+   combien de temps on en a), et la seule qui reste dépliée. */
+.sk-rounds-card {
+  margin: 4px auto 18px;
+  max-width: 340px;
+}
+
+.sk-rounds-card .sk-rounds-grid {
+  margin-top: 9px;
 }
 
 .sk-rounds-grid {
@@ -7673,6 +7794,14 @@ h3 {
   display: block;
 }
 
+/* La planche des manches n'est pas une colonne : elle est seule en travers,
+   au-dessus de la grille, et son titre EST son libellé de réglage — le
+   masquer sur téléphone laissait dix jetons de laiton sans un mot pour dire
+   ce qu'ils comptent. */
+.sk-rounds-card .sk-lobby-col-title {
+  display: block;
+}
+
 /* Sauf sur la planche des extensions. Les autres intertitres nomment une
    COLONNE, et une colonne n'existe qu'en paysage — empilés, ils redisaient
    ce que la page montre déjà. Celui-ci nomme un RÉGLAGE, comme « Nombre de
@@ -7732,7 +7861,7 @@ h3 {
     align-items: flex-start;
     justify-content: center;
     gap: 16px;
-    margin: 10px 0 0;
+    margin: 16px 0 0;
   }
 
   /* Chaque colonne est une planche punaisée, comme le bloc d'invitation :
@@ -7767,6 +7896,17 @@ h3 {
     height: 16px;
     background: url('assets/skin/clou-laiton.webp') 50% 50% / contain no-repeat;
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+  }
+
+  /* La planche des manches est hors grille : elle ne suit pas les colonnes,
+     elle les coiffe. Plus large qu'elles — la rangée des dix jetons fait
+     298 px à elle seule et se lit mieux avec de l'air autour. Elle vient
+     après .sk-lobby-col, dont elle reprend le bois : à spécificité égale,
+     c'est l'ordre qui lui rend sa largeur et son centrage. */
+  .sk-rounds-card {
+    max-width: 420px;
+    margin: 6px auto 0;
+    padding-bottom: 14px;
   }
 
   /* L'équipage est la planche qu'on regarde le plus (qui est là, qui a pris
@@ -7827,16 +7967,11 @@ h3 {
     margin-top: 8px;
   }
 
-  /* Réglée en JS pour que la pile tombe à la hauteur des planches voisines
-     (voir ajusterHauteurSalon) ; ce plancher n'est là que pour le premier
-     rendu, avant la mesure.
-
-     Et un CREUX dans la planche, comme le champ de saisie juste en dessous :
+  /* Un CREUX dans la planche, comme le champ de saisie juste en dessous :
      c'était le seul bloc du salon dont le contenu flottait à même le bois,
-     sans rien pour dire où le fil commence ni où il s'arrête. */
+     sans rien pour dire où le fil commence ni où il s'arrête. La hauteur,
+     elle, vient de la règle de base — elle ne se mesure plus. */
   .sk-lobby-chat .sk-chat-log {
-    flex: none;
-    height: 150px;
     padding: 8px 9px;
     border-radius: 2px;
     background: linear-gradient(180deg, rgba(10, 6, 3, 0.5), rgba(26, 18, 11, 0.38));
@@ -7929,8 +8064,7 @@ h3 {
   /* Les blocs internes perdent leurs marges de colonne : c'est la planche
      qui borne maintenant, plus le `max-width: 300px` de chacun. */
   .sk-lobby-col .sk-piece-picker,
-  .sk-lobby-col .lobby-players,
-  .sk-lobby-col .sk-rounds-field {
+  .sk-lobby-col .lobby-players {
     max-width: none;
     margin-left: 0;
     margin-right: 0;
@@ -7951,11 +8085,6 @@ h3 {
 
   .sk-lobby-col .lobby-players {
     margin-top: 0;
-    margin-bottom: 0;
-  }
-
-  .sk-lobby-col .sk-rounds-field {
-    margin-top: 16px;
     margin-bottom: 0;
   }
 
