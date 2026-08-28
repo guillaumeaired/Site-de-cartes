@@ -524,8 +524,11 @@
            où l'on vient de cocher des lignes, il faut un bouton qui dise que
            c'est réglé. Il ne valide rien au sens strict — chaque
            interrupteur part déjà au serveur — il referme simplement le
-           cadre de sélection. -->
-      <div class="sk-lobby-config-actions">
+           cadre de sélection.
+           Il ne s'affiche que pour l'hôte : un invité n'a rien coché, il est
+           venu lire — pour lui la croix suffit, et « Valider » lui ferait
+           croire qu'il vient de décider du paquet. -->
+      <div id="sk-ext-actions" class="sk-lobby-config-actions">
         <button class="btn btn-primary sk-lobby-valider" type="button" data-close-lobby-modal>Valider</button>
       </div>
     </div>

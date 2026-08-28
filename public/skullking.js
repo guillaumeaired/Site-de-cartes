@@ -999,6 +999,8 @@ const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
 const extList = document.getElementById('sk-ext-list');
 const activeExtensions = document.getElementById('sk-active-extensions');
+const btnLobbyExtensions = document.getElementById('sk-btn-lobby-extensions');
+const extActions = document.getElementById('sk-ext-actions');
 const lobbySettingsSummary = document.getElementById('sk-lobby-settings-summary');
 const lobbySettingsModal = document.getElementById('sk-lobby-settings-modal');
 const lobbyExtensionsModal = document.getElementById('sk-lobby-extensions-modal');
@@ -1048,7 +1050,7 @@ function fermerModalesSalon() {
 }
 
 document.getElementById('sk-btn-lobby-settings').addEventListener('click', () => ouvrirModalSalon(lobbySettingsModal));
-document.getElementById('sk-btn-lobby-extensions').addEventListener('click', () => ouvrirModalSalon(lobbyExtensionsModal));
+btnLobbyExtensions.addEventListener('click', () => ouvrirModalSalon(lobbyExtensionsModal));
 document.querySelectorAll('[data-close-lobby-modal]').forEach((button) => button.addEventListener('click', fermerModalesSalon));
 [lobbySettingsModal, lobbyExtensionsModal].forEach((modal) => modal.addEventListener('click', (e) => {
   if (e.target === modal) modal.classList.add('hidden');
@@ -1306,6 +1308,19 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
   btnExtension.setAttribute('aria-pressed', String(toutes));
   btnExtension.disabled = !isHost;
   btnExtension.classList.toggle('sk-extension-toggle--readonly', !isHost);
+  // « Tout activer » est un geste, pas un état : chez un invité il n'a rien à
+  // dire — les huit lignes en dessous disent déjà ce qui est pris — et un
+  // interrupteur maître mort en tête de planche se lit comme une panne. Il
+  // disparaît donc, la planche s'ouvre directement sur sa liste.
+  btnExtension.classList.toggle('hidden', !isHost);
+
+  // Le bouton du cadre dit ce que le clic va permettre, pas ce que la planche
+  // contient : l'hôte y ajoute des extensions, un invité vient les lire. Lui
+  // laisser « Ajouter » était une promesse fausse — il ouvrait une planche
+  // dont tous les interrupteurs sont morts. Même chose pour « Valider » au
+  // pied de la modale : rien à valider quand on ne peut rien changer.
+  btnLobbyExtensions.textContent = isHost ? 'Ajouter des extensions' : 'Voir les extensions';
+  extActions.classList.toggle('hidden', !isHost);
 
   extList.innerHTML = '';
   lignes.forEach((module) => {
