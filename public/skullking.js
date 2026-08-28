@@ -120,6 +120,21 @@ function sortHandForDisplay(hand) {
   });
 }
 
+// Le reliquat de Juanita Jade se range à L'ENVERS d'une main. Dans l'éventail
+// les spéciales ferment la marche parce qu'on y cherche d'abord une couleur ;
+// sur la planche du reliquat, la question est l'inverse — « le Skull King est
+// encore dehors ? », « combien de Pirates restent ? » — et cette réponse-là
+// doit tomber sous les yeux en premier, donc en haut de la grille. Les
+// numérotées, qu'on balaie famille par famille, occupent les rangées basses.
+//
+// Les deux paquets sont rendus séparément pour qu'une rangée ne soit jamais
+// à cheval sur les deux : c'est ce qui fait qu'on lit « la ligne des
+// spéciales » et non « les six premières cartes ».
+function grouperReliquatJuanita(cards) {
+  const trie = sortHandForDisplay(cards);
+  return [trie.filter((c) => c.kind !== 'number'), trie.filter((c) => c.kind === 'number')];
+}
+
 // Indice visuel de la couleur imposée (purement indicatif, le serveur reste
 // seul juge à la validation) - même logique que server/skullking.js
 // (ledSuitOf/mustFollowSuit/isCardPlayable), dupliquée par convention.
@@ -3452,7 +3467,7 @@ window.addEventListener('resize', () => {
   handLayoutTimer = setTimeout(() => {
     layoutHand();
     const row = powerPanel.querySelector('.sk-juanita-row');
-    if (row) ajusterGrilleJuanita(row, row.childElementCount);
+    if (row) ajusterGrilleJuanita(row, (row.dataset.groupes || '').split(',').map(Number));
   }, 120);
 });
 
@@ -3463,7 +3478,14 @@ window.addEventListener('resize', () => {
 // est mis à la même échelle par --sk-flip-k, sinon une carte de 30 px se
 // retrouve avec un pied de 30 px.
 const JUANITA_GAP = 6;
-function ajusterGrilleJuanita(row, n) {
+// `paquets` : le nombre de cartes de chaque groupe affiche l'un sous l'autre
+// (les speciales, puis les numerotees). Chaque groupe demarre sa propre
+// rangee, il faut donc compter les lignes groupe par groupe - un simple
+// ceil(total / colonnes) sous-estimait la hauteur et les dernieres cartes
+// passaient sous le bord du panneau.
+function ajusterGrilleJuanita(row, paquets) {
+  const groupes = (Array.isArray(paquets) ? paquets : [paquets]).filter((g) => g > 0);
+  const n = groupes.reduce((somme, g) => somme + g, 0);
   if (!n) return;
   requestAnimationFrame(() => {
     if (!row.isConnected) return;
@@ -3472,9 +3494,14 @@ function ajusterGrilleJuanita(row, n) {
     const styles = getComputedStyle(powerPanel);
     // Hauteur laissée à la grille : le panneau moins ce qui l'accompagne
     // (la consigne au-dessus, le bouton de sortie en dessous).
+    // L'écart entre les éléments du panneau (consigne, minuteur, grille,
+    // bouton) est celui du panneau lui-même, pas celui de la grille : les
+    // compter à 6 px quand le panneau en met 10 laissait la grille se croire
+    // au large de quelques pixels par voisin.
+    const ecartPanneau = parseFloat(styles.rowGap) || JUANITA_GAP;
     let occupe = parseFloat(styles.paddingTop || 0) + parseFloat(styles.paddingBottom || 0);
     [...powerPanel.children].forEach((el) => {
-      if (el !== row) occupe += el.getBoundingClientRect().height + JUANITA_GAP;
+      if (el !== row) occupe += el.getBoundingClientRect().height + ecartPanneau;
     });
     const largeurDispo = dispo.width || panneau.width;
     const hauteurDispo = panneau.height - occupe;
@@ -3484,7 +3511,7 @@ function ajusterGrilleJuanita(row, n) {
     for (let w = 96; w >= 26; w -= 1) {
       const h = w / 0.7;
       const colonnes = Math.max(1, Math.floor((largeurDispo + JUANITA_GAP) / (w + JUANITA_GAP)));
-      const lignes = Math.ceil(n / colonnes);
+      const lignes = groupes.reduce((somme, g) => somme + Math.ceil(g / colonnes), 0);
       if (lignes * h + (lignes - 1) * JUANITA_GAP <= hauteurDispo) {
         choisie = w;
         break;
@@ -4080,13 +4107,15 @@ function renderPower(state) {
       powerPanel.appendChild(btn);
     });
   } else if (pending.kind === 'juanita') {
-    // Triées comme une main : par famille puis par hauteur, les spéciales
-    // groupées à la fin. Le reliquat arrivait dans l'ordre du mélange —
+    // Rangées : par famille puis par hauteur, mais les SPÉCIALES EN HAUT et
+    // les numérotées en dessous — l'inverse de l'éventail (voir
+    // grouperReliquatJuanita). Le reliquat arrivait dans l'ordre du mélange —
     // jusqu'à 85 cartes en vrac, où répondre à « le 13 vert est-il encore
     // dehors ? » demandait de balayer toute la grille. Rangées, la question
     // se règle en regardant un endroit. La vague de retournement suit la
-    // grille, elle balaie donc famille après famille.
-    const cards = sortHandForDisplay(pending.revealCards || []);
+    // grille : elle découvre donc les spéciales en premier.
+    const paquets = grouperReliquatJuanita(pending.revealCards || []);
+    const cards = paquets.flat();
     const key = cards.map((c) => c.id).join(',');
     if (juanitaSessionKey !== key) {
       juanitaSessionKey = key;
@@ -4101,18 +4130,55 @@ function renderPower(state) {
     // taillées à la volée pour tenir d'un seul tenant (voir ajusterGrilleJuanita).
     powerPanel.classList.add('sk-power-panel--juanita');
     // Plus de compteur « 12/85 » : il ne comptait qu'une corvée. La consigne
-    // dit ce qu'il y a à faire — lire — et la barre en dessous dit combien de
-    // temps il reste pour ça.
+    // dit ce qu'il y a à faire — lire — et la barre juste en dessous dit
+    // combien de temps il reste pour ça.
     hint.textContent = `Les ${cards.length} cartes non distribuées ce tour-ci. Elles se retournent toutes seules — survole-en une pour la découvrir tout de suite.`;
+
+    // LE MINUTEUR. Une barre qui se vide, posée sous la consigne et AU-DESSUS
+    // de la grille : sous les cartes, elle tombait au ras du bouton de sortie,
+    // là où l'œil ne passe jamais tant qu'il lit. Elle est là parce que c'est
+    // le seul moment du jeu où l'on peut passer trop de temps sans s'en rendre
+    // compte — on lit, et le pli reprend sans prévenir. La durée vient du serveur (voir
+    // revealMs), qui la recalcule à chaque état : elle reste juste même si
+    // l'écran est reconstruit au milieu, ou si l'on se reconnecte.
+    const resteMs = Math.max(0, Number(pending.revealMs) || 0);
+    if (resteMs > 0) {
+      const jauge = document.createElement('div');
+      jauge.className = 'sk-juanita-minuteur';
+      jauge.setAttribute('role', 'timer');
+      jauge.setAttribute('aria-label', `Il reste ${Math.round(resteMs / 1000)} secondes pour regarder`);
+      const barre = document.createElement('i');
+      barre.className = 'sk-juanita-jauge';
+      jauge.appendChild(barre);
+      powerPanel.appendChild(jauge);
+      // scaleX plutôt que la largeur : c'est la seule des deux que le
+      // navigateur sait animer sans refaire la mise en page à chaque image.
+      // Et le laiton vire au rouge sur les cinq dernières secondes — la
+      // longueur seule ne se remarque pas quand on a le nez dans les cartes.
+      const virage = resteMs > 5000 ? 1 - 5000 / resteMs : 0;
+      barre.animate(
+        [
+          { transform: 'scaleX(1)', background: 'var(--sk-brass)', offset: 0 },
+          { background: 'var(--sk-brass)', offset: Math.max(0, virage - 0.001) },
+          { background: '#c0483a', offset: virage },
+          { transform: 'scaleX(0)', background: '#c0483a', offset: 1 },
+        ],
+        { duration: resteMs, easing: 'linear', fill: 'forwards' }
+      );
+    }
+
     const row = document.createElement('div');
     // Plus de classe .sk-hand ici : elle apportait tout l'habillage de
     // l'éventail (défilement horizontal, hauteur minimale, survol qui
     // soulève la carte) à une grille qui n'en est pas un.
     row.className = 'sk-juanita-row';
+    // Mémorisé pour le recalcul au redimensionnement : la grille se taille
+    // groupe par groupe, chacun démarrant sa propre rangée.
+    row.dataset.groupes = paquets.map((g) => g.length).join(',');
     // Les fonctions de retournement, dans l'ordre de la grille : c'est ce que
     // la vague parcourt.
     const reveleurs = [];
-    cards.forEach((card) => {
+    const ajouterCarte = (card) => {
       const flip = document.createElement('div');
       flip.className = 'sk-flip-card' + (juanitaFlipped.has(card.id) ? ' sk-flip-card--flipped' : '');
       const inner = document.createElement('div');
@@ -4143,6 +4209,18 @@ function renderPower(state) {
       flip.addEventListener('click', reveal);
       reveleurs.push(reveal);
       row.appendChild(flip);
+    };
+    paquets.forEach((paquet, i) => {
+      // Un séparateur de largeur pleine et de hauteur nulle : il force le
+      // retour à la ligne entre les deux paquets. Sans lui, les premières
+      // numérotées finissaient la rangée des spéciales et on ne lisait plus
+      // « la ligne des spéciales », juste un début de grille.
+      if (i > 0 && paquet.length && row.childElementCount) {
+        const saut = document.createElement('div');
+        saut.className = 'sk-juanita-saut';
+        row.appendChild(saut);
+      }
+      paquet.forEach(ajouterCarte);
     });
     powerPanel.appendChild(row);
 
@@ -4162,37 +4240,6 @@ function renderPower(state) {
       });
     }
 
-    // LE MINUTEUR. Une barre qui se vide, parce que ce pouvoir est le seul
-    // du jeu où l'on peut passer trop de temps sans s'en rendre compte — on
-    // lit, et le pli reprend sans prévenir. La durée vient du serveur (voir
-    // revealMs), qui la recalcule à chaque état : elle reste juste même si
-    // l'écran est reconstruit au milieu, ou si l'on se reconnecte.
-    const resteMs = Math.max(0, Number(pending.revealMs) || 0);
-    if (resteMs > 0) {
-      const jauge = document.createElement('div');
-      jauge.className = 'sk-juanita-minuteur';
-      jauge.setAttribute('role', 'timer');
-      jauge.setAttribute('aria-label', `Il reste ${Math.round(resteMs / 1000)} secondes pour regarder`);
-      const barre = document.createElement('i');
-      barre.className = 'sk-juanita-jauge';
-      jauge.appendChild(barre);
-      powerPanel.appendChild(jauge);
-      // scaleX plutôt que la largeur : c'est la seule des deux que le
-      // navigateur sait animer sans refaire la mise en page à chaque image.
-      // Et le laiton vire au rouge sur les cinq dernières secondes — la
-      // longueur seule ne se remarque pas quand on a le nez dans les cartes.
-      const virage = resteMs > 5000 ? 1 - 5000 / resteMs : 0;
-      barre.animate(
-        [
-          { transform: 'scaleX(1)', background: 'var(--sk-brass)', offset: 0 },
-          { background: 'var(--sk-brass)', offset: Math.max(0, virage - 0.001) },
-          { background: '#c0483a', offset: virage },
-          { transform: 'scaleX(0)', background: '#c0483a', offset: 1 },
-        ],
-        { duration: resteMs, easing: 'linear', fill: 'forwards' }
-      );
-    }
-
     // Le panneau couvre maintenant l'écran : il lui faut une sortie, sinon on
     // attend les 25 s du minuteur serveur sans rien pouvoir faire.
     const doneBtn = document.createElement('button');
@@ -4204,7 +4251,7 @@ function renderPower(state) {
     });
     powerPanel.appendChild(doneBtn);
 
-    ajusterGrilleJuanita(row, cards.length);
+    ajusterGrilleJuanita(row, paquets.map((g) => g.length));
   } else if (pending.kind === 'will') {
     renderWillTroc(state, pending, hint);
   }

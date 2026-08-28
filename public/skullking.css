@@ -2536,6 +2536,15 @@ h3 {
   overflow: visible;
 }
 
+/* Le saut de rangée entre les spéciales (en haut) et les numérotées : de
+   largeur pleine et de hauteur nulle, il ne coûte rien à la grille et garantit
+   qu'aucune rangée ne mélange les deux paquets. */
+.sk-juanita-saut {
+  flex-basis: 100%;
+  width: 100%;
+  height: 0;
+}
+
 .sk-flip-card {
   position: relative;
   width: var(--sk-flip-w, 84px);
@@ -6252,17 +6261,21 @@ h3 {
 
 /* Le minuteur de Juanita Jade : une barre qui se vide. C'est le seul moment
    du jeu où l'on peut passer trop de temps sans s'en apercevoir — on lit, et
-   le pli reprend sans prévenir. Une gouttière étroite, pleine largeur, posée
-   sous la grille : elle se voit du coin de l'œil sans réclamer le regard que
-   les cartes sont en train d'occuper. */
+   le pli reprend sans prévenir. Une gouttière étroite posée JUSTE SOUS LA
+   CONSIGNE, en haut du panneau : sous la grille, elle finissait au ras du
+   bouton de sortie, hors du champ de celui qui lit les cartes. En haut, elle
+   se voit du coin de l'œil sans réclamer le regard que les cartes occupent. */
 .sk-juanita-minuteur {
   flex-shrink: 0;
-  width: min(520px, 86%);
-  height: 5px;
+  width: min(560px, 90%);
+  height: 6px;
+  margin: -2px 0 2px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(232, 206, 146, 0.22);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 206, 146, 0.28),
+    0 0 12px rgba(232, 206, 146, 0.12);
 }
 
 /* `transform-origin: left` : elle se vide par la droite, comme une mèche qui
