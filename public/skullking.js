@@ -2277,17 +2277,22 @@ function zoneDesCartes(boite) {
 // ne peuvent pas remplir l'écran. Mais 42 % de la hauteur du feutre les
 // laissait petites sur un grand écran, où c'est justement l'illustration
 // qu'on veut lire — et il reste de la place dans les angles hauts du feutre,
-// que personne n'occupe. Le socle passe donc à 52 %, et le joueur peut
-// s'écarter de ±30 % autour de là, par le réglage de la barre latérale.
+// que personne n'occupe. Le socle passe donc à 52 %, et le joueur s'écarte
+// de là comme il veut, par le réglage de la barre latérale.
 //
 // Bornes, tenues au rendu à neuf joueurs — la table la plus serrée — sur une
 // fenêtre de 1400x800 : en dessous de 0,8 les chiffres des cartes numérotées
-// ne se lisent plus au fond du tapis ; à 1,15 tout reste lisible mais les
-// cartes de deux sièges voisins commencent à se mordre, et à 1,3 elles se
-// recouvrent franchement. Le maximum est donc 1,15, pas un cran de plus.
+// ne se lisent plus au fond du tapis. Vers le haut, 1,15 était le dernier
+// cran où neuf cartes ne se mordent pas, et le plafond s'y arrêtait. Il monte
+// à 2 : le chevauchement n'est pas une avarie, c'est un choix, et il ne
+// concerne de toute façon que les grandes tables. À trois ou quatre joueurs
+// la couronne est vide aux trois quarts, l'écran est parfois loin, et c'est
+// là qu'on veut lire une illustration — le réglage existe pour ça. Le plafond
+// dit donc jusqu'où le joueur PEUT aller, pas ce qui tient sans se toucher :
+// ce dernier chiffre est écrit sous le curseur, à lui de s'en servir.
 const HAUTEUR_CARTE_PLI = 0.52;
 const TAILLE_CARTES_MIN = 0.8;
-const TAILLE_CARTES_MAX = 1.15;
+const TAILLE_CARTES_MAX = 2;
 const TAILLE_CARTES_CLE = 'guimams-sk-taille-cartes';
 let tailleCartesChoisie = null;
 
@@ -2343,7 +2348,8 @@ function echelleCouronne(effectif, largeurPleine, L, H) {
   // feutre, voir la CSS) : au-delà on l'agrandit, ce qui est exactement ce
   // que demande le réglage du joueur — d'où le facteur, appliqué après les
   // deux bornes et non dedans. Les bornes disent ce qui tient sans se
-  // chevaucher ; le réglage dit ce que le joueur préfère voir.
+  // chevaucher ; le réglage dit ce que le joueur préfère voir, jusqu'au
+  // double, quitte à ce que les voisines se touchent.
   return Math.max(0.55, Math.min(1, hauteur, arc)) * tailleDesCartes();
 }
 
