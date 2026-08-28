@@ -1,24 +1,5 @@
 const socket = io();
 
-// Les pseudos ne sont que tronqués côté serveur (sanitizeNickname), jamais
-// échappés : tout pseudo inséré dans un innerHTML doit passer par ici, sinon
-// un pseudo contenant du HTML s'exécute chez tous les autres joueurs de la
-// table.
-function escapeHTML(value) {
-  return String(value ?? '').replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
-  );
-}
-
-function getPlayerToken() {
-  let token = sessionStorage.getItem('cardGamesPlayerToken');
-  if (!token) {
-    token = crypto.randomUUID();
-    sessionStorage.setItem('cardGamesPlayerToken', token);
-  }
-  return token;
-}
 const ACTIVE_ROOM_KEY = 'skullking:activeRoom';
 function saveActiveRoom(code, nickname) {
   sessionStorage.setItem(ACTIVE_ROOM_KEY, JSON.stringify({ code, nickname }));
@@ -2070,11 +2051,6 @@ function seatOrder(players) {
   const myIndex = players.findIndex((p) => p.id === myId);
   if (myIndex === -1) return players;
   return [...players.slice(myIndex), ...players.slice(0, myIndex)];
-}
-
-function nicknameOf(state, id) {
-  const p = state.players.find((pp) => pp.id === id);
-  return p ? p.nickname : '?';
 }
 
 // --- Le feutre est un trapèze ----------------------------------------

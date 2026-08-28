@@ -1,19 +1,9 @@
 const socket = io();
 
-// Identite persistante de cet ONGLET (survit a une reconnexion ou un
-// rechargement, contrairement a socket.id qui change a chaque fois) + partie
-// active pour pouvoir revenir automatiquement via le lien, le code, ou un
-// retour en arriere. sessionStorage (pas localStorage) : chaque onglet doit
-// avoir sa propre identite, sinon un 2e onglet du meme navigateur "vole"
-// la session du 1er au lieu de pouvoir rejoindre en tant que 2e joueur.
-function getPlayerToken() {
-  let token = sessionStorage.getItem('cardGamesPlayerToken');
-  if (!token) {
-    token = crypto.randomUUID();
-    sessionStorage.setItem('cardGamesPlayerToken', token);
-  }
-  return token;
-}
+// Partie active de CET onglet, pour pouvoir y revenir automatiquement via le
+// lien, le code, ou un retour en arriere. sessionStorage (pas localStorage),
+// pour la meme raison que le jeton de joueur (voir commun.js) : chaque onglet
+// doit avoir sa propre session.
 const ACTIVE_ROOM_KEY = 'rami:activeRoom';
 function saveActiveRoom(code, nickname) {
   sessionStorage.setItem(ACTIVE_ROOM_KEY, JSON.stringify({ code, nickname }));
@@ -30,7 +20,6 @@ function clearActiveRoom() {
 }
 
 const SUIT_SYMBOL = { coeur: '♥', carreau: '♦', trefle: '♣', pique: '♠' };
-const RED_SUITS = new Set(['coeur', 'carreau']);
 const DISPLAY_RANK_ORDER = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'A'];
 const SUIT_ORDER = ['pique', 'coeur', 'trefle', 'carreau'];
 
@@ -430,10 +419,6 @@ function handleNewDraw(prevState, state) {
 // (design d'un 2 de cœur) — seule sa logique de jeu (isJoker) le distingue.
 function cardLabel(card) {
   return `${card.rank}${SUIT_SYMBOL[card.suit]}`;
-}
-
-function cardColorClass(card) {
-  return RED_SUITS.has(card.suit) ? 'card-red' : 'card-black';
 }
 
 // --- Visage de carte classique ---

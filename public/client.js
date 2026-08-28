@@ -1,19 +1,9 @@
 const socket = io();
 
-// Identite persistante de cet ONGLET (survit a une reconnexion ou un
-// rechargement, contrairement a socket.id qui change a chaque fois) + partie
-// active pour pouvoir revenir automatiquement via le lien, le code, ou un
-// retour en arriere. sessionStorage (pas localStorage) : chaque onglet doit
-// avoir sa propre identite, sinon un 2e onglet du meme navigateur "vole"
-// la session du 1er au lieu de pouvoir rejoindre en tant que 2e joueur.
-function getPlayerToken() {
-  let token = sessionStorage.getItem('cardGamesPlayerToken');
-  if (!token) {
-    token = crypto.randomUUID();
-    sessionStorage.setItem('cardGamesPlayerToken', token);
-  }
-  return token;
-}
+// Partie active de CET onglet, pour pouvoir y revenir automatiquement via le
+// lien, le code, ou un retour en arriere. sessionStorage (pas localStorage),
+// pour la meme raison que le jeton de joueur (voir commun.js) : chaque onglet
+// doit avoir sa propre session.
 const ACTIVE_ROOM_KEY = 'bataille:activeRoom';
 function saveActiveRoom(code, nickname) {
   sessionStorage.setItem(ACTIVE_ROOM_KEY, JSON.stringify({ code, nickname }));
@@ -102,7 +92,6 @@ const winnerModalTitle = document.getElementById('winner-modal-title');
 const btnWinnerContinue = document.getElementById('btn-winner-continue');
 
 const SUIT_SYMBOL = { coeur: '♥', carreau: '♦', trefle: '♣', pique: '♠' };
-const RED_SUITS = new Set(['coeur', 'carreau']);
 
 // Position (gauche %, haut %) de chaque siege autour de la table ovale,
 // selon le nombre total de joueurs. Index 0 = toujours "moi", en bas.
