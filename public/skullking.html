@@ -522,27 +522,28 @@
       <p class="sk-settings-label" id="sk-settings-taille-label">Taille des cartes sur le tapis</p>
       <div class="sk-settings-rangee">
         <span class="sk-settings-borne" aria-hidden="true">Petites</span>
-        <input id="sk-range-taille" class="sk-range" type="range" min="80" max="200" step="5"
+        <input id="sk-range-taille" class="sk-range" type="range" min="80" max="150" step="5"
                aria-labelledby="sk-settings-taille-label" />
         <span class="sk-settings-borne" aria-hidden="true">Grandes</span>
       </div>
       <p class="sk-settings-valeur"><output id="sk-range-taille-valeur" for="sk-range-taille"></output></p>
-      <p class="hint sk-settings-note">Au-delà de 115 %, les cartes de deux joueurs voisins commencent à se
-        recouvrir sur une table nombreuse — à trois ou quatre, la couronne a de la place jusqu'en haut.
-        Le réglage est gardé sur cet appareil.</p>
-
-      <!-- Second réglage : la fiche de règle au survol des cartes qu'on
-           tient. Elle apprend le jeu, puis elle s'ouvre au-dessus de
-           l'éventail à chaque hésitation et masque les cartes entre
-           lesquelles on hésite. L'interrupteur est celui des lignes du
-           salon : même rail, même bouton de laiton. -->
+      <!-- Les deux réglages suivants : la fiche de règle au survol. Elle
+           apprend le jeu, puis elle s'ouvre à chaque hésitation et masque
+           justement ce qu'on regardait. Elle se coupe donc — mais main et
+           tapis séparément : on arrête souvent de lire les cartes qu'on
+           tient bien avant celles que les autres posent. Deux
+           interrupteurs plutôt qu'une note qui explique la différence.
+           Ce sont ceux des lignes du salon : même rail, même bouton de
+           laiton. -->
       <hr class="sk-settings-trait" />
       <button id="sk-toggle-survol" class="sk-settings-switch" type="button" aria-pressed="true">
         <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
         <span class="sk-settings-switch-nom">Règles au survol des cartes en main</span>
       </button>
-      <p class="hint sk-settings-note">Les cartes posées sur le tapis gardent leur fiche : ce réglage ne coupe
-        que celle des cartes que tu tiens — au doigt, l'appui long avec. Gardé sur cet appareil.</p>
+      <button id="sk-toggle-survol-tapis" class="sk-settings-switch" type="button" aria-pressed="true">
+        <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+        <span class="sk-settings-switch-nom">Règles au survol des cartes du tapis</span>
+      </button>
 
       <div class="sk-settings-actions">
         <button id="sk-btn-settings-apply" class="btn btn-primary">Appliquer</button>

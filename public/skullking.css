@@ -8564,11 +8564,17 @@ h3 {
   margin: 0;
 }
 
-/* La glissière : un creux dans la planche, comme le champ de saisie. Les
+/* La glissière : un creux dans la planche, comme le champ de saisie. Un
+   petit point clair y est gravé à la valeur par défaut : c'est le cran où
+   revenir quand on a poussé trop loin, et il se voit sans rien lire. Les
    deux familles de pseudo-éléments sont OBLIGATOIREMENT dans des règles
    séparées — un navigateur qui ne connaît pas l'un jette tout le sélecteur,
    et le curseur retomberait au gris du système. */
 .sk-range {
+  /* Fraction de la course du curseur où se trouve la valeur par défaut.
+     Posée par le script à l'ouverture de la planche, parce qu'elle dépend
+     des bornes ; la valeur écrite ici n'est qu'un repli. */
+  --sk-range-defaut: 0.286;
   flex: 1;
   min-width: 0;
   height: 20px;
@@ -8588,14 +8594,20 @@ h3 {
 .sk-range::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #150e07, #2a1e13);
+  background:
+    radial-gradient(circle at calc(10px + var(--sk-range-defaut) * (100% - 20px)) 50%,
+      rgba(251, 239, 204, 0.85) 0 2px, rgba(0, 0, 0, 0) 2.5px),
+    linear-gradient(180deg, #150e07, #2a1e13);
   box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.32), inset 0 2px 5px rgba(0, 0, 0, 0.7);
 }
 
 .sk-range::-moz-range-track {
   height: 8px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #150e07, #2a1e13);
+  background:
+    radial-gradient(circle at calc(10px + var(--sk-range-defaut) * (100% - 20px)) 50%,
+      rgba(251, 239, 204, 0.85) 0 2px, rgba(0, 0, 0, 0) 2.5px),
+    linear-gradient(180deg, #150e07, #2a1e13);
   box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.32), inset 0 2px 5px rgba(0, 0, 0, 0.7);
 }
 
@@ -8639,8 +8651,10 @@ h3 {
 .sk-settings-switch {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
+  width: 300px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 3px 2px;
   border: none;
@@ -8653,6 +8667,12 @@ h3 {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: left;
+}
+
+/* Deux réglages de même famille : ils se suivent, séparés par un souffle
+   et non par un filet — le filet, lui, sépare la taille du survol. */
+.sk-settings-switch + .sk-settings-switch {
+  margin-top: 10px;
 }
 
 .sk-settings-switch:hover {

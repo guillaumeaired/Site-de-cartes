@@ -580,6 +580,23 @@ function reglesEnMainActives() {
   return reglesEnMain;
 }
 
+// --- Réglage : la fiche au survol des cartes DU TAPIS ------------------
+// Le même geste, l'autre moitié de la table. On le coupe plus tard que
+// celui de la main — on apprend ses propres cartes avant celles que les
+// autres posent — mais on finit par le couper aussi : la fiche s'ouvre
+// au-dessus du pli et cache les cartes qu'on compare. Deux réglages donc,
+// et plus une note pour expliquer lequel touche quoi.
+//
+// Les cartes que Juanita révèle ne sont ni l'un ni l'autre : on ne les
+// survole que pour les lire, et elles gardent leur fiche.
+const REGLES_TAPIS_CLE = 'guimams-sk-regles-tapis';
+let reglesSurTapis = null;
+
+function reglesSurTapisActives() {
+  if (reglesSurTapis === null) reglesSurTapis = lireReglage(REGLES_TAPIS_CLE) !== '0';
+  return reglesSurTapis;
+}
+
 // La bulle au survol, sur n'importe quel élément : la fiche de parchemin
 // vaut pour tout ce qui demande un mot d'explication, pas seulement pour les
 // cartes à pouvoir. Le title natif est laissé en place par les appelants qui
@@ -608,11 +625,14 @@ function attachTooltip(el, text, estCoupee) {
 // carte n'a pas de texte particulier (numérotées hors atout/extension).
 //
 // main : cette carte est une carte que JE tiens (l'éventail, le troc de
-// Will). C'est la seule famille que le réglage des règles au survol coupe.
-function attachPowerTooltip(el, card, { main = false } = {}) {
+// Will). tapis : une carte posée au pli. Chacune a son réglage ; ce qui
+// n'est ni l'un ni l'autre (les cartes de Juanita) garde sa fiche.
+function attachPowerTooltip(el, card, { main = false, tapis = false } = {}) {
   const text = cardPowerText(card);
   if (!text) return;
-  const coupee = main ? () => !reglesEnMainActives() : null;
+  let coupee = null;
+  if (main) coupee = () => !reglesEnMainActives();
+  else if (tapis) coupee = () => !reglesSurTapisActives();
   attachTooltip(el, text, coupee);
 
   // Appui long : la fiche s'ouvre, la carte ne se joue pas. Le clic qui
@@ -823,15 +843,22 @@ const settingsModal = document.getElementById('sk-settings-modal');
 const rangeTaille = document.getElementById('sk-range-taille');
 const rangeTailleValeur = document.getElementById('sk-range-taille-valeur');
 const toggleSurvol = document.getElementById('sk-toggle-survol');
+const toggleSurvolTapis = document.getElementById('sk-toggle-survol-tapis');
 
 // Ce que la planche MONTRE, et non ce qui est en vigueur : comme la taille,
-// le réglage n'est pris qu'à « Appliquer » — « Annuler » doit pouvoir le
-// laisser tel qu'il était.
+// les réglages ne sont pris qu'à « Appliquer » — « Annuler » doit pouvoir
+// les laisser tels qu'ils étaient.
 let survolEnMain = true;
+let survolSurTapis = true;
 
-function afficherToggleSurvol() {
-  toggleSurvol.classList.toggle('sk-extension-toggle--on', survolEnMain);
-  toggleSurvol.setAttribute('aria-pressed', String(survolEnMain));
+function afficherToggle(btn, actif) {
+  btn.classList.toggle('sk-extension-toggle--on', actif);
+  btn.setAttribute('aria-pressed', String(actif));
+}
+
+function afficherTogglesSurvol() {
+  afficherToggle(toggleSurvol, survolEnMain);
+  afficherToggle(toggleSurvolTapis, survolSurTapis);
 }
 
 function afficherValeurTaille() {
@@ -839,12 +866,21 @@ function afficherValeurTaille() {
 }
 
 function ouvrirReglages() {
-  rangeTaille.min = Math.round(TAILLE_CARTES_MIN * 100);
-  rangeTaille.max = Math.round(TAILLE_CARTES_MAX * 100);
+  const min = Math.round(TAILLE_CARTES_MIN * 100);
+  const max = Math.round(TAILLE_CARTES_MAX * 100);
+  rangeTaille.min = min;
+  rangeTaille.max = max;
   rangeTaille.value = Math.round(tailleDesCartes() * 100);
+  // Le repère de la valeur par défaut, gravé dans la glissière : sa place
+  // se calcule ici parce qu'elle dépend des bornes, que le CSS ignore.
+  // C'est une fraction de la course du curseur, pas de la largeur — le
+  // pouce est arrêté par ses propres bords aux deux extrémités.
+  const defaut = Math.round(TAILLE_CARTES_DEFAUT * 100);
+  rangeTaille.style.setProperty('--sk-range-defaut', (defaut - min) / (max - min));
   afficherValeurTaille();
   survolEnMain = reglesEnMainActives();
-  afficherToggleSurvol();
+  survolSurTapis = reglesSurTapisActives();
+  afficherTogglesSurvol();
   settingsModal.classList.remove('hidden');
 }
 
@@ -857,7 +893,11 @@ document.getElementById('sk-btn-settings-close').addEventListener('click', ferme
 rangeTaille.addEventListener('input', afficherValeurTaille);
 toggleSurvol.addEventListener('click', () => {
   survolEnMain = !survolEnMain;
-  afficherToggleSurvol();
+  afficherTogglesSurvol();
+});
+toggleSurvolTapis.addEventListener('click', () => {
+  survolSurTapis = !survolSurTapis;
+  afficherTogglesSurvol();
 });
 settingsModal.addEventListener('click', (e) => {
   if (e.target === settingsModal) fermerReglages();
@@ -877,6 +917,8 @@ document.getElementById('sk-btn-settings-apply').addEventListener('click', () =>
   // fois qu'on ouvrira la table.
   reglesEnMain = survolEnMain;
   ecrireReglage(REGLES_MAIN_CLE, survolEnMain ? '1' : '0');
+  reglesSurTapis = survolSurTapis;
+  ecrireReglage(REGLES_TAPIS_CLE, survolSurTapis ? '1' : '0');
   fermerReglages();
   // Le tapis est redessiné de force : renderTrick ne redessine pas un pli
   // qu'il a déjà posé (voir l'empreinte), et l'empreinte ne connaît pas la
@@ -2388,16 +2430,20 @@ function zoneDesCartes(boite) {
 // Bornes, tenues au rendu à neuf joueurs — la table la plus serrée — sur une
 // fenêtre de 1400x800 : en dessous de 0,8 les chiffres des cartes numérotées
 // ne se lisent plus au fond du tapis. Vers le haut, 1,15 était le dernier
-// cran où neuf cartes ne se mordent pas, et le plafond s'y arrêtait. Il monte
-// à 2 : le chevauchement n'est pas une avarie, c'est un choix, et il ne
-// concerne de toute façon que les grandes tables. À trois ou quatre joueurs
-// la couronne est vide aux trois quarts, l'écran est parfois loin, et c'est
-// là qu'on veut lire une illustration — le réglage existe pour ça. Le plafond
-// dit donc jusqu'où le joueur PEUT aller, pas ce qui tient sans se toucher :
-// ce dernier chiffre est écrit sous le curseur, à lui de s'en servir.
+// cran où neuf cartes ne se mordent pas, et le plafond s'y arrêtait. Il va
+// jusqu'à 1,5 : le chevauchement n'est pas une avarie, c'est un choix, et il
+// ne concerne de toute façon que les grandes tables. À trois ou quatre
+// joueurs la couronne est vide aux trois quarts, l'écran est parfois loin, et
+// c'est là qu'on veut lire une illustration — le réglage existe pour ça.
+// Au-delà de 1,5 la carte débordait du tapis plus qu'elle ne se lisait.
+//
+// Une valeur plus grande déjà gardée d'une version précédente est ramenée au
+// plafond à la relecture : la borne vaut pour ce qui est stocké, pas
+// seulement pour ce que le curseur permet de choisir.
 const HAUTEUR_CARTE_PLI = 0.52;
 const TAILLE_CARTES_MIN = 0.8;
-const TAILLE_CARTES_MAX = 2;
+const TAILLE_CARTES_MAX = 1.5;
+const TAILLE_CARTES_DEFAUT = 1;
 const TAILLE_CARTES_CLE = 'guimams-sk-taille-cartes';
 let tailleCartesChoisie = null;
 
@@ -2406,7 +2452,7 @@ function tailleDesCartes() {
     const brut = Number(lireReglage(TAILLE_CARTES_CLE));
     tailleCartesChoisie = Number.isFinite(brut) && brut > 0
       ? Math.min(TAILLE_CARTES_MAX, Math.max(TAILLE_CARTES_MIN, brut))
-      : 1;
+      : TAILLE_CARTES_DEFAUT;
   }
   return tailleCartesChoisie;
 }
@@ -2786,7 +2832,7 @@ function renderTrick(state) {
     const cardEl = document.createElement('div');
     cardEl.className = `sk-card ${cardClass(t.card)}`;
     cardEl.innerHTML = cardFaceHTML(t.card);
-    attachPowerTooltip(cardEl, t.card);
+    attachPowerTooltip(cardEl, t.card, { tapis: true });
     slot.appendChild(cardEl);
 
     tableEl.appendChild(slot);
