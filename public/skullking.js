@@ -4887,18 +4887,29 @@ function renderPower(state) {
     // moitié. La grille passe donc au centre de l'écran, et les cartes sont
     // taillées à la volée pour tenir d'un seul tenant (voir ajusterGrilleJuanita).
     powerPanel.classList.add('sk-power-panel--juanita');
-    // Plus de compteur « 12/85 » : il ne comptait qu'une corvée. La consigne
-    // dit ce qu'il y a à faire — lire — et la barre juste en dessous dit
-    // combien de temps il reste pour ça.
-    hint.textContent = `Les ${cards.length} cartes non distribuées ce tour-ci. Elles se retournent toutes seules — survole-en une pour la découvrir tout de suite.`;
+    // PLUS DE CONSIGNE ÉCRITE. Elle disait trois choses — combien de cartes,
+    // qu'elles se retournent seules, qu'on peut en survoler une — et les
+    // trois se voient : le compte est sous les yeux, la vague part d'
+    // elle-même à l'ouverture, et survoler une carte est le geste qu'on fait
+    // de toute façon. Une phrase de deux lignes en haut d'une grille de
+    // quatre-vingts cartes n'était qu'un retard à la lecture, sur les
+    // vingt-cinq secondes qu'on a pour tout parcourir.
+    //
+    // Ce qui ne se voit pas, en revanche, c'est le temps qui reste : c'est le
+    // seul moment du jeu où l'on peut en passer trop sans s'en apercevoir —
+    // on lit, et le pli repart sans prévenir. La barre prend donc la place de
+    // la phrase, en haut du panneau, là où l'œil revient entre deux rangées.
+    // Ce que la phrase disait à l'œil, le dessin le dit ; à un lecteur
+    // d'écran, il ne dit rien. La consigne reste donc, muette : elle est le
+    // seul moyen de savoir combien de cartes sont là quand on ne les voit pas.
+    hint.className = 'visually-hidden';
+    hint.textContent = `Les ${cards.length} cartes non distribuées ce tour-ci se retournent une à une.`;
 
-    // LE MINUTEUR. Une barre qui se vide, posée sous la consigne et AU-DESSUS
-    // de la grille : sous les cartes, elle tombait au ras du bouton de sortie,
-    // là où l'œil ne passe jamais tant qu'il lit. Elle est là parce que c'est
-    // le seul moment du jeu où l'on peut passer trop de temps sans s'en rendre
-    // compte — on lit, et le pli reprend sans prévenir. La durée vient du serveur (voir
-    // revealMs), qui la recalcule à chaque état : elle reste juste même si
-    // l'écran est reconstruit au milieu, ou si l'on se reconnecte.
+    // LE MINUTEUR. Une barre qui se vide, en tête du panneau et AU-DESSUS de
+    // la grille : sous les cartes, elle tombait au ras du bouton de sortie,
+    // là où l'œil ne passe jamais tant qu'il lit. La durée vient du serveur
+    // (voir revealMs), qui la recalcule à chaque état : elle reste juste même
+    // si l'écran est reconstruit au milieu, ou si l'on se reconnecte.
     const resteMs = Math.max(0, Number(pending.revealMs) || 0);
     if (resteMs > 0) {
       const jauge = document.createElement('div');
