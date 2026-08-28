@@ -955,69 +955,34 @@ function renderMatchScores(state) {
 }
 
 // --- Chat du salon ---
-// Dupliqué depuis skullking.js (convention du projet), avec la même règle de
-// sécurité : le texte vient d'un autre joueur et le serveur le stocke tel
-// quel — il est donc posé en textContent, jamais en innerHTML.
+// Le fil, sa règle de sécurité et son ordre d'affichage vivent dans
+// commun.js (creerChat), partagés avec le Skull King. Ne reste ici que ce
+// qui est propre au Rami : où sont les éléments, ce qu'on émet, et le fait
+// d'afficher l'heure du message.
 const chatLogEl = document.getElementById('rami-chat-log');
 const chatFormEl = document.getElementById('rami-chat-form');
 const chatInputEl = document.getElementById('rami-chat-input');
-const chatSeen = new Set();
 
-// Le fil appartient au SALON, pas à l'onglet : en enchaînant deux parties sans
-// recharger la page, la conversation de la précédente restait affichée sous la
-// nouvelle. On retient donc le salon dont le fil est à l'écran, et on repart
-// d'une page blanche dès qu'on en change (ou qu'on rentre à l'accueil). Vider
-// chatSeen fait partie du reset : les numéros de messages repartent de `c1`
-// quand le serveur redémarre, et les nouveaux passeraient sinon pour des
-// doublons déjà vus.
-let chatSalon = null;
+const filChat = creerChat({
+  prefixe: 'rami-chat',
+  vues: [{ log: chatLogEl, form: chatFormEl, input: chatInputEl }],
+  moi: () => myId,
+  envoyer: (texte) => socket.emit('rami-chat', { text: texte }),
+  avecHeure: true,
+});
 
+// Gardées en déclarations de fonction : les deux sont appelées plus haut
+// dans le fichier qu'elles ne sont définies (gestionnaires de socket et de
+// clic), le hoisting évite d'avoir à y penser.
 function suivreSalonChat(code) {
-  const suivant = code ? String(code).toUpperCase() : null;
-  if (suivant === chatSalon) return;
-  chatSalon = suivant;
-  chatSeen.clear();
-  if (chatLogEl) chatLogEl.replaceChildren();
-}
-
-function chatHeure(at) {
-  const d = new Date(at);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function ajouterMessage(m) {
-  if (!m || !chatLogEl || chatSeen.has(m.id)) return;
-  chatSeen.add(m.id);
-  // Ne recolle en bas que si on y était déjà, pour ne pas arracher la lecture
-  // à quelqu'un en train de remonter l'historique.
-  const colle = chatLogEl.scrollHeight - chatLogEl.scrollTop - chatLogEl.clientHeight < 40;
-
-  const ligne = document.createElement('div');
-  ligne.className = 'rami-chat-line' + (m.playerId === myId ? ' rami-chat-line--me' : '');
-
-  const tete = document.createElement('span');
-  tete.className = 'rami-chat-who';
-  tete.textContent = m.playerId === myId ? 'Toi' : m.nickname;
-  const heure = document.createElement('span');
-  heure.className = 'rami-chat-time';
-  heure.textContent = chatHeure(m.at);
-  tete.appendChild(heure);
-
-  const corps = document.createElement('span');
-  corps.className = 'rami-chat-text';
-  corps.textContent = m.text;
-
-  ligne.append(tete, corps);
-  chatLogEl.appendChild(ligne);
-  while (chatLogEl.childElementCount > 80) chatLogEl.removeChild(chatLogEl.firstChild);
-  if (colle) chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  filChat.suivreSalon(code);
 }
 
 function renderChat(state) {
-  (state.chat || []).forEach(ajouterMessage);
+  filChat.rendre(state);
 }
 
-socket.on('rami-chat-message', ajouterMessage);
+socket.on('rami-chat-message', filChat.ajouter);
 
 // Cliquer n'importe où dans la colonne donne le focus au champ : viser la
 // petite bulle de saisie demandait trop de précision. Les clics sur le
@@ -1031,15 +996,6 @@ if (chatPanelEl && chatInputEl) {
   });
 }
 
-if (chatFormEl) {
-  chatFormEl.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = chatInputEl.value.trim();
-    if (!text) return;
-    socket.emit('rami-chat', { text });
-    chatInputEl.value = '';
-  });
-}
 
 function renderAll() {
   renderHand();

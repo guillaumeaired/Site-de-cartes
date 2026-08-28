@@ -56,3 +56,144 @@ const RED_SUITS = new Set(['coeur', 'carreau']);
 function cardColorClass(card) {
   return RED_SUITS.has(card.suit) ? 'card-red' : 'card-black';
 }
+
+// --- Le chat de salon, pour les jeux qui en ont un -----------------------
+// Le Rami et le Skull King affichent la même conversation, servie par le même
+// schéma d'événements côté serveur. Leurs deux versions avaient divergé en se
+// recopiant : le Skull King avait gagné trois vues, la couleur de l'auteur et
+// l'insertion chronologique, le Rami gardait l'heure du message. Cette fabrique
+// tient les quatre différences en paramètres plutôt qu'en deux fichiers.
+//
+// Ce qui est PARTAGÉ ici : le texte est posé en textContent, jamais en
+// innerHTML. Le message vient d'un autre joueur et le serveur le stocke tel
+// quel (il ne fait que borner la longueur) — c'est au rendu que se joue la
+// sécurité, et deux failles XSS ont déjà été trouvées dans ce projet par ce
+// chemin exact. Une seule copie de cette règle, c'est une règle qu'on ne peut
+// plus oublier de la moitié des jeux.
+//
+//   prefixe   racine des classes CSS ('rami-chat' -> .rami-chat-line, -who,
+//             -text, -time, et -line--me)
+//   vues      [{ log, form, input }] — le Skull King en a trois (la table, le
+//             salon, la planche agrandie), le Rami une seule. Les entrées
+//             incomplètes sont écartées : toutes les pages n'ont pas tout.
+//   moi       () => l'id du joueur local ; une fonction, pas une valeur : il
+//             n'est pas encore connu au chargement du script
+//   envoyer   (texte) => l'émission socket propre au jeu
+//   avecHeure pose l'heure du message à côté du nom
+//   couleurDe (playerId) => couleur du nom, ou rien pour le laisser au CSS
+function creerChat({ prefixe, vues, moi, envoyer, avecHeure = false, couleurDe = null }) {
+  const utiles = (vues || []).filter((v) => v && v.log && v.form && v.input);
+  const vus = new Set();
+  let salon = null;
+
+  // Le fil appartient au SALON, pas à l'onglet : en enchaînant deux parties
+  // sans recharger la page, la conversation de la précédente restait affichée
+  // sous la nouvelle. On repart d'une page blanche dès qu'on change de salon
+  // (ou qu'on rentre à l'accueil). Vider `vus` fait partie du reset : les
+  // numéros repartent de `c1` quand le serveur redémarre, et les nouveaux
+  // messages passeraient sinon pour des doublons déjà vus.
+  function suivreSalon(code) {
+    const suivant = code ? String(code).toUpperCase() : null;
+    if (suivant === salon) return;
+    salon = suivant;
+    vus.clear();
+    utiles.forEach((v) => v.log.replaceChildren());
+  }
+
+  // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
+  // quelqu'un en train de remonter l'historique.
+  function auBas(log) {
+    return log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  }
+
+  function heureDe(at) {
+    const d = new Date(at);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  // Le rang du message dans le fil. Le serveur numérote en continu (`c1`,
+  // `c2`…), ce qui donne un ordre sûr là où l'heure d'arrivée ne dit rien.
+  function rangDe(m) {
+    const n = Number(String(m.id).slice(1));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  // Une ligne neuve par vue : un même nœud ne peut pas être à deux endroits
+  // du document à la fois.
+  function ligne(m) {
+    const el = document.createElement('div');
+    el.className = `${prefixe}-line` + (m.playerId === moi() ? ` ${prefixe}-line--me` : '');
+
+    const tete = document.createElement('span');
+    tete.className = `${prefixe}-who`;
+    tete.textContent = m.playerId === moi() ? 'Toi' : m.nickname;
+    // L'auteur reste inscrit sur la ligne : c'est ce qui permet de la
+    // repeindre plus tard, quand sa couleur change (voir repeindre).
+    if (m.playerId) tete.dataset.joueur = m.playerId;
+    const couleur = couleurDe && couleurDe(m.playerId);
+    if (couleur) tete.style.color = couleur;
+
+    if (avecHeure) {
+      const heure = document.createElement('span');
+      heure.className = `${prefixe}-time`;
+      heure.textContent = heureDe(m.at);
+      tete.appendChild(heure);
+    }
+
+    const corps = document.createElement('span');
+    corps.className = `${prefixe}-text`;
+    corps.textContent = m.text;
+
+    el.append(tete, corps);
+    return el;
+  }
+
+  function ajouter(m) {
+    if (!m || vus.has(m.id)) return;
+    vus.add(m.id);
+    const rang = rangDe(m);
+    utiles.forEach((vue) => {
+      const colle = auBas(vue.log);
+      const el = ligne(m);
+      el.dataset.rang = String(rang);
+      // Le fil est chronologique, or l'ordre d'ARRIVÉE ne l'est pas : en
+      // rejoignant un salon on reçoit d'abord la diffusion en direct de sa
+      // propre arrivée, et seulement ensuite l'historique qui la précède —
+      // « Untel a rejoint » se posait donc avant « Untel a ouvert le salon ».
+      // On insère à sa place plutôt qu'en fin de liste ; à l'usage courant le
+      // message est le plus récent et la recherche s'arrête tout de suite.
+      const suivant = [...vue.log.children].find((n) => Number(n.dataset.rang) > rang);
+      vue.log.insertBefore(el, suivant || null);
+      while (vue.log.childElementCount > 80) vue.log.removeChild(vue.log.firstChild);
+      if (colle) vue.log.scrollTop = vue.log.scrollHeight;
+    });
+  }
+
+  // Repeint les noms déjà posés. Le sélecteur balaie le document entier :
+  // la même conversation est écrite dans chaque vue, avec ses propres nœuds.
+  // Sans couleur connue on efface le style en ligne plutôt que d'en poser
+  // une, pour retomber sur la couleur par défaut de la feuille de style.
+  function repeindre() {
+    if (!couleurDe) return;
+    document.querySelectorAll(`.${prefixe}-who[data-joueur]`).forEach((tete) => {
+      tete.style.color = couleurDe(tete.dataset.joueur) || '';
+    });
+  }
+
+  utiles.forEach((vue) => {
+    vue.form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const texte = vue.input.value.trim();
+      if (!texte) return;
+      envoyer(texte);
+      vue.input.value = '';
+    });
+  });
+
+  return {
+    suivreSalon,
+    ajouter,
+    repeindre,
+    rendre: (state) => (state.chat || []).forEach(ajouter),
+  };
+}

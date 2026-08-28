@@ -1837,7 +1837,7 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   lobbySettingsSummary.replaceChildren(effectif, ' · ', manches, ` · ${deckLabel}`);
 
   // Le fil est le même qu'en jeu : l'historique arrive avec le salon, et
-  // ajouterMessage écarte tout seul ce qui a déjà été posé. Les couleurs
+  // filChat.ajouter écarte tout seul ce qui a déjà été posé. Les couleurs
   // d'abord : c'est d'elles que les noms du fil se peignent.
   retenirCouleurs(players);
   renderChat({ chat });
@@ -4175,17 +4175,10 @@ function renderObjective(state) {
 }
 
 // --- Chat du salon ---
-// Les messages sont posés en textContent, jamais en innerHTML : le texte
-// vient d'un autre joueur et le serveur le stocke tel quel (il ne fait que
-// borner la longueur et écraser les espaces). C'est ici, au rendu, que se
-// joue la sécurité — deux failles XSS ont déjà été trouvées dans ce projet
-// par ce chemin exact.
-// Deux endroits où la discussion s'écrit et se lit : la planche du salon et
-// le carnet de la table. Ce sont deux vues du MÊME fil — le serveur n'en
-// connaît qu'un, et l'historique arrive avec l'état comme avant. D'où une
-// liste de vues plutôt qu'un couple de variables : chaque message est posé
-// dans toutes, une seule fois (chatSeen est commun).
-const chatSeen = new Set();
+// Le fil, sa règle de sécurité (texte en textContent, jamais en innerHTML) et
+// son ordre d'affichage vivent dans commun.js (creerChat), partagés avec le
+// Rami. Ne reste ici que ce qui est propre au Skull King : ses trois vues, ce
+// qu'on émet, et la couleur du nom.
 const CHAT_VUES = [
   {
     log: document.getElementById('sk-chat-log'),
@@ -4202,33 +4195,8 @@ const CHAT_VUES = [
     form: document.getElementById('sk-chat-modal-form'),
     input: document.getElementById('sk-chat-modal-input'),
   },
-].filter((v) => v.log && v.form && v.input);
+];
 
-// Le fil appartient au SALON, pas à l'onglet : en enchaînant deux parties sans
-// recharger la page, la conversation de la précédente restait affichée sous la
-// nouvelle. On retient donc le salon dont le fil est à l'écran, et on repart
-// d'une page blanche dès qu'on en change (ou qu'on rentre à l'accueil).
-// Vider chatSeen fait partie du reset : les numéros de messages repartent de
-// `c1` quand le serveur redémarre, et les nouveaux passeraient sinon pour des
-// doublons déjà vus.
-let chatSalon = null;
-
-function suivreSalonChat(code) {
-  const suivant = code ? String(code).toUpperCase() : null;
-  if (suivant === chatSalon) return;
-  chatSalon = suivant;
-  chatSeen.clear();
-  CHAT_VUES.forEach((vue) => vue.log.replaceChildren());
-}
-
-function chatAuBas(log) {
-  // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
-  // quelqu'un en train de remonter l'historique.
-  return log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-}
-
-// Une ligne neuve à chaque vue : un même nœud ne peut pas être dans deux
-// endroits du document à la fois.
 // La couleur d'un joueur vient de sa PIÈCE, et un message de chat ne la porte
 // pas — le serveur n'y met que l'id, le pseudo et le texte. On retient donc
 // les couleurs au passage du salon et de chaque état de partie : un message
@@ -4236,15 +4204,23 @@ function chatAuBas(log) {
 // la table, et le fil relu à la reconnexion est colorié comme le reste.
 const couleursDuChat = new Map();
 
-function retenirCouleurs(joueurs) {
-  let change = false;
-  (joueurs || []).forEach((p) => {
-    if (!p || !p.id) return;
-    const couleur = couleurJoueur(p);
-    if (couleursDuChat.get(p.id) !== couleur) change = true;
-    couleursDuChat.set(p.id, couleur);
-  });
-  if (change) repeindreLeChat();
+const filChat = creerChat({
+  prefixe: 'sk-chat',
+  vues: CHAT_VUES,
+  moi: () => myId,
+  envoyer: (texte) => socket.emit('skullking-chat', { text: texte }),
+  couleurDe: (id) => couleursDuChat.get(id),
+});
+
+// Gardées en déclarations de fonction : elles sont appelées plus haut dans le
+// fichier qu'elles ne sont définies (gestionnaires de socket), le hoisting
+// évite d'avoir à y penser.
+function suivreSalonChat(code) {
+  filChat.suivreSalon(code);
+}
+
+function renderChat(state) {
+  filChat.rendre(state);
 }
 
 // Une pièce se change tant que la partie n'a pas commencé, et la couleur d'un
@@ -4253,103 +4229,18 @@ function retenirCouleurs(joueurs) {
 // derrière lui ses anciens messages dans l'ancienne couleur, et le même
 // pseudo se lisait en deux ou trois teintes dans le même fil — la couleur ne
 // désignait donc plus personne. On repeint tout ce qui est déjà posé.
-//
-// Le sélecteur balaie le document entier : la même conversation est écrite
-// dans trois vues (la table, le salon, la fenêtre agrandie), chacune avec ses
-// propres nœuds. Sans couleur connue on efface le style en ligne plutôt que
-// d'en poser une, pour retomber sur le laiton par défaut de .sk-chat-who.
-function repeindreLeChat() {
-  document.querySelectorAll('.sk-chat-who[data-joueur]').forEach((tete) => {
-    tete.style.color = couleursDuChat.get(tete.dataset.joueur) || '';
+function retenirCouleurs(joueurs) {
+  let change = false;
+  (joueurs || []).forEach((p) => {
+    if (!p || !p.id) return;
+    const couleur = couleurJoueur(p);
+    if (couleursDuChat.get(p.id) !== couleur) change = true;
+    couleursDuChat.set(p.id, couleur);
   });
+  if (change) filChat.repeindre();
 }
 
-// Le nom puis le message, sur la même ligne. C'était le nom et l'heure au
-// dessus, le message en dessous : deux lignes par message dans une colonne
-// qui n'en tient qu'une dizaine, et une heure que personne ne lit — on sait
-// quand un message est arrivé, on vient de le voir arriver.
-//
-// Seul le NOM porte la couleur du joueur, celle de sa pièce, la même qu'à son
-// siège et au registre. Le message reste crème pour tout le monde : coloré
-// lui aussi, le fil devenait un damier où plus rien ne se lisait, et la
-// couleur cessait de désigner qui parle pour ne plus dire que « du texte ».
-function ligneChat(m) {
-  // Les allées et venues du salon (voir pushSystemChat côté serveur). Elles
-  // n'ont pas d'auteur : ni pastille de nom, ni couleur de pièce — une note
-  // de marge en italique, qu'on distingue d'un coup d'œil de quelqu'un qui
-  // parle. Le retour anticipé compte aussi pour `--me` : sans playerId, la
-  // comparaison avec myId serait vraie tant que myId est indéfini.
-  if (m.system) {
-    const ligne = document.createElement('div');
-    ligne.className = 'sk-chat-line sk-chat-line--systeme';
-    ligne.textContent = m.text;
-    return ligne;
-  }
-
-  const ligne = document.createElement('div');
-  ligne.className = 'sk-chat-line' + (m.playerId === myId ? ' sk-chat-line--me' : '');
-
-  const tete = document.createElement('span');
-  tete.className = 'sk-chat-who';
-  tete.textContent = m.playerId === myId ? 'Toi' : m.nickname;
-  // L'auteur reste inscrit sur la ligne : c'est ce qui permet de la repeindre
-  // plus tard, quand il change de pièce (voir repeindreLeChat).
-  if (m.playerId) tete.dataset.joueur = m.playerId;
-  const couleur = couleursDuChat.get(m.playerId);
-  if (couleur) tete.style.color = couleur;
-
-  const corps = document.createElement('span');
-  corps.className = 'sk-chat-text';
-  corps.textContent = m.text;
-
-  ligne.append(tete, corps);
-  return ligne;
-}
-
-// Le rang du message dans le fil. Le serveur numérote en continu (`c1`,
-// `c2`… — voir chatSeq), ce qui donne un ordre sûr là où l'heure d'arrivée
-// ne dit rien.
-function rangDuMessage(m) {
-  const n = Number(String(m.id).slice(1));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function ajouterMessage(m) {
-  if (!m || chatSeen.has(m.id)) return;
-  chatSeen.add(m.id);
-  const rang = rangDuMessage(m);
-  CHAT_VUES.forEach((vue) => {
-    const colle = chatAuBas(vue.log);
-    const ligne = ligneChat(m);
-    ligne.dataset.rang = String(rang);
-    // Le fil est chronologique, or l'ordre d'ARRIVÉE ne l'est pas : en
-    // rejoignant un salon on reçoit d'abord la diffusion en direct de sa
-    // propre arrivée, et seulement ensuite l'historique qui la précède —
-    // « Untel a rejoint » se posait donc avant « Untel a ouvert le salon ».
-    // On insère à sa place plutôt qu'en fin de liste ; à l'usage courant le
-    // message est le plus récent et la recherche s'arrête tout de suite.
-    const suivant = [...vue.log.children].find((n) => Number(n.dataset.rang) > rang);
-    vue.log.insertBefore(ligne, suivant || null);
-    while (vue.log.childElementCount > 80) vue.log.removeChild(vue.log.firstChild);
-    if (colle) vue.log.scrollTop = vue.log.scrollHeight;
-  });
-}
-
-function renderChat(state) {
-  (state.chat || []).forEach(ajouterMessage);
-}
-
-socket.on('skullking-chat-message', ajouterMessage);
-
-CHAT_VUES.forEach((vue) => {
-  vue.form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = vue.input.value.trim();
-    if (!text) return;
-    socket.emit('skullking-chat', { text });
-    vue.input.value = '';
-  });
-});
+socket.on('skullking-chat-message', filChat.ajouter);
 
 // Le carnet de la colonne n'a que quelques lignes : un clic l'ouvre comme
 // un vrai livre. Le champ et les boutons de défilement gardent leur geste
