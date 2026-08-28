@@ -8314,6 +8314,16 @@ h3 {
      redevient une colonne et c'est l'ordre du DOM qui empile, où le code de
      la partie doit rester en tête et la discussion en pied. */
   .sk-lobby-col--crew {
+    /* Le facteur de compacité de la planche. 1 = les cotes de dessin :
+       médaillons de 62 px, rangs de 38. Quand la fenêtre est trop courte
+       pour la table pleine, c'est LUI qui bouge (posé en JS, voir
+       ajusterHauteurSalon) — les pièces et les rangs se resserrent
+       ensemble, d'un même geste, jusqu'à ce que les neuf matelots tiennent
+       dans la planche. On rabotait avant la planche elle-même, qui défilait
+       alors sous la molette : un invité, qui n'a rien à y régler, se
+       retrouvait à faire glisser la seule chose qu'il était venu regarder,
+       et la moitié de l'équipage vivait sous le pli de son propre cadre. */
+    --sk-crew-facteur: 1;
     order: -1;
     flex: 1.6 1 356px;
     max-width: 440px;
@@ -8348,6 +8358,11 @@ h3 {
      un plafond (posé en JS, voir ajusterHauteurEquipage) l'empêche de
      dépasser ses voisines dans tous les cas. */
   .sk-lobby-col .lobby-list {
+    /* Mêmes cotes qu'ailleurs tant que la fenêtre est haute ; elles se
+       resserrent avec les médaillons quand elle ne l'est pas (voir
+       --sk-crew-facteur sur .sk-lobby-col--crew). */
+    --sk-crew-ligne: calc(38px * var(--sk-crew-facteur, 1));
+    --sk-crew-ecart: calc(7px * var(--sk-crew-facteur, 1));
     display: grid;
     grid-template-columns: 1fr 1fr;
     /* Des rangées de hauteur FIXE, et leur place réservée d'avance : le
@@ -8378,7 +8393,20 @@ h3 {
      partie complète. */
   .sk-lobby-col .lobby-list li {
     min-width: 0;
-    padding: 4px 10px;
+    /* Le rembourrage suit le rang : à rang resserré, une hauteur fixe de
+       4 px au-dessus et au-dessous suffisait à faire déborder la pastille
+       de sa ligne. */
+    padding: calc(4px * var(--sk-crew-facteur, 1)) 10px;
+  }
+
+  /* La pastille est ce qu'il y a de plus haut dans la ligne : c'est elle qui
+     en fixe la cote (26 px plus son cerclage, voir --sk-crew-ligne). Elle
+     suit donc le même facteur, sans quoi le rang se resserrerait autour
+     d'un médaillon resté grand. */
+  .sk-lobby-col .lobby-list .sk-lobby-piece {
+    width: calc(26px * var(--sk-crew-facteur, 1));
+    height: calc(26px * var(--sk-crew-facteur, 1));
+    margin-right: calc(8px * var(--sk-crew-facteur, 1));
   }
 
   .sk-lobby-col .lobby-list .sk-lobby-nom {
@@ -8431,10 +8459,10 @@ h3 {
      distingue. L'écart suit dans la même proportion, sinon la pièce retenue,
      agrandie d'un tiers, viendrait mordre ses voisines. */
   .sk-lobby-col .sk-piece-picker {
-    --sk-piece-cote: 62px;
-    --sk-piece-ecart: 11px;
+    --sk-piece-cote: calc(62px * var(--sk-crew-facteur, 1));
+    --sk-piece-ecart: calc(11px * var(--sk-crew-facteur, 1));
     margin-top: 0;
-    margin-bottom: 16px;
+    margin-bottom: calc(16px * var(--sk-crew-facteur, 1));
   }
 
   .sk-lobby-col .lobby-players {
@@ -8476,9 +8504,18 @@ h3 {
   overflow: hidden;
 }
 
+/* Le rabotage de la grille tombe sur le bord de son REMBOURRAGE, jamais sur
+   celui de sa marge : sans ces trois pixels, il rasait le cerclage de laiton
+   qui fait le tour des planches, et les trois cadres de la rangée
+   (extensions, ta pièce, discussion) commençaient par une arête nue — on
+   voyait le bois, pas la bordure claire que la planche des réglages, hors
+   grille, gardait juste au-dessus d'eux. La marge du dessus rend ce qu'on
+   prend en rembourrage : rien ne se déplace. */
 #sk-screen-waiting .sk-lobby-grid {
   flex: 1 1 auto;
   min-height: 0;
+  margin-top: 13px;
+  padding: 3px 0;
   overflow: hidden;
 }
 

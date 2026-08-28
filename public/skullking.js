@@ -1181,46 +1181,106 @@ const GRILLE_EN_RANGEE = '(min-width: 1000px)';
 // soit un ou neuf, et plus rien ne bouge en dessous — c'est le CSS qui la
 // pose, pas ce fichier (voir .sk-lobby-col .lobby-list).
 //
-// Il reste un cas à mesurer : la fenêtre trop courte pour les cinq rangs. La
-// planche déborderait alors du salon, qui ne défile pas. On la plafonne à ce
-// que la fenêtre laisse — et c'est la planche ENTIÈRE qui défile là-dedans,
-// pièces et libellé compris. On rabotait avant le rôle tout seul, les pièces
-// clouées en tête : deux zones de défilement sur une même planche, dont une
-// qui ne réagissait pas à la molette. Cette hauteur-là ne dépend que de la
-// fenêtre, jamais du nombre de matelots : le cadre ne bouge toujours pas
-// quand quelqu'un arrive.
+// Il reste un cas à mesurer : la fenêtre trop courte pour la table pleine.
+// LA PLANCHE NE DÉFILE PAS POUR AUTANT. On la plafonnait autrefois à ce que
+// la fenêtre laissait, et le reste passait sous le pli de son propre cadre :
+// un invité — qui n'a rien à régler dans ce salon, il est venu voir qui est
+// là — se retrouvait à faire glisser à la molette la seule chose qu'il
+// regardait, et les derniers arrivés n'existaient pas tant qu'il n'y pensait
+// pas. Elle se RESSERRE maintenant jusqu'à ce que les neuf tiennent : les
+// médaillons et les rangs perdent ensemble le même pourcentage (voir
+// --sk-crew-facteur), et le cadre reste entier.
+//
+// Deux leviers, dans cet ordre : l'enseigne d'abord — c'est du décor, elle
+// ne dit rien qu'on attende — puis la planche. Aucun des deux ne dépend du
+// nombre de matelots, seulement de la hauteur de la fenêtre : le cadre ne
+// bouge toujours pas quand quelqu'un arrive.
+const CREW_FACTEUR_MIN = 0.58;  // en deçà, un médaillon n'est plus une pièce
+const LOGO_PART_MIN = 0.62;     // l'enseigne ne rend pas plus des deux cinquièmes
+
 function ajusterHauteurSalon() {
   const grille = document.querySelector('.sk-lobby-grid');
   if (!grille) return;
   const equipage = grille.querySelector('.sk-lobby-col--crew');
+  const enseigne = document.querySelector('.sk-waiting-logo');
 
   ajusterCartesExtension();
+
+  // La discussion ne se mesure plus : sa hauteur est fixe, posée en CSS (voir
+  // .sk-lobby-chat .sk-chat-log). Elle se calait autrefois sur la planche la
+  // plus haute du salon ; depuis que le paquet, le rythme et l'extension se
+  // replient, cette hauteur-là change à chaque volet ouvert — le fil aurait
+  // grandi et rétréci sous les yeux de qui écrit dedans. Reste à le coller en
+  // bas : c'est ici qu'on repasse après chaque rendu du salon, et un dernier
+  // message coupé en deux au ras du formulaire se lit « Pablo 19:00 » sans
+  // qu'on sache ce qu'il disait.
+  if (lobbyChatLog) lobbyChatLog.scrollTop = lobbyChatLog.scrollHeight;
+
+  if (!equipage) return;
+
+  // Toujours repartir des cotes de dessin : ce qui suit se mesure sur la mise
+  // en page naturelle, pas sur celle du dernier passage. Avant le seuil de
+  // largeur, pas après : une fenêtre qu'on rétrécit d'un écran d'ordinateur
+  // à une colonne de téléphone garderait sinon le plafond et le
+  // resserrement calculés pour la rangée qu'elle n'a plus.
+  equipage.style.maxHeight = '';
+  equipage.style.removeProperty('--sk-crew-facteur');
+  if (enseigne) enseigne.style.width = '';
 
   // Sous 1000px les planches sont empilées et la grille défile déjà d'un
   // bloc : rien à raboter.
   if (!window.matchMedia(GRILLE_EN_RANGEE).matches) return;
-  if (!equipage) return;
-  // Toujours remettre à zéro d'abord : la hauteur se mesure sur la mise en
-  // page naturelle, pas sur celle du dernier passage.
-  equipage.style.maxHeight = '';
 
-  // Ce que la fenêtre laisse à la grille : la planche de l'équipage ne doit
-  // pas en sortir, le salon ne défile pas. Si elle dépasse, elle défile dans
-  // ce qu'il reste — d'un seul bloc, sous la molette posée n'importe où sur
-  // le bois.
-  const dispo = grille.clientHeight;
-  if (equipage.offsetHeight <= dispo) return;
-  equipage.style.maxHeight = `${dispo}px`;
+  // Ce que la fenêtre laisse à la grille, rembourrage déduit : c'est le
+  // rembourrage qui porte le cerclage des planches (voir
+  // #sk-screen-waiting .sk-lobby-grid), il n'est pas à occuper.
+  const placeDeLaGrille = () => {
+    const style = getComputedStyle(grille);
+    return grille.clientHeight
+      - (parseFloat(style.paddingTop) || 0)
+      - (parseFloat(style.paddingBottom) || 0);
+  };
 
-  // La discussion, elle, ne se mesure plus : sa hauteur est fixe, posée en
-  // CSS (voir .sk-lobby-chat .sk-chat-log). Elle se calait autrefois sur la
-  // planche la plus haute du salon ; depuis que le paquet, le rythme et
-  // l'extension se replient, cette hauteur-là change à chaque volet ouvert —
-  // le fil aurait grandi et rétréci sous les yeux de qui écrit dedans.
-  // Reste à le coller en bas : c'est ici qu'on repasse après chaque rendu du
-  // salon, et un dernier message coupé en deux au ras du formulaire se lit
-  // « Pablo 19:00 » sans qu'on sache ce qu'il disait.
-  if (lobbyChatLog) lobbyChatLog.scrollTop = lobbyChatLog.scrollHeight;
+  let dispo = placeDeLaGrille();
+  let manque = equipage.offsetHeight - dispo;
+  if (manque <= 0) return;
+
+  // 1. L'enseigne cède la première, et seulement de ce qu'il manque. Sa cote
+  //    au repos se MESURE (elle change de valeur selon la largeur, voir
+  //    #sk-screen-waiting .sk-waiting-logo) : la redire ici l'aurait fait
+  //    grandir sur les fenêtres où elle est déjà plus étroite que la valeur
+  //    supposée.
+  if (enseigne && enseigne.offsetHeight > 0) {
+    const hautNaturel = enseigne.offsetHeight;
+    const largeNaturelle = enseigne.offsetWidth;
+    const rendu = Math.min(manque, hautNaturel * (1 - LOGO_PART_MIN));
+    enseigne.style.width = `${Math.round(largeNaturelle * (hautNaturel - rendu) / hautNaturel)}px`;
+    dispo = placeDeLaGrille();
+    manque = equipage.offsetHeight - dispo;
+    if (manque <= 0) return;
+  }
+
+  // 2. La planche se resserre. Ce qui se resserre — les médaillons, l'écart
+  //    qui les sépare, les rangs du rôle — se mesure ici plutôt que de se
+  //    redire en dur : les cotes vivent dans la feuille de style, ce fichier
+  //    n'en connaît que la SOMME. Le reste (le clou, les deux enseignes, les
+  //    marges de la planche) ne bouge pas, et fait le plancher.
+  const hautDesPieces = pieceGrid ? pieceGrid.offsetHeight : 0;
+  const souple = hautDesPieces
+    // La marge sous les pièces ne compte que si les pièces sont là : le
+    // choix de pièce est masqué tant que le salon n'a pas rendu.
+    + (hautDesPieces ? parseFloat(getComputedStyle(piecePicker).marginBottom) || 0 : 0)
+    + (lobbyList ? lobbyList.offsetHeight : 0);
+  if (souple > 0) {
+    const fixe = equipage.offsetHeight - souple;
+    const facteur = Math.max(CREW_FACTEUR_MIN, Math.min(1, (dispo - fixe) / souple));
+    equipage.style.setProperty('--sk-crew-facteur', facteur.toFixed(4));
+  }
+
+  // Fenêtre plus courte encore que la planche au plus serré : elle défile
+  // alors, faute de mieux — mais il faut une fenêtre plus basse que tout ce
+  // sur quoi ce salon se joue pour en arriver là.
+  if (equipage.offsetHeight > dispo) equipage.style.maxHeight = `${dispo}px`;
 }
 
 // Le paquet, réglé par l'hôte. Deux vignettes plutôt que deux libellés : ce
