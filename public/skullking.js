@@ -1180,47 +1180,34 @@ const GRILLE_EN_RANGEE = '(min-width: 1000px)';
 // pose, pas ce fichier (voir .sk-lobby-col .lobby-list).
 //
 // Il reste un cas à mesurer : la fenêtre trop courte pour les cinq rangs. La
-// planche déborderait alors du salon, qui ne défile pas. On rabote la liste
-// à ce que la fenêtre laisse — et c'est elle qui défile, dans son cadre.
-// Cette hauteur-là ne dépend que de la fenêtre, jamais du nombre de
-// matelots : le cadre ne bouge toujours pas quand quelqu'un arrive.
+// planche déborderait alors du salon, qui ne défile pas. On la plafonne à ce
+// que la fenêtre laisse — et c'est la planche ENTIÈRE qui défile là-dedans,
+// pièces et libellé compris. On rabotait avant le rôle tout seul, les pièces
+// clouées en tête : deux zones de défilement sur une même planche, dont une
+// qui ne réagissait pas à la molette. Cette hauteur-là ne dépend que de la
+// fenêtre, jamais du nombre de matelots : le cadre ne bouge toujours pas
+// quand quelqu'un arrive.
 function ajusterHauteurSalon() {
   const grille = document.querySelector('.sk-lobby-grid');
   if (!grille) return;
   const equipage = grille.querySelector('.sk-lobby-col--crew');
 
-  // Toujours remettre à zéro d'abord : les hauteurs se mesurent sur la mise
-  // en page naturelle, pas sur celle du dernier passage.
-  lobbyList.style.height = '';
   ajusterCartesExtension();
 
   // Sous 1000px les planches sont empilées et la grille défile déjà d'un
   // bloc : rien à raboter.
   if (!window.matchMedia(GRILLE_EN_RANGEE).matches) return;
   if (!equipage) return;
+  // Toujours remettre à zéro d'abord : la hauteur se mesure sur la mise en
+  // page naturelle, pas sur celle du dernier passage.
   equipage.style.maxHeight = '';
 
   // Ce que la fenêtre laisse à la grille : la planche de l'équipage ne doit
-  // pas en sortir, le salon ne défile pas.
+  // pas en sortir, le salon ne défile pas. Si elle dépasse, elle défile dans
+  // ce qu'il reste — d'un seul bloc, sous la molette posée n'importe où sur
+  // le bois.
   const dispo = grille.clientHeight;
-  const debord = equipage.offsetHeight - dispo;
-  if (debord <= 0) return;
-
-  // D'abord le rôle : c'est lui qui prend le plus de place et le seul dont
-  // on puisse cacher une partie sans rien perdre — il défile dans son cadre.
-  const style = getComputedStyle(lobbyList);
-  const ecart = parseFloat(style.rowGap) || 0;
-  const pas = (parseFloat(style.gridAutoRows) || 0) + ecart;
-  let hauteur = lobbyList.offsetHeight - debord;
-  // La hauteur tombe sur un nombre entier de rangées. Au pixel près, elle
-  // coupait la suivante en deux et le liseré qui dépassait se lisait comme
-  // une barre de défilement collée en pied de planche.
-  if (pas > 0) hauteur = Math.max(2, Math.floor((hauteur + ecart) / pas)) * pas - ecart;
-  lobbyList.style.height = `${hauteur}px`;
-
-  // Fenêtre si basse que même deux rangées ne rentrent pas : plutôt que de
-  // couper la planche au ras du bois, c'est elle entière — les pièces avec
-  // le rôle — qui défile dans ce qu'il reste.
+  if (equipage.offsetHeight <= dispo) return;
   equipage.style.maxHeight = `${dispo}px`;
 
   // La discussion, elle, ne se mesure plus : sa hauteur est fixe, posée en
@@ -1396,8 +1383,27 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
     // Un `div`, pas un `span` : .sk-card se dimensionne en largeur/hauteur, et
     // ces deux propriétés ne s'appliquent pas à un inline. La carte se
     // repliait donc sur rien et on ne voyait que le fond noir du bouton.
-    const apercu = fiche.cartes[0];
-    card.innerHTML = `<div class="sk-card ${cardClass(apercu)}">${cardFaceHTML(apercu)}</div>`;
+    //
+    // Les lignes qui apportent PLUSIEURS cartes — les numérotées et leur trio
+    // 7 / 8 / 0-14 — les posent en éventail serré plutôt que de n'en montrer
+    // qu'une : la vignette du 7 seul laissait croire que la ligne n'ajoutait
+    // que lui. L'éventail tient dans l'empreinte d'une carte (voir
+    // .sk-ext-fan), la répartition du creux reste donc celle d'une vignette
+    // par module. `--sk-fan-i` numérote les cartes depuis le milieu
+    // (-1, 0, +1 pour trois) : c'est ce qui donne l'écart et l'inclinaison.
+    if (fiche.cartes.length > 1) {
+      const milieu = (fiche.cartes.length - 1) / 2;
+      card.innerHTML =
+        '<div class="sk-ext-fan">' +
+        fiche.cartes
+          .map((carte, i) =>
+            `<div class="sk-card ${cardClass(carte)}" style="--sk-fan-i:${i - milieu}">${cardFaceHTML(carte)}</div>`)
+          .join('') +
+        '</div>';
+    } else {
+      const apercu = fiche.cartes[0];
+      card.innerHTML = `<div class="sk-card ${cardClass(apercu)}">${cardFaceHTML(apercu)}</div>`;
+    }
     card.addEventListener('click', () => ouvrirFiche(module.label, fiche));
     activeExtensions.appendChild(card);
   });

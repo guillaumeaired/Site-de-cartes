@@ -108,7 +108,7 @@
             <p class="invite-label sk-lobby-col-title">Extensions</p>
             <p id="sk-ext-etat" class="sk-lobby-summary">Aucune</p>
             <div id="sk-active-extensions" class="sk-active-extensions" aria-live="polite"></div>
-            <button id="sk-btn-lobby-extensions" class="btn sk-lobby-open" type="button">Extensions</button>
+            <button id="sk-btn-lobby-extensions" class="btn sk-lobby-open" type="button">Ajouter des extensions</button>
           </section>
         </div>
 
@@ -520,6 +520,14 @@
       </button>
       <ul id="sk-ext-list" class="sk-ext-list"></ul>
       <p id="sk-extension-hint" class="hint sk-ext-tally"></p>
+      <!-- La croix ferme, mais elle se lit comme un abandon : sur une planche
+           où l'on vient de cocher des lignes, il faut un bouton qui dise que
+           c'est réglé. Il ne valide rien au sens strict — chaque
+           interrupteur part déjà au serveur — il referme simplement le
+           cadre de sélection. -->
+      <div class="sk-lobby-config-actions">
+        <button class="btn btn-primary sk-lobby-valider" type="button" data-close-lobby-modal>Valider</button>
+      </div>
     </div>
   </div>
 

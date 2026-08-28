@@ -8299,31 +8299,28 @@ h3 {
     order: -1;
     flex: 1.6 1 356px;
     max-width: 440px;
-    /* La planche est un CADRE, pas une pile qui s'allonge : les pièces
-       restent en tête, le rôle occupe ce qui reste et défile dedans. Sans
-       ça, la liste poussait le bas de la planche à chaque arrivée. */
     display: flex;
     flex-direction: column;
     min-height: 0;
-    /* Dernier recours, quand la fenêtre est trop basse même pour deux
-       rangées de matelots (le plafond est posé en JS, voir
-       ajusterHauteurSalon) : la planche entière défile plutôt que d'être
-       coupée au ras du bois. Sans plafond elle ne défile pas — la règle ne
-       coûte rien tant que tout rentre. */
+    /* Quand la fenêtre est trop courte pour la table pleine, c'est ICI qu'on
+       défile — et d'un seul bloc, la planche entière : les pièces, le
+       libellé, le rôle. Le rôle défilait autrefois seul dans son cadre,
+       pièces et titre cloués en tête : la molette posée sur le médaillon
+       qu'on venait de choisir ne faisait rien, et celle posée deux
+       centimètres plus bas emportait la moitié de la planche. Une planche,
+       un défilement. Le plafond est posé en JS (voir ajusterHauteurSalon) ;
+       sans lui elle ne défile pas — la règle ne coûte rien tant que tout
+       rentre. */
     overflow: hidden auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
   }
 
+  /* Rien ne s'étire ni ne se comprime pour tenir dans le plafond : chaque
+     bloc garde sa hauteur et c'est la planche qui déborde, donc qui défile.
+     Sans ça, le rôle se serait laissé raboter et aurait défilé tout seul. */
   .sk-lobby-col--crew > * {
     flex: none;
-  }
-
-  .sk-lobby-col--crew .lobby-players {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
   }
 
   /* Le rôle d'équipage sur deux colonnes. Une seule, il grandissait de 51 px
@@ -8349,13 +8346,11 @@ h3 {
       var(--sk-crew-rangs) * var(--sk-crew-ligne)
       + (var(--sk-crew-rangs) - 1) * var(--sk-crew-ecart)
     );
-    /* Le plafond ne borne que la hauteur : en largeur la liste ne déborde
-       jamais, et `auto` sur les deux axes lui donnait une barre horizontale
-       vide en pied de planche. Quand la fenêtre est trop courte pour les
-       cinq rangs, c'est ici qu'on défile — dans le cadre, sans le déformer. */
-    overflow: hidden auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(184, 137, 53, 0.4) transparent;
+    /* La liste ne défile plus d'elle-même : sa hauteur est celle de la table
+       pleine, son contenu y tient toujours. Quand la fenêtre est trop courte
+       pour ces rangs, c'est la planche entière qui défile (voir
+       .sk-lobby-col--crew) — le rôle part avec les pièces, d'un seul geste. */
+    overflow: hidden;
   }
 
   /* Deux fois moins large : le pseudo se coupe plutôt que de pousser la
@@ -8566,6 +8561,53 @@ h3 {
   border-color: var(--sk-brass-hi);
   filter: brightness(1.12);
   outline: none;
+}
+
+/* L'ÉVENTAIL DES NUMÉROTÉES. Une ligne d'extension vaut une carte, sauf
+   celle-là : elle en ajoute trois (le 7, le 8 et le 0/14). Le cadre du salon
+   n'en montrait que la première, et on cochait donc « numérotées » sans voir
+   ce qui entrait dans le paquet. Les trois s'y posent maintenant en éventail
+   serré — le même trio que la fiche ouvre en grand.
+
+   L'éventail tient dans l'empreinte d'UNE carte : le calcul qui taille le
+   creux (ajusterCartesExtension) répartit des vignettes de largeur égale, et
+   un bouton plus large qu'un autre lui ferait déborder un rang. Les trois
+   cartes rapetissent donc à 0.66 et se chevauchent, décalées d'un dixième de
+   carte et tournées de 8° — de quoi les compter d'un coup d'œil sans sortir
+   du cadre de laiton. */
+.sk-ext-fan {
+  --sk-fan-k: var(--sk-ext-facteur, 0.52);
+  position: relative;
+  width: calc(84px * var(--sk-fan-k));
+  height: calc(120px * var(--sk-fan-k));
+}
+
+.sk-active-extension .sk-ext-fan .sk-card {
+  --sk-ext-k: calc(var(--sk-fan-k) * 0.66);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  transform:
+    translate(-50%, -50%)
+    translateX(calc(var(--sk-fan-i) * 8.8px * var(--sk-fan-k)))
+    rotate(calc(var(--sk-fan-i) * 8deg));
+}
+
+/* La rangée de pied des cadres de réglage du salon. Un seul bouton pour
+   l'instant, mais centré et détaché du dernier réglage par le même trait de
+   laiton que les autres sections. */
+.sk-lobby-config-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(184, 137, 53, 0.28);
+  text-align: center;
+}
+
+.sk-lobby-valider {
+  min-width: 180px;
+  margin: 0;
 }
 
 .sk-lobby-config-modal {
