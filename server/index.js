@@ -114,9 +114,16 @@ function makeRoomCode() {
   return code;
 }
 
+// Defense en profondeur : on retire les chevrons, seul vecteur d'injection
+// HTML dans les pseudos (les clients les affichent en contexte texte, jamais
+// dans un attribut). On les *supprime* au lieu de les echapper : les clients
+// echappent deja a l'insertion, un pseudo pre-echappe ici s'afficherait
+// double-echappe. Le reste (& " ') est laisse tel quel, ces caracteres etant
+// legitimes dans un pseudo et sans danger une fois echappes cote client.
+// Cette couche ne dispense donc PAS d'echapper cote client.
 function sanitizeNickname(nickname) {
   if (typeof nickname !== 'string') return null;
-  const trimmed = nickname.trim().slice(0, 16);
+  const trimmed = nickname.replace(/[<>]/g, '').trim().slice(0, 16);
   if (!trimmed) return null;
   // Une majuscule d'office à l'initiale : le pseudo est affiché partout comme
   // un nom propre — au siège, au registre, dans le verdict de fin — et un
