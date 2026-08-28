@@ -3186,10 +3186,15 @@ document.getElementById('sk-btn-declare-14').addEventListener('click', () => {
   if (pendingDeclareCardId) playCard(pendingDeclareCardId, { declaredValue: 14 });
 });
 
-// Mode spécial du pouvoir de Will le Bandit : au lieu de jouer une carte, on
-// clique pour choisir 2 cartes à défausser dans sa main (les 2 piochées y
-// sont déjà mêlées).
-let willDiscardSelection = new Set();
+// Pouvoir de Will le Bandit : les 2 cartes à rendre se désignent dans le
+// cadre du troc, au centre de l'écran (voir renderWillTroc).
+//
+// Une LISTE et non un ensemble : l'ordre des choix sert. Quand deux cartes
+// sont déjà désignées, la troisième ne se heurte plus à un refus muet — elle
+// repose la plus ancienne et prend sa place. Un clic fait toujours quelque
+// chose, ce qui est la moindre des choses quand on ne sait pas encore ce
+// qu'on est censé faire.
+let willDiscardSelection = [];
 let willConfirmBtn = null;
 
 // Pouvoir de Juanita Jade : les cartes se retournent TOUTES SEULES, en
@@ -3214,10 +3219,16 @@ function arreterVagueJuanita() {
   juanitaVagueTimers = [];
 }
 
+// Le bouton porte la consigne, pas un décompte. « Défausser (0/2 choisies) »
+// disait où l'on en était à qui savait déjà quoi faire ; « Choisis 2 cartes à
+// rendre » le dit à qui ne le sait pas — et c'est le seul texte que l'œil
+// vient chercher quand rien ne se passe.
 function updateWillConfirmButton() {
   if (!willConfirmBtn) return;
-  willConfirmBtn.textContent = `Défausser (${willDiscardSelection.size}/2 choisies)`;
-  willConfirmBtn.disabled = willDiscardSelection.size !== 2;
+  const reste = 2 - willDiscardSelection.length;
+  willConfirmBtn.textContent =
+    reste > 0 ? `Choisis ${reste} carte${reste > 1 ? 's' : ''} à rendre` : 'Rendre ces 2 cartes';
+  willConfirmBtn.disabled = reste !== 0;
 }
 
 function renderHand(state) {
@@ -3229,8 +3240,12 @@ function renderHand(state) {
   if (state.phase === 'bidding' && (state.hand || []).some((c) => c.kind === 'hidden')) return;
   const hand = sortHandForDisplay(state.hand || []);
   const canPlay = state.phase === 'playing' && state.isMyTurn;
+  // Le troc de Will le Bandit porte TOUTE la main dans son propre cadre
+  // (renderWillTroc) : l'éventail se retire le temps du choix. Le laisser
+  // affichait la même main à deux endroits — celui qu'on regardait n'étant
+  // pas celui sur lequel il fallait cliquer.
   const willMode = state.phase === 'power' && state.pendingPower && state.pendingPower.kind === 'will' && state.pendingPower.mine;
-  const willDrawnIds = willMode ? new Set(state.pendingPower.drawnCardIds || []) : null;
+  if (willMode) return;
   const trick = state.currentTrick || [];
 
   const n = hand.length;
@@ -3267,18 +3282,7 @@ function renderHand(state) {
       why.textContent = state.forcedCardId ? 'Carte imposée' : `Suis le ${led}`;
       el.appendChild(why);
     }
-    if (willMode) {
-      // Repère les deux cartes tout juste piochées au milieu du reste de la
-      // main - sans ça, rien ne les distingue une fois mêlées à l'éventail.
-      if (willDrawnIds.has(card.id)) el.classList.add('sk-card--will-drawn');
-      if (willDiscardSelection.has(card.id)) el.classList.add('sk-card--selected');
-      el.addEventListener('click', () => {
-        if (willDiscardSelection.has(card.id)) willDiscardSelection.delete(card.id);
-        else if (willDiscardSelection.size < 2) willDiscardSelection.add(card.id);
-        renderHand(state);
-        updateWillConfirmButton();
-      });
-    } else if (canPlay && !playable) {
+    if (canPlay && !playable) {
       // La raison est déjà collée sur la carte (bandeau de gabier) ; le
       // message reprend la couleur imposée plutôt qu'une règle générale.
       el.addEventListener('click', () => {
@@ -3702,16 +3706,226 @@ const POWER_LABEL = {
   marythorne: 'Mary Thorne',
 };
 
+// --- Le troc de Will le Bandit ---------------------------------------
+// Le pouvoir est un ÉCHANGE : deux cartes du reliquat entrent dans la main,
+// deux en ressortent. Il se jouait à deux endroits — un cadre dans la barre
+// du bas montrait les deux cartes piochées et portait le bouton, tandis que
+// la désignation, elle, se faisait dans l'éventail. Or ce cadre se posait
+// PAR-DESSUS l'éventail (bas : 3 %, la main à 3,5 %, et un plan au-dessus) :
+// les cartes qu'il fallait cliquer étaient dessous. On voyait le butin, on
+// ne pouvait pas payer — et rien ne disait qu'il fallait cliquer ailleurs
+// que dans le cadre qu'on avait sous les yeux.
+//
+// Le troc prend donc le centre de l'écran, comme la Tigresse et comme
+// Juanita Jade, et il porte toute la main. En DEUX ÉVENTAILS séparés,
+// pas en une grille rangée : d'un côté ce que j'avais, de l'autre ce que
+// je viens de prendre. Mêlées dans une seule rangée triée, les deux
+// piochées ne se distinguaient que par un liseré et une étiquette chacune —
+// il fallait les chercher pour comprendre ce que le pouvoir venait de
+// faire. Séparées, la phrase se lit sans être écrite, et l'étiquette
+// « Piochées » vaut alors pour les deux d'un coup.
+//
+// Les deux éventails restent également cliquables : on rend ce qu'on veut,
+// des vieilles cartes comme du butin frais. L'éventail du bas de l'écran se
+// retire le temps du choix (voir renderHand).
+//
+// `hint` est la consigne déjà créée par renderPower : on la remplit, elle
+// est déjà en place au-dessus des éventails.
+let willSessionKey = null;
+
+function renderWillTroc(state, pending, hint) {
+  powerPanel.classList.add('sk-power-panel--will');
+
+  const drawnIds = new Set(pending.drawnCardIds || []);
+  // Un troc en chasse un autre : les ids ne sont jamais réutilisés, ils
+  // identifient donc l'instance. Sans ce garde-fou, une carte désignée puis
+  // rendue au pli précédent resterait cochée au suivant, et le bouton
+  // s'activerait sur une sélection fantôme que le serveur refuserait.
+  const key = [...drawnIds].join(',');
+  if (willSessionKey !== key) {
+    willSessionKey = key;
+    willDiscardSelection = [];
+  }
+
+  const tout = sortHandForDisplay(state.hand || []);
+  const piochees = tout.filter((c) => drawnIds.has(c.id));
+  const mienne = tout.filter((c) => !drawnIds.has(c.id));
+  const garde = Math.max(0, tout.length - 2);
+
+  // Le compte posé sur le CADRE est celui de MA main seule : le butin tient
+  // toujours en deux cartes, il est constant dans la largeur du cadre (voir
+  // --sk-will-cols côté feuille de style). C'est lui qui règle à la fois la
+  // largeur du cadre — qui ne s'étale pas quand la manche est courte — et la
+  // taille des cartes, que les éventails en déduisent.
+  powerPanel.style.setProperty('--sk-will-n', Math.max(1, mienne.length));
+
+  const titre = document.createElement('p');
+  titre.className = 'sk-will-titre';
+  titre.textContent = 'Will le Bandit';
+  powerPanel.insertBefore(titre, hint);
+
+  hint.classList.add('sk-will-consigne');
+  hint.innerHTML =
+    'Tu viens de piocher <b>2 cartes</b> au reliquat. ' +
+    `Rends-en <b>2</b> maintenant — de ta main, du butin, ou une de chaque — ` +
+    `pour revenir à ${garde} carte${garde > 1 ? 's' : ''}.`;
+
+  const cases = new Map();
+  const majSelection = () => {
+    cases.forEach((item, id) => {
+      const choisie = willDiscardSelection.includes(id);
+      item.classList.toggle('sk-will-carte--rendue', choisie);
+      item.setAttribute('aria-pressed', choisie ? 'true' : 'false');
+    });
+    updateWillConfirmButton();
+  };
+
+  const basculer = (id) => {
+    const i = willDiscardSelection.indexOf(id);
+    if (i !== -1) willDiscardSelection.splice(i, 1);
+    else {
+      willDiscardSelection.push(id);
+      // Trois désignées : la plus ancienne revient dans la main.
+      if (willDiscardSelection.length > 2) willDiscardSelection.shift();
+    }
+    majSelection();
+  };
+
+  // Une carte du troc : la case cliquable, et la carte dedans. Deux boîtes
+  // et non une, parce que l'inclinaison de l'éventail est portée par l'arc
+  // au-dessus et que la désignation, elle, incline la case — les deux se
+  // composent au lieu de s'écraser.
+  const construireCase = (card, piochee, rang) => {
+    const item = document.createElement('div');
+    item.className = 'sk-will-carte' + (piochee ? ' sk-will-carte--piochee' : '');
+    item.setAttribute('role', 'button');
+    item.tabIndex = 0;
+    item.setAttribute('aria-pressed', 'false');
+    item.setAttribute(
+      'aria-label',
+      `${cardLabel(card)}${piochee ? ', tout juste piochée' : ''} — la rendre au reliquat`
+    );
+
+    const el = document.createElement('div');
+    el.className = `sk-card ${cardClass(card)}` + (piochee ? ' sk-card--will-drawn' : '');
+    el.innerHTML = cardFaceHTML(card);
+    attachPowerTooltip(el, card);
+
+    // Le bandeau de gabier, celui qui dit déjà « Suis le vert » sur une carte
+    // bloquée : c'est là que l'œil vient chercher l'état d'une carte.
+    const marque = document.createElement('span');
+    marque.className = 'sk-card__why sk-will-marque';
+    marque.textContent = 'Rendue';
+    el.appendChild(marque);
+    item.appendChild(el);
+
+    if (piochee) {
+      // Elles tombent dans le butin l'une après l'autre à l'ouverture du
+      // cadre : c'est le seul instant où l'on voit ce que le pouvoir rapporte.
+      el.style.animationDelay = `${rang * 160}ms`;
+    }
+
+    item.addEventListener('click', () => {
+      if (suppressNextTap) return;
+      basculer(card.id);
+    });
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        basculer(card.id);
+      }
+    });
+
+    cases.set(card.id, item);
+    return item;
+  };
+
+  // L'éventail, celui de la main du bas de l'écran : un arc par carte, qui
+  // porte l'angle et la levée ; le chevauchement est en feuille de style,
+  // pour qu'il suive la largeur de carte sans repasser par le JS.
+  const eventail = (cartes, { parCarte, max, butin }) => {
+    const boite = document.createElement('div');
+    boite.className = 'sk-will-eventail' + (butin ? ' sk-will-eventail--butin' : '');
+    const n = cartes.length;
+    const ouverture = Math.min(parCarte * Math.max(n - 1, 0), max);
+    const pas = n > 1 ? ouverture / (n - 1) : 0;
+    cartes.forEach((card, i) => {
+      const angle = n > 1 ? -ouverture / 2 + i * pas : 0;
+      // La levée des extrémités, au carré : c'est ce qui courbe l'éventail
+      // au lieu de le laisser en éventail plat de cartes penchées.
+      const ecart = n > 1 ? Math.abs(i - (n - 1) / 2) / ((n - 1) / 2) : 0;
+      const arc = document.createElement('div');
+      arc.className = 'sk-will-arc';
+      arc.style.transform = `rotate(${angle.toFixed(2)}deg) translateY(${(ecart * ecart * 9).toFixed(1)}px)`;
+      arc.appendChild(construireCase(card, butin, i));
+      boite.appendChild(arc);
+    });
+    return boite;
+  };
+
+  const groupe = (cartes, legende, options) => {
+    const bloc = document.createElement('section');
+    bloc.className = 'sk-will-groupe' + (options.butin ? ' sk-will-groupe--butin' : '');
+    bloc.appendChild(eventail(cartes, options));
+    const nom = document.createElement('p');
+    nom.className = 'sk-will-legende' + (options.butin ? ' sk-will-legende--butin' : '');
+    nom.textContent = legende;
+    bloc.appendChild(nom);
+    return bloc;
+  };
+
+  const tables = document.createElement('div');
+  tables.className = 'sk-will-tables';
+  // Ma main d'abord, le butin ensuite : on lit de gauche à droite, et le
+  // butin est ce qui vient de s'ajouter au bout.
+  if (mienne.length) {
+    tables.appendChild(groupe(mienne, 'Ta main', { parCarte: 5, max: 34 }));
+  }
+  if (mienne.length && piochees.length) {
+    const trait = document.createElement('i');
+    trait.className = 'sk-will-separateur';
+    trait.setAttribute('aria-hidden', 'true');
+    tables.appendChild(trait);
+  }
+  if (piochees.length) {
+    // « Piochées » au pluriel dès qu'elles sont deux — et une seule mention
+    // pour les deux, puisqu'elles sont groupées. Le reliquat pourrait
+    // n'en rendre qu'une s'il était presque vide : la légende suit.
+    tables.appendChild(
+      groupe(piochees, piochees.length > 1 ? 'Piochées' : 'Piochée', { parCarte: 9, max: 9, butin: true })
+    );
+  }
+  powerPanel.appendChild(tables);
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn btn-primary sk-will-valider';
+  confirmBtn.type = 'button';
+  confirmBtn.addEventListener('click', () => {
+    if (willDiscardSelection.length !== 2) return;
+    socket.emit('skullking-power-will', { discardIds: [...willDiscardSelection] });
+    willDiscardSelection = [];
+    // Le cadre ne se referme qu'au prochain état reçu : sans ce verrou, un
+    // second clic pendant l'aller-retour renverrait un troc déjà consommé.
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Troc envoyé…';
+    willConfirmBtn = null;
+  });
+  powerPanel.appendChild(confirmBtn);
+  willConfirmBtn = confirmBtn;
+  majSelection();
+}
+
+
 function renderPower(state) {
   powerBanner.classList.add('hidden');
   powerPanel.classList.add('hidden');
-  powerPanel.classList.remove('sk-power-panel--juanita');
+  powerPanel.classList.remove('sk-power-panel--juanita', 'sk-power-panel--will');
   powerPanel.innerHTML = '';
   willConfirmBtn = null;
 
   const pending = state.pendingPower;
   if (state.phase !== 'power' || !pending) {
-    willDiscardSelection.clear();
+    willDiscardSelection = [];
     juanitaSessionKey = null;
     juanitaFlipped.clear();
     juanitaVagueLancee = false;
@@ -3729,7 +3943,7 @@ function renderPower(state) {
   powerBanner.classList.remove('hidden');
 
   if (!pending.mine) {
-    willDiscardSelection.clear();
+    willDiscardSelection = [];
     return;
   }
   powerPanel.classList.remove('hidden');
@@ -3898,33 +4112,7 @@ function renderPower(state) {
 
     ajusterGrilleJuanita(row, cards.length);
   } else if (pending.kind === 'will') {
-    hint.textContent = 'Tu piochais 2 cartes non distribuées, les voici — elles ont rejoint ta main. Choisis 2 cartes à défausser ci-dessous (parmi toute ta main, pas forcément celles-ci).';
-    const drawnIds = new Set(pending.drawnCardIds || []);
-    const drawnRow = document.createElement('div');
-    drawnRow.className = 'sk-hand sk-will-drawn-row';
-    (state.hand || [])
-      .filter((card) => drawnIds.has(card.id))
-      .forEach((card) => {
-        const el = document.createElement('div');
-        el.className = `sk-card sk-card--will-drawn ${cardClass(card)}`;
-        el.innerHTML = cardFaceHTML(card);
-        attachPowerTooltip(el, card);
-        drawnRow.appendChild(el);
-      });
-    powerPanel.appendChild(drawnRow);
-
-    const confirmBtn = document.createElement('button');
-    confirmBtn.className = 'btn';
-    confirmBtn.disabled = true;
-    confirmBtn.addEventListener('click', () => {
-      if (willDiscardSelection.size === 2) {
-        socket.emit('skullking-power-will', { discardIds: [...willDiscardSelection] });
-        willDiscardSelection.clear();
-      }
-    });
-    powerPanel.appendChild(confirmBtn);
-    willConfirmBtn = confirmBtn;
-    updateWillConfirmButton();
+    renderWillTroc(state, pending, hint);
   }
 }
 

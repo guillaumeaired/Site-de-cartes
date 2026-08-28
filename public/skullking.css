@@ -3229,38 +3229,15 @@ body.sk-ciblage .sk-turn-indicator {
     0 8px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* Carte choisie pour la défausse pendant le pouvoir de Will le Bandit. */
-.sk-card--selected {
-  transform: translateY(-18px) scale(1.05);
-  z-index: 3;
-  box-shadow:
-    0 0 0 2px var(--sk-brass-hi),
-    0 0 20px rgba(232, 206, 146, 0.5),
-    0 14px 24px rgba(0, 0, 0, 0.6);
-}
-
 /* Les deux cartes tout juste piochées par Will le Bandit : un liseré de
-   cuivre pour les repérer sans les confondre avec la sélection de défausse
-   ci-dessus, qui est en laiton clair. */
+   cuivre pour les repérer une fois mêlées au reste de la main. Le laiton
+   clair, lui, est réservé à la carte qu'on désigne (voir le cadre du troc,
+   plus bas) — deux métaux, deux états. */
 .sk-card--will-drawn {
   box-shadow:
     0 0 0 2px var(--sk-copper),
     0 2px 0 rgba(0, 0, 0, 0.4),
     0 8px 16px rgba(0, 0, 0, 0.5);
-}
-
-.sk-will-drawn-row {
-  padding: 6px 0 10px;
-  min-height: 0;
-}
-
-.sk-will-drawn-row .sk-card {
-  cursor: default;
-  animation: sk-card-drop 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
-}
-
-.sk-will-drawn-row .sk-card:hover {
-  transform: none;
 }
 
 /* --- Échelles --------------------------------------------------------
@@ -6015,19 +5992,6 @@ body.sk-ciblage .sk-turn-indicator {
   z-index: 7;
 }
 
-/* Ses rangées de cartes restent dans le flux : elles se replient au lieu
-   de s'échapper du panneau. */
-.sk-scene .sk-will-drawn-row {
-  position: static;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  min-height: 0;
-  padding: 0;
-}
-
 /* Juanita Jade est le seul pouvoir qui montre le reste du paquet — jusqu'à
    85 cartes. Dans la barre du bas, bornée à 30 % de hauteur, il fallait
    descendre puis faire défiler pour en voir la moitié : c'est justement ce
@@ -6105,6 +6069,333 @@ body.sk-ciblage .sk-turn-indicator {
 @media (prefers-reduced-motion: reduce) {
   /* Le décompte reste : c'est une information, pas une décoration. */
   .sk-juanita-jauge { transition: none; }
+}
+
+/* --- Le troc de Will le Bandit ---------------------------------------
+   Le pouvoir demande DEUX gestes qui n'en font qu'un : encaisser deux
+   cartes du reliquat, en rendre deux. Il se jouait à deux endroits — un
+   cadre dans la barre du bas montrait le butin et portait le bouton, la
+   désignation se faisait dans l'éventail. Or ce cadre était posé PAR-DESSUS
+   l'éventail (bas : 3 %, la main à 3,5 %, et un plan au-dessus d'elle) :
+   les cartes qu'il fallait cliquer passaient dessous. On voyait ce qu'on
+   gagnait, on ne pouvait pas payer.
+
+   Le troc prend donc le centre de l'écran, comme la Tigresse et comme
+   Juanita Jade, et il porte toute la main. Un seul endroit, un seul geste.
+   --------------------------------------------------------------------- */
+.sk-scene .sk-power-panel--will {
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* LA LARGEUR DU CADRE, ET LA TAILLE DES CARTES, D'UNE SEULE MESURE.
+     `--sk-will-cols` compte en largeurs de carte la place qu'il faut : mon
+     éventail (une carte pleine, puis 80 % par carte suivante, le reste
+     passant sous la voisine), le trait de séparation, puis le butin (une
+     carte pleine et 84 % pour la seconde, moins recouverte parce qu'elles
+     ne sont que deux).
+     Le recouvrement est faible — 20 % — parce que le cadre a la place :
+     à un tiers, un éventail de dix cartes ne laissait de la Sirène et du
+     Skull King qu'une bande, et on ne choisit pas ce qu'on ne reconnaît
+     pas. C'est l'inverse de l'éventail du bas de l'écran, qui se resserre
+     parce que la largeur, elle, lui est imposée. Le cadre vaut ce compte à pleine taille de carte ;
+     les cartes, elles, valent ce que le cadre leur laisse (100cqw plus bas).
+     Les deux se déduisent du même nombre, donc ils ne peuvent pas se
+     contredire — et un cadre mesuré par ses cartes tandis que ses cartes le
+     seraient par lui tournerait en rond.
+     `max(560px, …)` : jamais plus étroit que ce qu'il faut à la consigne. */
+  --sk-will-cols: calc(1 + 0.8 * (var(--sk-will-n, 10) - 1) + 1.84);
+  container-type: inline-size;
+  width: min(92%, max(560px, calc(var(--sk-will-cols) * 98px + 130px)));
+  max-height: 88%;
+  overflow: hidden;
+  gap: 10px;
+  padding: 18px 22px 20px;
+  border: 0;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  /* Le halo de 100vmax éteint la table derrière le cadre : c'est le même
+     rideau que celui de Juanita Jade, et il dit qu'il n'y a rien à faire
+     ailleurs tant que le troc n'est pas réglé. */
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 0 0 100vmax rgba(4, 2, 1, 0.7),
+    0 18px 44px rgba(0, 0, 0, 0.7);
+  z-index: 40;
+}
+
+.sk-will-titre {
+  flex-shrink: 0;
+  margin: 0;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--sk-brass-hi);
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.sk-scene .sk-power-panel--will .sk-will-consigne {
+  flex-shrink: 0;
+  max-width: 62ch;
+  margin: 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--sk-cream-2);
+}
+
+.sk-will-consigne b {
+  color: var(--sk-cream);
+  font-weight: 700;
+}
+
+/* LES DEUX ÉVENTAILS, côte à côte : ce que j'avais, et ce que je viens de
+   prendre. C'est la séparation qui raconte le troc — mêlées dans une seule
+   rangée triée, les deux piochées ne se distinguaient que par un liseré,
+   qu'il fallait chercher. */
+.sk-will-tables {
+  /* La carte vaut ce que le cadre lui laisse, réparti sur le compte de
+     colonnes. Le plancher de 44 px passe avant : sous cette taille le
+     chiffre du pied n'est plus lisible, mieux vaut alors que le cadre
+     déborde un peu. */
+  --sk-will-w: clamp(44px, min(11vh, calc((100cqw - 86px) / var(--sk-will-cols))), 98px);
+  flex: 0 1 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 30px;
+  min-height: 0;
+  padding: 4px 0 0;
+}
+
+.sk-will-groupe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* L'éventail : les arcs se recouvrent, le premier entier. La levée au
+   survol (9 px) et l'inclinaison de la carte désignée (10 px) demandent leur
+   marge, sinon le cadre rogne net le geste qu'on vient de faire. */
+.sk-will-eventail {
+  --sk-lap: 0.2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 14px 0 12px;
+}
+
+/* Le butin n'est que deux cartes : à peine ouvert, à peine recouvert — on
+   doit les lire toutes les deux d'un coup d'œil, c'est le butin. */
+.sk-will-eventail--butin {
+  --sk-lap: 0.16;
+}
+
+.sk-will-arc {
+  position: relative;
+  transform-origin: bottom center;
+  flex-shrink: 0;
+  margin-left: calc(var(--sk-will-w) * var(--sk-lap) * -1);
+}
+
+.sk-will-arc:first-child {
+  margin-left: 0;
+}
+
+/* Une carte qu'on survole, ou qu'on désigne, passe devant ses voisines :
+   dans un éventail, ce qui est recouvert n'existe qu'à moitié. */
+.sk-will-arc:hover,
+.sk-will-arc:focus-within {
+  z-index: 6;
+}
+
+.sk-will-arc:has(.sk-will-carte--rendue) {
+  z-index: 5;
+}
+
+/* `.sk-card` pose sa propre largeur de référence : la variable doit être
+   redéclarée SUR la carte, sinon celle du parent ne l'atteint jamais (même
+   nécessité que pour la grille de Juanita Jade). */
+.sk-will-tables .sk-card {
+  --sk-w: var(--sk-will-w);
+}
+
+/* Le trait qui sépare les deux mains. Tracé, pas écrit : il dit « et de
+   l'autre côté » sans prendre de mot, comme le slash du choix de la
+   Tigresse. */
+.sk-will-separateur {
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 2px;
+  margin-bottom: 30px;
+  border-radius: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(184, 137, 53, 0),
+    var(--sk-brass) 22%,
+    var(--sk-brass) 78%,
+    rgba(184, 137, 53, 0)
+  );
+  opacity: 0.8;
+}
+
+.sk-will-legende {
+  margin: 0;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--sk-cream-3);
+  opacity: 0.62;
+}
+
+/* « Piochées » vaut pour les deux d'un coup, puisqu'elles sont groupées —
+   et c'est la seule des deux légendes qui apprend quelque chose. Elle est
+   donc frappée en cuivre sur une plaque, à la taille où on la lit sans la
+   chercher, là où l'ancienne étiquette était une pastille de 0,6 rem collée
+   sous chaque carte. */
+.sk-will-legende--butin {
+  padding: 3px 12px 4px;
+  border-radius: 2px;
+  background: rgba(6, 4, 2, 0.9);
+  box-shadow: 0 0 0 1px var(--sk-copper), 0 2px 6px rgba(0, 0, 0, 0.5);
+  font-size: 0.78rem;
+  color: #d59a5c;
+  opacity: 1;
+}
+
+.sk-will-carte {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.sk-will-carte:hover,
+.sk-will-carte:focus-visible {
+  transform: translateY(-9px);
+  outline: none;
+}
+
+.sk-will-carte:focus-visible .sk-card,
+.sk-will-carte:hover .sk-card {
+  box-shadow:
+    0 0 0 1px var(--sk-brass),
+    0 0 24px rgba(232, 206, 146, 0.32),
+    0 14px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Les piochées gardent leur cercle de cuivre au survol : c'est ce qui les
+   nomme, et on peut très bien vouloir rendre celle qu'on vient de tirer. */
+.sk-will-carte--piochee:hover .sk-card,
+.sk-will-carte--piochee:focus-visible .sk-card {
+  box-shadow:
+    0 0 0 2px var(--sk-copper),
+    0 0 24px rgba(232, 206, 146, 0.28),
+    0 14px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Elles tombent dans le butin l'une après l'autre à l'ouverture du cadre
+   (le retard est posé par renderWillTroc) : c'est le seul instant où l'on
+   voit ce que le pouvoir rapporte. `backwards` pour qu'elles ne soient pas
+   déjà en place pendant leur retard.
+
+   Sa propre image, et pas `sk-card-drop` : celle-là finit sur
+   translate(-50%, -50%), le recentrage des cartes du pli, qui sont posées
+   en absolu. Sur une carte rangée dans un éventail elle la faisait partir
+   d'un quart de carte en haut à gauche pour y revenir d'un coup sec à la
+   fin — l'ancienne rangée des piochées traînait ce défaut. */
+.sk-will-carte--piochee .sk-card {
+  animation: sk-will-entree 0.44s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+}
+
+@keyframes sk-will-entree {
+  from {
+    transform: translateY(-30px) scale(0.84);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* LA CARTE DÉSIGNÉE. Elle ne s'illumine pas — on ne la choisit pas pour la
+   jouer, on s'en sépare. Elle sort de l'éventail par le bas, se ternit, et
+   prend le bandeau de gabier qui dit déjà « Suis le vert » sur une carte
+   bloquée : c'est là que l'œil vient chercher l'état d'une carte dans ce
+   jeu. Un cran d'inclinaison en plus de celle de l'arc, pour qu'elle se
+   décroche de la courbe au lieu d'y glisser. */
+.sk-will-carte--rendue,
+.sk-will-carte--rendue:hover,
+.sk-will-carte--rendue:focus-visible {
+  transform: translateY(14px) rotate(-5deg);
+}
+
+.sk-will-carte--rendue .sk-card,
+.sk-will-carte--rendue:hover .sk-card {
+  filter: saturate(0.38) brightness(0.72);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.65);
+}
+
+/* Le cerclage rouge est porté par la CASE, pas par la carte : sur la carte
+   il passait sous le `filter` qui la ternit — une ombre portée se ternit
+   comme le reste — et le rouge y devenait un gris parmi d'autres. Ici il
+   garde sa couleur, et c'est lui qui dit de loin laquelle des douze part.
+   La case épouse maintenant exactement la carte : le cerclage la couvre
+   d'un bord à l'autre. */
+.sk-will-carte--rendue::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: var(--sk-radius);
+  box-shadow:
+    0 0 0 2px var(--sk-failed),
+    0 0 18px rgba(156, 42, 34, 0.5);
+  pointer-events: none;
+}
+
+.sk-will-marque {
+  opacity: 0;
+  /* Un cran plus gros que le bandeau « Suis le vert » de l'éventail du bas :
+     les cartes du troc sont plus petites que celles de la main, et à 0,088
+     de leur largeur le mot devenait un pâté de 7 px. */
+  font-size: calc(var(--sk-w) * 0.13);
+  padding: 4px 2px 5px;
+  transition: opacity 0.14s ease;
+}
+
+/* Le bandeau reste lisible sur une carte ternie — même correctif que pour
+   la carte injouable. */
+.sk-will-carte--rendue .sk-will-marque {
+  opacity: 1;
+  filter: saturate(3.5) brightness(1.7);
+}
+
+.sk-will-valider {
+  flex-shrink: 0;
+  min-width: 15rem;
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* L'inclinaison et le ternissement restent : ils DISENT quelle carte part.
+     Seules les entrées et les levées au survol disparaissent. */
+  .sk-will-carte--piochee .sk-card { animation: none; }
+  .sk-will-carte:hover,
+  .sk-will-carte:focus-visible { transform: none; }
+  .sk-will-carte--rendue,
+  .sk-will-carte--rendue:hover,
+  .sk-will-carte--rendue:focus-visible { transform: translateY(14px) rotate(-5deg); }
 }
 
 /* Tant que l'annonce n'est pas partie, le bloc appelle. Le repère est le
