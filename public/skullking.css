@@ -1233,7 +1233,7 @@ h3 {
   position: relative;
   z-index: 4;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 8px 16px 10px;
@@ -1288,6 +1288,16 @@ h3 {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+
+/* La piste et le cartouche décrivent la même information : ils forment un
+   seul objet, sans l'espace de grille qui les séparait auparavant. */
+.sk-round-progress {
+  display: flex;
+  align-items: center;
+  justify-self: center;
+  min-width: 0;
+  gap: 2px;
 }
 
 /* --- Enseigne de taverne : le lettrage peint, sur une ligne ----------
@@ -1555,10 +1565,14 @@ h3 {
   .sk-topbar-side--end {
     grid-column: 2;
   }
-  /* Sur téléphone la piste passe sur sa propre ligne. */
-  .sk-chain {
+  /* Sur téléphone, la progression et son cartouche restent ensemble sur
+     leur propre ligne. */
+  .sk-round-progress {
     grid-column: 1 / -1;
     grid-row: 2;
+    justify-self: center;
+  }
+  .sk-chain {
     height: 24px;
   }
   .sk-chain-bout--g  { width: calc(24px * 99 / 171); }
@@ -2226,7 +2240,11 @@ h3 {
   flex-shrink: 0;
 }
 
-/* Qui a la main : le laiton s'allume sur son étiquette. */
+/* Qui a la main : le laiton s'allume sur son étiquette. Le reflet clair
+   posé sous les lettres n'appartient qu'à CETTE plaque — il n'a de sens que
+   sous une encre sombre gravée dans du métal. Partout où la plaque est
+   retirée (la scène peinte, ≥1000px), il doit l'être aussi : voir la règle
+   qui l'annule là-bas. */
 .sk-seat--turn .sk-seat-label {
   background: linear-gradient(180deg, #eedca8, var(--sk-brass) 56%, var(--sk-brass-lo));
   box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.85), 0 0 16px rgba(232, 206, 146, 0.5);
@@ -2532,12 +2550,18 @@ h3 {
   color: var(--sk-parch-ink);
 }
 
-/* Cinq colonnes tenues à la même gouttière pour l'en-tête et les lignes :
-   le rang, la pièce, le nom, les plis, le score. Le nom est la seule qui
-   s'étire — c'est la colonne pour laquelle on a ouvert la planche. */
+/* Six colonnes tenues à la même gouttière pour l'en-tête et les lignes : le
+   rang, la pièce, le nom, les annonces, les plis, le score. Le nom est la
+   seule qui s'étire — c'est la colonne pour laquelle on a ouvert la planche.
+   Les largeurs sont en REM, pas en EM : l'en-tête est écrit plus petit que
+   les lignes, et des `em` s'y résolvaient contre SA taille de police. Ses
+   colonnes rétrécissaient donc d'un tiers pendant que celles des joueurs
+   gardaient leur largeur — la grille n'était plus la même d'une ligne à
+   l'autre, et « ANNONCES », trop long pour sa case rabougrie, débordait sur
+   « PLIS ». */
 .sk-grand-row {
   display: grid;
-  grid-template-columns: 2.1em 34px minmax(0, 1fr) 4.6em 3.1em 3.2em;
+  grid-template-columns: 2.3rem 34px minmax(0, 1fr) 4.5rem 2.9rem 3rem;
   align-items: center;
   gap: 10px;
   padding: 7px 2px;
@@ -2562,6 +2586,17 @@ h3 {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: #6b4c1d;
+}
+
+/* Les trois libellés de chiffres se calent à droite, comme les chiffres
+   qu'ils annoncent : à gauche de leur case, ils flottaient à côté de la
+   colonne qu'ils nomment. Le dernier `letter-spacing` d'un mot pousse un
+   blanc après la dernière lettre — retiré ici, sinon l'aplomb à droite
+   est faux d'un cheveu. */
+.sk-grand-row--tete span:nth-child(n + 4) {
+  margin-inline-end: -0.13em;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Ma ligne, à l'encre rouge du registre — la même marque que dans la
@@ -2637,16 +2672,6 @@ h3 {
 .sk-grand-total {
   font-weight: 700;
   font-size: 1.02rem;
-}
-
-/* Une courte ligne de bilan sous chaque équipier : les mêmes repères que le
-   récap de fin, sans remplacer le classement par une fiche interminable. */
-.sk-grand-stats {
-  margin: -3px 2px 7px 2.1em;
-  font-family: 'Spectral', Georgia, serif;
-  font-size: 0.76rem;
-  line-height: 1.35;
-  color: #6b4c1d;
 }
 
 /* --- Discussion agrandie ------------------------------------------- */
@@ -4803,12 +4828,20 @@ h3 {
     max-width: 132px;
   }
 
+  /* Ici la plaque de laiton n'existe plus (voir .sk-seat-label juste au
+     dessus) : le pseudo est posé à même la scène peinte. Le reflet clair
+     hérité de la plaque doublait alors chaque lettre d'un halo crème décalé
+     d'un pixel — le nom du joueur au trait, et lui seul, paraissait flou.
+     On le retire, et on lui donne l'ombre portée sombre des autres textes
+     posés sur le décor. */
   .sk-seat--turn .sk-seat-name {
     color: var(--sk-brass);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   }
 
   .sk-seat .sk-seat-bid,
   .sk-seat--turn .sk-seat-bid {
+    text-shadow: none;
     font-size: 0.66rem;
     padding: 1px 8px;
     border-radius: 999px;
@@ -5810,8 +5843,14 @@ h3 {
   box-shadow: inset 0 1px 0 rgba(255, 248, 226, 0.6), 0 0 18px rgba(232, 206, 146, 0.35) !important;
 }
 
+/* Une fois l'annonce envoyée, le laiton s'éteint — et le reflet clair posé
+   sous les lettres doit s'éteindre avec lui. Il était fait pour de l'encre
+   sombre gravée dans la plaque ; sur ce fond presque noir il devenait un
+   halo crème décalé d'un pixel sous chaque lettre, et le bouton se lisait
+   flou juste après le clic. */
 .sk-bid-confirm--done,
 .sk-bid-confirm--done:hover {
+  text-shadow: none;
   color: var(--sk-cream-3) !important;
   background:
     linear-gradient(180deg, rgba(255, 236, 196, 0.05), rgba(0, 0, 0, 0.3)),
@@ -7594,17 +7633,25 @@ h3 {
    c'est là que traîne la plume, et c'est la seule bande de la colonne où
    poser une commande ne recouvre aucun texte. Sélecteur plus précis que la
    règle ci-dessus, pour ne pas dépendre de l'ordre des blocs. */
-/* Le bouton des réglages vit maintenant dans la barre du haut, en `btn-link`
-   comme « Quitter » : il n'a plus rien à faire poser sur la scène peinte.
-   Un cran plus discret que son voisin, parce qu'entre « ouvrir les réglages »
-   et « terminer la partie » il n'y a pas photo sur ce qui doit se remarquer. */
+/* Le bouton des réglages vit maintenant dans la barre du haut, près de
+   « Quitter », avec son propre contour afin de rester immédiatement repérable
+   sur le bois sombre. */
 .sk-game-header .sk-reglages-link {
-  opacity: 0.82;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid rgba(232, 206, 146, 0.6);
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 236, 196, 0.13), rgba(0, 0, 0, 0.26));
+  color: var(--sk-cream);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 196, 0.16), 0 2px 4px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .sk-game-header .sk-reglages-link:hover,
 .sk-game-header .sk-reglages-link:focus-visible {
-  opacity: 1;
+  border-color: var(--sk-brass-hi);
+  background: linear-gradient(180deg, rgba(255, 236, 196, 0.23), rgba(0, 0, 0, 0.2));
+  box-shadow: inset 0 1px 0 rgba(255, 236, 196, 0.28), 0 0 0 2px rgba(184, 137, 53, 0.24), 0 3px 7px rgba(0, 0, 0, 0.52);
 }
 
 /* Le parchemin porte son titre, comme un vrai ordre de mission. */
@@ -8125,6 +8172,116 @@ h3 {
    qu'on modifierait. */
 .sk-lobby-settings-card .sk-lobby-col-title {
   display: block;
+}
+
+/* L'enseigne de la planche de l'équipage est un NOM — le tien — et porte le
+   bouton qui le change. Elle garde la typographie et le filet des autres
+   intertitres (c'est la même classe), mais se met en rangée. Ces deux règles
+   viennent après celles du dessus, et sont plus spécifiques que celle du bloc
+   paysage : c'est ce qui leur garde leur mise en rangée aux deux largeurs.
+
+   La bande fait 26 px de haut dans les deux états — le nom et son bouton, ou
+   le champ et les siens. C'est ce qui empêche la grille des médaillons de
+   sauter d'un cran quand on ouvre le champ, et 26 px est la hauteur du
+   bouton, l'élément le plus haut des deux rangées. */
+.sk-piece-picker .sk-lobby-identite,
+.sk-piece-picker .sk-rename-form {
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  /* Le filet à toutes les largeurs, alors que les autres enseignes ne
+     l'ont qu'en paysage : celle-ci porte un bouton, et sans trait sous elle
+     « Modifier » flottait au-dessus de la grille des médaillons sans qu'on
+     sache lequel des deux il commandait. Il tient aussi la promesse de la
+     ligne suivante — l'enseigne et le champ qui la remplace font alors la
+     MÊME boîte, et la grille ne saute pas quand on ouvre le champ. */
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(184, 137, 53, 0.28);
+}
+
+/* Le nom tient le milieu de la PLANCHE, pas le milieu de ce que le bouton lui
+   laisse. D'où les trois colonnes plutôt qu'une rangée : les deux extrêmes
+   valent la même chose, le nom occupe celle du centre, et « Modifier » se
+   pousse au bord de la troisième. En rangée simple il se calait à gauche,
+   décentré de toute la largeur du bouton.
+
+   Le nom passe avant le vide quand la place manque : la colonne du centre
+   peut manger les deux autres jusqu'au bouton, qui garde la sienne. */
+.sk-piece-picker .sk-lobby-identite {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+}
+
+.sk-piece-picker .sk-rename-form {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Le nom est un nom : il garde la casse qu'on lui a donnée, là où les autres
+   enseignes passent en capitales (voir .invite-label). « McGraw » écrit
+   « MCGRAW » n'est plus le pseudo de personne. Long, il s'abrège plutôt que
+   de pousser le bouton hors de la planche.
+
+   Sa COULEUR est celle de sa pièce, posée par renderMonIdentite : c'est le
+   même repère qu'au rôle juste en dessous, au médaillon du tapis, à la roue
+   et au registre. Sur sa propre planche, on doit reconnaître sa couleur avant
+   d'avoir lu son nom. */
+.sk-lobby-moi {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  text-transform: none;
+}
+
+.sk-lobby-identite .sk-lobby-edit {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Le champ se règle sur la HAUTEUR du bouton qui le flanque, pas sur le
+   confort d'un champ de saisie ordinaire : c'est lui, le plus haut des trois
+   éléments de la bande, qui décide si la grille des pièces saute d'un cran à
+   l'ouverture. */
+.sk-rename-form input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 8px;
+  line-height: 1.35;
+  border: 0;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #1a120b, #241a12);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.65);
+  color: var(--sk-cream);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.8rem;
+}
+
+.sk-rename-form input::placeholder {
+  color: #6e5c42;
+  font-style: italic;
+}
+
+.sk-rename-form input:focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--sk-brass),
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(184, 137, 53, 0.28);
+}
+
+/* `margin: 0` n'est pas décoratif : .btn-link porte 16 px de marge basse (il
+   est fait pour clore un écran, pas pour tenir dans une rangée), et cette
+   marge devenait la hauteur de la bande — le champ dépassait l'enseigne de
+   six pixels, et la grille des pièces sautait à chaque ouverture. */
+.sk-rename-annuler {
+  flex: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.72rem;
 }
 
 @media (min-width: 1000px) {

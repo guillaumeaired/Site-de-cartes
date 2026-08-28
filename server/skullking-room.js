@@ -1878,6 +1878,31 @@ function registerSkullKingHandlers(io, socket) {
     broadcastLobby(io, room);
   });
 
+  // Se renommer depuis le salon. Même régime que la pièce : tant que la partie
+  // n'a pas commencé, chacun règle ce qui le concerne.
+  //
+  // LE FIL N'EST PAS RÉÉCRIT. Chaque message porte le pseudo qu'avait son
+  // auteur à l'envoi (recopié dans le message, voir le handler
+  // skullking-chat), et les lignes système déjà posées gardent le nom du
+  // moment. Se renommer ne récrit pas ce qu'on a dit : un fil relu resterait
+  // sinon cohérent avec le rôle mais faux sur ce qui s'est passé — « Paul a
+  // ouvert le salon » alors que le salon a été ouvert par Marc.
+  socket.on('skullking-set-nickname', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+    const nickname = sanitizeNickname(payload && payload.nickname);
+    if (!nickname || nickname === player.nickname) return;
+    const ancien = player.nickname;
+    player.nickname = nickname;
+    // Le changement s'annonce à l'équipage : sans cette ligne, les messages
+    // d'avant portent un nom qui n'existe plus nulle part dans le rôle, et on
+    // les prend pour ceux d'un joueur parti.
+    pushSystemChat(io, room, `${ancien} se fait maintenant appeler ${nickname}.`);
+    broadcastLobby(io, room);
+  });
+
   // Chat du salon : disponible à toutes les phases, y compris dans le salon
   // d'attente et entre deux manches — c'est justement là qu'on se parle.
   socket.on('skullking-chat', (payload) => {

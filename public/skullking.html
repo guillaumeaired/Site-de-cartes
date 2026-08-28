@@ -114,7 +114,28 @@
 
         <div class="sk-lobby-col sk-lobby-col--crew">
           <div id="sk-piece-picker" class="sk-piece-picker hidden">
-            <p class="invite-label sk-lobby-col-title">Ta pièce</p>
+            <!-- La planche s'ouvre sur QUI on est, pas sur ce qu'on choisit.
+                 « Ta pièce » nommait la grille juste en dessous, qui se lit
+                 très bien toute seule ; le pseudo, lui, est la seule chose du
+                 salon qu'on ait tapée soi-même — souvent à la volée en
+                 arrivant par un lien d'invitation — et il n'était corrigible
+                 nulle part une fois entré. Il prend donc l'enseigne de la
+                 planche, avec son « Modifier » à côté comme sur celle des
+                 réglages. -->
+            <div class="sk-lobby-identite invite-label sk-lobby-col-title">
+              <span id="sk-lobby-moi" class="sk-lobby-moi"></span>
+              <button id="sk-btn-rename" class="btn sk-lobby-edit" type="button">Modifier</button>
+            </div>
+            <!-- Le champ prend la PLACE de l'enseigne au lieu de s'ajouter
+                 sous elle : la planche garde sa hauteur pendant qu'on se
+                 renomme, et rien ne bouge sous elle (voir
+                 ajusterHauteurSalon). -->
+            <form id="sk-rename-form" class="sk-rename-form hidden" autocomplete="off">
+              <label for="sk-rename-input" class="visually-hidden">Ton pseudo</label>
+              <input id="sk-rename-input" type="text" maxlength="16" placeholder="Ton pseudo" />
+              <button type="submit" class="btn sk-lobby-edit">OK</button>
+              <button type="button" id="sk-btn-rename-cancel" class="btn-link sk-rename-annuler">Annuler</button>
+            </form>
             <div id="sk-piece-grid" class="sk-piece-grid"></div>
           </div>
 
@@ -199,8 +220,10 @@
           <!-- La piste des dix manches, gravée dans une barre de bois : une
                alvéole par manche, un doublon frappé dedans. Le cartouche qui
                suit porte le détail de la manche en cours. -->
-          <div id="sk-chain" class="sk-chain" role="img" aria-label="Progression des manches"></div>
-          <div id="sk-round-scroll" class="sk-round-scroll"></div>
+          <div class="sk-round-progress">
+            <div id="sk-chain" class="sk-chain" role="img" aria-label="Progression des manches"></div>
+            <div id="sk-round-scroll" class="sk-round-scroll"></div>
+          </div>
 
           <div class="sk-topbar-side sk-topbar-side--end">
             <!-- Les réglages sont à la barre du haut, pas au panneau latéral :

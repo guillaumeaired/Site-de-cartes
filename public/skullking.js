@@ -722,6 +722,10 @@ function showScreen(name) {
   for (const key of Object.keys(screens)) {
     screens[key].classList.toggle('hidden', key !== name);
   }
+  // Le champ de renommage se referme en quittant le salon : ouvert au moment
+  // où l'hôte lance la partie, il aurait laissé l'enseigne masquée au salon
+  // SUIVANT, sans plus rien pour la rouvrir.
+  if (name !== 'waiting') ouvrirRenommage(false);
   publierCentreDuPlateau();
 }
 
@@ -1113,6 +1117,73 @@ const PIECE_PREF_KEY = 'guimams-sk-piece';
 const piecePicker = document.getElementById('sk-piece-picker');
 const pieceGrid = document.getElementById('sk-piece-grid');
 let piecePrefApplied = false;
+
+// --- Son pseudo, en enseigne de la planche, et le champ qui le change ------
+// Le pseudo se tape une fois sur l'écran d'accueil — ou pas du tout quand on
+// arrive par un lien d'invitation, où il est demandé dans une fenêtre qu'on
+// remplit vite. Il n'y avait ensuite plus aucun endroit pour le corriger : une
+// faute de frappe tenait toute la partie, au siège, au registre et dans le
+// verdict de fin.
+//
+// LE FIL N'EST PAS RÉÉCRIT. Chaque message porte le pseudo sous lequel il a
+// été envoyé (le serveur le recopie dedans à l'envoi), et les lignes système
+// déjà posées gardent le nom du moment. On ne récrit pas ce qu'on a dit en
+// changeant de nom — seul ce qui vient ensuite porte le nouveau.
+const lobbyIdentite = document.querySelector('.sk-lobby-identite');
+const lobbyMoi = document.getElementById('sk-lobby-moi');
+const btnRename = document.getElementById('sk-btn-rename');
+const renameForm = document.getElementById('sk-rename-form');
+const renameInput = document.getElementById('sk-rename-input');
+const btnRenameCancel = document.getElementById('sk-btn-rename-cancel');
+
+// Le champ prend la place de l'enseigne : les deux ne sont jamais là
+// ensemble, et la planche garde sa hauteur (voir .sk-lobby-identite).
+function ouvrirRenommage(ouvert) {
+  // Déjà dans l'état demandé : rien à faire, et surtout pas de nouvelle
+  // mesure du salon — showScreen passe ici à chaque changement d'écran.
+  if (ouvert === !renameForm.classList.contains('hidden')) return;
+  lobbyIdentite.classList.toggle('hidden', ouvert);
+  renameForm.classList.toggle('hidden', !ouvert);
+  if (ouvert) {
+    renameInput.value = myNickname || '';
+    renameInput.focus();
+    renameInput.select();
+  }
+  ajusterHauteurSalon();
+}
+
+btnRename.addEventListener('click', () => ouvrirRenommage(true));
+btnRenameCancel.addEventListener('click', () => ouvrirRenommage(false));
+
+// Échap referme sans rien changer : le champ est ouvert par un bouton, on
+// doit pouvoir en ressortir par où l'on sort de tout le reste.
+renameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    ouvrirRenommage(false);
+  }
+});
+
+renameForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const nickname = renameInput.value.trim();
+  // Vide, on ne renomme pas — mais on referme quand même : le champ n'a plus
+  // rien à dire, et le laisser ouvert ferait croire à un refus silencieux.
+  if (nickname) socket.emit('skullking-set-nickname', { nickname });
+  ouvrirRenommage(false);
+});
+
+// C'est le serveur qui fait foi sur le pseudo (il le rogne et lui met sa
+// majuscule) : l'enseigne affiche ce qu'il renvoie, jamais ce qu'on a tapé.
+function renderMonIdentite(me) {
+  if (!me) return;
+  lobbyMoi.textContent = me.nickname;
+  // La couleur de sa pièce, comme au rôle juste en dessous et partout ailleurs
+  // (voir couleurJoueur). Elle suit le choix de pièce sans rien de plus : ce
+  // même rendu repasse ici à chaque diffusion du salon.
+  lobbyMoi.style.color = couleurJoueur(me);
+  lobbyMoi.title = 'Ton pseudo — « Modifier » le change pour la suite de la partie.';
+}
 
 function renderPiecePicker(players) {
   const me = players.find((p) => p.id === myId);
@@ -1667,6 +1738,12 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
 
 socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
   if (id) myId = id;
+  // Avant tout le reste : le pseudo a pu changer depuis ce salon (voir
+  // « Modifier »), et c'est celui du serveur qui part dans la session de
+  // reconnexion — sinon on se retrouverait sous son ancien nom en revenant.
+  const moi = players.find((p) => p.id === myId);
+  if (moi && moi.nickname) myNickname = moi.nickname;
+  renderMonIdentite(moi);
   saveActiveRoom(code, myNickname);
   afficherCodeDePartie(code);
   showReconnectingOverlay(false);
@@ -4499,23 +4576,10 @@ function renderRegistreAgrandi(state) {
     total.textContent = s.total;
     row.appendChild(total);
 
+    // Rien d'autre sous la ligne : la planche agrandie est un classement, pas
+    // une fiche de joueur. Séries, zéros et meilleure manche restent au récap
+    // de fin, où on a le temps de les lire.
     rankingBody.appendChild(row);
-
-    // Les détails du récap final, par joueur : série, zéros, meilleure et
-    // pire manche. Ils restent compacts sous la ligne sans alourdir le
-    // classement, mais sont disponibles avant la fin de la partie.
-    if (recap && recap.rounds) {
-      const stats = document.createElement('p');
-      stats.className = 'sk-grand-stats';
-      const morceaux = [
-        recap.zeros ? `${recap.zeros} zéro${recap.zeros > 1 ? 's' : ''} tenu${recap.zeros > 1 ? 's' : ''}` : null,
-        recap.bestStreak >= 2 ? `série de ${recap.bestStreak}` : null,
-        recap.bestRound ? `meilleure manche ${recap.bestRound.delta >= 0 ? '+' : ''}${recap.bestRound.delta}` : null,
-        recap.worstRound && recap.worstRound.delta !== recap.bestRound?.delta ? `pire ${recap.worstRound.delta}` : null,
-      ].filter(Boolean);
-      stats.textContent = morceaux.join(' · ');
-      if (stats.textContent) rankingBody.appendChild(stats);
-    }
   });
 }
 
