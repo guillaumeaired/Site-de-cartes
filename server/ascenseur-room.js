@@ -123,12 +123,22 @@ function sendError(socket, message) {
   socket.emit('ascenseur-error', message);
 }
 
+// Qui reçoit encore quelque chose de ce salon. Un joueur qui a cliqué
+// « Quitter » en pleine partie reste dans room.players — son score doit
+// figurer au classement final envoyé aux autres — mais il ne doit plus rien
+// recevoir : sans ce filtre, son propre départ lui renvoyait l'état
+// 'game-end' déclenché par ce départ, et l'écran de fin se rouvrait sur
+// l'accueil qu'il venait d'atteindre.
+function destinataires(room) {
+  return room.players.filter((p) => !p.gone);
+}
+
 function broadcastToRoom(io, room, event, data) {
-  for (const p of room.players) io.to(p.id).emit(event, data);
+  for (const p of destinataires(room)) io.to(p.id).emit(event, data);
 }
 
 function broadcastLobby(io, room) {
-  for (const p of room.players) {
+  for (const p of destinataires(room)) {
     io.to(p.id).emit('ascenseur-lobby-update', {
       code: room.code,
       players: room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname })),
@@ -282,7 +292,7 @@ function stateFor(room, p) {
 }
 
 function broadcastState(io, room) {
-  for (const p of room.players) {
+  for (const p of destinataires(room)) {
     io.to(p.id).emit('ascenseur-state', stateFor(room, p));
   }
   scheduleInactivityCheck(io, room);
@@ -428,6 +438,21 @@ function finalizeAscenseurDisconnect(io, room, id, reason) {
     return;
   }
 
+  // Marqué parti AVANT toute émission : ni l'annonce de son départ ni le
+  // classement qu'il déclenche ne doivent lui revenir (voir destinataires).
+  player.gone = true;
+
+  // Plus personne pour regarder : la salle n'a plus de raison d'exister.
+  if (destinataires(room).length === 0) {
+    clearRoomTimers(room);
+    rooms.delete(room.code);
+    return;
+  }
+
+  // La partie est déjà finie et tout le monde est sur le récap : le départ
+  // ne change plus rien au classement, inutile de le rejouer.
+  if (room.phase === 'game-end') return;
+
   broadcastToRoom(io, room, 'ascenseur-player-left', { nickname: player.nickname, reason: reason || 'left' });
   finishGame(io, room);
 }
@@ -551,6 +576,12 @@ function registerAscenseurHandlers(io, socket) {
     const room = rooms.get(socket.data.ascenseurRoom);
     if (!room || room.phase !== 'game-end') return;
     room.phase = 'lobby';
+    // Ceux qui ont quitté figuraient au classement final, ils n'ont rien à
+    // faire dans le salon de la revanche.
+    room.players = destinataires(room);
+    if (!findPlayer(room, room.hostId)) {
+      room.hostId = room.players[Math.floor(Math.random() * room.players.length)].id;
+    }
     room.players.forEach((p) => {
       p.hand = [];
       p.tricksWon = 0;
@@ -655,7 +686,9 @@ function registerAscenseurHandlers(io, socket) {
       return;
     }
     const player = findPlayerByToken(room, payload && payload.token);
-    if (!player) {
+    // Un joueur qui a cliqué « Quitter » a quitté : son siège ne se reprend
+    // pas au rafraîchissement de la page.
+    if (!player || player.gone) {
       socket.emit('ascenseur-rejoin-failed', { reason: 'not-found' });
       return;
     }

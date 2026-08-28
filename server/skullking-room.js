@@ -716,8 +716,18 @@ function sendError(socket, message) {
   socket.emit('skullking-error', message);
 }
 
+// Qui reçoit encore quelque chose de ce salon. Un joueur qui a cliqué
+// « Quitter » en pleine partie reste dans room.players — son score doit
+// figurer au classement final envoyé aux autres — mais il ne doit plus rien
+// recevoir : sans ce filtre, son propre départ lui renvoyait l'état
+// 'game-end' déclenché par ce départ, et l'écran de fin se rouvrait sur
+// l'accueil qu'il venait d'atteindre.
+function destinataires(room) {
+  return room.players.filter((p) => !p.gone);
+}
+
 function broadcastToRoom(io, room, event, data) {
-  for (const p of room.players) io.to(p.id).emit(event, data);
+  for (const p of destinataires(room)) io.to(p.id).emit(event, data);
 }
 
 // Bots de test (server/skullking-bot.js) : branchés par injection pour que ce
@@ -730,7 +740,7 @@ function setBotAdapter(adapter) {
 function broadcastLobby(io, room) {
   const extensions = extensionsOf(room);
   const maxPlayers = maxPlayersFor(extensions);
-  for (const p of room.players) {
+  for (const p of destinataires(room)) {
     io.to(p.id).emit('skullking-lobby-update', {
       code: room.code,
       // Le salon est déjà émis joueur par joueur (isHost en dépend) : on en
@@ -1061,7 +1071,7 @@ function stateFor(room, p) {
 }
 
 function broadcastState(io, room) {
-  for (const p of room.players) {
+  for (const p of destinataires(room)) {
     io.to(p.id).emit('skullking-state', stateFor(room, p));
   }
   scheduleInactivityCheck(io, room);
@@ -1473,6 +1483,22 @@ function finalizeSkullKingDisconnect(io, room, id, reason) {
     removeFromLobby(io, room, id);
     return;
   }
+
+  // Marqué parti AVANT toute émission : ni l'annonce de son départ ni le
+  // classement qu'il déclenche ne doivent lui revenir (voir destinataires).
+  player.gone = true;
+
+  // Plus personne pour regarder : la salle n'a plus de raison d'exister.
+  if (destinataires(room).every((p) => bots && bots.isBot(p.id))) {
+    clearRoomTimers(room);
+    if (bots) bots.forgetRoom(room);
+    rooms.delete(room.code);
+    return;
+  }
+
+  // La partie est déjà finie et tout le monde est sur le récap : le départ
+  // ne change plus rien au classement, inutile de le rejouer.
+  if (room.phase === 'game-end') return;
 
   broadcastToRoom(io, room, 'skullking-player-left', { nickname: player.nickname, reason: reason || 'left' });
   if (bots) bots.forgetRoom(room);
@@ -2006,6 +2032,12 @@ function registerSkullKingHandlers(io, socket) {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'game-end') return;
     room.phase = 'lobby';
+    // Ceux qui ont quitté figuraient au classement final, ils n'ont rien à
+    // faire dans le salon de la revanche.
+    room.players = destinataires(room);
+    if (!findPlayer(room, room.hostId)) {
+      room.hostId = room.players[Math.floor(Math.random() * room.players.length)].id;
+    }
     room.players.forEach((p) => {
       p.hand = [];
       p.tricksWon = 0;
@@ -2303,7 +2335,9 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
     const player = findPlayerByToken(room, payload && payload.token);
-    if (!player) {
+    // Un joueur qui a cliqué « Quitter » a quitté : son siège ne se reprend
+    // pas au rafraîchissement de la page.
+    if (!player || player.gone) {
       socket.emit('skullking-rejoin-failed', { reason: 'not-found' });
       return;
     }
@@ -2353,6 +2387,9 @@ module.exports = {
   donneTruquee,
   setBotAdapter,
   getStats,
+  // Le départ en pleine partie : exporté pour pouvoir vérifier que celui qui
+  // part ne reçoit plus rien — un handler socket ne le laisse pas voir.
+  finalizeSkullKingDisconnect,
   // La pièce prise à l'arrivée : exportée pour éprouver qu'aucune n'est
   // distribuée deux fois, ce que les handlers socket ne permettent pas de
   // vérifier ici.

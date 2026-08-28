@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -673,6 +673,53 @@ PACE_PRESETS.forEach((preset) => {
     dejaServi.piece,
     'crane'
   );
+}
+
+// --- QUITTER, C'EST PARTIR : L'ÉCRAN DE FIN NE REVIENT PAS ------------
+//
+// Bug réel : « Quitter » en pleine partie arrête la partie pour tout le
+// monde (classement sur le score courant) — et l'état 'game-end' ainsi
+// produit repartait AUSSI vers celui qui venait de partir, qui voyait donc
+// le récap s'ouvrir sur l'accueil. Il cliquait « Quitter » une seconde fois,
+// et ça recommençait. Celui qui part ne reçoit plus rien du salon ; il reste
+// en revanche dans le classement envoyé aux autres.
+{
+  function ioEspion() {
+    const recu = {};
+    return {
+      recu,
+      to: (id) => ({
+        emit: (event) => {
+          (recu[id] = recu[id] || []).push(event);
+        },
+      }),
+    };
+  }
+
+  const room = makeRoom([]);
+  room.code = 'PART';
+  const io = ioEspion();
+  finalizeSkullKingDisconnect(io, room, 'p1', 'left');
+  clearTimeout(room.inactivityTimer);
+
+  check('celui qui part ne reçoit plus rien', io.recu.p1, undefined);
+  check(
+    'les autres apprennent le départ et reçoivent le classement final',
+    [io.recu.p2, io.recu.p3],
+    [['skullking-player-left', 'skullking-state'], ['skullking-player-left', 'skullking-state']]
+  );
+  check('la partie est bien terminée', room.phase, 'game-end');
+  check(
+    'et le partant figure quand même au classement',
+    room.finalRanking.map((r) => r.nickname).sort(),
+    ['Alice', 'Bob', 'Chloé']
+  );
+
+  // Deuxième départ, depuis le récap cette fois : la partie est déjà finie,
+  // il n'y a plus de classement à refaire ni personne à prévenir.
+  const io2 = ioEspion();
+  finalizeSkullKingDisconnect(io2, room, 'p2', 'left');
+  check('quitter le récap ne renvoie rien à personne', Object.keys(io2.recu), []);
 }
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);
