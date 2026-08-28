@@ -63,112 +63,103 @@
         <p id="sk-rounds-hint" class="hint sk-rounds-hint"></p>
       </div>
 
-      <!-- Le salon se lit en trois planches côte à côte dès qu'il y a de la
-           largeur : le code à gauche, les réglages au milieu, l'équipage à
-           droite. Sous 1000px la grille redevient une simple colonne et
-           l'ordre du DOM suffit — c'est exactement l'empilement d'avant. -->
+      <!-- Le salon se lit en quatre planches côte à côte dès qu'il y a de la
+           largeur : l'équipage à gauche, le code, les réglages (extensions
+           comprises), et la discussion au bout. Sous 1000px la grille
+           redevient une simple colonne et l'ordre du DOM suffit — le code
+           d'abord, la discussion en pied. -->
       <div class="sk-lobby-grid">
-        <!-- Le code et la discussion partagent une colonne : le bloc
-             d'invitation est court (un code, un bouton) et laissait sous lui
-             la moitié de la hauteur des planches voisines en bois nu. La
-             discussion vient l'occuper, et la colonne tombe à la hauteur des
-             autres — c'est la seule place où le chat ne fait grandir ni la
-             grille ni la page. -->
+        <!-- Le code garde une planche à lui : il est court, et c'est la
+             première chose qu'on va chercher en arrivant. La discussion lui
+             tenait compagnie dans la même colonne pour combler ce vide ;
+             elle est partie au bout de la rangée, là où l'on parle à
+             l'équipage qu'on a sous les yeux. -->
+        <div id="sk-share-block" class="invite-card sk-lobby-col hidden">
+          <p class="invite-label sk-lobby-col-title">Code de la partie</p>
+          <div class="code-badge" id="sk-share-code"></div>
+          <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
+          <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+        </div>
+
+        <!-- Les réglages et les extensions partagent une colonne : les
+             extensions ne disent rien d'autre que ce qu'il y a dans le
+             paquet, et le paquet est le premier réglage juste au-dessus.
+             Deux planches et non une seule — l'une se règle en trois volets,
+             l'autre s'ouvre sur huit interrupteurs, les empiler dans le même
+             bois aurait fait un mur. -->
         <div class="sk-lobby-pile">
-          <div id="sk-share-block" class="invite-card sk-lobby-col hidden">
-            <p class="invite-label sk-lobby-col-title">Code de la partie</p>
-            <div class="code-badge" id="sk-share-code"></div>
-            <button id="sk-btn-copy" class="btn btn-copy-link">Copier le lien</button>
-            <input id="sk-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+          <div class="sk-lobby-col sk-lobby-col--settings">
+            <p class="invite-label sk-lobby-col-title">Réglages</p>
+
+            <!-- Le paquet, en premier : c'est le seul réglage qui se voit dès
+                 la donne, et il se choisit sur pièce — deux cartes posées
+                 côte à côte plutôt que deux libellés. -->
+            <details id="sk-deck-field" class="sk-deck-field sk-fold">
+              <summary class="invite-label sk-fold-tete">
+                <span class="sk-fold-nom">Paquet de cartes</span>
+                <span id="sk-deck-etat" class="sk-fold-etat"></span>
+              </summary>
+              <div class="sk-fold-corps">
+                <div id="sk-deck-grid" class="sk-deck-grid" role="group" aria-label="Paquet de cartes"></div>
+                <p id="sk-deck-hint" class="hint sk-deck-hint"></p>
+              </div>
+            </details>
+
+            <!-- Le rythme : les cinq durées d'attente que la table subissait
+                 jusqu'ici sans pouvoir en discuter (le regard de Juanita Jade,
+                 le pli sur le tapis, le tableau de fin de manche, le choix de
+                 la Planche, le rappel d'inactivité). Elles vivent ici et non
+                 sur une cinquième planche : le salon en porte déjà quatre et
+                 une cinquième serait retombée seule sur un deuxième rang.
+                 Elles ne changent d'ailleurs ni les règles, ni le paquet, ni
+                 le score — ce sont bien des réglages, et le réglage le moins
+                 important de tous : c'est le premier qu'on referme. Replié,
+                 le volet dit quand même l'allure retenue ; ouvert, il donne
+                 les trois allures toutes faites puis le détail des cinq
+                 durées. -->
+            <details id="sk-pace-field" class="sk-pace-field sk-fold">
+              <summary class="invite-label sk-fold-tete">
+                <span class="sk-fold-nom">Rythme de la partie</span>
+                <span id="sk-pace-etat" class="sk-fold-etat"></span>
+              </summary>
+              <div class="sk-fold-corps">
+                <div id="sk-pace-presets" class="sk-pace-presets" role="group" aria-label="Allure de la partie"></div>
+                <ul id="sk-pace-list" class="sk-pace-list"></ul>
+                <p id="sk-pace-hint" class="hint sk-pace-hint"></p>
+              </div>
+            </details>
           </div>
 
-          <!-- Même discussion qu'en jeu, même historique : le serveur la
-               diffusait déjà au salon (broadcastLobby), il n'y avait
-               simplement aucun endroit pour l'écrire ni la lire avant que la
-               partie commence — le moment où l'on se dit justement qui
-               attend qui. -->
-          <div class="sk-lobby-col sk-lobby-chat">
-            <p class="invite-label sk-lobby-col-title">Discussion</p>
-            <div id="sk-lobby-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
-            <form id="sk-lobby-chat-form" class="sk-chat-form" autocomplete="off">
-              <label for="sk-lobby-chat-input" class="visually-hidden">Message</label>
-              <input id="sk-lobby-chat-input" type="text" maxlength="200" placeholder="Écrire à l'équipage…" />
-              <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
-            </form>
+          <!-- L'extension a sa propre planche : c'était un interrupteur unique
+               qui ajoutait dix-neuf cartes d'un coup, ce sont maintenant huit
+               lignes qu'on ouvre séparément. Elle vient sous les Réglages, dans
+               la même colonne : ce qu'elle décide, c'est le contenu du paquet —
+               le réglage qui la précède justement. Huit lignes, c'est aussi ce
+               qui faisait du salon un mur de leviers dès l'arrivée : la planche
+               est repliée au départ et n'annonce que l'essentiel (combien de
+               modules sont pris). La grille s'enroule d'elle-même quand la
+               place manque. -->
+          <div class="sk-lobby-col sk-ext-card">
+            <details class="sk-fold sk-ext-fold">
+              <summary class="invite-label sk-lobby-col-title sk-fold-tete">
+                <span class="sk-fold-nom">Rajouter les extensions</span>
+                <span id="sk-ext-etat" class="sk-fold-etat"></span>
+              </summary>
+              <div class="sk-fold-corps">
+                <button id="sk-btn-extension" class="sk-extension-toggle sk-ext-master" type="button" aria-pressed="false">
+                  <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
+                  <span class="sk-extension-toggle-label">Tout activer</span>
+                </button>
+
+                <ul id="sk-ext-list" class="sk-ext-list"></ul>
+
+                <!-- Ce que pèse le paquet, et donc combien de monde peut
+                     s'asseoir : c'est la seule conséquence des huit lignes qui
+                     ne se devine pas en les lisant. -->
+                <p id="sk-extension-hint" class="hint sk-ext-tally"></p>
+              </div>
+            </details>
           </div>
-        </div>
-
-        <div class="sk-lobby-col sk-lobby-col--settings">
-          <p class="invite-label sk-lobby-col-title">Réglages</p>
-
-          <!-- Le paquet, en premier : c'est le seul réglage qui se voit dès
-               la donne, et il se choisit sur pièce — deux cartes posées
-               côte à côte plutôt que deux libellés. -->
-          <details id="sk-deck-field" class="sk-deck-field sk-fold">
-            <summary class="invite-label sk-fold-tete">
-              <span class="sk-fold-nom">Paquet de cartes</span>
-              <span id="sk-deck-etat" class="sk-fold-etat"></span>
-            </summary>
-            <div class="sk-fold-corps">
-              <div id="sk-deck-grid" class="sk-deck-grid" role="group" aria-label="Paquet de cartes"></div>
-              <p id="sk-deck-hint" class="hint sk-deck-hint"></p>
-            </div>
-          </details>
-
-          <!-- Le rythme : les cinq durées d'attente que la table subissait
-               jusqu'ici sans pouvoir en discuter (le regard de Juanita Jade,
-               le pli sur le tapis, le tableau de fin de manche, le choix de
-               la Planche, le rappel d'inactivité). Elles vivent ici et non
-               sur une cinquième planche : le salon en porte déjà quatre et
-               une cinquième serait retombée seule sur un deuxième rang.
-               Elles ne changent d'ailleurs ni les règles, ni le paquet, ni
-               le score — ce sont bien des réglages, et le réglage le moins
-               important de tous : c'est le premier qu'on referme. Replié,
-               le volet dit quand même l'allure retenue ; ouvert, il donne
-               les trois allures toutes faites puis le détail des cinq
-               durées. -->
-          <details id="sk-pace-field" class="sk-pace-field sk-fold">
-            <summary class="invite-label sk-fold-tete">
-              <span class="sk-fold-nom">Rythme de la partie</span>
-              <span id="sk-pace-etat" class="sk-fold-etat"></span>
-            </summary>
-            <div class="sk-fold-corps">
-              <div id="sk-pace-presets" class="sk-pace-presets" role="group" aria-label="Allure de la partie"></div>
-              <ul id="sk-pace-list" class="sk-pace-list"></ul>
-              <p id="sk-pace-hint" class="hint sk-pace-hint"></p>
-            </div>
-          </details>
-        </div>
-
-        <!-- L'extension a sa propre planche : c'était un interrupteur unique
-             qui ajoutait dix-neuf cartes d'un coup, ce sont maintenant huit
-             lignes qu'on ouvre séparément. Posées sous les Réglages elles
-             auraient noyé le paquet ; à côté, elles se lisent comme ce
-             qu'elles sont — le contenu du paquet, pas un réglage de partie.
-             Huit lignes, c'est aussi ce qui faisait du salon un mur de
-             leviers dès l'arrivée : la planche est repliée au départ et
-             n'annonce que l'essentiel (combien de modules sont pris). La
-             grille s'enroule d'elle-même quand la place manque. -->
-        <div class="sk-lobby-col sk-ext-card">
-          <details class="sk-fold sk-ext-fold">
-            <summary class="invite-label sk-lobby-col-title sk-fold-tete">
-              <span class="sk-fold-nom">Extension officielle</span>
-              <span id="sk-ext-etat" class="sk-fold-etat"></span>
-            </summary>
-            <div class="sk-fold-corps">
-              <button id="sk-btn-extension" class="sk-extension-toggle sk-ext-master" type="button" aria-pressed="false">
-                <span class="sk-extension-toggle-track"><span class="sk-extension-toggle-knob"></span></span>
-                <span class="sk-extension-toggle-label">Tout activer</span>
-              </button>
-
-              <ul id="sk-ext-list" class="sk-ext-list"></ul>
-
-              <!-- Ce que pèse le paquet, et donc combien de monde peut
-                   s'asseoir : c'est la seule conséquence des huit lignes qui
-                   ne se devine pas en les lisant. -->
-              <p id="sk-extension-hint" class="hint sk-ext-tally"></p>
-            </div>
-          </details>
         </div>
 
         <div class="sk-lobby-col sk-lobby-col--crew">
@@ -181,6 +172,21 @@
             <p class="invite-label">Joueurs — <span id="sk-lobby-count">1</span> (<span id="sk-lobby-range">3 à 7</span>)</p>
             <ul id="sk-lobby-list" class="lobby-list"></ul>
           </div>
+        </div>
+
+        <!-- Même discussion qu'en jeu, même historique : le serveur la
+             diffusait déjà au salon (broadcastLobby), il n'y avait
+             simplement aucun endroit pour l'écrire ni la lire avant que la
+             partie commence — le moment où l'on se dit justement qui
+             attend qui. -->
+        <div class="sk-lobby-col sk-lobby-chat">
+          <p class="invite-label sk-lobby-col-title">Discussion</p>
+          <div id="sk-lobby-chat-log" class="sk-chat-log" role="log" aria-live="polite"></div>
+          <form id="sk-lobby-chat-form" class="sk-chat-form" autocomplete="off">
+            <label for="sk-lobby-chat-input" class="visually-hidden">Message</label>
+            <input id="sk-lobby-chat-input" type="text" maxlength="200" placeholder="Écrire à l'équipage…" />
+            <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
+          </form>
         </div>
       </div>
 

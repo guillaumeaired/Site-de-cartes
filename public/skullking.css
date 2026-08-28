@@ -7917,28 +7917,31 @@ h3 {
      de planche : c'est un plancher, pas une préférence. Il était tenu tant
      que trois planches se partageaient la largeur ; la quatrième l'a ramené
      au pixel près, et le « 10 » retombait seul sur une deuxième ligne. */
+  /* Les cotes vivent sur la pile qui la contient (voir .sk-lobby-pile) : la
+     planche des réglages, elle, remplit simplement la colonne. On les garde
+     ici quand même — c'est la planche qui les justifie, et la pile n'existe
+     que pour l'accompagner. */
   .sk-lobby-col--settings {
     flex: 1.1 1 336px;
     max-width: 360px;
   }
 
-  /* L'équipage passe à gauche : c'est la planche qu'on regarde en premier
-     en arrivant (qui est là, qui manque), et elle était au bout de la
-     rangée. `order` plutôt qu'un déplacement dans le HTML — sous 1000px la
-     grille redevient une colonne et c'est l'ordre du DOM qui empile, où le
-     code de la partie doit rester en tête. */
-  /* La pile porte la largeur et l'écart ; ses deux planches, elles, ne
-     grandissent pas d'elles-mêmes. Sans ce `flex: none`, elles héritaient du
-     `flex: 1 1 250px` de .sk-lobby-col — qui, dans une colonne, se lit en
-     HAUTEUR : le code et la discussion se partageaient la pile à parts
-     égales, chacun étiré sur 250 px de vide. */
+  /* La pile des réglages : la planche des réglages et celle des extensions
+     l'une sous l'autre, dans la colonne du milieu. Elle en porte donc la
+     largeur (voir .sk-lobby-col--settings, dont elle reprend les cotes) et
+     l'écart entre ses deux planches.
+     Ses planches, elles, ne grandissent pas d'elles-mêmes. Sans ce
+     `flex: none`, elles héritaient du `flex: 1 1 250px` de .sk-lobby-col —
+     qui, dans une colonne, se lit en HAUTEUR : les réglages et les
+     extensions se partageaient la pile à parts égales, chacun étiré sur
+     250 px de vide. */
   .sk-lobby-pile {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    flex: 1 1 250px;
+    flex: 1.1 1 336px;
     min-width: 0;
-    max-width: 330px;
+    max-width: 360px;
   }
 
   .sk-lobby-pile > .sk-lobby-col {
@@ -7946,12 +7949,15 @@ h3 {
     max-width: none;
   }
 
-  /* Plus serrée que les autres planches : tout ce qu'on lui prend en marges,
-     la discussion le rend en lignes lisibles. Elle n'a droit qu'à ce que le
-     code de la partie laisse au-dessus d'elle. */
+  /* La discussion tient le bout de la rangée, à droite de l'équipage : c'est
+     à lui qu'on écrit, et le fil se lit à côté de la liste de ceux qui
+     attendent plutôt que sous le code de la partie. Une planche plus étroite
+     que les autres — une ligne de message est courte, et la largeur qu'elle
+     rend profite aux réglages. */
   .sk-lobby-chat {
     margin: 0;
-    max-width: none;
+    flex: 0.9 1 260px;
+    max-width: 320px;
     /* Plus serrée que les autres planches sur les côtés et en pied — tout ce
        qu'on lui prend en marges, elle le rend en lignes lisibles. En tête,
        non : le clou y loge comme partout ailleurs. */
@@ -7972,6 +7978,13 @@ h3 {
      sans rien pour dire où le fil commence ni où il s'arrête. La hauteur,
      elle, vient de la règle de base — elle ne se mesure plus. */
   .sk-lobby-chat .sk-chat-log {
+    /* Seule dans sa colonne, la planche n'a plus le code de la partie
+       au-dessus d'elle : le fil reprend la hauteur qu'il lui laissait —
+       six messages au lieu de trois. Toujours une hauteur FIXE, pour la
+       raison d'avant : les volets voisins s'ouvrent et se referment, un fil
+       qui se calerait sur eux changerait de taille sous les yeux de qui
+       écrit dedans. */
+    height: 186px;
     padding: 8px 9px;
     border-radius: 2px;
     background: linear-gradient(180deg, rgba(10, 6, 3, 0.5), rgba(26, 18, 11, 0.38));
@@ -7995,6 +8008,11 @@ h3 {
     opacity: 0.7;
   }
 
+  /* L'équipage passe à gauche : c'est la planche qu'on regarde en premier en
+     arrivant (qui est là, qui manque), et elle était au bout de la rangée.
+     `order` plutôt qu'un déplacement dans le HTML — sous 1000px la grille
+     redevient une colonne et c'est l'ordre du DOM qui empile, où le code de
+     la partie doit rester en tête et la discussion en pied. */
   .sk-lobby-col--crew {
     order: -1;
     flex: 1.6 1 356px;

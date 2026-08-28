@@ -1113,7 +1113,6 @@ function ajusterHauteurSalon() {
   const grille = document.querySelector('.sk-lobby-grid');
   if (!grille) return;
   const equipage = grille.querySelector('.sk-lobby-col--crew');
-  const pile = grille.querySelector('.sk-lobby-pile');
 
   // Toujours remettre à zéro d'abord : les hauteurs se mesurent sur la mise
   // en page naturelle, pas sur celle du dernier passage.
@@ -1124,14 +1123,15 @@ function ajusterHauteurSalon() {
   if (!window.matchMedia(GRILLE_EN_RANGEE).matches) return;
   const planches = [...grille.children].filter((c) => !c.classList.contains('hidden'));
   // Fenêtre trop étroite pour les quatre colonnes : elles s'enroulent sur
-  // deux rangées, et il n'y a plus de hauteur commune à viser — borner les
-  // blocs ne ferait que cacher des matelots et des messages pour rien.
+  // deux rangées, et il n'y a plus de hauteur commune à viser — borner la
+  // liste ne ferait que cacher des matelots pour rien.
   if (new Set(planches.map((c) => c.offsetTop)).size > 1) return;
 
-  // La hauteur visée est celle des colonnes qu'on NE règle pas (réglages,
-  // extension) : ce sont elles qui fixent la taille du salon, les deux
-  // autres s'y ajustent.
-  const fixes = planches.filter((c) => c !== equipage && c !== pile).map((c) => c.offsetHeight);
+  // La hauteur visée est celle des colonnes qu'on NE règle pas (le code, la
+  // pile des réglages et des extensions, la discussion — toutes de hauteur
+  // libre ou fixe) : ce sont elles qui fixent la taille du salon, et
+  // l'équipage seul s'y ajuste.
+  const fixes = planches.filter((c) => c !== equipage).map((c) => c.offsetHeight);
   if (!fixes.length) return;
   const cible = Math.max(...fixes);
 
