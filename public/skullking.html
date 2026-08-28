@@ -218,12 +218,6 @@
           <div id="sk-round-scroll" class="sk-round-scroll"></div>
 
           <div class="sk-topbar-side sk-topbar-side--end">
-            <div id="sk-mine" class="sk-mine hidden">
-              <span class="sk-mine-k">Mon contrat</span>
-              <span id="sk-mine-notches" class="sk-notches sk-notches--dark"></span>
-              <span id="sk-mine-v" class="sk-mine-v"></span>
-              <span id="sk-mine-score" class="sk-mine-score">0</span>
-            </div>
             <!-- Les réglages sont à la barre du haut, pas au panneau latéral :
                  ils ne parlent pas de la partie mais de l'écran, comme
                  « Quitter » en face. Le panneau, lui, ne porte que ce qui se
@@ -380,6 +374,22 @@
                  plus de carte à reposer, elle est déjà sur le tapis. -->
             <button id="sk-btn-plank-cancel" class="sk-tigress-annuler hidden" type="button">Reposer la carte</button>
           </div>
+        </div>
+        <!-- Les deux plaques qui encadrent l'éventail. Elles se posent sur le
+             bois sombre que rien n'occupait de part et d'autre de la main, à
+             la hauteur des cartes : c'est là que le regard est déjà quand il
+             faut choisir, et c'est le seul moment où ces deux chiffres-là
+             servent. À gauche ce que je dois faire, à droite ce que ça me
+             rapportera si je le fais. -->
+        <div id="sk-mine" class="sk-plaque sk-mine hidden">
+          <span class="sk-plaque-k">Mon contrat</span>
+          <span id="sk-mine-notches" class="sk-notches sk-notches--dark"></span>
+          <span id="sk-mine-v" class="sk-mine-v"></span>
+        </div>
+        <div id="sk-gain" class="sk-plaque sk-gain hidden">
+          <span class="sk-plaque-k">Gain si contrat rempli</span>
+          <span id="sk-gain-v" class="sk-gain-v"></span>
+          <span id="sk-gain-detail" class="sk-gain-detail"></span>
         </div>
         <div id="sk-hand" class="sk-hand"></div>
       </div>

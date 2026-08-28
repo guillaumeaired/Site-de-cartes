@@ -921,6 +921,13 @@ function stateFor(room, p) {
     // simplement l'omettre, pour que la main ne paraisse pas vide.
     base.hand = blindRound1 ? p.hand.map((c) => ({ id: c.id, kind: 'hidden' })) : p.hand;
     base.myBid = room.bids ? room.bids[p.id] : undefined;
+    // Ce que la manche rapportera si SON contrat est tenu : le cadre « Gain »
+    // le recompose côté client à partir de l'annonce, de ces deux nombres et
+    // du numéro de manche. Les siens seulement — un joueur n'a pas à lire les
+    // captures des autres avant la fin de la manche, et le tapis les lui a de
+    // toute façon montrées pli par pli.
+    base.myPendingBonus = p.pendingBonus || 0;
+    base.myRascalStake = p.rascalStake || 0;
   }
   if (room.phase === 'playing' || room.phase === 'power') {
     // La Tigresse annonce son choix EN SE POSANT, comme dans la règle

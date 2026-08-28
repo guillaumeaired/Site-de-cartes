@@ -1615,7 +1615,9 @@ const scrollEl = document.getElementById('sk-round-scroll');
 const mineEl = document.getElementById('sk-mine');
 const mineNotches = document.getElementById('sk-mine-notches');
 const mineValue = document.getElementById('sk-mine-v');
-const mineScore = document.getElementById('sk-mine-score');
+const gainEl = document.getElementById('sk-gain');
+const gainValue = document.getElementById('sk-gain-v');
+const gainDetail = document.getElementById('sk-gain-detail');
 
 let latestState = null;
 let startRevealPlayed = false;
@@ -1845,26 +1847,33 @@ function trickNotches(state) {
 
 // Mon contrat, en toutes lettres et en encoches. Jamais « 1/0 » : le même
 // glyphe voulait dire deux choses opposées selon l'écran où on le lisait.
+//
+// La plaque est rouge tant que le contrat n'est pas tenu, verte dès qu'il
+// l'est — l'état à l'instant présent, pas un pronostic : un contrat tenu au
+// troisième pli se perd au quatrième, et la plaque repasse au rouge. La
+// couleur ne dit d'ailleurs pas SI c'est encore rattrapable ; ce sont les
+// encoches qui le disent, et elles ne comptent pas sur la couleur pour ça
+// (un vert et un rouge sont la même couleur pour un deutan).
 function renderMine(state) {
   const me = (state.players || []).find((p) => p.id === myId);
-  const row = (state.scoreboard || []).find((r) => r.id === myId);
   if (!me) {
     mineEl.classList.add('hidden');
     return;
   }
   mineEl.classList.remove('hidden');
-  mineScore.textContent = row ? row.total : 0;
 
   mineNotches.innerHTML = '';
   if (state.phase === 'bidding' || me.bid === undefined || me.bid === null) {
     mineValue.textContent = me.hasBid ? 'annonce faite' : 'à annoncer';
-    mineEl.classList.remove('sk-mine--over', 'sk-mine--exact');
+    // Ni rouge ni vert tant que rien n'est annoncé : il n'y a pas encore de
+    // contrat à tenir, et le rouge dirait qu'on est déjà en défaut.
+    mineEl.classList.remove('sk-mine--rate', 'sk-mine--tenu');
     return;
   }
   mineValue.textContent = `${me.tricksWon} sur ${me.bid}`;
   // Une encoche par pli annoncé : pleine = acquis, creuse = encore attendu,
   // barrée = pli en trop. La forme porte le sens, la couleur ne fait que
-  // redoubler — un vert et un rouge sont la même couleur pour un deutan.
+  // redoubler.
   const shown = Math.max(me.bid, me.tricksWon);
   for (let i = 1; i <= shown; i++) {
     const n = document.createElement('i');
@@ -1872,8 +1881,80 @@ function renderMine(state) {
     else if (i <= me.tricksWon) n.className = 'is-won';
     mineNotches.appendChild(n);
   }
-  mineEl.classList.toggle('sk-mine--over', me.tricksWon > me.bid);
-  mineEl.classList.toggle('sk-mine--exact', me.tricksWon === me.bid);
+  const tenu = me.tricksWon === me.bid;
+  mineEl.classList.toggle('sk-mine--tenu', tenu);
+  mineEl.classList.toggle('sk-mine--rate', !tenu);
+}
+
+// Ce que la manche rapportera SI le contrat est tenu — pas le score courant,
+// qui est au registre de bord et n'apprend rien au moment de choisir une
+// carte. Ici la question est « qu'est-ce que je joue », et la réponse dépend
+// de ce qu'il y a à gagner : un contrat à 20 points ne se défend pas comme
+// un contrat qui porte déjà 60 points de captures.
+//
+// Le chiffre bouge donc en cours de manche, au fil des bonus ramassés — il ne
+// change pas quand un pli est simplement remporté, puisque le socle ne dépend
+// que de l'annonce. Trois composantes, toutes acquises au moment où on les
+// lit :
+//   - le socle : 10 x manche pour une annonce à zéro, 20 par pli annoncé
+//     sinon (c'est le barème d'une annonce RÉUSSIE, l'hypothèse du cadre) ;
+//   - les bonus de capture déjà encaissés cette manche (pendingBonus côté
+//     serveur : les 14, les Pirates pris au Skull King, les monstres du
+//     Coffre…), qui ne sont crédités qu'à un contrat exact — d'où leur place
+//     ici et nulle part ailleurs ;
+//   - la mise de Rascal le Flambeur, gagnée aux mêmes conditions.
+//
+// Le Butin en est absent, et c'est volontaire : ses +20 tiennent aussi à
+// l'exactitude de l'ALLIÉ, que ce cadre ne peut pas préjuger. Il est annoncé
+// en toutes lettres sous le total quand une alliance existe, plutôt que
+// gonflé dedans.
+function renderGain(state) {
+  const me = (state.players || []).find((p) => p.id === myId);
+  const enManche = state.phase === 'playing' || state.phase === 'power';
+  if (!me || !enManche || me.bid === undefined || me.bid === null) {
+    gainEl.classList.add('hidden');
+    return;
+  }
+  gainEl.classList.remove('hidden');
+
+  const socle = me.bid === 0 ? 10 * (state.roundNumber || 1) : 20 * me.bid;
+  const bonus = state.myPendingBonus || 0;
+  const mise = state.myRascalStake || 0;
+  const total = socle + bonus + mise;
+  gainValue.textContent = total > 0 ? `+${total}` : String(total);
+
+  // Un pli de trop et le contrat ne peut PLUS être tenu : on ne rend pas un
+  // pli déjà remporté. Le chiffre resterait juste — c'est bien ce que la
+  // manche rapporterait — mais il serait posé à côté d'une condition devenue
+  // impossible, et un gros « +40 » en laiton à côté d'une plaque rouge se lit
+  // comme une promesse. Il est donc barré et la plaque se retire d'un cran.
+  const horsAtteinte = me.tricksWon > me.bid;
+  gainEl.classList.toggle('sk-gain--perdu', horsAtteinte);
+
+  // Le détail ne s'écrit que s'il y a quelque chose à détailler : sous un
+  // total qui ne vient que du socle, « contrat 40 » répète le chiffre du
+  // dessus et n'apprend rien.
+  const lignes = [];
+  if (bonus || mise) {
+    lignes.push(`contrat ${socle}`);
+    if (bonus) lignes.push(`bonus ${bonus > 0 ? '+' : ''}${bonus}`);
+    if (mise) lignes.push(`mise +${mise}`);
+  }
+  if ((state.lootAllies || []).includes(myId)) {
+    lignes.push('+20 par Butin si ton allié tient aussi');
+  }
+  // Le détail des composantes n'a plus rien à expliquer une fois le contrat
+  // dépassé : il ne reste qu'à dire pourquoi le chiffre est barré.
+  if (horsAtteinte) {
+    lignes.length = 0;
+    lignes.push('contrat dépassé : hors d\'atteinte');
+  }
+  gainDetail.innerHTML = '';
+  lignes.forEach((t) => {
+    const l = document.createElement('span');
+    l.textContent = t;
+    gainDetail.appendChild(l);
+  });
 }
 
 // Vert = l'annonce est pile tenue à cet instant, rouge = déjà dépassée,
@@ -2507,7 +2588,11 @@ function renderTrick(state) {
   // consigne du tour et la bannière de pouvoir au-dessus du feutre, ma main
   // en dessous. Un rectangle de cadrage ne sait pas les éviter — elles se
   // traitent carte par carte.
-  const bandes = ['sk-turn-indicator', 'sk-power-banner', 'sk-hand']
+  // Les deux plaques encadrent la main : sur une scène basse elles se rangent
+  // toutes deux à gauche, où des cartes du pli peuvent descendre. Elles sont
+  // dans la liste au même titre que l'éventail — trois bandes qui portent du
+  // texte, qu'une carte n'a pas le droit de recouvrir.
+  const bandes = ['sk-turn-indicator', 'sk-power-banner', 'sk-hand', 'sk-mine', 'sk-gain']
     .map((id) => rectDansLeTapis(document.getElementById(id), boite))
     .filter(Boolean);
 
@@ -4797,6 +4882,7 @@ function renderGame(state) {
   hideCardTooltip();
   renderRoundIndicator(state);
   renderMine(state);
+  renderGain(state);
   btnEndGame.classList.toggle('hidden', !state.isHost);
   maybeAnimateDeal(state);
   // AVANT renderTrick : les cartes du pli se posent en couronne autour du

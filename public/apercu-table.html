@@ -40,6 +40,9 @@
     ?phase=baleine  la Baleine met les spéciales hors course, sans rien détruire
     ?quatorze=1     un 14 de chaque famille en main : les pièces de bonus
     ?declare=violet le cadre de déclaration du 0/14, aux couleurs de la famille
+    ?bonus=30&mise=20&butin=1  ce que porte la plaque « Gain si contrat rempli »
+    ?plis=2         combien de plis J'AI pris : la plaque du contrat est rouge
+                    tant qu'il n'est pas tenu, verte dès qu'il l'est
 -->
 <script>
 const P = new URLSearchParams(location.search);
@@ -116,13 +119,18 @@ function carte(i) {
   return { id: `c${i}`, kind: 'number', suit: COULEURS[i % 3], value: 3 + ((i * 5) % 11) };
 }
 
+// ?plis=2 : combien de plis J'AI déjà remportés. C'est le seul moyen de
+// regarder la plaque du contrat dans ses deux états sans jouer une manche —
+// rouge tant que le compte n'y est pas, verte quand il y est.
+const MES_PLIS = P.get('plis');
+
 const joueurs = Array.from({ length: N }, (_, i) => ({
   id: `p${i}`,
   nickname: PSEUDOS[i],
   piece: JETONS[i],
   connected: true,
   handCount: 6,
-  tricksWon: i % 3,
+  tricksWon: i === 0 && MES_PLIS !== null ? Number(MES_PLIS) : i % 3,
   hasBid: true,
   bid: 2,
 }));
@@ -214,7 +222,12 @@ const etat = {
   })),
   extensions: [],
   deckStyle: 'classique',
-  lootAllies: [],
+  lootAllies: P.get('butin') === '1' ? ['p0'] : [],
+  // ?bonus=30&mise=20 : ce que la plaque « Gain si contrat rempli » ajoute au
+  // socle de l'annonce. Zéro par défaut — le cadre n'affiche alors que le
+  // socle, sans son détail, qui est le cas de loin le plus fréquent.
+  myPendingBonus: Number(P.get('bonus') || 0),
+  myRascalStake: Number(P.get('mise') || 0),
   hand: QUATORZE
     ? [
         { id: 'q1', kind: 'number', suit: 'vert', value: 14 },
