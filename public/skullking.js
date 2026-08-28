@@ -3682,24 +3682,21 @@ function renderTurnIndicator(state) {
 //
 // LE RYTHME. Chaque client attend ce temps-là quand vient SON tour : la
 // manche 1 se déroule donc comme un vrai tour de table, une carte après
-// l'autre, et non d'un bloc. À 900 ms puis à 1,5 s les cartes tombaient
-// encore trop vite : elles sont TOUTES visibles depuis l'annonce, on ne
-// découvre donc pas une carte, on regarde une carte connue changer de camp —
-// quitter la main de son porteur pour le tapis. C'est un déplacement, et un
-// déplacement se suit plus lentement qu'une image se lit. Il faut le temps de
-// voir la carte se redresser, de revenir aux autres, et d'avoir déjà repris
-// son souffle quand la suivante part.
+// l'autre, et non d'un bloc. Il faut le temps de voir la carte se redresser
+// et de revenir aux autres — les cartes sont TOUTES visibles depuis
+// l'annonce, on ne découvre pas une carte, on regarde une carte connue
+// changer de camp, et un déplacement se suit plus lentement qu'une image se
+// lit.
 //
-// 2,2 s : en dessous de la beat de lecture du jeu (2,6 s, celle d'un fait
-// qu'on doit enregistrer avant de jouer — voir TRICK_REVEAL_MS côté serveur),
-// parce qu'ici rien n'est neuf, mais du même ordre. Une table à six y passe
-// treize secondes, et c'est la seule manche qui les mérite : c'est celle où
-// l'on ne joue pas, où l'on regarde.
+// Mais ce temps-là est un temps d'attente, pas un temps de décision : à 2,2 s
+// la manche entière traînait, une table à six y passait treize secondes à ne
+// rien faire. 1,2 s : de quoi suivre chaque carte qui part sans que la manche
+// devienne un compte à rebours. Une table à six est servie en sept secondes.
 //
 // Les bots de test tiennent le même rythme en manche 1 (voir
 // BOT_MANCHE1_MS) : sinon la manche se déroule à leur pas à eux, et le
 // réglage ne se voit que dans une partie entre humains.
-const MANCHE1_LECTURE_MS = 2200;
+const MANCHE1_LECTURE_MS = 1200;
 let carteAutoJouee = null;
 let carteAutoTimer = null;
 

@@ -26,7 +26,7 @@ const BOT_THINK_MS = 700;
 // lui : la manche se déroulerait à SA cadence, et le temps de lecture réglé
 // pour les joueurs ne se verrait que dans une partie entre humains — soit
 // jamais pendant un test. Les deux valeurs vont donc ensemble.
-const BOT_MANCHE1_MS = 2200;
+const BOT_MANCHE1_MS = 1200;
 
 const BOT_NAMES = ['Barbe-Rousse', 'Anne Bonny', 'Le Borgne', 'Calico Jack', 'Mary Read', 'Flint', 'Jack le Rouge', 'La Buse'];
 
