@@ -3779,8 +3779,10 @@ h3 {
 /* La roue entière, flèche comprise. Elle occupe toute la boîte : le fichier
    est calé sur la pointe de la flèche (rayon 0,984 du demi-côté), donc la
    pointe affleure le bord quel que soit l'angle (elle balaie donc 207 px sur
-   les 420 de la roue), et les poignées tiennent à 0,749 — c'est l'espace
-   entre les deux qui laisse la flèche se détacher.
+   les 420 de la roue), et les poignées tiennent à 0,871 — c'est l'espace
+   entre les deux qui laisse la flèche se détacher. Les deux rayons sont
+   relevés par briefs/detourer-volant.py et réimprimés à chaque passage : la
+   roue peinte a déjà changé une fois, et les poignées avec elle.
 
    Départ vif puis très longue traîne : la roue part d'un coup et n'arrête
    plus vraiment de ralentir. La durée vient de --sk-roue-duree, posée par
@@ -4805,17 +4807,22 @@ h3 {
   max-width: 300px;
 }
 
+/* Le côté du médaillon et l'écart entre deux : posés en variables parce
+   qu'ils bougent ENSEMBLE. La pièce retenue est agrandie par un `transform`
+   — qui ne prend pas de place dans la grille — et déborde donc de sa case
+   d'un sixième de sa largeur de chaque côté ; l'écart doit valoir au moins
+   ça, sinon elle mord sur ses voisines. */
 .sk-piece-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  gap: var(--sk-piece-ecart, 8px);
   justify-items: center;
 }
 
 .sk-piece-btn {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: var(--sk-piece-cote, 48px);
+  height: var(--sk-piece-cote, 48px);
   padding: 0;
   display: flex;
   align-items: center;
@@ -7383,7 +7390,15 @@ h3 {
     margin-right: 0;
   }
 
+  /* La planche de l'équipage est la plus large des quatre : les médaillons y
+     passent de 48 à 62 px. À 48 ils étaient dessinés pour une colonne de
+     téléphone, et sur un écran d'ordinateur l'émail et la gravure — ce qu'on
+     regarde justement pour choisir — tombaient sous le seuil où on les
+     distingue. L'écart suit dans la même proportion, sinon la pièce retenue,
+     agrandie d'un tiers, viendrait mordre ses voisines. */
   .sk-lobby-col .sk-piece-picker {
+    --sk-piece-cote: 62px;
+    --sk-piece-ecart: 11px;
     margin-top: 0;
     margin-bottom: 16px;
   }

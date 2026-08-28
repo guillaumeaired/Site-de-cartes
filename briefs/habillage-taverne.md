@@ -552,3 +552,23 @@ n'en reste qu'un, celui qu'on lance.
 Les fichiers et leurs scripts (`recentrer-aiguille.py`, `decouper-feutres.py`)
 restent en place : les planches sont peintes, les découpages écrits, et c'est
 une décision d'habillage qui peut se reprendre.
+
+### Lot 6 — 28/08/2026 ✅ le gouvernail repeint
+
+`volant-sk.png` remplacé, `briefs/detourer-volant.py` relancé sans un
+paramètre à changer : il détoure, recentre sur le moyeu et **remesure** la
+flèche. C'est ce dernier point qui justifie le script — deux des trois
+valeurs qu'il imprime ont bougé, et elles se reportent à la main :
+
+| relevé | ancienne roue | nouvelle |
+|---|---|---|
+| angle de la flèche au repos | 43,95° | **46,70°** (`ROUE_FLECHE_DEG`) |
+| rayon de la pointe | 0,984 | 0,984 |
+| rayon des poignées | 0,749 | **0,871** |
+
+L'angle est celui que le JS soustrait pour viser le bon médaillon : à
+2,75° près la flèche s'arrête à côté, et sur une table à huit il ne faut pas
+beaucoup plus pour désigner le voisin. Les poignées, elles, montent : la
+flèche dépasse donc moins qu'avant (0,113 du demi-côté au lieu de 0,235),
+mais les médaillons se posent à 236 px pour une pointe à 207 — ils restent
+au large, rien à régler.

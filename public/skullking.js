@@ -5106,7 +5106,7 @@ const ROUE_LECTURE = 2600;    // ms pendant lesquelles le nom reste affiché
 // à chaque passage du script si la planche est regénérée. Sans cette
 // soustraction la roue s'arrête un huitième de tour trop loin, ce qui, sur
 // une table à huit, désigne pile le joueur suivant.
-const ROUE_FLECHE_DEG = 43.95;
+const ROUE_FLECHE_DEG = 46.70;
 
 // De quoi la flèche ne s'arrête jamais deux fois au même endroit du même
 // médaillon. La pièce en couvre une bonne dizaine de degrés vue du moyeu :
