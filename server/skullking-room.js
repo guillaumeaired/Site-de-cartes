@@ -158,15 +158,21 @@ function donneTruquee(room, cardsInRound) {
   // Juanita les montre : c'est sans conséquence, les copies ne portent pas
   // leur identifiant.
   const visees = cartesVisees(paquet);
-  const copies = (n) =>
+  // `place` : le rang du joueur servi. Sans lui, deux mains servies dans la
+  // même manche recevaient les mêmes identifiants (`s62-e4-1` chez deux
+  // joueurs à la fois) - or tout le jeu désigne les cartes par leur id : la
+  // Planche qui en cible une retirait alors la première des deux trouvée
+  // dans le pli, pas celle qu'on avait désignée. Le mode d'essai mentait
+  // exactement sur ce qu'il sert à éprouver.
+  const copies = (n, place) =>
     Array.from({ length: n }, (_, i) => {
       const modele = visees[i % visees.length];
-      return { ...modele, id: `${modele.id}-e${room.roundIndex || 0}-${i}` };
+      return { ...modele, id: `${modele.id}-e${room.roundIndex || 0}-j${place}-${i}` };
     });
 
-  room.players.forEach((p) => {
+  room.players.forEach((p, place) => {
     const main = cible.has(p.id)
-      ? (visees.length ? copies(cardsInRound) : pouvoirs.splice(0, cardsInRound))
+      ? (visees.length ? copies(cardsInRound, place) : pouvoirs.splice(0, cardsInRound))
       : numerotees.splice(0, cardsInRound);
     // Le paquet ne porte que 64 numérotées : à huit bots et dix cartes il en
     // faudrait 80. Plutôt qu'une main tronquée — qui casserait l'annonce et
@@ -808,6 +814,10 @@ function stateFor(room, p) {
           ? room.players.map((pp) => ({ id: pp.id, nickname: pp.nickname, handCount: pp.hand.length }))
           : undefined,
       currentBid: mine && pending.kind === 'harry' ? room.bids[pending.playerId] : undefined,
+      // Marcher sur la Planche : les Pirates du pli complet parmi lesquels
+      // choisir. Envoyé au seul joueur de la Planche - les autres voient le
+      // bandeau, pas la liste.
+      plankTargetIds: mine && pending.kind === 'plank' ? pending.plankTargetIds : undefined,
       // Ce qu'il reste à Juanita Jade pour regarder, en millisecondes.
       revealMs:
         mine && pending.kind === 'juanita' && pending.revealUntil
@@ -1278,6 +1288,158 @@ function guardPower(room, socket, kind) {
   return room.pendingPower.playerId === socket.id;
 }
 
+// --- LE PLI EST COMPLET : ON LE RÉSOUT --------------------------------
+//
+// Sorti du handler de pose parce qu'il y a désormais deux façons d'y
+// arriver : la dernière carte posée, ou - quand Marcher sur la Planche a
+// plusieurs Pirates sous la main - la désignation de celui qui passe
+// par-dessus bord, qui vient APRÈS la dernière carte (voir
+// demanderCiblePlanche).
+function resoudreLePliComplet(io, room) {
+  // Le pli reste affiché un instant avant d'être ramassé, sinon la dernière
+  // carte posée n'apparaît jamais.
+  const cards = room.currentTrick.map((t) => t.card);
+  const result = resolveTrick(cards);
+  let winnerId = null;
+  if (!result.destroyed) {
+    winnerId = room.currentTrick[result.winnerIdx].playerId;
+    const winner = findPlayer(room, winnerId);
+    winner.tricksWon += 1;
+    winner.pendingBonus += trickBonusForWinner(cards, result.winnerIdx, result.excludedIdx);
+    winner.pendingBonus += result.monstersDestroyed * 20;
+    // Alliance Butin : chaque Butin posé par un AUTRE joueur que le
+    // vainqueur forme une alliance avec lui (sauf s'il a gagné lui-même
+    // via le cas exceptionnel "tout-Fuites + Butin", déjà exclu ici
+    // puisque result.winnerIdx pointerait alors sur ce Butin lui-même).
+    room.currentTrick.forEach((t, i) => {
+      if (t.card.kind === 'loot' && i !== result.winnerIdx) {
+        room.lootAlliances.push({ lootPlayerId: t.playerId, winnerId });
+      }
+    });
+  }
+  const leaderId = room.currentTrick[result.leaderIdx].playerId;
+  const devorees = devoreesParLeVainqueur(cards, result);
+  room.lastTrickResult = {
+    destroyed: result.destroyed,
+    winnerId,
+    // Qui dévore qui : le vainqueur et ce qu'il emporte (voir DEVORE).
+    devourerCardId: devorees.devoreurId,
+    devouredCardIds: devorees.ids,
+    plankedCardIds: plankedCardIds(cards),
+    davyJones: davyJonesSwallow(cards),
+    // La carte qui engloutit le pli, quand c'est le Kraken : l'écran s'en
+    // sert pour faire converger les autres cartes dessus.
+    krakenCardId: result.krakenIdx != null && result.krakenIdx !== -1 ? cards[result.krakenIdx].id : null,
+    // Le genre de la carte qui a détruit le pli, Kraken compris : c'est ce
+    // que l'écran NOMME. « Le pli est détruit » sans dire par quoi laisse
+    // chercher la cause dans les mauvaises cartes.
+    destroyedBy: result.destroyerIdx != null && result.destroyerIdx !== -1
+      ? effectiveKind(cards[result.destroyerIdx])
+      : null,
+    neutralisedCardIds: (result.neutralisedIdx || []).map((i) => cards[i].id),
+  };
+  room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
+  room.trickPaused = true;
+  broadcastState(io, room);
+
+  room.trickTimer = setTimeout(() => {
+    if (rooms.get(room.code) !== room) return;
+    const winningCard = room.lastWinningCard;
+    const isLastTrick = room.trickNumber === room.cardsInRound;
+    if (winningCard && winningCard.kind === 'pirate' && winningCard.name) {
+      const powerKey = PIRATE_POWER_BY_NAME[winningCard.name];
+      // Tous les pouvoirs sauf celui d'Harry le Géant sont indisponibles
+      // sur le dernier pli de la manche.
+      if (powerKey === 'harry' || !isLastTrick) {
+        startPiratePower(io, room, powerKey, winnerId, leaderId);
+        return;
+      }
+    }
+    // Mat le Forban ET le Skull King : héritent du/des pouvoir(s) de
+    // tout(s) Pirate(s) classique(s) capturé(s) dans le même pli (retiré
+    // par la Planche exclu, voir result.excludedIdx), à résoudre à la
+    // suite les uns des autres - sans toucher au bonus de capture normal,
+    // géré séparément dans trickBonusForWinner. Pour le Skull King c'est
+    // nouveau (jusqu'ici seul le Pirate qui remportait lui-même le pli
+    // déclenchait son propre pouvoir - le manger avec le Skull King ne
+    // donnait jamais rien).
+    if (winningCard && (winningCard.kind === 'firstmate' || winningCard.kind === 'skullking')) {
+      const powerKeys = capturedPirateKeys(room.currentTrick, result.excludedIdx, isLastTrick);
+      if (powerKeys.length) {
+        room.pendingPowerQueue = powerKeys.slice(1);
+        startPiratePower(io, room, powerKeys[0], winnerId, leaderId);
+        return;
+      }
+    }
+    finishTrickCollection(io, room, leaderId);
+  }, result.destroyed && result.krakenIdx >= 0 ? TRICK_KRAKEN_MS : TRICK_REVEAL_MS);
+}
+
+// --- MARCHER SUR LA PLANCHE : LA CIBLE SE DÉSIGNE À LA FIN DU PLI ------
+//
+// Le livret de l'extension est explicite : « The Walk the Plank card does
+// not win a trick. When played, the player must remove one standard Pirate
+// AT THE END OF THE TRICK, if any are present. If multiple pirates are in a
+// trick, the player chooses which one to remove, potentially changing the
+// highest-ranking pirate. »
+//
+// À la fin du pli, donc, et pas à la pose - c'est toute la différence : un
+// Pirate posé APRÈS la Planche est une cible comme les autres. On ciblait
+// jusqu'ici au moment de la pose, sur le pli en cours, et la Planche jouée
+// tôt dans le tour ne retirait alors personne : elle avait l'air de ne rien
+// faire, et c'était bien le cas. C'est aussi la règle du Coffre de Davy
+// Jones juste à côté, qui engloutit les Monstres du pli complet quel que
+// soit l'ordre de pose.
+//
+// Trois cas : aucun Pirate (rien à faire), un seul (il n'y a rien à
+// choisir, on l'impose), plusieurs (le joueur de la Planche désigne, via la
+// phase de pouvoir - le pli attend).
+const PLANK_CHOICE_MS = 20_000;
+
+function planchePosee(room) {
+  return room.currentTrick.find((t) => t.card.kind === 'plank') || null;
+}
+
+// Renvoie true si le pli est mis en attente d'une désignation.
+function demanderCiblePlanche(io, room) {
+  const planche = planchePosee(room);
+  if (!planche) return false;
+  const cibles = eligiblePlankTargets(room.currentTrick);
+  if (!cibles.length) return false;
+  if (cibles.length === 1) {
+    planche.card.removesId = cibles[0].card.id;
+    return false;
+  }
+  room.pendingPower = {
+    kind: 'plank',
+    playerId: planche.playerId,
+    plankTargetIds: cibles.map((t) => t.card.id),
+  };
+  room.phase = 'power';
+  // Personne ne doit pouvoir geler la table en ne répondant pas : passé le
+  // délai, c'est le premier Pirate posé qui tombe. Le pouvoir est
+  // OBLIGATOIRE (« must remove one standard Pirate »), il n'y a donc pas de
+  // bouton « ne rien faire » à proposer, ni de choix par défaut plus neutre
+  // qu'un autre.
+  room.powerTimer = setTimeout(() => {
+    if (rooms.get(room.code) !== room) return;
+    if (room.phase !== 'power' || !room.pendingPower || room.pendingPower.kind !== 'plank') return;
+    validerCiblePlanche(io, room, room.pendingPower.plankTargetIds[0]);
+  }, PLANK_CHOICE_MS);
+  broadcastState(io, room);
+  return true;
+}
+
+function validerCiblePlanche(io, room, removesId) {
+  clearTimeout(room.powerTimer);
+  room.powerTimer = null;
+  const planche = planchePosee(room);
+  if (planche) planche.card.removesId = removesId;
+  room.pendingPower = null;
+  room.phase = 'playing';
+  resoudreLePliComplet(io, room);
+}
+
 function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-create-room', (payload) => {
     const nickname = sanitizeNickname(payload && payload.nickname);
@@ -1631,22 +1793,8 @@ function registerSkullKingHandlers(io, socket) {
       card.value = 15;
       card.wild15 = true; // marqueur explicite pour l'affichage client, sans incidence sur la résolution
     }
-    // Marcher sur la Planche : retire un Pirate présent dans le pli en
-    // cours (pas Mat le Forban, qui n'est pas un "vrai" Pirate) - aucun
-    // choix nécessaire s'il n'y en a qu'un seul ou aucun.
-    if (card.kind === 'plank') {
-      const piratesInTrick = eligiblePlankTargets(room.currentTrick);
-      if (piratesInTrick.length > 1) {
-        const requested = payload && payload.removesId;
-        if (!piratesInTrick.some((t) => t.card.id === requested)) {
-          sendError(socket, 'Choisis quel Pirate retirer du pli.');
-          return;
-        }
-        card.removesId = requested;
-      } else if (piratesInTrick.length === 1) {
-        card.removesId = piratesInTrick[0].card.id;
-      }
-    }
+    // Marcher sur la Planche : AUCUN choix à la pose. La cible se désigne
+    // quand le pli est complet - voir demanderCiblePlanche.
 
     player.hand = player.hand.filter((c) => c.id !== cardId);
     if (forcedCardId) delete room.forcedPlays[player.id];
@@ -1665,83 +1813,24 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
 
-    // Pli complet : on le laisse affiché un instant avant de le ramasser,
-    // sinon la dernière carte posée n'apparaît jamais.
-    const cards = room.currentTrick.map((t) => t.card);
-    const result = resolveTrick(cards);
-    let winnerId = null;
-    if (!result.destroyed) {
-      winnerId = room.currentTrick[result.winnerIdx].playerId;
-      const winner = findPlayer(room, winnerId);
-      winner.tricksWon += 1;
-      winner.pendingBonus += trickBonusForWinner(cards, result.winnerIdx, result.excludedIdx);
-      winner.pendingBonus += result.monstersDestroyed * 20;
-      // Alliance Butin : chaque Butin posé par un AUTRE joueur que le
-      // vainqueur forme une alliance avec lui (sauf s'il a gagné lui-même
-      // via le cas exceptionnel "tout-Fuites + Butin", déjà exclu ici
-      // puisque result.winnerIdx pointerait alors sur ce Butin lui-même).
-      room.currentTrick.forEach((t, i) => {
-        if (t.card.kind === 'loot' && i !== result.winnerIdx) {
-          room.lootAlliances.push({ lootPlayerId: t.playerId, winnerId });
-        }
-      });
-    }
-    const leaderId = room.currentTrick[result.leaderIdx].playerId;
-    const devorees = devoreesParLeVainqueur(cards, result);
-    room.lastTrickResult = {
-      destroyed: result.destroyed,
-      winnerId,
-      // Qui dévore qui : le vainqueur et ce qu'il emporte (voir DEVORE).
-      devourerCardId: devorees.devoreurId,
-      devouredCardIds: devorees.ids,
-      plankedCardIds: plankedCardIds(cards),
-      davyJones: davyJonesSwallow(cards),
-      // La carte qui engloutit le pli, quand c'est le Kraken : l'écran s'en
-      // sert pour faire converger les autres cartes dessus.
-      krakenCardId: result.krakenIdx != null && result.krakenIdx !== -1 ? cards[result.krakenIdx].id : null,
-      // Le genre de la carte qui a détruit le pli, Kraken compris : c'est ce
-      // que l'écran NOMME. « Le pli est détruit » sans dire par quoi laisse
-      // chercher la cause dans les mauvaises cartes.
-      destroyedBy: result.destroyerIdx != null && result.destroyerIdx !== -1
-        ? effectiveKind(cards[result.destroyerIdx])
-        : null,
-      neutralisedCardIds: (result.neutralisedIdx || []).map((i) => cards[i].id),
-    };
-    room.lastWinningCard = result.destroyed ? null : cards[result.winnerIdx];
-    room.trickPaused = true;
-    broadcastState(io, room);
+    // Pli complet. Marcher sur la Planche désigne sa victime maintenant,
+    // et le pli attend cette réponse si plusieurs Pirates sont en lice.
+    if (demanderCiblePlanche(io, room)) return;
+    resoudreLePliComplet(io, room);
+  });
 
-    room.trickTimer = setTimeout(() => {
-      if (rooms.get(room.code) !== room) return;
-      const winningCard = room.lastWinningCard;
-      const isLastTrick = room.trickNumber === room.cardsInRound;
-      if (winningCard && winningCard.kind === 'pirate' && winningCard.name) {
-        const powerKey = PIRATE_POWER_BY_NAME[winningCard.name];
-        // Tous les pouvoirs sauf celui d'Harry le Géant sont indisponibles
-        // sur le dernier pli de la manche.
-        if (powerKey === 'harry' || !isLastTrick) {
-          startPiratePower(io, room, powerKey, winnerId, leaderId);
-          return;
-        }
-      }
-      // Mat le Forban ET le Skull King : héritent du/des pouvoir(s) de
-      // tout(s) Pirate(s) classique(s) capturé(s) dans le même pli (retiré
-      // par la Planche exclu, voir result.excludedIdx), à résoudre à la
-      // suite les uns des autres - sans toucher au bonus de capture normal,
-      // géré séparément dans trickBonusForWinner. Pour le Skull King c'est
-      // nouveau (jusqu'ici seul le Pirate qui remportait lui-même le pli
-      // déclenchait son propre pouvoir - le manger avec le Skull King ne
-      // donnait jamais rien).
-      if (winningCard && (winningCard.kind === 'firstmate' || winningCard.kind === 'skullking')) {
-        const powerKeys = capturedPirateKeys(room.currentTrick, result.excludedIdx, isLastTrick);
-        if (powerKeys.length) {
-          room.pendingPowerQueue = powerKeys.slice(1);
-          startPiratePower(io, room, powerKeys[0], winnerId, leaderId);
-          return;
-        }
-      }
-      finishTrickCollection(io, room, leaderId);
-    }, result.destroyed && result.krakenIdx >= 0 ? TRICK_KRAKEN_MS : TRICK_REVEAL_MS);
+  // Marcher sur la Planche : le joueur désigne le Pirate qui passe
+  // par-dessus bord, une fois le pli complet (voir demanderCiblePlanche).
+  // Le pli n'est résolu qu'après cette réponse.
+  socket.on('skullking-power-plank', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!guardPower(room, socket, 'plank')) return;
+    const requested = payload && payload.removesId;
+    if (!room.pendingPower.plankTargetIds.includes(requested)) {
+      sendError(socket, 'Choisis quel Pirate passe par-dessus bord.');
+      return;
+    }
+    validerCiblePlanche(io, room, requested);
   });
 
   // Rosie la Douce : choisit qui entame le pli suivant (elle-même incluse).
@@ -1934,6 +2023,8 @@ module.exports = {
   MIN_PLAYERS,
   MAX_PLAYERS,
   eligiblePlankTargets,
+  demanderCiblePlanche,
+  validerCiblePlanche,
   activeOrderThisTrick,
   capturedPirateKeys,
   devoreesParLeVainqueur,

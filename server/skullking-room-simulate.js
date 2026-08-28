@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -456,5 +456,96 @@ check(
   devore([num, { id: 'n2', kind: 'number', suit: 'vert', value: 3 }], win(0)),
   [null, []]
 );
+
+// --- MARCHER SUR LA PLANCHE : LA CIBLE SE DÉSIGNE À LA FIN DU PLI ------
+//
+// Le livret : « must remove one standard Pirate AT THE END OF THE TRICK ».
+// On ciblait au moment de la pose, sur le pli en cours : une Planche jouée
+// avant le Pirate ne retirait personne, et le pouvoir avait l'air de ne pas
+// marcher une fois sur deux. C'est ce que ces tests tiennent.
+const ioMuet = { to: () => ({ emit: () => {} }) };
+
+function roomAvecPli(plis) {
+  const room = makeRoom(plis);
+  room.code = 'TEST';
+  room.trickNumber = 1;
+  room.players = [...new Set(plis.map((t) => t.playerId))].map((id) => ({
+    ...makePlayer(id, id),
+    pendingBonus: 0,
+  }));
+  room.lootAlliances = [];
+  return room;
+}
+
+// Le pli est joué dans l'ordre du tableau : la Planche en PREMIER, le Pirate
+// après. C'est exactement le cas qui ne retirait rien.
+const pliPlanchePuisPirate = roomAvecPli([
+  { playerId: 'p1', card: { id: 'pl', kind: 'plank' } },
+  { playerId: 'p2', card: { id: 'r1', kind: 'pirate', name: 'Harry le Géant' } },
+]);
+check(
+  'une Planche posée AVANT le Pirate le cible quand même (rien à choisir)',
+  demanderCiblePlanche(ioMuet, pliPlanchePuisPirate),
+  false
+);
+check(
+  'et le Pirate est bien désigné',
+  pliPlanchePuisPirate.currentTrick[0].card.removesId,
+  'r1'
+);
+
+const pliDeuxPirates = roomAvecPli([
+  { playerId: 'p1', card: { id: 'pl', kind: 'plank' } },
+  { playerId: 'p2', card: { id: 'r1', kind: 'pirate', name: 'Harry le Géant' } },
+  { playerId: 'p3', card: { id: 'r2', kind: 'pirate', name: 'Rosie la Douce' } },
+]);
+check(
+  'deux Pirates : le pli attend que le joueur de la Planche désigne',
+  demanderCiblePlanche(ioMuet, pliDeuxPirates),
+  true
+);
+check('la phase passe en pouvoir', pliDeuxPirates.phase, 'power');
+check('et c\'est au joueur de la Planche de répondre', [
+  pliDeuxPirates.pendingPower.kind,
+  pliDeuxPirates.pendingPower.playerId,
+  pliDeuxPirates.pendingPower.plankTargetIds,
+], ['plank', 'p1', ['r1', 'r2']]);
+clearTimeout(pliDeuxPirates.powerTimer);
+clearTimeout(pliDeuxPirates.inactivityTimer);
+
+// Et la réponse résout le pli : le Pirate désigné passe par-dessus bord,
+// l'autre remporte le pli. C'est le bout de la chaîne — le calcul retirait
+// déjà la cible (resolveTrick), encore fallait-il qu'une cible soit posée.
+validerCiblePlanche(ioMuet, pliDeuxPirates, 'r1');
+check('la Planche retient la cible désignée', pliDeuxPirates.currentTrick[0].card.removesId, 'r1');
+check('le pli repart en phase de jeu', pliDeuxPirates.phase, 'playing');
+check('le Pirate désigné tombe à l\'eau', pliDeuxPirates.lastTrickResult.plankedCardIds, ['r1']);
+check("et c'est l'autre Pirate qui remporte le pli", pliDeuxPirates.lastTrickResult.winnerId, 'p3');
+clearTimeout(pliDeuxPirates.trickTimer);
+clearTimeout(pliDeuxPirates.inactivityTimer);
+
+// Une Tigresse annoncée en Fuite n'est pas un Pirate : elle ne compte pas
+// dans les cibles, et ne doit donc pas déclencher un choix qui n'en est pas
+// un (le cadre s'ouvrait pour elle, et le serveur refusait ensuite la pose).
+const pliTigresseFuite = roomAvecPli([
+  { playerId: 'p1', card: { id: 'pl', kind: 'plank' } },
+  { playerId: 'p2', card: { id: 'r1', kind: 'pirate', name: 'Harry le Géant' } },
+  { playerId: 'p3', card: { id: 't1', kind: 'tigress', chosenAs: 'escape' } },
+]);
+check(
+  "une Tigresse en Fuite n'est pas une cible : aucun choix à poser",
+  demanderCiblePlanche(ioMuet, pliTigresseFuite),
+  false
+);
+check('le seul vrai Pirate est désigné', pliTigresseFuite.currentTrick[0].card.removesId, 'r1');
+clearTimeout(pliTigresseFuite.inactivityTimer);
+
+const pliSansPirate = roomAvecPli([
+  { playerId: 'p1', card: { id: 'pl', kind: 'plank' } },
+  { playerId: 'p2', card: { id: 'n9', kind: 'number', suit: 'vert', value: 9 } },
+]);
+check('aucun Pirate : la Planche ne retire rien', demanderCiblePlanche(ioMuet, pliSansPirate), false);
+check('et ne désigne personne', pliSansPirate.currentTrick[0].card.removesId, undefined);
+clearTimeout(pliSansPirate.inactivityTimer);
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

@@ -494,7 +494,7 @@ function cardPowerText(card) {
       // choix est au joueur (et pas au premier Pirate posé), le Pirate retiré
       // ne compte plus pour RIEN (bonus du Skull King compris), et Mat le
       // Forban n'est pas une cible.
-      return "Marcher sur la Planche — ne remporte jamais le pli. Elle envoie par-dessus bord un Pirate du pli en cours, celui que TU désignes s'il y en a plusieurs. Le Pirate retiré ne gagne plus, ne rapporte plus de bonus et son pouvoir ne se déclenche pas. Mat le Forban n'est pas une cible.";
+      return "Marcher sur la Planche — ne remporte jamais le pli. Une fois le pli COMPLET, elle envoie par-dessus bord un Pirate du pli, celui que TU désignes s'il y en a plusieurs — y compris un Pirate posé après elle. Le Pirate retiré ne gagne plus, ne rapporte plus de bonus et son pouvoir ne se déclenche pas. Mat le Forban n'est pas une cible.";
     case 'davyjones':
       return 'Coffre de Davy Jones — ne remporte jamais le pli. Détruit tous les Monstres Marins présents (Kraken, Baleine, Raie) : +20 points par Monstre détruit.';
     case 'wild15':
@@ -3121,8 +3121,7 @@ function hideAllChoicePanels() {
   tigressChoiceEl.classList.add('hidden');
   jokerChoiceEl.classList.add('hidden');
   declareChoiceEl.classList.add('hidden');
-  plankChoiceEl.classList.add('hidden');
-  ciblagePlanche = null;
+  fermerCiblagePlanche();
 }
 
 function playCard(cardId, extra) {
@@ -3163,6 +3162,7 @@ const jokerChoiceEl = document.getElementById('sk-joker-choice');
 const declareChoiceEl = document.getElementById('sk-declare-choice');
 const plankChoiceEl = document.getElementById('sk-plank-choice');
 const plankCiblesEl = document.getElementById('sk-plank-cibles');
+const plankAnnulerBtn = document.getElementById('sk-btn-plank-cancel');
 
 // --- MARCHER SUR LA PLANCHE : QUI PASSE PAR-DESSUS BORD ----------------
 //
@@ -3176,10 +3176,16 @@ const plankCiblesEl = document.getElementById('sk-plank-cibles');
 // n'est pas désignée, et « Reposer la carte » rend la Planche à la main.
 let ciblagePlanche = null;
 
-function ouvrirChoixPlanche(carteId, pirates, state) {
-  ciblagePlanche = { carteId };
+// `cibles` : les entrées du pli ({ playerId, card }) parmi lesquelles choisir.
+// `onChoix` : ce qu'on fait de l'id désigné. Le cadre s'ouvre désormais à la
+// fin du pli et plus à la pose, et ce choix-là est OBLIGATOIRE (« must remove
+// one standard Pirate ») : pas de porte de sortie, donc pas de bouton
+// « Reposer la carte » ni de fermeture à l'échappée.
+function ouvrirChoixPlanche(cibles, state, onChoix) {
+  ciblagePlanche = { ouvert: true };
+  plankAnnulerBtn.classList.add('hidden');
   plankCiblesEl.innerHTML = '';
-  pirates.forEach((t) => {
+  cibles.forEach((t) => {
     const choix = document.createElement('button');
     choix.type = 'button';
     choix.className = 'sk-plank-cible';
@@ -3201,29 +3207,22 @@ function ouvrirChoixPlanche(carteId, pirates, state) {
 
     choix.addEventListener('click', () => {
       if (!ciblagePlanche) return;
-      const carteDeLaPlanche = ciblagePlanche.carteId;
-      ciblagePlanche = null;
-      playCard(carteDeLaPlanche, { removesId: t.card.id });
+      fermerCiblagePlanche();
+      onChoix(t.card.id);
     });
     plankCiblesEl.appendChild(choix);
   });
   plankChoiceEl.classList.remove('hidden');
 }
 
-// Le cadre couvre l'écran : sans porte de sortie, un clic de travers sur la
-// Planche bloquerait le tour. Fermer ne joue rien — la carte revient en main.
-function annulerCiblagePlanche() {
+// Le cadre se ferme quand la cible est désignée, ou quand le serveur passe à
+// la suite (pli résolu, délai écoulé, reconnexion) — jamais sur un clic de
+// travers : la Planche est déjà posée, il n'y a plus rien à reprendre.
+function fermerCiblagePlanche() {
   ciblagePlanche = null;
   plankChoiceEl.classList.add('hidden');
 }
 
-document.getElementById('sk-btn-plank-cancel').addEventListener('click', annulerCiblagePlanche);
-plankChoiceEl.addEventListener('click', (e) => {
-  if (e.target === plankChoiceEl) annulerCiblagePlanche();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && ciblagePlanche) annulerCiblagePlanche();
-});
 let pendingJokerCardId = null;
 let pendingDeclareCardId = null;
 
@@ -3399,31 +3398,11 @@ function renderHand(state) {
           playCard(card.id);
           return;
         }
-        // Marcher sur la Planche : choix du Pirate à retirer seulement s'il
-        // y en a plusieurs dans le pli en cours. Une Tigresse compte comme
-        // candidate potentielle même si on ne sait pas si elle a été jouée
-        // comme Pirate ou comme Fuite : ce choix (chosenAs) reste caché aux
-        // autres joueurs pour préserver son bluff (voir stateFor côté
-        // serveur), donc le client ne peut pas trancher lui-même. Le serveur
-        // connaît la vraie réponse et valide/complète le choix (voir
-        // eligiblePlankTargets côté serveur) : s'il n'y a qu'une vraie cible
-        // possible il l'impose de toute façon, quoi que le joueur ait cliqué.
-        if (card.kind === 'plank') {
-          const piratesInTrick = trick.filter(
-            (t) => t.card.kind === 'pirate' || t.card.kind === 'tigress'
-          );
-          // Un seul Pirate (ou aucun) : rien à décider, la carte part et le
-          // serveur cible tout seul — c'est lui qui tranche de toute façon,
-          // voir eligiblePlankTargets.
-          if (piratesInTrick.length > 1) {
-            hideAllChoicePanels();
-            ouvrirChoixPlanche(card.id, piratesInTrick, state);
-            bidChoices.classList.add('hidden');
-            return;
-          }
-          playCard(card.id);
-          return;
-        }
+        // Marcher sur la Planche : rien à décider en la posant. Sa victime se
+        // désigne une fois le pli COMPLET (le livret : « must remove one
+        // standard Pirate at the end of the trick »), donc un Pirate posé
+        // après elle est une cible comme un autre — le cadre de désignation
+        // s'ouvre à ce moment-là, voir renderPowerPanel.
         playCard(card.id);
       });
     }
@@ -4012,6 +3991,9 @@ function renderPower(state) {
 
   const pending = state.pendingPower;
   if (state.phase !== 'power' || !pending) {
+    // Le pli est reparti (cible désignée, délai écoulé, ou reconnexion sur
+    // un pli déjà résolu) : le cadre de la Planche n'a plus lieu d'être.
+    fermerCiblagePlanche();
     willDiscardSelection = [];
     juanitaSessionKey = null;
     juanitaFlipped.clear();
@@ -4024,6 +4006,25 @@ function renderPower(state) {
     juanitaFlipped.clear();
     juanitaVagueLancee = false;
     arreterVagueJuanita();
+  }
+
+  // Marcher sur la Planche n'est pas un pouvoir de Pirate — elle emprunte la
+  // même pause (le pli est complet, il attend une réponse avant d'être
+  // résolu), mais elle a son propre cadre et sa propre phrase.
+  if (pending.kind === 'plank') {
+    powerBanner.textContent = `${nicknameOf(state, pending.playerId)} choisit quel Pirate passe par-dessus bord…`;
+    powerBanner.classList.remove('hidden');
+    if (!pending.mine) return;
+    // Un état rediffusé pendant le choix (un joueur se reconnecte, une
+    // pendule tourne) ne doit pas reconstruire le cadre sous les doigts.
+    if (!ciblagePlanche) {
+      const ids = pending.plankTargetIds || [];
+      const cibles = (state.currentTrick || []).filter((t) => ids.includes(t.card.id));
+      ouvrirChoixPlanche(cibles, state, (removesId) => {
+        socket.emit('skullking-power-plank', { removesId });
+      });
+    }
+    return;
   }
 
   powerBanner.textContent = `${nicknameOf(state, pending.playerId)} déclenche le pouvoir de ${POWER_LABEL[pending.kind]} !`;

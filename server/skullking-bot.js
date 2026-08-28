@@ -105,10 +105,6 @@ function withChoices(card, trick, state) {
   if (card.kind === 'tigress') payload.chosenAs = Math.random() < 0.7 ? 'pirate' : 'escape';
   if (card.kind === 'number' && card.wild14 && card.value == null) payload.declaredValue = 14;
   if (card.kind === 'wild15' && ledSuitOf(trick) === null) payload.chosenSuit = 'vert';
-  if (card.kind === 'plank') {
-    const pirates = trick.filter((t) => t.card.kind === 'pirate');
-    if (pirates.length > 1) payload.removesId = pirates[0].card.id;
-  }
   return payload;
 }
 
@@ -134,6 +130,12 @@ function powerAction(state) {
       return ['skullking-power-harry', { delta: 0 }];
     case 'juanita':
       return ['skullking-power-juanita-done', undefined];
+    // Marcher sur la Planche : la cible se désigne une fois le pli complet,
+    // pas à la pose - le bot répond donc ici, comme pour un pouvoir.
+    case 'plank': {
+      const ids = pending.plankTargetIds || [];
+      return ids.length ? ['skullking-power-plank', { removesId: ids[0] }] : null;
+    }
     default:
       return null;
   }
