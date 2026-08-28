@@ -6804,9 +6804,12 @@ h3 {
   --sk-w: clamp(72px, 15cqh, 118px);
 }
 
+/* Même corps que les boutons, à la lettre : même fonte, mêmes capitales,
+   même 0,82 rem. Le nom du pirate et les réponses sont les deux seuls textes
+   gravés du cadre, ils se lisent d'un même souffle. */
 .sk-power-portrait-nom {
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -6828,21 +6831,38 @@ h3 {
      rangée : un bandeau large et plat de 730 px, c'est-à-dire exactement la
      lanière qu'on vient de quitter, déménagée au centre. Bornés, les boutons
      s'enroulent sur deux ou trois rangées et le cadre reste un objet posé
-     sur le feutre. */
-  max-width: min(420px, 32cqw);
+     sur le feutre.
+     460 et non 420 : les trois réponses de Harry le Géant — −1, ne pas
+     changer, +1 — forment une échelle, et une échelle se lit sur une ligne.
+     À 420 elles tenaient à quatre pixels près, et un chiffre d'annonce un
+     peu large (un 4 plutôt qu'un 1) suffisait à faire tomber « +1 » sur une
+     seconde rangée. */
+  max-width: min(460px, 34cqw);
   min-width: 0;
   min-height: 0;
 }
 
+/* LA QUESTION, AU CORPS DES BOUTONS. Elle était à 0,86 rem contre 0,82 pour
+   les boutons — plus grande sur le papier, nettement plus petite à l'œil :
+   les boutons sont en capitales de Cinzel, grasses et espacées, où toute la
+   lettre monte à la hauteur de capitale, quand une bas-de-casse de Spectral
+   ne remplit que sa hauteur d'x. Le chiffre de la taille disait donc
+   l'inverse de ce qu'on voyait, et c'est la question — celle qui porte
+   l'information, « ton annonce actuelle : 5 » — qui passait pour une note de
+   bas de page sous ses propres réponses.
+   Un rem tout rond rattrape l'écart : la hauteur d'x rejoint la hauteur de
+   capitale d'en face, et les deux textes pèsent enfin pareil. */
 .sk-scene .sk-power-panel--choix .sk-power-consigne {
   flex-shrink: 0;
-  max-width: 42ch;
+  /* Pas de mesure à elle : c'est le corps qui borne la largeur du cadre, et
+     la question s'y range comme les boutons. Une contrainte de plus lui
+     aurait taillé une colonne étroite au-dessus d'une rangée large. */
   margin: 0;
   font-family: 'Spectral', Georgia, serif;
-  font-size: 0.86rem;
+  font-size: 1rem;
   line-height: 1.45;
   text-align: center;
-  color: var(--sk-cream-2);
+  color: var(--sk-cream);
 }
 
 .sk-power-choix {
