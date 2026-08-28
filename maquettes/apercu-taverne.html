@@ -17,6 +17,16 @@
    Les valeurs de `border-width` sont les tranches de l'image ramenées à
    l'échelle d'affichage — sinon les coins peints grossissent ou
    rétrécissent par rapport au reste.
+
+   ATTENTION — six textures de cette planche n'ont jamais été peintes :
+   barre-bois, panneau-vert, champ-saisie, parchemin, carnet et
+   panneau-bois. Elles n'existent ni dans le dépôt, ni dans son
+   historique, ni dans les sources locales. Les blocs concernés sont donc
+   dessinés EN CSS, à géométrie identique (mêmes border-width, mêmes
+   tailles), pour que la planche se lise malgré tout — ce sont des
+   relais, pas la direction artistique. Le jour où ces textures sont
+   peintes, il suffit de remettre la ligne `border-image` d'origine à la
+   place du bloc marqué « -relais » : rien d'autre n'a bougé.
    ===================================================================== */
 *{box-sizing:border-box}
 body{
@@ -37,7 +47,9 @@ h2{
 /* ---- la poutre : ne s'étire qu'en largeur, ferrures aux deux bouts ---- */
 .barre{
   border-style:solid; border-width:0 24px; height:58px;
-  border-image:url('../public/assets/skin/barre-bois.webp') 0 100 fill / 0 24px stretch;
+  /* poutre-relais : texture barre-bois.webp jamais produite (voir en-tête) */
+  background:linear-gradient(180deg,#5C3F1E,#3B2510 58%,#241606);
+  border-color:#8A6A2E; box-shadow:inset 0 1px 0 rgba(246,233,198,.14), 0 2px 6px rgba(0,0,0,.5);
   display:flex; align-items:center; justify-content:space-between;
   padding:0 6px; margin-top:28px;
 }
@@ -56,7 +68,10 @@ h2{
 .hero-panneau{
   position:relative; margin:-84px auto 0; width:min(660px,92%);
   border-style:solid; border-width:61px 63px;
-  border-image:url('../public/assets/skin/panneau-vert.webp') 145 150 fill / 61px 63px stretch;
+  /* panneau-relais : texture panneau-vert.webp jamais produite (voir en-tête) */
+  background:radial-gradient(120% 140% at 50% 0,#2C5540,#1C3A2B 60%,#12281D);
+  border-color:#37624A; border-radius:6px;
+  box-shadow:inset 0 0 0 2px rgba(184,137,53,.5), 0 6px 18px rgba(0,0,0,.55);
   text-align:center; padding:4px 10px 10px;
 }
 .hero-panneau p{
@@ -88,7 +103,10 @@ h2{
 /* ---- le champ : le texte vit dans la rainure, pas sur le laiton ---- */
 .champ{
   border-style:solid; border-width:9px 30px; height:56px; width:300px;
-  border-image:url('../public/assets/skin/champ-saisie.webp') 40 150 fill / 9px 30px stretch;
+  /* champ-relais : texture champ-saisie.webp jamais produite (voir en-tête) */
+  background:linear-gradient(180deg,#140E06,#1F1509);
+  border-color:#7A5A24; border-radius:4px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.75);
   background:none; color:#F2D69A; font-family:'Spectral',serif; font-size:1rem;
   padding:0 4px; outline:none;
 }
@@ -97,17 +115,28 @@ h2{
 /* ---- panneaux du jeu ---- */
 .parchemin{
   border-style:solid; border-width:35px 32px; width:300px;
-  border-image:url('../public/assets/skin/parchemin.webp') 120 110 fill / 35px 32px stretch;
+  /* parchemin-relais : texture parchemin.webp jamais produite (voir en-tête).
+     À ne pas confondre avec parchemin-objectif.webp, qui existe mais joue
+     un autre rôle (la feuille scellée du panneau « Ton objectif »). */
+  background:linear-gradient(160deg,#EFDCB2,#E2CB9C 55%,#D3B884);
+  border-color:#C2A472; border-radius:3px;
+  box-shadow:inset 0 0 22px rgba(120,88,42,.28), 0 4px 12px rgba(0,0,0,.45);
   color:#2A1B0C; padding:2px 6px 8px; min-height:130px;
 }
 .carnet{
   border-style:solid; border-width:76px 27px 27px;
-  border-image:url('../public/assets/skin/carnet.webp') 255 90 90 90 fill / 76px 27px 27px stretch;
+  /* carnet-relais : texture carnet.webp jamais produite (voir en-tête) */
+  background:linear-gradient(180deg,#8A6A44 0 76px,#EFE3C6 76px);
+  border-color:#8A6A44; border-radius:4px;
+  box-shadow:inset 0 -1px 0 rgba(120,88,42,.35), 0 4px 12px rgba(0,0,0,.45);
   width:320px; color:#2A1B0C; padding:0 6px 6px; min-height:250px;
 }
 .bois{
   border-style:solid; border-width:45px; width:320px; min-height:210px;
-  border-image:url('../public/assets/skin/panneau-bois.webp') 180 fill / 45px stretch;
+  /* bois-relais : texture panneau-bois.webp jamais produite (voir en-tête) */
+  background:linear-gradient(180deg,#4A3018,#33200E 60%,#221507);
+  border-color:#5C3F1E; border-radius:4px;
+  box-shadow:inset 0 0 0 2px rgba(184,137,53,.28), 0 4px 12px rgba(0,0,0,.45);
   padding:0 4px;
 }
 .kicker{
