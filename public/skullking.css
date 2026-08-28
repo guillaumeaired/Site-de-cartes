@@ -5081,11 +5081,29 @@ h3 {
    — qui ne prend pas de place dans la grille — et déborde donc de sa case
    d'un sixième de sa largeur de chaque côté ; l'écart doit valoir au moins
    ça, sinon elle mord sur ses voisines. */
+/* NEUF PIÈCES, DONC CINQ PUIS QUATRE — et les quatre en QUINCONCE, logées
+   dans les creux des cinq. Alignées en colonnes, la seconde rangée laissait
+   un trou net à droite : la grille se lisait comme une rangée de cinq et une
+   rangée cassée, et le vide attirait l'œil plus que les pièces.
+
+   La demi-case se prend en DOUBLANT les colonnes : dix demi-colonnes, une
+   pièce sur deux, et la sixième démarre une demi-case plus loin. Le pas des
+   deux rangées reste donc exactement le même — c'est ce qui fait le
+   quinconce — et rien n'est décalé par un `transform`, qui serait entré en
+   conflit avec celui du survol et celui de la pièce retenue. */
 .sk-piece-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(10, 1fr);
   gap: var(--sk-piece-ecart, 8px);
   justify-items: center;
+}
+
+.sk-piece-grid > * {
+  grid-column: span 2;
+}
+
+.sk-piece-grid > :nth-child(6) {
+  grid-column: 2 / span 2;
 }
 
 .sk-piece-btn {
@@ -8648,9 +8666,16 @@ h3 {
     gap: 12px;
   }
 
+  /* Le code se COLLE à la planche des réglages, au lieu de filer au bout de
+     la troisième colonne. Rejeté contre le bord de l'écran, il n'était plus
+     voisin de rien : deux objets aux deux extrémités d'une bande vide, dont
+     on ne savait pas s'ils allaient ensemble. Contre la planche, la rangée
+     de tête redevient un seul bloc — ce qu'est cette partie, et comment on y
+     entre — et les réglages gardent leur centrage sur l'écran, puisque c'est
+     la colonne du milieu qui le tient, pas le code. */
   #sk-screen-waiting #sk-share-block {
     grid-column: 3;
-    justify-self: end;
+    justify-self: start;
   }
 
   #sk-screen-waiting .sk-rounds-card {
