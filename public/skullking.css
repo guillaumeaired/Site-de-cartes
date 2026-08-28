@@ -4346,13 +4346,6 @@ h3 {
   vertical-align: -0.72em;
 }
 
-/* Alliance formée mais restée sans effet : le même tas, terni. Le trésor est
-   là, il n'a simplement rien rapporté. */
-.sk-round-popup-loot--sans {
-  filter: grayscale(0.6) brightness(0.62) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
-  opacity: 0.8;
-}
-
 @keyframes sk-loot-coin-pop {
   from {
     opacity: 0;
@@ -4371,13 +4364,37 @@ h3 {
   min-width: 0;
 }
 
-.sk-round-popup-row-detail {
+/* Le pseudo et son « 0/4 plis » tiennent sur la même ligne ; le pseudo cède
+   le premier si la place manque. */
+.sk-round-popup-row-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sk-round-popup-row-nick {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Le compteur garde la plume du détail qu'il remplace : Spectral italique,
+   à mi-voix derrière le pseudo. */
+.sk-round-popup-row-tricks {
+  flex-shrink: 0;
   font-family: 'Spectral', Georgia, serif;
   font-style: italic;
   font-weight: 400;
   font-size: 0.78rem;
   letter-spacing: 0;
   color: var(--sk-cream-2);
+}
+
+/* Annonce tenue : le compteur passe au vert du delta positif. */
+.sk-round-popup-row-tricks--ok {
+  color: #8fc98c;
 }
 
 .sk-round-popup-row-breakdown {

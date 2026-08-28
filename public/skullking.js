@@ -4860,10 +4860,13 @@ function roundBreakdownText(r) {
 // manche. Un trait tracé entre les deux lignes a été essayé puis abandonné :
 // illisible dès que d'autres joueurs s'intercalaient, et redondant avec le
 // pictogramme désormais affiché sur les sièges pendant toute la manche.
+// Seules les alliances qui ont payé (les deux annonces réussies) sont
+// marquées : une alliance formée mais sans effet ne change rien au score,
+// l'annoncer dans le récap ne faisait que rajouter un symbole à décoder.
 function markLootRows(links) {
   if (!links || !links.length) return;
   links.forEach((link) => {
-    const paid = link.paid !== false;
+    if (link.paid === false) return;
     [link.a, link.b].forEach((id) => {
       const row = roundPopupRows.querySelector(`[data-player-id="${id}"]`);
       if (!row) return;
@@ -4872,14 +4875,8 @@ function markLootRows(links) {
       // Un tas par Butin : la boucle passe une fois par alliance, un joueur
       // qui en a noué deux voit donc deux tas. C'est le compte qui parle,
       // plus besoin d'un second pictogramme pour dire autre chose.
-      //
-      // Alliance qui a payé (les deux annonces réussies) contre alliance
-      // formée mais restée sans effet : la distinction vaut d'être gardée,
-      // et se fait maintenant sur le MÊME tas, terni plutôt que remplacé par
-      // des mains serrées — deux dessins pour une seule idée, c'était un de
-      // trop.
-      coin.className = 'sk-round-popup-loot' + (paid ? '' : ' sk-round-popup-loot--sans');
-      coin.title = paid ? 'Alliance Butin réussie (+20)' : 'Alliance Butin formée, sans bonus';
+      coin.className = 'sk-round-popup-loot';
+      coin.title = 'Alliance Butin réussie (+20)';
       row.appendChild(coin);
     });
   });
@@ -4900,7 +4897,9 @@ function showRoundPopup(state) {
       row.dataset.playerId = r.id;
       const left = document.createElement('div');
       left.className = 'sk-round-popup-row-left';
-      left.innerHTML = `${escapeHTML(r.nickname)} <span class="sk-round-popup-row-detail">— annoncé ${r.bid}, fait ${r.made}</span><span class="sk-round-popup-row-breakdown">${roundBreakdownText(r)}</span>`;
+      // « annoncé 4, fait 0 » prenait une ligne pour dire ce que « 0/4 plis »
+      // dit à côté du pseudo, dans la même lecture que le compteur du tapis.
+      left.innerHTML = `<span class="sk-round-popup-row-name"><span class="sk-round-popup-row-nick">${escapeHTML(r.nickname)}</span><span class="sk-round-popup-row-tricks${r.made === r.bid ? ' sk-round-popup-row-tricks--ok' : ''}">${r.made}/${r.bid} plis</span></span><span class="sk-round-popup-row-breakdown">${roundBreakdownText(r)}</span>`;
       const delta = document.createElement('span');
       delta.className = `sk-round-popup-row-delta ${r.delta >= 0 ? 'sk-delta--up' : 'sk-delta--down'}`;
       delta.textContent = r.delta >= 0 ? `+${r.delta}` : r.delta;
