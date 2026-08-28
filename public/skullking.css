@@ -6738,6 +6738,147 @@ h3 {
   z-index: 7;
 }
 
+/* --- LES POUVOIRS QUI SE RÈGLENT D'UN BOUTON -------------------------
+   Rosie la Douce, Mary Thorne, Rascal le Flambeur, Harry le Géant : quatre
+   questions, une poignée de boutons, et c'est réglé. Ils restaient dans la
+   lanière du bas de l'écran pendant que les quatre autres pauses du jeu — la
+   Tigresse, la Planche, Juanita Jade, le troc de Will — avaient toutes pris
+   le centre. Or c'est la même situation : le pli vient de se résoudre AU
+   CENTRE, tout est gelé, et la question s'ouvrait dans le bas de la fenêtre,
+   là où l'œil n'est justement pas. Les pouvoirs les plus simples du jeu
+   étaient les moins vus.
+
+   Le cadre se pose donc au CENTRE DU FEUTRE, avec le même rideau de 100vmax
+   qui éteint la table : il n'y a rien à faire ailleurs tant qu'on n'a pas
+   répondu. Les pourcentages sont ceux du feutre, moitié de sa largeur et de
+   sa hauteur ajoutées à son origine — ils suivent donc `.sk-table` si la
+   scène change (chaque scène a les siens, voir .sk-scene--v2 plus bas).
+
+   Et c'est une RANGÉE : la carte du pirate à gauche, la question à droite.
+   ------------------------------------------------------------------- */
+.sk-scene .sk-power-panel--choix {
+  left: 42.66%;   /* 23.35 % + 38.61 % / 2 */
+  top: 59.83%;    /* 41.55 % + 36.56 % / 2 */
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  /* `max-content` puis un plafond : le cadre vaut ce que la question lui
+     demande — trois boutons pour Rascal, neuf noms pour Rosie à table
+     pleine — sans jamais déborder du bois peint. */
+  width: max-content;
+  max-width: 66%;
+  max-height: 80%;
+  overflow: hidden;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 22px 18px;
+  border: 0;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 0 0 100vmax rgba(4, 2, 1, 0.66),
+    0 18px 44px rgba(0, 0, 0, 0.7);
+  z-index: 40;
+}
+
+/* LA CARTE DU PIRATE, à gauche du cadre. Le bandeau nommait le pouvoir en
+   toutes lettres, mais sur six pirates nommés il faut se souvenir duquel
+   fait quoi — et la carte, elle, est celle qu'on vient de voir remporter le
+   pli. On reconnaît le pouvoir avant d'avoir lu la question.
+   Elle est en `cqh` : la scène est un conteneur de taille, la carte suit donc
+   la hauteur du décor comme les sièges et les cartes du tapis. */
+.sk-power-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin: 0;
+}
+
+.sk-power-portrait .sk-card {
+  --sk-w: clamp(72px, 15cqh, 118px);
+}
+
+.sk-power-portrait-nom {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--sk-cream-2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Le corps : la question, puis les boutons. C'est la seule partie élastique
+   du cadre — à neuf joueurs, Rosie propose neuf noms, et ce sont eux qui
+   défilent plutôt que de pousser le portrait hors du bois. */
+.sk-power-corps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  /* Le plafond de largeur est ce qui garde au cadre sa forme de PANNEAU.
+     Sans lui, les six ou neuf noms de Rosie s'alignaient sur une seule
+     rangée : un bandeau large et plat de 730 px, c'est-à-dire exactement la
+     lanière qu'on vient de quitter, déménagée au centre. Bornés, les boutons
+     s'enroulent sur deux ou trois rangées et le cadre reste un objet posé
+     sur le feutre. */
+  max-width: min(420px, 32cqw);
+  min-width: 0;
+  min-height: 0;
+}
+
+.sk-scene .sk-power-panel--choix .sk-power-consigne {
+  flex-shrink: 0;
+  max-width: 42ch;
+  margin: 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--sk-cream-2);
+}
+
+.sk-power-choix {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sk-power-panel--choix .sk-power-choix .btn {
+  margin: 0;
+}
+
+/* La seconde scène a son propre feutre : mêmes moitiés, autres coordonnées. */
+.sk-scene--v2 .sk-power-panel--choix {
+  left: 52.48%;   /* 32.63 % + 39.69 % / 2 */
+  top: 50.46%;    /* 32.68 % + 35.55 % / 2 */
+}
+
+/* Fenêtre basse : le portrait rapetisse plutôt que le cadre ne déborde,
+   comme sur le cadre de la Planche. */
+@media (max-height: 560px) {
+  .sk-scene .sk-power-panel--choix {
+    gap: 14px;
+    padding: 12px 16px 14px;
+  }
+
+  .sk-power-portrait .sk-card {
+    --sk-w: clamp(58px, 14cqh, 88px);
+  }
+}
+
 /* Juanita Jade est le seul pouvoir qui montre le reste du paquet — jusqu'à
    85 cartes. Dans la barre du bas, bornée à 30 % de hauteur, il fallait
    descendre puis faire défiler pour en voir la moitié : c'est justement ce

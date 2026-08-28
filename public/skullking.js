@@ -4685,11 +4685,79 @@ function renderWillTroc(state, pending, hint) {
   majSelection();
 }
 
+// --- Les pouvoirs qui se règlent d'un bouton --------------------------
+// Rosie la Douce, Mary Thorne, Rascal le Flambeur et Harry le Géant ne
+// demandent qu'un clic. Ils se jouaient dans la LANIÈRE du bas de l'écran :
+// une bande étroite posée sous le feutre, à l'endroit précis où l'œil n'est
+// pas au moment où elle s'ouvre — le pli vient de se résoudre AU CENTRE, on
+// regarde le tapis, et la question apparaît dans le bas de la fenêtre. Les
+// quatre pouvoirs les plus simples du jeu étaient les moins vus.
+//
+// Ils prennent donc le centre du feutre, comme la Tigresse, la Planche,
+// Juanita Jade et le troc de Will : le jeu est en pause, tout le reste est
+// éteint, il n'y a qu'un endroit à regarder.
+//
+// Et la CARTE DU PIRATE se pose À GAUCHE DU CADRE, en grand. Le bandeau
+// disait bien « Rosie la Douce » en toutes lettres, mais un nom n'est pas un
+// visage : sur six pirates nommés, il faut se souvenir duquel fait quoi.
+// La carte, elle, est celle qu'on vient de voir remporter le pli — on
+// reconnaît le pouvoir avant d'avoir lu la consigne, et l'infobulle du
+// survol rappelle ce qu'il fait.
+//
+// `hint` est la consigne déjà créée par renderPower : elle est déplacée dans
+// le corps, à droite du portrait.
+function renderChoixPirate(pending, hint, consigne, choix) {
+  powerPanel.classList.add('sk-power-panel--choix');
+
+  const nom = POWER_LABEL[pending.kind];
+
+  // Le serveur n'envoie pas la carte avec le pouvoir — il n'a pas à le
+  // faire : un Pirate nommé n'est que son nom, et le dessin se déduit du
+  // paquet en cours comme pour n'importe quelle carte de la partie (perso
+  // ou classique, cardClass s'en charge).
+  const card = { kind: 'pirate', name: nom };
+
+  const portrait = document.createElement('figure');
+  portrait.className = 'sk-power-portrait';
+  const carte = document.createElement('div');
+  carte.className = `sk-card ${cardClass(card)}`;
+  carte.innerHTML = cardFaceHTML(card);
+  attachPowerTooltip(carte, card);
+  portrait.appendChild(carte);
+  const legende = document.createElement('figcaption');
+  legende.className = 'sk-power-portrait-nom';
+  legende.textContent = nom;
+  portrait.appendChild(legende);
+  powerPanel.appendChild(portrait);
+
+  // Le corps : la consigne et les boutons, empilés à droite de la carte.
+  // Le panneau, lui, est une RANGÉE (voir la feuille de style).
+  const corps = document.createElement('div');
+  corps.className = 'sk-power-corps';
+  hint.textContent = consigne;
+  hint.classList.add('sk-power-consigne');
+  corps.appendChild(hint);
+
+  const rangee = document.createElement('div');
+  rangee.className = 'sk-power-choix';
+  choix.forEach((option) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.type = 'button';
+    btn.textContent = option.label;
+    if (option.disabled) btn.disabled = true;
+    btn.addEventListener('click', option.onPick);
+    rangee.appendChild(btn);
+  });
+  corps.appendChild(rangee);
+  powerPanel.appendChild(corps);
+}
+
 
 function renderPower(state) {
   powerBanner.classList.add('hidden');
   powerPanel.classList.add('hidden');
-  powerPanel.classList.remove('sk-power-panel--juanita', 'sk-power-panel--will');
+  powerPanel.classList.remove('sk-power-panel--juanita', 'sk-power-panel--will', 'sk-power-panel--choix');
   powerPanel.innerHTML = '';
   willConfirmBtn = null;
 
@@ -4745,44 +4813,50 @@ function renderPower(state) {
   powerPanel.appendChild(hint);
 
   if (pending.kind === 'rosie') {
-    hint.textContent = 'Qui entame le pli suivant ?';
-    pending.options.forEach((o) => {
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.textContent = o.id === myId ? `${o.nickname} (toi)` : o.nickname;
-      btn.addEventListener('click', () => socket.emit('skullking-power-rosie', { leaderId: o.id }));
-      powerPanel.appendChild(btn);
-    });
+    renderChoixPirate(
+      pending,
+      hint,
+      'Qui entame le pli suivant ?',
+      pending.options.map((o) => ({
+        label: o.id === myId ? `${o.nickname} (toi)` : o.nickname,
+        onPick: () => socket.emit('skullking-power-rosie', { leaderId: o.id }),
+      }))
+    );
   } else if (pending.kind === 'marythorne') {
-    hint.textContent = "Dans la main de qui tirer une carte au hasard (à jouer obligatoirement au pli suivant) ?";
-    pending.options.forEach((o) => {
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.disabled = o.handCount === 0;
-      btn.textContent = `${o.id === myId ? `${o.nickname} (toi)` : o.nickname} — ${o.handCount} carte${o.handCount > 1 ? 's' : ''}`;
-      btn.addEventListener('click', () => socket.emit('skullking-power-marythorne', { targetId: o.id }));
-      powerPanel.appendChild(btn);
-    });
+    renderChoixPirate(
+      pending,
+      hint,
+      "Dans la main de qui tirer une carte au hasard (à jouer obligatoirement au pli suivant) ?",
+      pending.options.map((o) => ({
+        label: `${o.id === myId ? `${o.nickname} (toi)` : o.nickname} — ${o.handCount} carte${o.handCount > 1 ? 's' : ''}`,
+        disabled: o.handCount === 0,
+        onPick: () => socket.emit('skullking-power-marythorne', { targetId: o.id }),
+      }))
+    );
   } else if (pending.kind === 'rascal') {
-    hint.textContent = 'Mise secondaire sur ta propre annonce de cette manche :';
-    [0, 10, 20].forEach((stake) => {
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.textContent = stake === 0 ? 'Ne pas miser' : `Miser ${stake}`;
-      btn.addEventListener('click', () => socket.emit('skullking-power-rascal', { stake }));
-      powerPanel.appendChild(btn);
-    });
+    renderChoixPirate(
+      pending,
+      hint,
+      'Mise secondaire sur ta propre annonce de cette manche :',
+      [0, 10, 20].map((stake) => ({
+        label: stake === 0 ? 'Ne pas miser' : `Miser ${stake}`,
+        onPick: () => socket.emit('skullking-power-rascal', { stake }),
+      }))
+    );
   } else if (pending.kind === 'harry') {
-    hint.textContent = `Ton annonce actuelle : ${pending.currentBid}. La modifier ?`;
-    [-1, 0, 1].forEach((delta) => {
-      const newBid = pending.currentBid + delta;
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.textContent = delta === 0 ? 'Ne pas changer' : `${delta > 0 ? '+1' : '-1'} (→ ${newBid})`;
-      btn.disabled = newBid < 0 || newBid > state.cardsInRound;
-      btn.addEventListener('click', () => socket.emit('skullking-power-harry', { delta }));
-      powerPanel.appendChild(btn);
-    });
+    renderChoixPirate(
+      pending,
+      hint,
+      `Ton annonce actuelle : ${pending.currentBid}. La modifier ?`,
+      [-1, 0, 1].map((delta) => {
+        const newBid = pending.currentBid + delta;
+        return {
+          label: delta === 0 ? 'Ne pas changer' : `${delta > 0 ? '+1' : '-1'} (→ ${newBid})`,
+          disabled: newBid < 0 || newBid > state.cardsInRound,
+          onPick: () => socket.emit('skullking-power-harry', { delta }),
+        };
+      })
+    );
   } else if (pending.kind === 'juanita') {
     // Rangées : par famille puis par hauteur, mais les SPÉCIALES EN HAUT et
     // les numérotées en dessous — l'inverse de l'éventail (voir
