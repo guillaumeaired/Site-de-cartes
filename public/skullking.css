@@ -1731,9 +1731,70 @@ h3 {
    encore dans le pli. Un cran plus petite et à peine effacée : assez pour que
    « déjà tombée » se distingue de « va tomber », pas assez pour qu'on croie
    qu'il lui manque quelque chose. */
-.sk-trick-card--en-attente {
-  --sk-gagne: 0.9;
-  opacity: 0.86;
+/* TENUE : la carte est encore en main de son porteur. Un cran plus petite,
+   serrée contre son médaillon (la position vient de renderTrick) et penchée
+   comme une carte qu'on tient — l'angle dépend du côté de la table où l'on
+   est assis, sinon la couronne resterait raide. C'est ce que la POSE
+   redresse, et c'est ce qui fait qu'on voit chacun abattre sa carte au lieu
+   de voir le pli apparaître d'un bloc.
+
+   Posée dès l'annonce, où personne n'a encore joué : ainsi rien ne saute au
+   changement de phase. */
+.sk-trick-card--tenue {
+  --sk-gagne: 0.82;
+  /* Derrière les cartes déjà tombées : ce qui est joué prime sur ce qui est
+     encore tenu, et les deux se frôlent. */
+  z-index: 2;
+}
+
+.sk-trick-card--tenue .sk-card {
+  transform: rotate(var(--sk-tenue, 0deg));
+  box-shadow:
+    0 0 0 1px rgba(20, 12, 5, 0.7),
+    0 3px 10px rgba(0, 0, 0, 0.55);
+}
+
+/* LA REPRISE. À la fin de l'annonce, chacun reprend sa carte en main : elle
+   rentre dans le siège de son porteur — le chemin est relevé par renderTrick
+   au moment où elle est placée — en rapetissant et en s'effaçant. Les cartes
+   partent décalées d'un souffle l'une sur l'autre (le retard est posé en JS),
+   sinon six d'entre elles s'évanouiraient d'un bloc, ce qui se lit comme un
+   défaut d'affichage plutôt que comme un geste.
+
+   Elle n'est plus une `.sk-trick-card` à ce moment-là : cette classe est
+   balayée à chaque rendu, et le rendu suivant arrive avant la fin de
+   l'animation. D'où la reprise, ici, de ce qui la positionne. */
+.sk-carte-reprise {
+  position: absolute;
+  /* Le même plan que la carte qu'elle était : elle frôle le siège de son
+     porteur en y rentrant, et rien ne justifie qu'elle passe dessous pour
+     s'en aller. */
+  z-index: 3;
+  pointer-events: none;
+  animation: sk-reprise 0.48s cubic-bezier(0.45, 0, 0.75, 0.5) forwards;
+}
+
+@keyframes sk-reprise {
+  from {
+    transform: translate(-50%, -50%) scale(calc(var(--sk-depth, 1) * var(--sk-gagne, 1)));
+    opacity: 1;
+  }
+  to {
+    transform:
+      translate(calc(-50% + var(--sk-reprise-x, 0px)), calc(-50% + var(--sk-reprise-y, 0px)))
+      scale(calc(var(--sk-depth, 1) * 0.5));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Le départ reste, il n'est plus raconté : la carte s'efface sur place. */
+  .sk-carte-reprise {
+    animation: sk-reprise-sobre 0.2s linear forwards;
+  }
+  @keyframes sk-reprise-sobre {
+    to { opacity: 0; }
+  }
 }
 
 /* Mises hors course par la Baleine blanche ou la Raie Tachetée. Ces deux-là

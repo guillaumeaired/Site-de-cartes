@@ -2185,7 +2185,25 @@ function echelleCouronne(effectif, largeurPleine, L, H) {
 // qui la porte. La mienne rejoint le lot, face cachée — c'est la seule chose
 // que la manche 1 change, et elle se voit mieux ainsi qu'en creux.
 function cartesDeLaManche1(state) {
-  if (state.roundNumber !== 1) return [];
+  // La condition porte sur le nombre de CARTES, pas sur le numéro de manche :
+  // c'est d'en avoir une seule, tenue face aux autres, qui met les cartes sur
+  // le tapis avant qu'elles soient jouées. En partie normale les deux sont le
+  // même événement ; ils ne se séparent qu'en mode essai, où la manche 1 peut
+  // en compter dix — et où prendre la première de la main pour « la carte
+  // tenue » n'aurait aucun sens.
+  if (state.cardsInRound !== 1) return [];
+  // ET SEULEMENT PENDANT L'ANNONCE. Elles restaient montrées pendant le jeu,
+  // tant que leur porteur ne les avait pas posées : rien de neuf n'était
+  // révélé — tout le monde les avait vues — mais il fallait relire six cartes
+  // pour retrouver lesquelles étaient tombées, alors que dans toute autre
+  // manche le tapis ne porte QUE ce qui a été joué. On lit un tour de table
+  // en comptant les cartes, pas en cherchant une marque sur chacune.
+  //
+  // Elles rentrent donc dans la main de leur porteur quand le jeu s'ouvre
+  // (voir reprendreCartesManche1, qui leur donne le geste plutôt que de les
+  // effacer d'un coup) et reviennent une à une, posées, comme partout
+  // ailleurs.
+  if (state.phase !== 'bidding') return [];
   // Celles qui sont déjà posées viennent du pli, pas d'ici : sans quoi la
   // même carte se dessinerait deux fois, une fois jouée et une fois en
   // attente, au même endroit.
@@ -2194,12 +2212,11 @@ function cartesDeLaManche1(state) {
     .filter((p) => p.revealedCard && !posees.has(p.id))
     .map((p) => ({ playerId: p.id, card: p.revealedCard, enAttente: true }));
   if (!cartes.length) return [];
-  // La mienne, mais seulement pendant l'annonce, où elle est un dos de carte
-  // (le serveur ne m'en envoie que l'id, voir stateFor). Dès que la phase de
-  // jeu s'ouvre elle m'est révélée et rejoint mon éventail : c'est de là que
-  // je la pose, elle n'a plus à être sur le tapis en double.
+  // La mienne aussi, en dos de carte : le serveur ne m'en envoie que l'id
+  // (voir stateFor). Dès que la phase de jeu s'ouvre elle m'est révélée et
+  // rejoint mon éventail — c'est de là que je la pose.
   const mienne = (state.hand || []).find((c) => c.kind === 'hidden');
-  if (state.phase === 'bidding' && mienne) cartes.push({ playerId: myId, card: mienne, enAttente: true });
+  if (mienne) cartes.push({ playerId: myId, card: mienne, enAttente: true });
   return cartes;
 }
 
@@ -2359,16 +2376,6 @@ function renderTrick(state) {
     // contre-intuitive pour être redevinée ici, et elle a des coins — un
     // 0/14 déclaré à 0 en fait partie sous la Raie.
     if (neutralisees.has(t.card.id)) slot.classList.add('sk-trick-card--neutralisee');
-    // Manche 1 : une carte encore en main de son porteur est montrée à sa
-    // place mais ne compte pas dans le pli — elle ne peut donc pas mener, ni
-    // être éteinte par un monstre. Pendant l'annonce, toutes le sont et il
-    // n'y a rien à distinguer ; pendant le jeu, la marque dit lesquelles sont
-    // vraiment tombées.
-    if (t.enAttente && state.phase === 'playing') slot.classList.add('sk-trick-card--en-attente');
-    // De qui est la carte, en clair : le ciblage de la Planche s'en sert
-    // pour annoncer sa cible à un lecteur d'écran, qui ne voit ni le tapis
-    // ni de qui la carte est voisine.
-    slot.dataset.nomCarte = `${t.card.name || (t.card.kind === 'tigress' ? 'la Tigresse' : 'le Pirate')} de ${nicknameOf(state, t.playerId)}`;
 
     const el = sieges.get(t.playerId);
     const rs = el ? el.getBoundingClientRect() : null;
@@ -2409,8 +2416,43 @@ function renderTrick(state) {
     if (combien > 1) {
       ecartFrere = (rangDeLaCarte.get(t.card.id) - (combien - 1) / 2) * demiCarteL * 1.25;
     }
-    const x = borner(sx + dx * ecart - dy * ecartFrere, cadre.x0 + demiCarteL, cadre.x1 - demiCarteL);
-    let y = borner(sy + dy * ecart + dx * ecartFrere, cadre.y0 + demiCarteH, cadre.y1 - demiCarteH);
+    // MANCHE 1 : une carte encore EN MAIN se tient contre son porteur, pas à
+    // la place où elle tombera. Elle était dessinée à la place exacte de la
+    // carte posée, à 10 % près en taille et 14 % en opacité : la poser ne
+    // déplaçait donc rien, et le tour de table — chacun abat sa carte, l'une
+    // après l'autre — ne se voyait pas. Elle est maintenant serrée contre le
+    // médaillon et penchée, comme une carte tenue ; la poser la redresse et
+    // l'amène sur le feutre. C'est un vrai geste, court mais lisible.
+    // Tenue dès l'annonce, et pas seulement une fois le jeu ouvert : à
+    // l'annonce PERSONNE n'a encore joué, toutes les cartes sont donc tenues.
+    // Ne les serrer qu'à l'ouverture du jeu les faisait toutes sauter d'un
+    // coup vers leur porteur au changement de phase — un tressaillement qui
+    // ressemblait à un défaut. Elles sont tenues depuis le début, et c'est la
+    // POSE qui les redresse, une par une.
+    const tenue = !!t.enAttente;
+    // Un cinquième de trajet, pas davantage : serrée plus près, la carte
+    // tenue passait sur le NOM de son porteur — ce que la couronne existe
+    // justement pour dire, et la manche 1 est celle où l'on regarde le plus
+    // les cartes des autres. Ce qui fait lire la pose, c'est surtout le
+    // redressement et le cran de taille ; le déplacement ne fait que les
+    // accompagner.
+    const distance = tenue ? ecart * 0.8 : ecart;
+    const x = borner(sx + dx * distance - dy * ecartFrere, cadre.x0 + demiCarteL, cadre.x1 - demiCarteL);
+    let y = borner(sy + dy * distance + dx * ecartFrere, cadre.y0 + demiCarteH, cadre.y1 - demiCarteH);
+    // Le sens de la penche vient du côté de la table où l'on est assis : les
+    // cartes ne penchent pas toutes du même bord, la couronne resterait
+    // raide. Zéro pour la mienne, que je tiens face à moi.
+    if (tenue) {
+      slot.classList.add('sk-trick-card--tenue');
+      slot.style.setProperty('--sk-tenue', `${t.playerId === myId ? 0 : (dx >= 0 ? 7 : -7)}deg`);
+      // Le chemin du RETOUR, en pixels du tapis : de là où la carte est
+      // posée jusqu'au centre du siège de son porteur. Relevé maintenant,
+      // parce que reprendreCartesManche1 s'exécute une fois la phase
+      // changée — les cartes tenues ne sont alors plus dans l'état, et leur
+      // géométrie n'est plus recalculable.
+      slot.style.setProperty('--sk-reprise-x', `${(-dx * distance).toFixed(1)}px`);
+      slot.style.setProperty('--sk-reprise-y', `${(-dy * distance).toFixed(1)}px`);
+    }
     // Les sièges d'abord, la main ensuite : si les deux se disputent la même
     // carte, c'est la main qui gagne — une carte du pli qui passe sous
     // l'éventail est perdue pour tout le monde, un nom de siège à moitié
@@ -4282,12 +4324,36 @@ function maybeAnimateDeal(state) {
 // de rendre le tapis (fin de manche) : le rendu normal s'en charge tout seul
 // le reste du temps.
 function clearTrickTable() {
-  tableEl.querySelectorAll('.sk-trick-card').forEach((el) => el.remove());
+  tableEl.querySelectorAll('.sk-trick-card, .sk-carte-reprise').forEach((el) => el.remove());
   trickCaptionEl.textContent = '';
+}
+
+// LA REPRISE, à la fin de l'annonce d'une manche à une seule carte. Les
+// cartes tenues quittent le tapis, mais pas d'un coup et pas sur place :
+// chacune rentre dans le siège de son porteur, en s'effaçant, décalée d'un
+// souffle sur sa voisine. Sans ce geste, six cartes s'évanouissaient à
+// l'instant où la dernière annonce tombait — ce qui se lit comme un défaut
+// d'affichage, pas comme « chacun reprend sa carte en main ».
+//
+// Elles perdent leur classe `sk-trick-card` en partant : c'est elle que
+// renderTrick balaie à chaque rendu, et le rendu qui suit arrive avant que
+// l'animation ait fini.
+const REPRISE_MS = 480;
+const REPRISE_PAS_MS = 70;
+
+function reprendreCartesManche1() {
+  const tenues = tableEl.querySelectorAll('.sk-trick-card--tenue');
+  tenues.forEach((el, i) => {
+    el.classList.remove('sk-trick-card', 'sk-trick-card--tenue');
+    el.classList.add('sk-carte-reprise');
+    el.style.animationDelay = `${i * REPRISE_PAS_MS}ms`;
+    setTimeout(() => el.remove(), REPRISE_MS + i * REPRISE_PAS_MS + 60);
+  });
 }
 
 function renderGame(state) {
   latestState = state;
+  retenirCouleurs(state.players);
   // Un re-rendu retire les cartes du DOM sans forcément déclencher mouseleave
   // (ex: une carte jouée disparaît sous le curseur) : la bulle resterait
   // affichée sur rien sans ce reset.
@@ -5053,15 +5119,15 @@ function playStartReveal(players, starterId) {
 
 // --- Dispatch d'état ---
 
-// Le dernier état reçu, gardé de côté : quand on sort du ciblage de la
-// Planche sans rien jouer, rien n'arrive du serveur et il faut pourtant
-// réécrire la consigne du tour.
-let dernierEtatJeu = null;
-
 function applyState(state) {
-  dernierEtatJeu = state;
   const previousPhase = lastPhase;
   lastPhase = state.phase;
+  // Avant tout rendu : le tapis porte encore les cartes tenues de l'annonce,
+  // et c'est la dernière occasion de les faire rentrer en main. Un rendu de
+  // plus et elles auraient déjà disparu.
+  if (previousPhase === 'bidding' && state.phase !== 'bidding' && state.cardsInRound === 1) {
+    reprendreCartesManche1();
+  }
   myId = state.myId;
   myIsHost = state.isHost;
   // Le paquet arrive avec chaque état : une reconnexion en pleine manche ne

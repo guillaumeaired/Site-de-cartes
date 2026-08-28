@@ -500,14 +500,30 @@ function stateFor(room, p) {
   // propre carte, cachée jusqu'à ce qu'on la joue. Ne s'applique qu'à
   // l'annonce : une fois la phase de jeu entamée, chacun pose sa carte à
   // son tour et elle devient visible normalement pour tout le monde.
-  const blindRound1 = bidding && roundNumber(room) === 1;
-  // Manche 1 : chacun tient sa carte tournée vers les autres. Elle reste
-  // montrée pendant la phase de jeu, tant que son porteur ne l'a pas posée —
-  // sans quoi les cartes disparaissaient toutes du tapis à la seconde où
-  // l'annonce se refermait, pour y revenir une à une. Rien de neuf n'est
-  // révélé : tout le monde les a vues pendant l'annonce, c'est la manche qui
-  // est ainsi. Seule la mienne reste hors de cette liste, elle est dans ma
-  // main.
+  // La condition porte sur le nombre de CARTES, pas sur le numéro de manche :
+  // c'est d'avoir une carte unique qui rend l'annonce aveugle, le numéro n'y
+  // est pour rien. En partie normale les deux sont le même événement (la
+  // séquence commence toujours à une carte) ; ils ne se séparent qu'en mode
+  // essai, où l'on veut dix cartes dès la première manche et où cacher la
+  // main tout entière n'aurait aucun sens.
+  const blindRound1 = bidding && room.cardsInRound === 1;
+  // Manche à une seule carte : chacun tient la sienne tournée vers les
+  // autres, et c'est sur elles qu'on annonce. Seule la mienne reste hors de
+  // cette liste — elle est dans ma main, cachée (voir blindRound1).
+  //
+  // Elle n'est envoyée QUE pendant l'annonce. Elle l'était aussi pendant le
+  // jeu, tant que son porteur ne l'avait pas posée : rien de neuf n'était
+  // révélé — tout le monde les avait vues — mais le tapis portait alors
+  // pêle-mêle ce qui était tombé et ce qui ne l'était pas, alors que dans
+  // toute autre manche il ne porte que le pli. L'écran les fait rentrer en
+  // main à la fin de l'annonce (reprendreCartesManche1) et elles reviennent
+  // une à une, jouées, comme partout ailleurs — il n'a donc plus rien à en
+  // faire ici.
+  //
+  // La condition porte sur le nombre de CARTES et non sur le numéro de
+  // manche, comme blindRound1 juste au-dessus : c'est d'en avoir une seule
+  // qui fait qu'on la tient. Les deux ne se séparent qu'en mode essai, où
+  // `pp.hand[0]` sur une main de dix aurait montré une carte au hasard.
   const base = {
     phase: room.phase,
     myId: p.id,
@@ -525,7 +541,7 @@ function stateFor(room, p) {
       // phase d'annonce ; une fois révélées (phase 'playing' et après),
       // elles sont toutes visibles d'un coup, jamais avant.
       bid: room.bids && (!bidding || pp.id === p.id) ? room.bids[pp.id] : undefined,
-      revealedCard: inRound && roundNumber(room) === 1 && pp.id !== p.id && pp.hand && pp.hand[0]
+      revealedCard: blindRound1 && pp.id !== p.id && pp.hand && pp.hand[0]
         ? pp.hand[0]
         : undefined,
     })),

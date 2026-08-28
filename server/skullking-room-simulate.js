@@ -258,25 +258,27 @@ check(
 const round1PlayingRoom = { ...makeBiddingRoom(), phase: 'playing', bids: { p1: 0, p2: 0, p3: 0 }, turnCount: 0 };
 const playingView = stateFor(round1PlayingRoom, { id: 'p1', hand: [{ id: 'h1', kind: 'number', suit: 'vert', value: 9 }] });
 check('une fois la phase de jeu entamée, ma carte redevient visible pour moi', playingView.hand[0].kind, 'number');
-// Les cartes des autres restent montrées pendant la phase de jeu de la manche
-// 1, tant qu'elles ne sont pas posées. Elles disparaissaient à la seconde où
-// l'annonce se refermait, et le tapis se vidait d'un coup pour se remplir une
-// carte à la fois — alors que rien n'avait bougé et que tout le monde les
-// avait déjà vues. Elles ne quittent la liste qu'une fois jouées, c'est-à-dire
-// quand la main de leur porteur est vide.
+// Les cartes tenues ne sont envoyées QUE pendant l'annonce. Elles l'étaient
+// aussi pendant le jeu, tant que leur porteur ne les avait pas posées : rien
+// de neuf n'était révélé — tout le monde les avait vues — mais le tapis
+// portait alors pêle-mêle ce qui était tombé et ce qui ne l'était pas, alors
+// que dans toute autre manche il ne porte que le pli. On lit un tour de table
+// en comptant les cartes, pas en cherchant une marque sur chacune.
 check(
-  'manche 1, phase de jeu : je vois toujours les cartes que les autres tiennent encore',
+  'phase de jeu : plus aucune carte tenue, le tapis ne porte que le pli',
   playingView.players.map((p) => p.revealedCard && p.revealedCard.kind),
-  [undefined, 'pirate', 'skullking']
+  [undefined, undefined, undefined]
 );
-const p3Joue = {
-  ...round1PlayingRoom,
-  players: round1PlayingRoom.players.map((p) => (p.id === 'p3' ? { ...p, hand: [] } : p)),
-};
+// La condition porte sur le nombre de CARTES et non sur le numéro de manche :
+// c'est d'en avoir une seule, tenue face aux autres, qui met les cartes sur le
+// tapis avant qu'elles soient jouées. Les deux ne se séparent qu'en mode
+// essai, où prendre la première carte d'une main de dix pour « la carte
+// tenue » n'aurait aucun sens.
+const manche1ADeuxCartes = { ...makeBiddingRoom(), cardsInRound: 2 };
 check(
-  'et une carte posée quitte la liste : elle est dans le pli, plus dans la main',
-  stateFor(p3Joue, { id: 'p1', hand: [] }).players.map((p) => p.revealedCard && p.revealedCard.kind),
-  [undefined, 'pirate', undefined]
+  'manche 1 à deux cartes (mode essai) : rien n\'est tenu, donc rien n\'est montré',
+  stateFor(manche1ADeuxCartes, { id: 'p1', hand: [] }).players.map((p) => p.revealedCard),
+  [undefined, undefined, undefined]
 );
 
 // --- Annonces des pouvoirs de Pirates ---
