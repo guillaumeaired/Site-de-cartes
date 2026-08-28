@@ -76,3 +76,14 @@ déclenche un déploiement, précédé de `npm ci && npm test` : si la suite de 
 Sur l'offre gratuite, le serveur s'endort après une période d'inactivité et met
 une vingtaine de secondes à se réveiller. Le premier joueur à arriver voit donc
 une bannière d'attente — c'est normal, ce n'est pas une panne.
+
+## Droits
+
+Le code est public pour être lu, pas pour être repris : aucune licence n'est
+accordée, tous droits réservés. Écrivez-moi si vous voulez en faire quelque
+chose.
+
+Les illustrations ont été fabriquées pour ce projet (voir `briefs/`). *Skull
+King* est un jeu de Grandpa Beck's Games — seuls les noms des cartes et des
+pouvoirs viennent de là, cette implémentation est un projet personnel sans but
+commercial et n'est ni affiliée ni approuvée par l'éditeur.
