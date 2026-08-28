@@ -14,6 +14,7 @@ const {
   canInitialMeld,
 } = require('./rami');
 const { likelyServerRestart } = require('./server-start');
+const { makeRoomCode, sanitizeNickname } = require('./commun');
 const { recordGameStarted } = require('./play-counts');
 
 const MAX_PLAYERS = 2; // v1 : 2 joueurs seulement, généralisé plus tard
@@ -84,34 +85,6 @@ function getStats() {
   return { total: list.length, playing: list.filter((r) => r.phase === 'playing').length };
 }
 let meldCounter = 0;
-
-function makeRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code;
-  do {
-    code = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  } while (rooms.has(code));
-  return code;
-}
-
-// Defense en profondeur : on retire les chevrons, seul vecteur d'injection
-// HTML dans les pseudos (les clients les affichent en contexte texte, jamais
-// dans un attribut). On les *supprime* au lieu de les echapper : les clients
-// echappent deja a l'insertion, un pseudo pre-echappe ici s'afficherait
-// double-echappe. Le reste (& " ') est laisse tel quel, ces caracteres etant
-// legitimes dans un pseudo et sans danger une fois echappes cote client.
-// Cette couche ne dispense donc PAS d'echapper cote client.
-function sanitizeNickname(nickname) {
-  if (typeof nickname !== 'string') return null;
-  const trimmed = nickname.replace(/[<>]/g, '').trim().slice(0, 16);
-  if (!trimmed) return null;
-  // Une majuscule d'office à l'initiale : le pseudo est affiché partout comme
-  // un nom propre — au siège, au registre, dans le verdict de fin — et un
-  // « hlo » en bas de casse au milieu de sept noms capitalisés se lit comme
-  // une faute d'affichage. Le reste du pseudo n'est pas touché : « McGraw »
-  // et « d'Aubigné » restent tels qu'ils ont été saisis.
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-}
 
 function findPlayer(room, id) {
   return room.players.find((p) => p.id === id);
@@ -517,7 +490,7 @@ function registerRamiHandlers(io, socket) {
       sendError(socket, 'Choisis un pseudo avant de créer une partie.');
       return;
     }
-    const code = makeRoomCode();
+    const code = makeRoomCode(rooms);
     const room = {
       code,
       phase: 'lobby',
