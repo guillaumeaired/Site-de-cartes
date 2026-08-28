@@ -127,6 +127,7 @@ btnCreate.addEventListener('click', () => {
   homeError.textContent = '';
   myNickname = nickname;
   setCreateBusy(true, '⏳ Création…');
+  suivreSalonChat(null);
   socket.emit('rami-create-room', { nickname, token: getPlayerToken() });
 });
 
@@ -141,6 +142,8 @@ formJoin.addEventListener('submit', (e) => {
   }
   homeError.textContent = '';
   myNickname = nickname;
+
+  suivreSalonChat(code);
 
   const saved = loadActiveRoom();
   if (saved && saved.code === code) {
@@ -182,6 +185,7 @@ let myIsHost = false;
 
 function goHome() {
   clearActiveRoom();
+  suivreSalonChat(null);
   socket.emit('rami-leave-room');
   const url = new URL(window.location.href);
   url.searchParams.delete('room');
@@ -213,6 +217,7 @@ btnCopy.addEventListener('click', async () => {
 
 socket.on('rami-room-created', ({ code }) => {
   setCreateBusy(false);
+  suivreSalonChat(code);
   saveActiveRoom(code, myNickname);
   const url = `${window.location.protocol}//${window.location.host}/rami.html?room=${code}`;
   shareLink.value = url;
@@ -221,6 +226,10 @@ socket.on('rami-room-created', ({ code }) => {
 });
 
 socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart, matchFormat, raceTarget }) => {
+  // Avant tout rendu : c'est ici qu'on apprend de quel salon on est, et donc
+  // s'il faut effacer le fil du précédent avant que son historique n'arrive
+  // avec l'état.
+  if (code) suivreSalonChat(code);
   saveActiveRoom(code, myNickname);
   showReconnectingOverlay(false);
   myIsHost = isHost;
@@ -328,6 +337,7 @@ btnJoinModal.addEventListener('click', () => {
   joinModalError.textContent = '';
   btnJoinModal.disabled = true;
   myNickname = nickname;
+  suivreSalonChat(roomFromUrl.toUpperCase());
   socket.emit('rami-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken() });
 });
 
@@ -967,6 +977,23 @@ const chatLogEl = document.getElementById('rami-chat-log');
 const chatFormEl = document.getElementById('rami-chat-form');
 const chatInputEl = document.getElementById('rami-chat-input');
 const chatSeen = new Set();
+
+// Le fil appartient au SALON, pas à l'onglet : en enchaînant deux parties sans
+// recharger la page, la conversation de la précédente restait affichée sous la
+// nouvelle. On retient donc le salon dont le fil est à l'écran, et on repart
+// d'une page blanche dès qu'on en change (ou qu'on rentre à l'accueil). Vider
+// chatSeen fait partie du reset : les numéros de messages repartent de `c1`
+// quand le serveur redémarre, et les nouveaux passeraient sinon pour des
+// doublons déjà vus.
+let chatSalon = null;
+
+function suivreSalonChat(code) {
+  const suivant = code ? String(code).toUpperCase() : null;
+  if (suivant === chatSalon) return;
+  chatSalon = suivant;
+  chatSeen.clear();
+  if (chatLogEl) chatLogEl.replaceChildren();
+}
 
 function chatHeure(at) {
   const d = new Date(at);

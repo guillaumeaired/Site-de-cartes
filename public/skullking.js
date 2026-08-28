@@ -801,6 +801,7 @@ btnCreate.addEventListener('click', () => {
   homeError.textContent = '';
   myNickname = nickname;
   setCreateBusy(true, 'Création…');
+  suivreSalonChat(null);
   socket.emit('skullking-create-room', { nickname, token: getPlayerToken() });
 });
 
@@ -815,6 +816,8 @@ formJoin.addEventListener('submit', (e) => {
   }
   homeError.textContent = '';
   myNickname = nickname;
+
+  suivreSalonChat(code);
 
   const saved = loadActiveRoom();
   if (saved && saved.code === code) {
@@ -1065,6 +1068,7 @@ document.addEventListener('keydown', (e) => {
 
 function goHome() {
   clearActiveRoom();
+  suivreSalonChat(null);
   socket.emit('skullking-leave-room');
   const url = new URL(window.location.href);
   url.searchParams.delete('room');
@@ -1105,6 +1109,7 @@ function afficherCodeDePartie(code) {
 
 socket.on('skullking-room-created', ({ code }) => {
   setCreateBusy(false);
+  suivreSalonChat(code);
   saveActiveRoom(code, myNickname);
   afficherCodeDePartie(code);
 });
@@ -1744,6 +1749,9 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   const moi = players.find((p) => p.id === myId);
   if (moi && moi.nickname) myNickname = moi.nickname;
   renderMonIdentite(moi);
+  // Avant renderChat plus bas : c'est ici qu'on apprend de quel salon vient
+  // l'historique qui suit, et donc s'il faut effacer celui d'avant.
+  if (code) suivreSalonChat(code);
   saveActiveRoom(code, myNickname);
   afficherCodeDePartie(code);
   showReconnectingOverlay(false);
@@ -1941,6 +1949,7 @@ btnJoinModal.addEventListener('click', () => {
   joinModalError.textContent = '';
   btnJoinModal.disabled = true;
   myNickname = nickname;
+  suivreSalonChat(roomFromUrl.toUpperCase());
   socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken() });
 });
 
@@ -4211,6 +4220,22 @@ const CHAT_VUES = [
   },
 ].filter((v) => v.log && v.form && v.input);
 
+// Le fil appartient au SALON, pas à l'onglet : en enchaînant deux parties sans
+// recharger la page, la conversation de la précédente restait affichée sous la
+// nouvelle. On retient donc le salon dont le fil est à l'écran, et on repart
+// d'une page blanche dès qu'on en change (ou qu'on rentre à l'accueil).
+// Vider chatSeen fait partie du reset : les numéros de messages repartent de
+// `c1` quand le serveur redémarre, et les nouveaux passeraient sinon pour des
+// doublons déjà vus.
+let chatSalon = null;
+
+function suivreSalonChat(code) {
+  const suivant = code ? String(code).toUpperCase() : null;
+  if (suivant === chatSalon) return;
+  chatSalon = suivant;
+  chatSeen.clear();
+  CHAT_VUES.forEach((vue) => vue.log.replaceChildren());
+}
 
 function chatAuBas(log) {
   // Ne recolle en bas que si on y était déjà : sinon on arrache la lecture à
