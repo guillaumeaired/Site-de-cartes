@@ -4829,7 +4829,11 @@ function renderPower(state) {
     renderChoixPirate(
       pending,
       hint,
-      "Dans la main de qui tirer une carte au hasard (à jouer obligatoirement au pli suivant) ?",
+      // La question porte sur QUELQU'UN, pas sur une main : « dans la main de
+      // qui tirer une carte » faisait du joueur un contenant, et reléguait
+      // entre parenthèses la seule chose qui compte — que celui qu'on désigne
+      // devra la jouer.
+      'Qui devra tirer une carte au hasard au pli suivant ?',
       pending.options.map((o) => ({
         label: `${o.id === myId ? `${o.nickname} (toi)` : o.nickname} — ${o.handCount} carte${o.handCount > 1 ? 's' : ''}`,
         disabled: o.handCount === 0,
