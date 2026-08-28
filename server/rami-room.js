@@ -176,11 +176,17 @@ function broadcastLobby(io, room) {
       hostId: room.hostId,
       isHost: p.id === room.hostId,
       canStart: room.players.length === MAX_PLAYERS,
-      // Reglage hote, verrouillable seulement en lobby (voir rami-set-match-format).
+      // Le salon est déjà émis joueur par joueur (isHost en dépend) : on en
+      // profite pour dire à chacun qui il est. Sans ça, myId n'arrivait
+      // qu'avec l'état de jeu, donc trop tard pour le fil du salon, où ses
+      // propres messages s'affichaient sous son pseudo au lieu de « Toi »
+      // (même raison qu'au Skull King, voir son broadcastLobby).
+      myId: p.id,
       // Historique du chat : renvoyé avec l'état pour qu'une reconnexion
-    // retrouve la conversation.
-    chat: room.chat || [],
-    matchFormat: room.matchFormat || 'single',
+      // retrouve la conversation.
+      chat: room.chat || [],
+      // Reglage hote, verrouillable seulement en lobby (voir rami-set-match-format).
+      matchFormat: room.matchFormat || 'single',
       raceTarget: room.raceTarget || DEFAULT_RACE_TARGET,
     });
   }

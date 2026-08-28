@@ -214,7 +214,8 @@ socket.on('rami-room-created', ({ code }) => {
   shareBlock.classList.remove('hidden');
 });
 
-socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart, matchFormat, raceTarget }) => {
+socket.on('rami-lobby-update', ({ code, players, hostId, isHost, canStart, matchFormat, raceTarget, myId: id }) => {
+  if (id) myId = id;
   // Avant tout rendu : c'est ici qu'on apprend de quel salon on est, et donc
   // s'il faut effacer le fil du précédent avant que son historique n'arrive
   // avec l'état.
