@@ -424,11 +424,36 @@ h1 {
 .game-preview-card--skullking {
   --accent: #fb923c;
   --accent-soft: rgba(251, 146, 60, 0.4);
-  background: linear-gradient(160deg, #2b0a0a, #0a0303);
+  /* Même cloison de bois que le lobby Skull King. `cover` la recadre dans
+     la carte, en gardant le coin supérieur gauche comme point d'ancrage. */
+  background: #140d07 url('assets/skin/fond-bois.webp') left top / cover no-repeat;
 }
 
 .game-preview-card--skullking .game-preview-tagline {
   color: #f3d4d4;
+}
+
+/* Le visuel du Skull King remplace l'emoji et le titre texte du hub. */
+.game-preview-badge--skullking {
+  background: #000;
+  border-color: rgba(251, 146, 60, 0.7);
+  overflow: hidden;
+}
+
+.game-preview-badge--skullking img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-preview-logo-skullking {
+  display: block;
+  width: min(172px, 82%);
+  height: auto;
+  max-height: 48px;
+  object-fit: contain;
+  margin: 1px 0 3px;
 }
 
 .btn-icon {
