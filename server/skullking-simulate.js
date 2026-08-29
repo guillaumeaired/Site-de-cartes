@@ -214,6 +214,11 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   // donc rien à engloutir non plus.
   const r = resolveTrick([kraken(), davyjones(), num('vert', 5)]);
   check('Davy Jones mange le Kraken : pas de pli englouti', !!(r.destroyed && r.krakenIdx >= 0), false);
+  // Et donc pas de voile non plus : le Kraken avalé ne condamne plus rien,
+  // le pli se joue normalement. C'est l'exception qu'il ne faut pas perdre —
+  // griser les cartes ici ferait croire à un pli perdu qui sera bel et bien
+  // remporté.
+  check('Davy Jones mange le Kraken : aucune carte grisée', r.neutralisedIdx || [], []);
 }
 {
   // Kraken en présence de pirates/SK/sirène : le gagnant virtuel suit quand
@@ -466,6 +471,16 @@ check('Raie Tachetée : neutralise le statut d\'atout du noir', winnerIdx([num('
 check('Kraken, Baleine puis Raie : la Raie (dernière) décide, la plus basse gagne', winnerIdx([kraken(), whale(), stingray(), num('vert', 9), num('jaune', 3)]), 4);
 check('Raie puis Baleine : la Baleine (dernière) décide, la plus haute gagne', winnerIdx([stingray(), whale(), num('vert', 3), num('jaune', 9)]), 3);
 check('Baleine puis Kraken puis Raie : la Raie (dernière) décide', destroyed([whale(), kraken(), stingray(), num('vert', 9), num('jaune', 3)]), false);
+{
+  // Un second Monstre posé APRÈS le Kraken annule son pouvoir : le voile ne
+  // vient plus de lui. C'est la Raie qui décide ici, et son voile épargne
+  // les numérotées en lice — celle qui va gagner ne doit pas être grisée
+  // sous prétexte qu'un Kraken traîne dans le pli.
+  const cards = [kraken(), stingray(), num('vert', 9), pirate()];
+  const r = resolveTrick(cards);
+  check('kraken puis raie : le pli n\'est plus détruit', r.destroyed, false);
+  check('kraken puis raie : le Kraken et le Pirate sont grisés, pas la numérotée', r.neutralisedIdx, [0, 3]);
+}
 
 // --- Coffre de Davy Jones : priorité absolue sur les Monstres Marins ---
 {
@@ -492,6 +507,7 @@ check('Baleine puis Kraken puis Raie : la Raie (dernière) décide', destroyed([
   const r = resolveTrick(cards);
   check('Davy Jones détruit 1 Monstre (Kraken) parmi une numérotée', r.monstersDestroyed, 1);
   check('Davy Jones : le Kraken détruit ne détruit plus le pli', r.destroyed, false);
+  check('Davy Jones : le Kraken détruit ne grise plus les autres cartes', r.neutralisedIdx || [], []);
 }
 
 // --- Marcher sur la Planche : retire un Pirate ciblé ---

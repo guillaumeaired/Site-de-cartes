@@ -256,7 +256,16 @@ const etat = {
   trickPaused: !!DUEL || PHASE === 'paused' || KRAKEN || RAIE || PLANCHE === 'avale',
   // Les cartes que le monstre met hors course : le serveur les calcule (voir
   // resolveTrick), on les nomme ici à la main pour la seule mise en scène.
-  trickNeutralisedCardIds: BALEINE ? ['c0', 'c1'] : RAIE ? ['c0', 'c1', 'c3', 'c4'] : [],
+  // Le Kraken, lui, condamne TOUT le reste du pli, lui excepté — il est la
+  // cause, pas une victime. La liste se déduit donc du pli au lieu d'être
+  // écrite à la main : elle suit le nombre de joueurs demandé.
+  trickNeutralisedCardIds: BALEINE
+    ? ['c0', 'c1']
+    : RAIE
+    ? ['c0', 'c1', 'c3', 'c4']
+    : KRAKEN
+    ? pli.map((t) => t.card.id).filter((id) => id !== 'c2')
+    : [],
   lastTrickResult: DUEL
     ? {
         winnerId: `p${DUEL_GAGNANT}`,
@@ -269,7 +278,7 @@ const etat = {
     : PLANCHE === 'avale'
     ? { winnerId: 'p1', destroyed: false, devouredCardIds: [], plankedCardIds: ['pir2'], davyJones: null }
     : KRAKEN
-    ? { winnerId: null, destroyed: true, krakenCardId: 'c2', devouredCardIds: [], plankedCardIds: [], davyJones: null }
+    ? { winnerId: null, destroyed: true, krakenCardId: 'c2', destroyedBy: 'kraken', neutralisedCardIds: pli.map((t) => t.card.id).filter((id) => id !== 'c2'), devouredCardIds: [], plankedCardIds: [], davyJones: null }
     : RAIE
     ? { winnerId: null, destroyed: true, krakenCardId: null, destroyedBy: 'stingray', neutralisedCardIds: ['c0', 'c1', 'c3', 'c4'], devouredCardIds: [], plankedCardIds: [], davyJones: null }
     : PHASE === 'paused' ? { winnerId: 'p1', destroyed: false } : null,
