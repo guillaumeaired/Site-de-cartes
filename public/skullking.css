@@ -1450,7 +1450,8 @@ h3 {
 
 /* Jamais « 1/0 » : le même glyphe voulait dire « annonce/plis » dans
    l'historique et « plis/annonce » sur la table. On écrit la phrase. */
-.sk-mine-v {
+.sk-mine-v,
+.sk-round-tricks-v {
   font-family: 'Bitter', Georgia, serif;
   font-weight: 700;
   font-size: 1.02rem;
@@ -1489,6 +1490,43 @@ h3 {
 .sk-mine--tenu .sk-mine-v {
   color: #9bd79e;
 }
+
+/* Total des annonces de la table : bleu quand elle en promet moins qu'il n'y
+   a de plis, vert quand le compte tombe juste, rouge quand elle en promet
+   plus qu'il n'en existe. Même plaque que le contrat : seule la teinte du
+   filet change. */
+.sk-round-tricks--under {
+  border-color: #2d6598;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.1),
+    inset 0 0 12px rgba(45, 101, 152, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(45, 101, 152, 0.4);
+}
+
+.sk-round-tricks--under .sk-round-tricks-v { color: #9bc9ed; }
+
+.sk-round-tricks--exact {
+  border-color: #2f7a4e;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.1),
+    inset 0 0 12px rgba(47, 122, 78, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(47, 122, 78, 0.4);
+}
+
+.sk-round-tricks--exact .sk-round-tricks-v { color: #9bd79e; }
+
+.sk-round-tricks--over {
+  border-color: #7d2b22;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.1),
+    inset 0 0 12px rgba(125, 43, 34, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(156, 42, 34, 0.34);
+}
+
+.sk-round-tricks--over .sk-round-tricks-v { color: #e5a79e; }
 
 /* Le gain : un seul chiffre, celui qu'on vient chercher. Le détail des
    composantes tient dessous en petit, et ne s'écrit que s'il y a autre chose
@@ -7459,21 +7497,70 @@ h3 {
    Alignées par le BAS sur l'éventail : les deux plaques n'ont pas la même
    hauteur (le gain porte parfois trois lignes de détail, le contrat jamais),
    et c'est le bas qui fait la ligne d'horizon du bandeau. */
-.sk-scene > .sk-plaque {
+.sk-scene > .sk-plaque,
+.sk-scene > .sk-plaque-pile {
   position: absolute;
   bottom: 5.5%;
   z-index: 5;
 }
 
-/* Même largeur pour les deux, et non « chacune la sienne » : la bande de
-   gauche est plus large de sept points, mais deux plaques inégales de part et
-   d'autre de l'éventail se lisent comme un déséquilibre à corriger, pas comme
-   deux bandes de bois de tailles différentes. C'est donc la plus étroite —
-   celle de droite, 11,85 % entre la main et le parchemin — qui donne la
-   mesure, et celle de gauche se centre dans la sienne. */
-.sk-scene > #sk-mine {
-  left: 4.4%;
-  width: 10.6%;
+/* Le contrat et les plis de la manche vont par deux : ils répondent à la
+   même question — où j'en suis de ce que j'ai annoncé — et se lisent d'un
+   seul regard, donc côte à côte dans la bande de bois à gauche de
+   l'éventail. Cette bande fait 19,35 % (elle bute sur la main) : deux
+   plaques y tiennent, mais pas deux plaques de 10,6 %. Le couple prend donc
+   toute la bande et se la partage à parts égales.
+
+   `grid-template-columns: 1fr 1fr` d'abord — les deux colonnes font la même
+   largeur, quoi que porte leur texte ; l'étirement par défaut des lignes de
+   grille ensuite — les deux plaques font la même hauteur, alors que le
+   contrat porte trois lignes (libellé, encoches, valeur) et les plis deux.
+   Deux plaques rigoureusement identiques, à la teinte du filet près. Alignée
+   par le bas sur l'éventail et sur le gain, comme avant. */
+.sk-scene > .sk-plaque-pile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  /* Le couple se centre dans la bande, et la bande se mesure sur l'éventail
+     PLEIN : la main commence à 19,35 % mais ses 20 px de garde repoussent la
+     première carte à ~20,5 % de la scène, et c'est la carte, pas la boîte,
+     que l'œil prend pour la limite. Le couple se centre donc dans 0 →
+     20,6 % — un demi-point plus à droite qu'un centrage sur 19,35 %. */
+  left: 0.4%;
+  width: 19.8%;
+}
+
+/* Dix pour cent plus grandes que la plaque du gain, cadre ET contenu : ce
+   sont les deux chiffres qu'on consulte le plus souvent en choisissant une
+   carte, et la bande de bois de gauche a la place de les porter. La largeur
+   vient de la grille ci-dessus, la hauteur de ce qui suit — creux, gouttière
+   et corps de texte montent du même dixième, pour que la plaque reste
+   exactement la même, seulement plus lisible. */
+.sk-plaque-pile > .sk-plaque {
+  /* Étirée à la hauteur de sa voisine, la plus courte des deux centre ses
+     lignes au lieu de les coller en haut. */
+  justify-content: center;
+  gap: 5.5px;
+  padding: 8.8px 11px 9.9px;
+  border-radius: 3.3px;
+}
+
+.sk-plaque-pile .sk-plaque-k {
+  font-size: 0.616rem;   /* 0,56 × 1,1 ; le crénage est en em, il suit */
+}
+
+.sk-plaque-pile .sk-mine-v,
+.sk-plaque-pile .sk-round-tricks-v {
+  font-size: 1.122rem;   /* 1,02 × 1,1 */
+}
+
+.sk-plaque-pile .sk-notches {
+  gap: 3.3px;
+}
+
+.sk-plaque-pile .sk-notches i {
+  width: 7.7px;
+  height: 7.7px;
 }
 
 .sk-scene > #sk-gain {
@@ -7491,15 +7578,18 @@ h3 {
     right: 21%;
   }
   /* L'éventail ayant repris la droite, il ne reste plus rien entre lui et la
-     colonne de parchemin : les deux plaques se rangent côte à côte dans la
-     bande de gauche, qui vient de gagner treize points de largeur. Elles
-     gardent leur ordre — le contrat d'abord, le gain ensuite. */
-  .sk-scene > #sk-mine {
-    left: 1.6%;
-    width: 14%;
+     colonne de parchemin : le couple de gauche et le gain se rangent côte à
+     côte dans la bande de gauche, qui vient de gagner treize points de
+     largeur. Ils gardent leur ordre — le total et le contrat d'abord, le
+     gain ensuite. */
+  .sk-scene > .sk-plaque-pile {
+    left: 0.5%;
+    width: 15.84%;
   }
+  /* Le gain recule d'un demi-point pour laisser passer le couple élargi ;
+     il reste très loin de l'éventail, qui ne commence qu'à 32,5 %. */
   .sk-scene > #sk-gain {
-    left: 16.6%;
+    left: 17.2%;
     width: 14%;
   }
 }

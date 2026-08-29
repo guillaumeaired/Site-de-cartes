@@ -1956,6 +1956,8 @@ const scrollEl = document.getElementById('sk-round-scroll');
 const mineEl = document.getElementById('sk-mine');
 const mineNotches = document.getElementById('sk-mine-notches');
 const mineValue = document.getElementById('sk-mine-v');
+const roundTricksEl = document.getElementById('sk-round-tricks');
+const roundTricksValue = document.getElementById('sk-round-tricks-v');
 const gainEl = document.getElementById('sk-gain');
 const gainValue = document.getElementById('sk-gain-v');
 const gainDetail = document.getElementById('sk-gain-detail');
@@ -2222,6 +2224,38 @@ function renderMine(state) {
   mineEl.classList.toggle('sk-mine--rate', !tenu);
 }
 
+// Le contrat dit ce que JE dois faire ; cette plaque voisine dit ce que la
+// TABLE s'est promis : la somme des annonces face au nombre de plis de la
+// manche. C'est l'information que « Mon contrat » ne peut pas donner, et
+// elle change la façon de jouer une carte — sous-annonce (bleu), il reste
+// des plis dont personne ne veut et tout le monde peut tenir ; à l'égalité
+// (vert), le compte tombe juste ; sur-annonce (rouge), il n'y a pas assez
+// de plis pour tout le monde et quelqu'un tombera forcément.
+//
+// Rien pendant l'annonce : elles sont simultanées et secrètes, le serveur
+// ne renvoie alors que la mienne (voir `bid:` dans skullking-room.js). La
+// plaque reste en place pour ne pas faire sauter sa voisine, et Harry le
+// Géant, qui modifie une annonce en cours de manche, met le total à jour
+// tout seul puisqu'il est recalculé à chaque rendu.
+function renderRoundTricks(state) {
+  const joueurs = state.players || [];
+  roundTricksEl.classList.remove('hidden');
+  roundTricksEl.classList.remove('sk-round-tricks--under', 'sk-round-tricks--exact', 'sk-round-tricks--over');
+
+  const annonces = joueurs.filter((p) => p.bid != null);
+  if (state.phase === 'bidding' || !joueurs.length || annonces.length !== joueurs.length) {
+    roundTricksValue.textContent = 'à annoncer';
+    return;
+  }
+
+  const total = annonces.reduce((somme, p) => somme + p.bid, 0);
+  const plis = state.cardsInRound || 0;
+  roundTricksValue.textContent = `${total}/${plis} pli${plis > 1 ? 's' : ''}`;
+  if (total < plis) roundTricksEl.classList.add('sk-round-tricks--under');
+  else if (total === plis) roundTricksEl.classList.add('sk-round-tricks--exact');
+  else roundTricksEl.classList.add('sk-round-tricks--over');
+}
+
 // Ce que la manche rapportera SI le contrat est tenu — pas le score courant,
 // qui est au registre de bord et n'apprend rien au moment de choisir une
 // carte. Ici la question est « qu'est-ce que je joue », et la réponse dépend
@@ -2477,7 +2511,10 @@ function renderSeats(state) {
     // ce qu'il a annoncé ? »), elle vivait jusqu'ici uniquement dans le
     // panneau de droite, loin du tapis. Rien pendant l'annonce, où les
     // annonces sont encore secrètes.
-    if (landscapeTable.matches && state.phase !== 'bidding' && p.bid != null) {
+    // Mon contrat est déjà affiché dans la plaque en bas à gauche de la
+    // main. Ne le répétons donc pas sous mon médaillon ; les contrats des
+    // autres capitaines restent, eux, visibles autour du tapis.
+    if (p.id !== myId && landscapeTable.matches && state.phase !== 'bidding' && p.bid != null) {
       const tally = document.createElement('div');
       // En pilule sous le pseudo, dans le flux du siège : c'est ce que la
       // carte du pli mesure quand elle cherche à se dégager (voir renderTrick).
@@ -2512,7 +2549,7 @@ function renderSeats(state) {
     // Annonce et plis gagnés vivent dans le panneau de droite, pas sur le
     // tapis : en portrait l'étiquette du siège reste le seul endroit où les
     // lire, on ne les y garde donc que là.
-    if (!landscapeTable.matches) {
+    if (p.id !== myId && !landscapeTable.matches) {
       const bidEl = document.createElement('span');
       const bidState = bidStateSuffix(state, p);
       bidEl.className = 'sk-seat-bid' + (bidState ? ` sk-seat-bid${bidState}` : '');
@@ -2932,7 +2969,7 @@ function renderTrick(state) {
   // toutes deux à gauche, où des cartes du pli peuvent descendre. Elles sont
   // dans la liste au même titre que l'éventail — trois bandes qui portent du
   // texte, qu'une carte n'a pas le droit de recouvrir.
-  const bandes = ['sk-turn-indicator', 'sk-power-banner', 'sk-hand', 'sk-mine', 'sk-gain']
+  const bandes = ['sk-turn-indicator', 'sk-power-banner', 'sk-hand', 'sk-mine', 'sk-round-tricks', 'sk-gain']
     .map((id) => rectDansLeTapis(document.getElementById(id), boite))
     .filter(Boolean);
 
@@ -5323,6 +5360,7 @@ function renderGame(state) {
   hideCardTooltip();
   renderRoundIndicator(state);
   renderMine(state);
+  renderRoundTricks(state);
   renderGain(state);
   btnEndGame.classList.toggle('hidden', !state.isHost);
   maybeAnimateDeal(state);

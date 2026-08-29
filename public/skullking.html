@@ -390,10 +390,23 @@
              faut choisir, et c'est le seul moment où ces deux chiffres-là
              servent. À gauche ce que je dois faire, à droite ce que ça me
              rapportera si je le fais. -->
-        <div id="sk-mine" class="sk-plaque sk-mine hidden">
-          <span class="sk-plaque-k">Mon contrat</span>
-          <span id="sk-mine-notches" class="sk-notches sk-notches--dark"></span>
-          <span id="sk-mine-v" class="sk-mine-v"></span>
+        <!-- À gauche, deux plaques côte à côte dans la même bande de bois :
+             ce que la table s'est promis, puis ce que je dois faire moi.
+             Mon contrat est le plus proche de l'éventail — c'est celui que
+             l'œil relit entre deux cartes. Elles se partagent la bande à
+             parts égales et la grille les tient à la même largeur ET à la
+             même hauteur, malgré la rangée d'encoches que seule la seconde
+             porte. -->
+        <div class="sk-plaque-pile">
+          <div id="sk-round-tricks" class="sk-plaque sk-round-tricks hidden">
+            <span class="sk-plaque-k">Total des plis annoncés</span>
+            <span id="sk-round-tricks-v" class="sk-round-tricks-v"></span>
+          </div>
+          <div id="sk-mine" class="sk-plaque sk-mine hidden">
+            <span class="sk-plaque-k">Mon contrat</span>
+            <span id="sk-mine-notches" class="sk-notches sk-notches--dark"></span>
+            <span id="sk-mine-v" class="sk-mine-v"></span>
+          </div>
         </div>
         <div id="sk-gain" class="sk-plaque sk-gain hidden">
           <span class="sk-plaque-k">Gain si contrat rempli</span>
