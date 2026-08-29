@@ -974,13 +974,6 @@ const lobbyRange = document.getElementById('sk-lobby-range');
 const btnStartGame = document.getElementById('sk-btn-start-game');
 const btnAddBot = document.getElementById('sk-btn-add-bot');
 
-// Outils de test (bots) : uniquement en local ou avec ?dev dans l'URL, pour
-// qu'un vrai joueur ne tombe jamais dessus.
-const DEV_TOOLS =
-  location.hostname === 'localhost' ||
-  location.hostname === '127.0.0.1' ||
-  new URLSearchParams(location.search).has('dev');
-
 btnAddBot.addEventListener('click', () => socket.emit('skullking-add-bot'));
 const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
@@ -1778,17 +1771,11 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
       marque.textContent = 'BOT';
       li.appendChild(marque);
     }
-    // Renvoyer un bot au port. Même régime que le bouton qui les ajoute :
-    // outil de test, hôte seulement — et jamais sur un joueur humain, ce que
-    // le serveur revérifie de son côté. Sans ça, un bot ajouté en trop
-    // bloquait le salon jusqu'à ce qu'on le refasse.
-    if (DEV_TOOLS && isHost && p.isBot) {
+    // Renvoyer un bot au port. L'hôte seul peut le faire, et le serveur
+    // vérifie aussi qu'il s'agit bien d'un bot, jamais d'un joueur humain.
+    if (isHost && p.isBot) {
       const vire = document.createElement('button');
       vire.type = 'button';
-      // Pas de classe sk-dev-tool ici : elle porte le cadre en pointillés du
-      // bouton « Ajouter un bot », qui ferait de cette croix une case à
-      // cocher géante au milieu du rôle. La condition DEV_TOOLS juste
-      // au-dessus suffit à la réserver aux tests.
       vire.className = 'sk-lobby-vire';
       vire.textContent = '✕';
       vire.title = `Retirer ${p.nickname}`;
@@ -1847,8 +1834,7 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
   ajusterHauteurSalon();
 
   btnStartGame.classList.toggle('hidden', !isHost);
-  // Outil de test : jamais proposé aux vrais joueurs (voir DEV_TOOLS).
-  btnAddBot.classList.toggle('hidden', !(DEV_TOOLS && isHost && players.length < maxPlayers));
+  btnAddBot.classList.toggle('hidden', !(isHost && players.length < maxPlayers));
   btnStartGame.disabled = !canStart;
   if (isHost) {
     waitingHint.textContent = canStart

@@ -1,10 +1,7 @@
-// Bots Skull King — OUTIL DE TEST UNIQUEMENT.
+// Bots Skull King.
 //
-// Permet de lancer une partie seul (le jeu exige 3 joueurs) pour vérifier une
-// règle, une animation ou un pouvoir sans ouvrir trois navigateurs. Ce n'est
-// pas une fonctionnalité de jeu : le bouton n'apparaît côté client que sur
-// localhost ou avec ?dev dans l'URL, et les bots jouent volontairement de
-// façon très simple (première carte jouable, annonce au hasard).
+// Permet de lancer une partie même sans équipage complet : les bots jouent
+// volontairement de façon simple (première carte jouable, annonce au hasard).
 //
 // Principe : un bot est un faux socket. skullking-room.js n'utilise du socket
 // que `id`, `data`, `on` et `emit` — un EventEmitter suffit donc à recevoir

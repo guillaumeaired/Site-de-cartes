@@ -14,8 +14,7 @@ const {
   setBotAdapter: setSkullKingBotAdapter,
   getStats: getSkullKingStats,
 } = require('./skullking-room');
-// Bots de test uniquement (voir skullking-bot.js) : branchés ici pour que le
-// module de salle n'en dépende pas.
+// Bots Skull King : branchés ici pour que le module de salle n'en dépende pas.
 setSkullKingBotAdapter(require('./skullking-bot'));
 
 // Plus une partie s'eternise, plus une bataille enterre de cartes : le

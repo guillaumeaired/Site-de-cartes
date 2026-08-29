@@ -703,8 +703,8 @@ function broadcastToRoom(io, room, event, data) {
   for (const p of destinataires(room)) io.to(p.id).emit(event, data);
 }
 
-// Bots de test (server/skullking-bot.js) : branchés par injection pour que ce
-// module n'en dépende pas et que le jeu tourne à l'identique sans eux.
+// Bots (server/skullking-bot.js) : branchés par injection pour que ce module
+// n'en dépende pas et que le jeu tourne à l'identique sans eux.
 let bots = null;
 function setBotAdapter(adapter) {
   bots = adapter;
@@ -1048,7 +1048,7 @@ function broadcastState(io, room) {
     io.to(p.id).emit('skullking-state', stateFor(room, p));
   }
   scheduleInactivityCheck(io, room);
-  // Les bots de test « voient » l'état par ce même point de passage : ils
+  // Les bots « voient » l'état par ce même point de passage : ils
   // n'ont pas de vraie socket pour recevoir l'événement ci-dessus.
   if (bots) bots.driveBots(io, room, stateFor);
 }
@@ -1425,7 +1425,7 @@ function removeFromLobby(io, room, id) {
   const idx = room.players.findIndex((p) => p.id === id);
   if (idx === -1) return;
   const [removed] = room.players.splice(idx, 1);
-  // Une salle où il ne reste que des bots de test n'a plus de raison d'exister
+  // Une salle où il ne reste que des bots n'a plus de raison d'exister
   // (personne ne la verra jamais) : on la ferme comme une salle vide.
   const humansLeft = room.players.filter((p) => !bots || !bots.isBot(p.id));
   if (humansLeft.length === 0) {
@@ -1960,9 +1960,8 @@ function registerSkullKingHandlers(io, socket) {
     broadcastToRoom(io, room, 'skullking-chat-message', message);
   });
 
-  // OUTIL DE TEST : ajoute un joueur automatique au salon. Réservé à l'hôte
-  // et au salon d'attente ; côté client le bouton n'est proposé que sur
-  // localhost ou avec ?dev dans l'URL (voir skullking.js).
+  // Ajoute un joueur automatique au salon. Réservé à l'hôte et au salon
+  // d'attente ; ces gardes s'appliquent aussi à l'interface déployée.
   socket.on('skullking-add-bot', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby' || !bots) return;
@@ -1974,8 +1973,8 @@ function registerSkullKingHandlers(io, socket) {
     if (addBotToRoom(io, room)) broadcastLobby(io, room);
   });
 
-  // OUTIL DE TEST, pendant du précédent : retire un bot du salon. Un bot
-  // ajouté par erreur bloquait la partie jusqu'au bout — la salle était
+  // Retire un bot du salon. Un bot ajouté par erreur bloquait la partie
+  // jusqu'au bout — la salle était
   // pleine, ou le compte de joueurs faussait le nombre de cartes de la
   // dernière manche, et il n'y avait aucun moyen de revenir en arrière sans
   // refaire le salon. La garde isBot est la seule qui compte ici : ce point

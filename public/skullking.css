@@ -1052,15 +1052,14 @@ h3 {
   color: var(--sk-brass-lo);
 }
 
-/* Les deux ensemble (l'hôte teste avec ses bots) : la croix se range contre
-   la marque au lieu de partager l'espace libre avec elle. */
+/* Les deux ensemble : la croix se range contre la marque au lieu de partager
+   l'espace libre avec elle. */
 .sk-lobby-bot + .sk-lobby-vire {
   margin-left: 6px;
 }
 
 /* Le renvoi d'un bot : discret tant qu'on ne le cherche pas, franc au
-   survol. Il ne s'affiche que pour l'hôte, et seulement sur les lignes de
-   bots (voir DEV_TOOLS côté client). */
+   survol. Il ne s'affiche que pour l'hôte et sur les lignes de bots. */
 .sk-lobby-vire {
   flex-shrink: 0;
   margin-left: auto;
@@ -4205,24 +4204,6 @@ h3 {
 .sk-start-reveal-text.sk-visible {
   opacity: 1;
   transform: translateY(0);
-}
-
-/* Outil de test (ajout de bots) : volontairement terne et marqué d'un liseré
-   pointillé pour ne jamais être confondu avec un bouton du jeu. */
-.sk-dev-tool {
-  background: none;
-  border: 2px dashed rgba(232, 206, 146, 0.28);
-  color: var(--sk-cream-2);
-  box-shadow: none;
-  font-size: 0.8rem;
-  padding: 7px 14px;
-  margin-bottom: 8px;
-}
-
-.sk-dev-tool:hover {
-  background: rgba(232, 206, 146, 0.10);
-  box-shadow: none;
-  transform: none;
 }
 
 /* --- Historique des manches (panneau de scores → modale) --- */
