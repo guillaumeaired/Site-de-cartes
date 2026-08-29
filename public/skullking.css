@@ -993,9 +993,23 @@ h3 {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  /* La place de l'équipage est réservée dès l'ouverture du salon. Sans
+     cela, hors de la mise en page paysage, la planche centrale prenait la
+     hauteur de ses seuls occupants : son cerclage bas n'était pas encore
+     visible à l'arrivée, puis apparaissait dès qu'un joueur ou un bot
+     s'ajoutait. Les deux colonnes et les rangées fixes donnent donc le même
+     cadre, vide ou rempli. Les règles paysage plus bas n'en ajustent que
+     les cotes pour les grands écrans. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 48px;
+  align-content: start;
   gap: var(--sk-crew-ecart);
+  height: calc(
+    var(--sk-crew-rangs) * 48px
+    + (var(--sk-crew-rangs) - 1) * var(--sk-crew-ecart)
+  );
+  overflow: hidden;
 }
 
 /* Le rôle d'équipage : une ligne de bois par matelot, marquée au laiton. */
@@ -4205,6 +4219,25 @@ h3 {
 .sk-start-reveal-text.sk-visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Ajouter un bot reste une action secondaire du salon : le liseré pointillé
+   la distingue du lancement de partie sans la présenter comme un outil de
+   test. */
+.sk-bot-add {
+  background: none;
+  border: 2px dashed rgba(232, 206, 146, 0.28);
+  color: var(--sk-cream-2);
+  box-shadow: none;
+  font-size: 0.8rem;
+  padding: 7px 14px;
+  margin-bottom: 8px;
+}
+
+.sk-bot-add:hover {
+  background: rgba(232, 206, 146, 0.10);
+  box-shadow: none;
+  transform: none;
 }
 
 /* --- Historique des manches (panneau de scores → modale) --- */
