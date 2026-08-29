@@ -364,11 +364,20 @@ function resolveTrick(cards) {
     virtualKinds[activeKraken] = 'escape';
     const { winnerIdx: virtualWinner, allNeverWin } = resolveHierarchy(cards, virtualKinds);
     const leaderIdx = allNeverWin ? 0 : virtualWinner;
+    // Le Kraken condamne toutes les autres cartes du pli : elles restent
+    // visibles, mais le tapis les éteint pour que l'on comprenne qu'aucune
+    // ne peut gagner. Le Kraken actif garde ses couleurs, car c'est lui qui
+    // provoque l'engloutissement. S'il est suivi d'une Baleine ou d'une
+    // Raie, la règle du dernier Monstre l'a déjà changé en `escape` ci-dessus
+    // et le pouvoir du second Monstre fournit alors sa propre liste.
+    const neutralisedIdx = cards
+      .map((_, i) => i)
+      .filter((i) => i !== activeKraken && !excludedIdx.has(i));
     // krakenIdx : QUI a détruit le pli. Un pli détruit ne l'est pas toujours
     // par le Kraken (Baleine ou Raie sur un pli sans numérotée le détruisent
     // aussi), et l'écran doit pouvoir montrer l'engloutissement sans avoir à
     // redeviner la cause depuis les cartes posées.
-    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx, krakenIdx: activeKraken, destroyerIdx: activeKraken };
+    return { winnerIdx: null, leaderIdx, destroyed: true, monstersDestroyed, excludedIdx, neutralisedIdx, krakenIdx: activeKraken, destroyerIdx: activeKraken };
   }
 
   if (activeWhale !== -1 || activeStingray !== -1) {

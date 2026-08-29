@@ -2986,7 +2986,7 @@ function renderTrick(state) {
     // Skull King qui dévore les Pirates, voir playDevourAnimation).
     slot.dataset.cardId = t.card.id;
     slot.dataset.kind = t.card.kind;
-    // Voile des cartes que la Baleine ou la Raie a mises hors course. La
+    // Voile des cartes que le Monstre Marin actif a mises hors course. La
     // liste vient du moteur (voir resolveTrick) : la règle est trop
     // contre-intuitive pour être redevinée ici, et elle a des coins — un
     // 0/14 déclaré à 0 en fait partie sous la Raie.

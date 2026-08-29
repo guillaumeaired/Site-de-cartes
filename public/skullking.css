@@ -1855,10 +1855,11 @@ h3 {
   }
 }
 
-/* Mises hors course par la Baleine blanche ou la Raie Tachetée. Ces deux-là
-   annulent toutes les cartes spéciales du pli : un Pirate, un Skull King, une
-   Sirène posés sous elles ne valent plus rien, et rien ne le disait — un
-   joueur a vu son Pirate ne rien remporter et a cherché la faute ailleurs.
+/* Mises hors course par le Monstre Marin actif. Le Kraken éteint toutes les
+   autres cartes du pli ; la Baleine blanche ou la Raie Tachetée annulent les
+   cartes spéciales. Un Pirate, un Skull King, une Sirène posés sous elles ne
+   valent plus rien, et rien ne le disait — un joueur a vu son Pirate ne rien
+   remporter et a cherché la faute ailleurs.
 
    Le voile est froid et il éteint : la couleur part (le laiton et le rouge
    des cadres peints sont ce qui accroche l'œil), la carte s'assombrit et

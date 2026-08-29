@@ -791,9 +791,9 @@ function currentTrickPreview(room) {
     leaderId: entry ? entry.playerId : null,
     destroyed: result.destroyed,
     destroyedBy: destroyerIdx != null && destroyerIdx !== -1 ? effectiveKind(cards[destroyerIdx]) : null,
-    // Les cartes que la Baleine ou la Raie a mises hors course. Renvoyées
-    // pendant que le pli se joue, pas seulement à sa résolution : c'est là
-    // qu'elles servent, quand on choisit encore sa propre carte.
+    // Les cartes mises hors course par un Monstre Marin. Renvoyées pendant
+    // que le pli se joue, pas seulement à sa résolution : c'est là qu'elles
+    // servent, quand on choisit encore sa propre carte.
     neutralisedCardIds: (result.neutralisedIdx || []).map((i) => cards[i].id),
   };
 }

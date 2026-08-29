@@ -144,6 +144,7 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   check('kraken : personne ne gagne (winnerIdx null)', r.winnerIdx, null);
   check('kraken : pli détruit', r.destroyed, true);
   check('kraken : pli suivant mené par le gagnant virtuel (ici le vert 14)', r.leaderIdx, 2);
+  check('kraken : toutes les autres cartes sont grisées', r.neutralisedIdx, [0, 2]);
   // L'écran a besoin de savoir QUI a détruit le pli pour montrer
   // l'engloutissement : un pli détruit ne l'est pas toujours par le Kraken.
   check('kraken : krakenIdx désigne la carte qui engloutit', r.krakenIdx, 1);
@@ -251,11 +252,13 @@ check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(
   const r = resolveTrick(cards);
   check('kraken puis baleine : la baleine (jouée en second) l\'emporte', r.destroyed, false);
   check('kraken puis baleine : le kraken neutralisé ne détruit plus rien, la baleine tranche par la valeur', r.winnerIdx, 3);
+  check('kraken puis baleine : seul le kraken est grisé', r.neutralisedIdx, [0]);
 }
 {
   const cards = [whale(), kraken(), num('vert', 5), num('jaune', 9)];
   const r = resolveTrick(cards);
   check('baleine puis kraken : le kraken (joué en second) l\'emporte, pli détruit', r.destroyed, true);
+  check('baleine puis kraken : la baleine est grisée, pas le kraken actif', r.neutralisedIdx, [0, 2, 3]);
 }
 
 // --- Obligation de couleur (ledSuitOf / mustFollowSuit / isCardPlayable) ---
