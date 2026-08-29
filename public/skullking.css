@@ -7014,6 +7014,224 @@ h3 {
   margin: 0;
 }
 
+/* --- ROSIE LA DOUCE : UN TAPIS EN RÉDUCTION --------------------------
+   Sa question ne porte pas sur des mots mais sur des PLACES : qui entame
+   décide qui joue avant moi. Le cadre s'élargit donc et rend le feutre en
+   petit, les capitaines assis tout autour comme sur le vrai — moi en bas —
+   et la question gravée au centre du feutre, là où le pli se pose.
+   Le cadre est plus grand que celui des trois autres pouvoirs : ce n'est
+   plus une rangée de réponses, c'est une table qu'on regarde.
+   -------------------------------------------------------------------- */
+.sk-scene .sk-power-panel--tapis {
+  max-width: 86%;
+  gap: 26px;
+  padding: 18px 26px 20px;
+}
+
+/* Le corps borne la largeur des autres cadres pour que les boutons
+   s'enroulent (voir plus haut) ; ici c'est le tapis qui commande sa taille,
+   et un plafond de 460 px l'écraserait. */
+.sk-power-panel--tapis .sk-power-corps {
+  max-width: none;
+}
+
+/* La boîte du tapis : les sièges s'y posent en absolu, aux mêmes angles que
+   sur le feutre. Le rapport 5/3 lui donne la largeur qu'il faut pour que les
+   deux pseudos des extrémités tiennent en entier de part et d'autre. */
+.sk-mini-tapis {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(58cqw, 112cqh, 580px);
+  aspect-ratio: 5 / 3;
+}
+
+/* La table, en ovale. En BOIS et non en feutre vert : la scène peinte n'a
+   pas de tapis, on joue sur la table de la taverne, et un ovale vert au
+   milieu du cadre n'aurait rappelé aucune des deux. Bois ciré, veinage et
+   liseré de laiton : c'est la table qu'on a sous les yeux depuis le début de
+   la partie, en réduction. Elle se reconnaît sans légende — c'est tout
+   l'intérêt de la dessiner plutôt que de l'écrire. */
+.sk-mini-feutre {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48%;
+  height: 48%;
+  padding: 0 5%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 26%, rgba(255, 232, 190, 0.14), rgba(0, 0, 0, 0.42) 78%),
+    radial-gradient(ellipse at 50% 30%, var(--sk-oak-hi), var(--sk-oak) 52%, var(--sk-oak-lo));
+  box-shadow:
+    inset 0 0 0 2px rgba(122, 90, 32, 0.75),
+    inset 0 10px 26px rgba(0, 0, 0, 0.5),
+    0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Le veinage du bois, comme sur les planches du reste de l'écran (.sk-wood). */
+.sk-mini-feutre::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: var(--sk-oakgrain);
+  background-size: 300px 120px;
+  opacity: 0.28;
+  mix-blend-mode: overlay;
+}
+
+/* La question est au centre du feutre : elle ne coiffe plus les réponses,
+   elle est l'endroit vers lequel tous les sièges regardent. */
+.sk-scene .sk-power-panel--tapis .sk-mini-consigne {
+  position: relative;
+  max-width: 100%;
+  font-size: clamp(0.8rem, 2.7cqh, 1rem);
+  line-height: 1.35;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+/* UN SIÈGE. Le jeton peint par-dessus le pseudo, comme sur le feutre en
+   paysage : c'est le jeton qu'on reconnaît de loin, le pseudo qui confirme. */
+.sk-mini-siege {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 10px 7px;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #33220f, #190f07);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 5px 12px rgba(0, 0, 0, 0.55);
+  color: var(--sk-cream);
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+
+.sk-mini-siege:hover,
+.sk-mini-siege:focus-visible {
+  background: linear-gradient(180deg, #4a3117, #23150a);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.24),
+    0 0 0 1px var(--sk-brass-hi),
+    0 8px 18px rgba(0, 0, 0, 0.6);
+  outline: none;
+  /* La translation fait partie du placement : la répéter, sinon le siège
+     saute au centre du tapis au premier survol. */
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.sk-mini-siege:active {
+  transform: translate(-50%, -50%) scale(0.98);
+}
+
+/* Mon propre siège, en bas : cerclé de laiton, comme le halo du tour sur le
+   feutre. C'est le repère qui rend les autres lisibles — sans lui, un cercle
+   de pseudos ne dit pas de quel côté on est assis. */
+.sk-mini-siege--moi {
+  box-shadow:
+    inset 0 1px 0 rgba(232, 206, 146, 0.2),
+    0 0 0 2px var(--sk-brass),
+    0 5px 12px rgba(0, 0, 0, 0.55);
+}
+
+.sk-mini-jeton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(26px, 6.4cqh, 40px);
+  height: clamp(26px, 6.4cqh, 40px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--sk-av-color, var(--sk-wine-lo)), var(--sk-oak-lo));
+  border: 2px solid var(--sk-oak-lo);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.sk-mini-jeton .sk-piece-img {
+  display: block;
+  width: 72%;
+  height: 72%;
+}
+
+/* Même gravure que les boutons des autres cadres : Cinzel en capitales. Un
+   pseudo à rallonge est tronqué plutôt que de pousser son voisin hors du
+   bois — le titre du bouton le donne alors en entier. */
+.sk-mini-nom {
+  max-width: 14ch;
+  overflow: hidden;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(0.66rem, 2.1cqh, 0.8rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--sk-cream);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* SOUS UNE CERTAINE TAILLE, PLUS DE PLAN DE TABLE. Un plan n'a d'intérêt
+   que s'il reste lisible : sur une scène étroite (téléphone tenu debout,
+   fenêtre réduite au quart), les sièges se chevauchaient et débordaient du
+   cadre — le dessin disait alors le contraire de ce qu'il vient dire. On
+   revient donc à ce que font les trois autres pouvoirs : la question, puis
+   les réponses en rangée, dans l'ordre du tour — qui est déjà celui des
+   sièges, moi en tête. Les jetons peints, eux, restent.
+   Le seuil est celui où le tapis descend sous ~420 px de large : la scène
+   garde ses proportions, la largeur et la hauteur disent donc la même
+   chose, mais une fenêtre très plate tombe par la seconde. */
+@container (max-width: 720px) or (max-height: 400px) {
+  .sk-mini-tapis {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    max-width: min(420px, 60cqw);
+    aspect-ratio: auto;
+  }
+
+  .sk-mini-feutre {
+    position: static;
+    width: 100%;
+    height: auto;
+    padding: 0 0 2px;
+    transform: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .sk-mini-feutre::before {
+    content: none;
+  }
+
+  .sk-mini-siege {
+    position: static;
+    transform: none;
+  }
+
+  .sk-mini-siege:hover,
+  .sk-mini-siege:focus-visible {
+    transform: scale(1.06);
+  }
+
+  .sk-mini-siege:active {
+    transform: scale(0.98);
+  }
+}
+
 /* La seconde scène a son propre feutre : mêmes moitiés, autres coordonnées. */
 .sk-scene--v2 .sk-power-panel--choix {
   left: 52.48%;   /* 32.63 % + 39.69 % / 2 */
@@ -7030,6 +7248,13 @@ h3 {
 
   .sk-power-portrait .sk-card {
     --sk-w: clamp(58px, 14cqh, 88px);
+  }
+
+  /* Le tapis se resserre avec le reste : il vaut mieux un feutre petit mais
+     entier qu'un feutre coupé par le bord du cadre. */
+  .sk-mini-siege {
+    padding: 4px 7px 5px;
+    gap: 3px;
   }
 }
 

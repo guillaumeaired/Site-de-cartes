@@ -4790,15 +4790,15 @@ function renderWillTroc(state, pending, hint) {
 //
 // `hint` est la consigne déjà créée par renderPower : elle est déplacée dans
 // le corps, à droite du portrait.
-function renderChoixPirate(pending, hint, consigne, choix) {
-  powerPanel.classList.add('sk-power-panel--choix');
-
-  const nom = POWER_LABEL[pending.kind];
-
-  // Le serveur n'envoie pas la carte avec le pouvoir — il n'a pas à le
-  // faire : un Pirate nommé n'est que son nom, et le dessin se déduit du
-  // paquet en cours comme pour n'importe quelle carte de la partie (perso
-  // ou classique, cardClass s'en charge).
+// La carte du pirate, seule pièce commune aux deux mises en scène du choix :
+// la rangée de boutons ci-dessous, et le tapis de Rosie plus bas.
+//
+// Le serveur n'envoie pas la carte avec le pouvoir — il n'a pas à le faire :
+// un Pirate nommé n'est que son nom, et le dessin se déduit du paquet en
+// cours comme pour n'importe quelle carte de la partie (perso ou classique,
+// cardClass s'en charge).
+function portraitPirate(kind) {
+  const nom = POWER_LABEL[kind];
   const card = { kind: 'pirate', name: nom };
 
   const portrait = document.createElement('figure');
@@ -4812,7 +4812,12 @@ function renderChoixPirate(pending, hint, consigne, choix) {
   legende.className = 'sk-power-portrait-nom';
   legende.textContent = nom;
   portrait.appendChild(legende);
-  powerPanel.appendChild(portrait);
+  return portrait;
+}
+
+function renderChoixPirate(pending, hint, consigne, choix) {
+  powerPanel.classList.add('sk-power-panel--choix');
+  powerPanel.appendChild(portraitPirate(pending.kind));
 
   // Le corps : la consigne et les boutons, empilés à droite de la carte.
   // Le panneau, lui, est une RANGÉE (voir la feuille de style).
@@ -4838,10 +4843,98 @@ function renderChoixPirate(pending, hint, consigne, choix) {
 }
 
 
+// --- ROSIE LA DOUCE : LE CHOIX SE FAIT SUR UN TAPIS --------------------
+// Les trois autres pouvoirs à boutons posent une question dont les réponses
+// sont des mots : « miser 10 », « +1 », « ne pas changer ». Celle de Rosie
+// porte sur des GENS, et sur la seule chose qu'un pseudo ne dit pas — où ils
+// sont assis. Désigner qui entame, c'est choisir d'où repart le pli : qui
+// jouera avant moi, et combien de cartes tomberont après la mienne. Alignés
+// en rangée, les noms perdaient exactement ça ; il fallait les rapprocher un
+// à un des médaillons du feutre, éteint derrière le rideau du cadre, pour
+// retrouver qui est à ma gauche.
+//
+// Le cadre montre donc LE TAPIS EN RÉDUCTION, avec les capitaines disposés
+// tout autour comme sur le vrai feutre — moi en bas, mon voisin de gauche à
+// ma gauche, l'ordre du tour dans le sens de lecture des sièges — et la
+// question gravée au centre du feutre. On ne lit plus une liste : on montre
+// du doigt un siège.
+//
+// Les angles sont ceux de computeSeatPositionsEven : même formule, même
+// départ en bas, donc le petit tapis et le grand ne peuvent pas diverger.
+function renderChoixTapis(pending, hint, consigne, state, onPick) {
+  powerPanel.classList.add('sk-power-panel--choix', 'sk-power-panel--tapis');
+  powerPanel.appendChild(portraitPirate(pending.kind));
+
+  const corps = document.createElement('div');
+  corps.className = 'sk-power-corps';
+
+  const tapis = document.createElement('div');
+  tapis.className = 'sk-mini-tapis';
+
+  const feutre = document.createElement('div');
+  feutre.className = 'sk-mini-feutre';
+  hint.textContent = consigne;
+  hint.classList.add('sk-power-consigne', 'sk-mini-consigne');
+  feutre.appendChild(hint);
+  tapis.appendChild(feutre);
+
+  // Les options arrivent dans l'ordre du serveur, qui est l'ordre du tour ;
+  // seatOrder le fait pivoter pour me ramener en bas, exactement comme pour
+  // les vrais sièges (voir seatLayout).
+  const parId = new Map((pending.options || []).map((o) => [o.id, o]));
+  const assis = seatOrder(state.players || []).filter((p) => parId.has(p.id));
+  const n = Math.max(1, assis.length);
+
+  assis.forEach((p, i) => {
+    // i = 0 → vers le bas : moi. Puis on tourne dans le sens du jeu.
+    const angle = Math.PI / 2 + (i * 2 * Math.PI) / n;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sk-mini-siege' + (p.id === myId ? ' sk-mini-siege--moi' : '');
+    btn.style.left = `${(50 + 38 * Math.cos(angle)).toFixed(2)}%`;
+    btn.style.top = `${(50 + 37 * Math.sin(angle)).toFixed(2)}%`;
+
+    // Le même jeton peint que sur le feutre : c'est lui qu'on reconnaît de
+    // loin pendant la partie, avant même d'avoir lu le pseudo.
+    const piece = pieceFor(p);
+    const jeton = document.createElement('span');
+    jeton.className = 'sk-mini-jeton';
+    jeton.innerHTML = pieceSVG(piece);
+    jeton.style.setProperty('--sk-av-color', piece.color);
+    jeton.title = piece.label;
+    btn.appendChild(jeton);
+
+    const nom = document.createElement('span');
+    nom.className = 'sk-mini-nom';
+    nom.textContent = p.id === myId ? `${p.nickname} (toi)` : p.nickname;
+    btn.appendChild(nom);
+
+    // Le tapis ne dit rien à qui ne le voit pas : le libellé porte donc la
+    // conséquence en toutes lettres, et non le seul pseudo.
+    const phrase =
+      p.id === myId
+        ? 'Tu entames toi-même le pli suivant'
+        : `${p.nickname} entame le pli suivant`;
+    btn.title = phrase;
+    btn.setAttribute('aria-label', phrase);
+
+    btn.addEventListener('click', () => onPick(parId.get(p.id)));
+    tapis.appendChild(btn);
+  });
+
+  corps.appendChild(tapis);
+  powerPanel.appendChild(corps);
+}
+
 function renderPower(state) {
   powerBanner.classList.add('hidden');
   powerPanel.classList.add('hidden');
-  powerPanel.classList.remove('sk-power-panel--juanita', 'sk-power-panel--will', 'sk-power-panel--choix');
+  powerPanel.classList.remove(
+    'sk-power-panel--juanita',
+    'sk-power-panel--will',
+    'sk-power-panel--choix',
+    'sk-power-panel--tapis'
+  );
   powerPanel.innerHTML = '';
   willConfirmBtn = null;
 
@@ -4897,15 +4990,16 @@ function renderPower(state) {
   powerPanel.appendChild(hint);
 
   if (pending.kind === 'rosie') {
-    renderChoixPirate(
-      pending,
-      hint,
-      'Qui entame le pli suivant ?',
-      pending.options.map((o) => ({
-        label: o.id === myId ? `${o.nickname} (toi)` : o.nickname,
-        onPick: () => socket.emit('skullking-power-rosie', { leaderId: o.id }),
-      }))
-    );
+    // Le tapis suppose des sièges : sans liste d'options (ou sans joueurs
+    // connus, le temps d'un état incomplet), on retombe sur la rangée de
+    // boutons plutôt que sur un feutre vide.
+    if ((pending.options || []).length) {
+      renderChoixTapis(pending, hint, 'Qui entame le pli suivant ?', state, (o) => {
+        socket.emit('skullking-power-rosie', { leaderId: o.id });
+      });
+    } else {
+      renderChoixPirate(pending, hint, 'Qui entame le pli suivant ?', []);
+    }
   } else if (pending.kind === 'marythorne') {
     renderChoixPirate(
       pending,

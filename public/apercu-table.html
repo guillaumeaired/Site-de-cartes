@@ -28,6 +28,7 @@
                     | fin (l'écran de fin ; &exaequo=4, &loupe=0)
                     | kraken (pli englouti, l'animation part au chargement)
     ?pouvoir=juanita  le reliquat de Juanita Jade ; &reste=40, &ms=25000
+    ?pouvoir=rosie    le tapis de Rosie la Douce : les sièges tout autour
     ?duel=pirate,sirene  un pli de personnages résolu ; &gagnant=0&devore=1
     ?salve=1        la Dernière Salve + la carte en plus de son joueur
     ?planche=cible  la Planche en main, deux Pirates au tapis (désignation)
@@ -345,6 +346,19 @@ function pouvoirJuanita() {
   };
 }
 
+// --- Le pouvoir de Rosie la Douce --------------------------------------
+// `?pouvoir=rosie` : le cadre où l'on désigne qui entame le pli suivant. Il
+// rend le tapis en réduction, sièges compris : c'est la disposition qu'on
+// vient regarder, et elle change avec l'effectif (`?n=`).
+function pouvoirRosie() {
+  return {
+    kind: 'rosie',
+    playerId: 'p0',
+    mine: true,
+    options: joueurs.map((p) => ({ id: p.id, nickname: p.nickname, handCount: 5 })),
+  };
+}
+
 // --- Montage ------------------------------------------------------------
 (async () => {
   const html = await (await fetch('skullking.html')).text();
@@ -352,12 +366,18 @@ function pouvoirJuanita() {
   doc.body.querySelectorAll('script').forEach((s) => s.remove());
   document.body.insertAdjacentHTML('beforeend', doc.body.innerHTML);
 
-  await new Promise((ok, ko) => {
-    const s = document.createElement('script');
-    s.src = 'skullking.js';
-    s.onload = ok; s.onerror = ko;
-    document.body.appendChild(s);
-  });
+  // commun.js AVANT skullking.js, dans l'ordre de la vraie page : le fil de
+  // chat (creerChat) y vit depuis qu'il est partagé avec les autres jeux, et
+  // skullking.js l'appelle au chargement. Sans lui, le banc s'arrêtait sur un
+  // « creerChat is not defined » et restait sur l'écran d'accueil.
+  for (const src of ['commun.js', 'skullking.js']) {
+    await new Promise((ok, ko) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = ok; s.onerror = ko;
+      document.body.appendChild(s);
+    });
+  }
 
   if (PHASE === 'fin') {
     emettre('skullking-state', { ...etat, phase: 'game-end', finalRanking: classementFinal() });
@@ -369,6 +389,12 @@ function pouvoirJuanita() {
 
   if (POUVOIR === 'juanita') {
     emettre('skullking-state', { ...etat, phase: 'power', pendingPower: pouvoirJuanita() });
+    document.documentElement.dataset.apercuPret = '1';
+    return;
+  }
+
+  if (POUVOIR === 'rosie') {
+    emettre('skullking-state', { ...etat, phase: 'power', pendingPower: pouvoirRosie() });
     document.documentElement.dataset.apercuPret = '1';
     return;
   }
