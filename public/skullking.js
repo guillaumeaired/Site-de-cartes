@@ -1499,11 +1499,15 @@ function renderExtensionCard(extensions, modules, deckSize, maxPlayers, isHost) 
   // s'il faut ouvrir — lesquels exactement, c'est la question qu'on se pose
   // en ouvrant, pas avant.
   const prises = lignes.filter((m) => actives[m.key]).length;
-  extEtat.textContent = !prises
-    ? 'Aucune extension utilisée'
-    : toutes
-      ? `Toutes les extensions (${lignes.length})`
-      : `${prises} extension${prises > 1 ? 's' : ''} utilisée${prises > 1 ? 's' : ''}`;
+  extEtat.textContent = isHost
+    ? toutes
+      ? 'Toutes les extensions utilisées'
+      : "Ajoute des extensions pour pouvoir jouer jusqu'à 9 joueurs"
+    : !prises
+      ? ''
+      : toutes
+        ? `Toutes les extensions (${lignes.length})`
+        : `${prises} extension${prises > 1 ? 's' : ''} utilisée${prises > 1 ? 's' : ''}`;
 
   // Le cadre du lobby ne montre que les cartes réellement dans le paquet.
   // Cliquer l'une d'elles reprend la même fiche détaillée que dans le jeu.
