@@ -4759,7 +4759,17 @@ h3 {
    habituelle. En dessous de 1000px, ou sur un navigateur sans :has(),
    rien ne change : la mise en page verticale actuelle reste la
    référence mobile, aucun risque de régression. */
-@media (min-width: 1000px) {
+/* La condition porte DEUX cas, et le premier est inchangé : sur un écran
+   d'au moins 1000 px, rien de ce bloc ne bouge d'un pixel. Le second ajoute
+   le téléphone COUCHÉ — la scène peinte y remplit l'écran exactement comme
+   sur un ordinateur, mais il n'a que ~850 px de large et retombait dans la
+   mise en page « colonne étroite » : sièges sans médaillon, colonne du
+   registre sans ses intitulés ni sa colonne d'annonces, pseudo à partager
+   avec un jeton dans une plaque de 35 px. Les cotes de ce bloc, taillées
+   pour un grand écran, sont reprises plus bas à l'échelle du téléphone
+   (voir « TÉLÉPHONE COUCHÉ »). */
+@media (min-width: 1000px),
+       (orientation: landscape) and (max-height: 500px) and (pointer: coarse) and (hover: none) {
   .app.sk-app:has(#sk-screen-game:not(.hidden)) {
     max-width: 1600px;
     width: 100%;
@@ -9980,5 +9990,672 @@ h3 {
      ligne de résumé de trois valeurs se disputent la largeur. */
   .sk-lobby-settings-card {
     gap: 10px;
+  }
+}
+
+/* =====================================================================
+   LA PORTE DU PAYSAGE — téléphone tenu debout
+
+   La scène de jeu est une peinture au rapport figé : elle se cale sur la
+   plus petite dimension de la fenêtre. En portrait, c'est la largeur —
+   390 px de large donnent 220 px de table, et plus rien n'y est jouable.
+   On demande donc le geste plutôt que de dessiner une seconde scène
+   verticale qu'il faudrait tenir en double.
+
+   Tout est ici, dans la feuille de style : la porte s'ouvre et se ferme
+   avec l'orientation, sans qu'aucun script ait à écouter quoi que ce
+   soit. Le JS ne fait qu'ajouter le verrouillage en paysage et la sortie
+   de secours (voir `sk-portrait-force`).
+   ===================================================================== */
+
+.sk-rotate-gate {
+  /* Fermée par défaut : c'est la règle d'orientation, plus bas, qui
+     l'ouvre. Un écran de bureau ne doit jamais la rencontrer. */
+  display: none;
+  position: fixed;
+  inset: 0;
+  /* Au-dessus de tout — la table (2 et 3), les modales (jusqu'à 90) et
+     les cadres de choix. Rien ne passe devant la porte. */
+  z-index: 999;
+  place-items: center;
+  padding: 26px 22px;
+  /* Noir plein, pas un voile : tant que la porte est là, il n'y a rien à
+     lire derrière. Le halo chaud rappelle seulement la bougie de la
+     taverne, il n'éclaire aucun contenu. */
+  background:
+    radial-gradient(72% 52% at 50% 44%, rgba(184, 137, 53, 0.12), transparent 70%),
+    #000;
+  text-align: center;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.sk-rotate-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 30ch;
+}
+
+/* --- Le téléphone qui se couche --------------------------------------
+   Le geste demandé, montré. Le boîtier tourne d'un quart de tour, marque
+   le temps couché, puis revient : c'est la boucle qu'on fait soi-même
+   avec l'appareil dans la main. */
+.sk-rotate-phone {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+
+.sk-rotate-phone-corps {
+  display: block;
+  width: 54px;
+  height: 92px;
+  padding: 7px 5px;
+  border-radius: 9px;
+  border: 2px solid var(--sk-brass);
+  background: linear-gradient(180deg, #1a120b, #0b0704);
+  box-shadow: 0 0 22px rgba(184, 137, 53, 0.25);
+  animation: sk-rotate-hint 3.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.sk-rotate-phone-ecran {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(232, 206, 146, 0.30), rgba(184, 137, 53, 0.10));
+}
+
+@keyframes sk-rotate-hint {
+  0%, 26%   { transform: rotate(0deg); }
+  52%, 88%  { transform: rotate(-90deg); }
+  100%      { transform: rotate(0deg); }
+}
+
+.sk-rotate-titre {
+  margin: 0;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--sk-brass-hi);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.sk-rotate-texte {
+  margin: 8px 0 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--sk-cream-2);
+}
+
+.sk-rotate-lock {
+  margin-top: 22px;
+  min-height: 46px;
+  font-size: 0.9rem;
+}
+
+/* La sortie de secours se lit, mais ne se propose pas : c'est le second
+   choix, pour un appareil dont la rotation est verrouillée au niveau du
+   système. */
+.sk-rotate-skip {
+  margin-top: 16px;
+  font-size: 0.78rem;
+  opacity: 0.6;
+}
+
+/* Écran très bas (téléphone couché qui ne verrouille pas, clavier ouvert) :
+   le dessin cède la place au texte plutôt que de le pousser dehors. */
+@media (max-height: 420px) and (pointer: coarse) and (hover: none) {
+  .sk-rotate-phone {
+    width: 62px;
+    height: 62px;
+    margin-bottom: 8px;
+  }
+  .sk-rotate-phone-corps {
+    width: 36px;
+    height: 60px;
+    padding: 5px 4px;
+  }
+  .sk-rotate-titre { font-size: 1.15rem; }
+  .sk-rotate-texte { font-size: 0.84rem; }
+  .sk-rotate-lock { margin-top: 12px; }
+  .sk-rotate-skip { margin-top: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-rotate-phone-corps {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}
+
+/* LA CONDITION — et rien qu'elle. Trois conditions qui doivent TOUTES
+   tenir, parce que cette porte ne doit jamais se refermer sur un écran
+   d'ordinateur :
+
+     `pointer: coarse` + `hover: none` — un appareil qu'on touche du doigt.
+       C'est ce couple, et pas la largeur, qui distingue un téléphone d'une
+       fenêtre de navigateur qu'on a rétrécie : une fenêtre étroite sur un
+       poste de bureau garde une souris, donc un pointeur fin et le survol.
+       Un ordinateur ne rencontre donc jamais la porte, quelle que soit la
+       forme qu'on donne à sa fenêtre.
+     `orientation: portrait` — l'appareil est tenu debout.
+     `max-width: 900px` — c'est bien un téléphone, pas une tablette large
+       tenue debout, où la scène tient encore.
+   */
+@media (orientation: portrait) and (max-width: 900px) and (pointer: coarse) and (hover: none) {
+  html:not(.sk-portrait-force) .sk-rotate-gate {
+    display: grid;
+  }
+
+  /* Rien ne défile derrière une porte fermée : sans ça, un doigt posé sur
+     la plaque noire faisait glisser l'accueil en dessous. */
+  html:not(.sk-portrait-force) body {
+    overflow: hidden;
+  }
+}
+
+/* =====================================================================
+   TÉLÉPHONE COUCHÉ — ce que la porte impose devient la mise en page de
+   référence sur mobile. La table, elle, n'a besoin de rien : la scène est
+   une peinture au rapport 16/9 qui se cale sur la hauteur et remplit
+   l'écran d'un téléphone couché. Ce sont les trois AUTRES écrans —
+   l'accueil, le salon, le récap — qui sont dessinés en colonne et qui,
+   sur 390 px de haut, se retrouvent à défiler.
+
+   `max-height` et pas `max-width` : c'est la hauteur qui manque. Et le
+   même couple `pointer: coarse` + `hover: none` que la porte, pour la
+   même raison : sur un ordinateur, RIEN de ce qui suit ne doit s'appliquer,
+   pas même à une fenêtre qu'on aurait aplatie.
+   ===================================================================== */
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) and (hover: none) {
+
+  /* La colonne de 760 px du reste du site laissait 116 px de bois nu de
+     chaque côté d'un téléphone couché — c'est-à-dire la largeur qui manque
+     à l'équipage pour tenir ses médaillons. Couché, l'écran EST la
+     colonne. (L'accueil et la table, eux, sont en `position: fixed` : ils
+     ne dépendaient déjà plus de cette cote.) */
+  .app.sk-app {
+    max-width: none;
+    padding: 5px 12px;
+  }
+
+  /* --- L'ACCUEIL, en deux colonnes ---------------------------------
+     Couché, l'écran a de la largeur en trop et plus de hauteur du tout :
+     l'enseigne et sa phrase prennent la gauche, les commandes la droite.
+     Empilés, le logo seul mangeait 225 px des 390 disponibles et le
+     formulaire de code tombait sous la ligne de flottaison. */
+  #sk-screen-home:not(.hidden) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 290px);
+    align-content: center;
+    justify-content: center;
+    column-gap: 30px;
+    padding: 12px 22px;
+    overflow-y: auto;
+  }
+
+  #sk-screen-home:not(.hidden) .sk-home-title {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    align-self: center;
+    margin: 0;
+  }
+
+  .sk-home-title img {
+    max-width: min(400px, 40vw);
+  }
+
+  /* La marge automatique qui, en colonne, repoussait les commandes en bas
+     de l'écran n'a plus lieu d'être : la grille place elle-même. */
+  #sk-screen-home:not(.hidden) .tagline {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0 auto;
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  #sk-screen-home:not(.hidden) .btn-rules-link {
+    grid-column: 1;
+    grid-row: 5;
+    justify-self: center;
+    align-self: start;
+    margin: 10px 0 0;
+  }
+
+  #sk-screen-home:not(.hidden) .nickname-field {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0 auto 10px;
+  }
+
+  #sk-screen-home:not(.hidden) .btn-create {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 52px;
+    font-size: 1.02rem;
+  }
+
+  #sk-screen-home:not(.hidden) .divider {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 12px auto;
+  }
+
+  #sk-screen-home:not(.hidden) #sk-form-join {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  #sk-screen-home:not(.hidden) #sk-home-error {
+    grid-column: 2;
+    grid-row: 5;
+    margin-top: 8px;
+  }
+
+  /* --- LE SALON, en deux colonnes -----------------------------------
+     Le salon de téléphone est une colonne : l'enseigne, la rangée de tête,
+     puis une zone qui défile, puis les actions. Sur 390 px de haut, les
+     trois blocs fixes ne laissaient à la zone qui défile que 55 px de
+     hauteur pour 744 px de contenu — l'équipage, les pièces et la
+     discussion étaient tous derrière un trou de serrure.
+
+     Couché, l'écran a de la largeur en trop : on met à GAUCHE tout ce qui
+     ne défile pas (enseigne, réglages, code, actions) et on donne à la
+     zone qui défile toute la hauteur de la colonne de droite. Elle passe
+     de 55 px à ~330, et ses trois planches s'y rangent côte à côte. */
+  #sk-screen-waiting:not(.hidden) {
+    display: grid;
+    grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    align-content: start;
+    column-gap: 14px;
+    height: calc(100dvh - 12px);
+    overflow: hidden;
+  }
+
+  #sk-screen-waiting .sk-waiting-top {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  #sk-screen-waiting .sk-waiting-logo {
+    grid-column: 1;
+    grid-row: 2;
+    width: min(176px, 21vw);
+    margin: 0 auto 4px;
+  }
+
+  /* La rangée de tête se DISSOUT : ses deux planches deviennent des cases
+     de la grille du salon et se séparent. Ensemble dans la colonne de
+     gauche, elles ne tenaient pas — le code passait sous les boutons
+     d'action, c'est-à-dire nulle part, alors que c'est la seule chose du
+     salon qu'on doive lire à voix haute.
+     Les réglages restent donc à gauche, sous l'enseigne ; le code monte au
+     bout de la première rangée, en face du « Quitter », dans la bande que
+     rien n'occupait. */
+  #sk-screen-waiting .sk-lobby-headline {
+    display: contents;
+  }
+
+  #sk-screen-waiting .sk-lobby-settings-card {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Le code, en une seule ligne : l'étiquette, les quatre lettres, le
+     bouton. Empilé sur trois lignes il redevenait une planche, et une
+     planche ne tient pas dans une bande de bandeau. */
+  #sk-screen-waiting #sk-share-block {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
+    width: auto;
+    max-width: none;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 5px 11px 6px;
+    border-radius: 13px;
+    text-align: left;
+  }
+
+  #sk-screen-waiting .sk-share-chip-label {
+    grid-column: auto;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+  }
+
+  #sk-screen-waiting .sk-share-chip-code {
+    padding: 3px 10px;
+    font-size: 1rem;
+  }
+
+  #sk-screen-waiting .sk-share-chip-copy {
+    padding: 4px 10px;
+    font-size: 0.6rem;
+  }
+
+  #sk-screen-waiting .sk-lobby-actions {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0;
+    padding: 6px 0 0;
+    /* Le dégradé qui, en colonne, détachait les actions du contenu qui
+       défilait derrière elles n'a plus rien derrière lui. */
+    background: none;
+  }
+
+  /* La zone qui défile prend toute la colonne de droite, du haut de
+     l'enseigne au bas de l'écran. Ses trois planches s'y rangent en deux
+     bandes : l'équipage tient la sienne sur toute la hauteur — c'est la
+     seule où l'on CHOISIT quelque chose — les extensions et la discussion
+     se partagent l'autre. */
+  #sk-screen-waiting .sk-lobby-grid {
+    grid-column: 2;
+    grid-row: 2 / -1;
+    display: grid;
+    /* L'équipage prend la bande la plus large : c'est une grille de
+       médaillons et une liste de pseudos, les deux se coupent dès qu'on
+       les serre. Les extensions et la discussion sont du texte, elles se
+       replient. */
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    align-content: start;
+    gap: 10px;
+    min-height: 0;
+    margin: 0;
+    padding: 2px 3px 6px 0;
+    overflow-y: auto;
+  }
+
+  #sk-screen-waiting .sk-lobby-pile { grid-column: 1; grid-row: 1; max-width: none; }
+  #sk-screen-waiting .sk-lobby-col--crew { grid-column: 2; grid-row: 1 / span 2; max-width: none; }
+  #sk-screen-waiting .sk-lobby-chat { grid-column: 1; grid-row: 2; margin: 0; max-width: none; }
+
+  .sk-lobby-summary {
+    min-height: 0;
+    margin-bottom: 8px;
+  }
+
+  /* --- LE RÉCAP DE FIN ----------------------------------------------
+     Même partage que le salon : ce qui ne défile pas tient la fenêtre, le
+     reste défile dessous. L'enseigne verticale et le verdict prenaient à
+     eux seuls 230 des 390 px, et « Rejouer » tombait deux écrans plus
+     bas. L'enseigne se couche donc à côté du verdict, et les trois
+     planches se rangent en deux bandes. */
+  #sk-screen-end:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 12px);
+    overflow: hidden;
+  }
+
+  .sk-end-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+
+  .sk-end-logo {
+    width: 84px;
+    margin: 0;
+  }
+
+  .sk-end-winner-piece {
+    width: 28px;
+    height: 28px;
+  }
+
+  #sk-end-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .sk-end-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-content: start;
+    align-items: start;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 3px;
+  }
+
+  .sk-end-panel {
+    padding: 9px 11px 8px;
+  }
+
+  .sk-end-panel--rank {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .sk-end-actions {
+    flex: none;
+    margin-top: 7px;
+  }
+
+  /* --- LA TABLE ------------------------------------------------------
+     La scène est une peinture au rapport 16/9 : couchée sur un téléphone
+     elle se cale sur la HAUTEUR et ne fait plus que ~690 px de large. Tout
+     ce qui s'y pose en pourcentage suit sans broncher ; ce qui reste en
+     pixels — le bandeau du haut, ses trois blocs — ne suit pas, et les
+     trois se chevauchaient : « Quitter » sous la piste des manches,
+     « Réglages » sous le cartouche.
+
+     Le bandeau se resserre donc d'un cran de plus que la règle des 760 px
+     (qui, elle, regarde la fenêtre — 844 px ici — et ne se déclenche pas,
+     alors que c'est la SCÈNE qui est étroite). */
+  .sk-scene .sk-game-header {
+    gap: 6px;
+    padding: 4px 8px 6px;
+  }
+
+  .sk-scene .sk-chain { height: 21px; }
+  .sk-scene .sk-chain-bout--g { width: calc(21px * 99 / 171); }
+  .sk-scene .sk-chain-bout--d { width: calc(21px * 95 / 171); }
+  .sk-scene .sk-chain-alveole { width: calc(21px * 147 / 171); }
+
+  .sk-scene .sk-round-scroll {
+    padding: 2px 7px 3px;
+  }
+
+  .sk-scene .sk-round-scroll .sk-scroll-t {
+    font-size: 0.46rem;
+    letter-spacing: 0.05em;
+  }
+
+  .sk-scene .sk-topbar-side .btn-link {
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+  }
+
+  .sk-scene .sk-topbar-side .btn-small {
+    padding: 5px 9px 6px;
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* L'ÉVENTAIL. Les cartes de la main sont en pixels fixes (84 px) : sur
+     une scène de 693 px elles pèsent 12 % de la largeur, contre 6 % sur un
+     écran d'ordinateur. Dix cartes réclamaient alors deux fois la bande
+     qui leur est réservée, et la moitié de la main partait au défilement
+     horizontal. Elles se mesurent donc sur la scène — `cqw`, comme les
+     cartes du tapis — sans jamais descendre sous 50 px, la taille en
+     dessous de laquelle le chiffre du pied cesse de se lire. */
+  .sk-scene > #sk-hand .sk-card {
+    --sk-w: clamp(50px, 9.2cqw, 84px);
+  }
+
+  /* Les étiquettes de siège ont la même maladie à l'envers : leur plaque
+     est en `cqw` (elle rétrécit avec la scène), leur texte en `rem` (il ne
+     rétrécit pas). « Barbe-Rousse » devenait « B… ». */
+  /* Le médaillon du siège vaut 58 px sur une scène d'ordinateur large de
+     1400 : quatre pour cent de la peinture. Sur une scène de 693 px, les
+     mêmes 58 px en font huit, et cinq médaillons recouvraient le feutre et
+     le talon de cartes. On les ramène à leur part. */
+  .sk-scene .sk-seat-av {
+    width: 30px;
+    height: 30px;
+    border-width: 2px;
+    font-size: 0.95rem;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+  }
+
+  .sk-scene .sk-seat--turn .sk-seat-av {
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(184, 137, 53, 0.25);
+  }
+
+  /* La pilule « x sur y » sous le pseudo suit la même échelle. */
+  .sk-scene .sk-seat-tally {
+    font-size: 0.52rem;
+    padding: 0 5px;
+  }
+
+  /* La plaque de siège se mesure sur le FEUTRE (`cqw` — le tapis est lui
+     aussi un conteneur), qui ne fait que 268 px sur une scène de
+     téléphone : 17 % de 268 laissaient 30 px au pseudo, une fois le jeton
+     d'annonce servi. Elle prend un quart du feutre, ce qui reste très en
+     deçà de l'écart entre deux sièges voisins. */
+  .sk-scene .sk-seat {
+    width: 25cqw;
+  }
+
+  .sk-scene .sk-seat-name {
+    font-size: 0.56rem;
+    letter-spacing: 0.02em;
+    /* Et le nom se REPLIE plutôt que de se faire couper : la plaque fait
+       48 px de large sur une scène de téléphone, « Barbe-Rousse » y tenait
+       en « B… » — de quoi reconnaître une couleur, pas un joueur. Deux
+       lignes courtes valent mieux qu'une initiale. */
+    white-space: normal;
+    /* `break-word` et non `anywhere` : on ne coupe un mot que s'il ne
+       tient pas seul sur sa ligne — « Le Borgne » se plie entre les deux
+       mots, il ne se casse pas en « BORGN / E ». */
+    overflow-wrap: break-word;
+    line-height: 1.06;
+  }
+
+  .sk-scene .sk-seat-bid {
+    font-size: 0.55rem;
+  }
+
+  /* La légende du tapis suit : deux lignes italiques centrées dans un
+     feutre de 268 px, elles montaient sur les plaques des deux sièges du
+     fond. */
+  .sk-scene .sk-trick-caption {
+    font-size: 0.62rem;
+  }
+
+  /* La consigne est une bulle de texte à taille fixe posée sur une scène
+     qui, elle, a rétréci : sa phrase passait sur deux lignes et la seconde
+     retombait sur le bord haut du feutre, juste là où s'assoient les deux
+     sièges du fond. Une ligne suffit si la bulle se met à l'échelle, et
+     elle remonte d'autant. Le bandeau de pouvoir la suit — les deux
+     s'affichent parfois ensemble, l'un au-dessus de l'autre. */
+  .sk-scene .sk-turn-indicator {
+    top: 28%;
+    padding: 4px 12px;
+    font-size: 0.68rem;
+  }
+
+  .sk-scene #sk-power-banner {
+    top: 20.5%;
+    padding: 3px 11px;
+    font-size: 0.66rem;
+  }
+
+  /* LES DEUX PLAQUES DE GAUCHE. Elles se partagent une bande de 15,8 % —
+     110 px sur une scène de téléphone, soit 51 px chacune — pendant que
+     leur texte, lui, reste en `rem`. « ANNONCÉS » à lui seul est plus large
+     que sa plaque : les deux débordaient de leur case et passaient sous
+     celle du gain, « MON CONTRAT » se lisant à travers « GAIN SI CONTRAT
+     REMPLI ».
+     Elles s'empilent donc au lieu de se ranger côte à côte : chacune
+     retrouve les 110 px de la bande, et la hauteur, elle, ne manque pas de
+     ce côté-là de la scène. */
+  .sk-scene > .sk-plaque-pile {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .sk-plaque-pile > .sk-plaque {
+    padding: 5px 8px 6px;
+    gap: 3px;
+  }
+
+  .sk-scene .sk-plaque-k {
+    font-size: 0.5rem;
+    letter-spacing: 0.07em;
+  }
+
+  .sk-plaque-pile .sk-mine-v,
+  .sk-plaque-pile .sk-round-tricks-v,
+  .sk-scene .sk-gain-v {
+    font-size: 0.92rem;
+  }
+
+  .sk-scene > #sk-gain {
+    padding: 5px 8px 6px;
+  }
+
+  /* La pilule d'annonce et les deux plaques se disputent le MÊME coin.
+     Sur une scène basse, la pilule est renvoyée en bas à gauche (voir le
+     `@container (max-height: 600px)`) — c'est-à-dire exactement là où le
+     couple « total annoncé / mon contrat » est posé, et sur un téléphone
+     les deux se recouvraient, chiffres sur jetons.
+
+     Le coin revient à la pilule le temps de l'annonce. Ce n'est pas un
+     arbitrage arbitraire : pendant qu'on annonce, les deux plaques ne
+     disent rien — le total ne se remplit qu'à la révélation, et « mon
+     contrat » est précisément ce que les jetons sont en train de fixer.
+     Elles reviennent dès que la pilule se referme, avec leurs vraies
+     valeurs. */
+  .sk-scene:has(> #sk-bid-choices:not(.hidden):not(:empty)) > .sk-plaque-pile,
+  .sk-scene:has(> #sk-bid-choices:not(.hidden):not(:empty)) > #sk-gain {
+    display: none;
+  }
+
+  /* Le cadre de fin de manche sait déjà défiler (voir
+     .sk-round-popup-inner) ; il gagne seulement en marges, ce qui rend une
+     ligne de score de plus à la liste. */
+  .sk-round-popup-inner {
+    padding: 12px 16px 14px;
+  }
+
+  .sk-round-popup-inner h3 {
+    margin-bottom: 8px;
+    font-size: 1.05rem;
+  }
+
+  /* --- LES MODALES ---------------------------------------------------
+     Une fenêtre de 390 px de haut ne tient pas une page de règles : le
+     cadre garde ses bords et c'est son contenu qui défile. */
+  .modal-content {
+    max-height: calc(100dvh - 16px);
+    padding: 16px 20px;
+    overflow-y: auto;
   }
 }

@@ -2001,7 +2001,17 @@ const SEAT_ELLIPSE = { cx: 50, cy: 50, rx: 44, ry: 40, startDeg: 66 };
 // tombe donc pile sur le bord du feutre, quel que soit son évasement. On
 // reste juste en deçà pour que le jeton morde le liseré doré sans le sauter.
 const SEAT_ELLIPSE_LANDSCAPE = { cx: 50, cy: 50, rx: 47, ry: 45 };
-const landscapeTable = window.matchMedia('(min-width: 1000px)');
+// « Table en paysage » — la scène peinte avec ses sièges au bord du feutre,
+// le pseudo posé à même le bois et l'annonce lue dans le registre de droite.
+// Un téléphone COUCHÉ est dans ce cas-là aussi, même s'il n'a pas 1000 px de
+// large : la scène y occupe tout l'écran exactement comme sur un ordinateur.
+// Sans lui, il tombait dans la branche « étroite » — celle qui ajoute le
+// jeton d'annonce DANS l'étiquette du siège — et le pseudo se retrouvait à
+// partager 35 px avec un « ✓ » (« B… », « LE / BORGN / E »).
+// La première condition est inchangée : sur ordinateur, rien ne bouge.
+const landscapeTable = window.matchMedia(
+  '(min-width: 1000px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) and (hover: none)'
+);
 // Sur téléphone, le tapis est étroit et les étiquettes de siège débordaient
 // des deux côtés (« B… », « L… » posés hors du bois) : on resserre l'ellipse
 // pour que le siège entier tienne à l'intérieur du feutre.
@@ -6354,3 +6364,59 @@ function brancherDefilement(zone, boite) {
 
 brancherDefilement(scoreboardRows, document.querySelector('.sk-carnet'));
 brancherDefilement(document.getElementById('sk-chat-log'), document.querySelector('.sk-chat-livre'));
+
+
+// =====================================================================
+// LA PORTE DU PAYSAGE
+//
+// La plaque noire elle-même est entièrement tenue par la feuille de style :
+// `@media (orientation: portrait)` l'ouvre, la rotation de l'appareil la
+// referme. Rien ici n'écoute l'orientation — un écouteur qui bascule une
+// classe se serait désynchronisé de la règle CSS à chaque redimensionnement.
+//
+// Il ne reste que les deux commandes de la porte :
+//   — le plein écran paysage, quand le navigateur l'expose (Android/Chrome ;
+//     iOS n'a ni l'un ni l'autre pour une page) ;
+//   — la sortie de secours, pour un appareil dont la rotation est verrouillée
+//     dans les réglages du système et qui ne tournera donc jamais.
+// =====================================================================
+const PORTRAIT_FORCE_KEY = 'skullking:portraitForce';
+const rotateLockBtn = document.getElementById('sk-btn-rotate-lock');
+const rotateSkipBtn = document.getElementById('sk-btn-rotate-skip');
+
+// Le choix vaut pour la visite, pas pour toujours : c'est une exception qu'on
+// consent à un moment donné, et la partie suivante repose la question.
+if (sessionStorage.getItem(PORTRAIT_FORCE_KEY)) {
+  document.documentElement.classList.add('sk-portrait-force');
+}
+
+rotateSkipBtn?.addEventListener('click', () => {
+  sessionStorage.setItem(PORTRAIT_FORCE_KEY, '1');
+  document.documentElement.classList.add('sk-portrait-force');
+});
+
+// Le verrouillage n'existe qu'en plein écran, et seulement là où l'API est
+// implémentée. On ne montre le bouton que si les deux morceaux répondent :
+// un bouton qui ne fait rien vaut moins qu'une consigne claire.
+const peutVerrouiller =
+  typeof screen !== 'undefined' &&
+  screen.orientation &&
+  typeof screen.orientation.lock === 'function' &&
+  typeof document.documentElement.requestFullscreen === 'function';
+
+if (peutVerrouiller && rotateLockBtn) {
+  rotateLockBtn.classList.remove('hidden');
+  rotateLockBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+      await screen.orientation.lock('landscape');
+    } catch {
+      // Refusé (geste jugé insuffisant, réglage système, navigateur qui
+      // annonce l'API sans l'honorer) : la consigne écrite reste valable et
+      // tourner l'appareil à la main referme la porte de la même façon.
+      rotateLockBtn.classList.add('hidden');
+    }
+  });
+}

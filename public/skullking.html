@@ -659,6 +659,49 @@
     </div>
   </div>
 
+  <!-- =====================================================================
+       LA PORTE DU PAYSAGE — le premier écran d'un téléphone tenu debout.
+
+       La scène de jeu est une peinture au rapport figé (1672x941) : sur un
+       téléphone en portrait elle se cale sur la LARGEUR, et les 390 px de
+       large d'un iPhone donnent une table de 220 px de haut, au milieu de
+       deux bandes noires. Rien n'y est jouable — ni les sièges, ni
+       l'éventail, ni le registre.
+
+       Plutôt que de réinventer la scène en vertical, on demande le geste
+       qui la rend jouable : tourner l'appareil. La porte est une plaque
+       NOIRE PLEINE, pas un voile : tant qu'elle est là il n'y a rien à
+       lire derrière, et un demi-jour laisserait croire qu'on peut quand
+       même s'en passer.
+
+       Elle est entièrement pilotée par la feuille de style (voir la règle
+       `@media (orientation: portrait)`) : aucun script ne l'ouvre ni ne la
+       ferme, elle disparaît d'elle-même dès que l'écran est couché. Le JS
+       n'ajoute que le confort — le verrouillage en paysage quand le
+       navigateur le permet, et la sortie de secours.
+       ===================================================================== -->
+  <div id="sk-rotate-gate" class="sk-rotate-gate" role="dialog" aria-modal="true" aria-labelledby="sk-rotate-titre">
+    <div class="sk-rotate-inner">
+      <!-- Le téléphone se couche en boucle : c'est le geste demandé, montré
+           plutôt qu'écrit. Deux pièces seulement — le boîtier et son écran —
+           pour que le dessin reste net à n'importe quelle densité. -->
+      <div class="sk-rotate-phone" aria-hidden="true">
+        <span class="sk-rotate-phone-corps"><span class="sk-rotate-phone-ecran"></span></span>
+      </div>
+      <p id="sk-rotate-titre" class="sk-rotate-titre">Tourne ton téléphone</p>
+      <p class="sk-rotate-texte">Skull King se joue à l'horizontale : la table,
+        ta main et le registre tiennent dans la largeur.</p>
+      <!-- Le verrouillage n'existe que sur les navigateurs qui l'exposent
+           (Android/Chrome, en plein écran). Le bouton est donc masqué par
+           défaut et n'est révélé par le script que si l'API répond. -->
+      <button id="sk-btn-rotate-lock" class="btn btn-primary sk-rotate-lock hidden" type="button">Passer en plein écran</button>
+      <!-- La sortie de secours : un appareil dont la rotation est bloquée
+           dans les réglages du système ne tournera jamais, et sans elle son
+           propriétaire resterait devant une plaque noire. -->
+      <button id="sk-btn-rotate-skip" class="btn-link sk-rotate-skip" type="button">Continuer quand même</button>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="commun.js"></script>
   <script src="skullking.js"></script>
