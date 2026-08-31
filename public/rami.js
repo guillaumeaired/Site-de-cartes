@@ -1120,8 +1120,8 @@ socket.on('rami-game-start', ({ myId: id, hand, players, drawPileCount, turnPlay
 });
 
 // Petit carillon montant a la pose d'une combinaison (ouverture, nouvelle
-// mêlée, ou ajout sur une mêlée existante) - meme pattern que les sons de la
-// Bataille (oscillateur brut, pas de fichier audio).
+// mêlée, ou ajout sur une mêlée existante) - oscillateur brut, pas de fichier
+// audio a charger.
 function playMeldTone() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1148,7 +1148,7 @@ function tableCardCount(table) {
 }
 
 // Petit badge "+N" qui monte et s'estompe au-dessus du tapis du joueur qui
-// vient de marquer - meme pattern que le gain-popup de la Bataille. Le score
+// vient de marquer. Le score
 // en direct n'est plus affiche en permanence (choix explicite), mais ce
 // popup transitoire reste le bon retour immediat sans reintroduire un badge fixe.
 function showMeldScorePopup(playerId, amount) {

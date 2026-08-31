@@ -1,5 +1,5 @@
-// Salons de Rami Français en Socket.io. Même schéma que les salons de
-// Bataille dans index.js (rooms Map, lobby, hôte, déconnexion) mais avec
+// Salons de Rami Français en Socket.io. Même schéma que les autres salons du
+// site (rooms Map, lobby, hôte, déconnexion) mais avec
 // l'état spécifique au Rami (pioche, défausse en ligne, tapis, tour par
 // tour, score qui monte à chaque pose). Une partie = une seule manche.
 
@@ -424,8 +424,8 @@ function endGame(io, room, winnerId) {
 
 // Depart definitif (quitte explicitement, ou delai de grace expire sans
 // retour) : v1 = 2 joueurs seulement, donc le depart de l'un met fin a la
-// partie pour l'autre (pas de "la partie continue sans lui" comme pour la
-// Bataille, ça n'a pas de sens en tour par tour a 2).
+// partie pour l'autre (pas de "la partie continue sans lui" comme au 24,
+// ça n'a pas de sens en tour par tour a 2).
 function finalizeRamiDisconnect(io, room, id, reason) {
   const idx = room.players.findIndex((p) => p.id === id);
   if (idx === -1) return;

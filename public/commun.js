@@ -1,7 +1,7 @@
 // Ce que les quatre jeux font exactement pareil côté navigateur. Chargé avant
 // le script de chaque jeu (voir les <script> en bas des pages), sans étape de
 // build : ce sont des scripts classiques, tout ce qui est déclaré ici est
-// visible depuis client.js, rami.js, ascenseur.js et skullking.js.
+// visible depuis rami.js, ascenseur.js, skullking.js et vingtquatre.js.
 //
 // Pendant du server/commun.js côté serveur, et même raison d'être : une
 // fonction recopiée dans quatre fichiers finit par n'être corrigée que dans
@@ -16,7 +16,7 @@
 // avoir sa propre identite, sinon un 2e onglet du meme navigateur "vole"
 // la session du 1er au lieu de pouvoir rejoindre en tant que 2e joueur.
 // La clé est volontairement commune aux quatre jeux : c'est la même personne
-// sur le même onglet, qu'elle passe de la Bataille au Skull King ou non.
+// sur le même onglet, qu'elle passe du Rami au Skull King ou non.
 function getPlayerToken() {
   let token = sessionStorage.getItem('cardGamesPlayerToken');
   if (!token) {
@@ -33,7 +33,7 @@ function getPlayerToken() {
 // trouvées dans ce projet par ce chemin exact — le nettoyage côté serveur est
 // une seconde ligne de défense, pas un remplacement de celle-ci.
 // Le plus sûr reste de poser le texte en textContent quand c'est possible :
-// c'est ce que font le Rami et la Bataille, qui n'ont donc pas besoin d'appeler
+// c'est ce que font le Rami et Le 24, qui n'ont donc pas besoin d'appeler
 // cette fonction.
 function escapeHTML(value) {
   return String(value ?? '').replace(
@@ -49,7 +49,7 @@ function nicknameOf(state, id) {
   return p ? p.nickname : '?';
 }
 
-// Les cartes classiques (Bataille, Rami, Ascenseur). Le Skull King a ses
+// Les cartes classiques (Rami, Ascenseur, Le 24). Le Skull King a ses
 // propres familles et n'utilise donc rien de tout ceci.
 const RED_SUITS = new Set(['coeur', 'carreau']);
 

@@ -1,3 +1,11 @@
+// Le paquet de 52 cartes classique et son mélange, partagés par les jeux qui
+// s'en servent : L'Ascenseur (createDeck + shuffle) et le Skull King (shuffle
+// seul, ses cartes lui étant propres). L'as y vaut 14, il bat le roi — c'est
+// la convention des jeux de plis. Le 24 a son propre paquet, où l'as vaut 1.
+//
+// Ce fichier servait d'abord la Bataille, d'où son nom : il portait aussi
+// dealHands et buryUpToN, partis avec elle le 31 août 2026.
+
 const SUITS = ['coeur', 'carreau', 'trefle', 'pique'];
 const RANKS = [
   { label: '2', value: 2 },
@@ -34,20 +42,4 @@ function shuffle(deck) {
   return cards;
 }
 
-// Distribue le paquet en rotation entre playerCount joueurs (2 a 4), aussi
-// equitablement que possible : ex. 3 joueurs -> 18/17/17. Retourne un tableau
-// de mains, dans le meme ordre que les joueurs.
-function dealHands(playerCount) {
-  const deck = shuffle(createDeck());
-  const hands = Array.from({ length: playerCount }, () => []);
-  deck.forEach((card, i) => hands[i % playerCount].push(card));
-  return hands;
-}
-
-// Retire et retourne jusqu'a n cartes du dessus d'une main (pour la bataille).
-// Peut en retourner moins si la main est presque vide.
-function buryUpToN(hand, n) {
-  return hand.splice(0, Math.min(n, hand.length));
-}
-
-module.exports = { createDeck, shuffle, dealHands, buryUpToN };
+module.exports = { createDeck, shuffle };

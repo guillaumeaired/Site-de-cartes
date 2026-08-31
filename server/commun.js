@@ -1,6 +1,7 @@
 // Ce que les quatre salons font exactement pareil. Ces deux fonctions étaient
-// recopiées à l'identique dans index.js, rami-room.js, ascenseur-room.js et
-// skullking-room.js : toute correction demandait quatre modifications, et
+// recopiées à l'identique dans rami-room.js, ascenseur-room.js,
+// skullking-room.js et les salons de Bataille (alors écrits directement dans
+// index.js) : toute correction demandait quatre modifications, et
 // deux d'entre elles s'étaient déjà croisées en conflit de fusion (le
 // durcissement des pseudos contre la majuscule d'office, 28 août 2026).
 // Le reste des fichiers *-room.js reste séparé : les règles diffèrent d'un
@@ -8,7 +9,7 @@
 
 // Le salon détenteur passe sa propre table de salons : le code doit être
 // unique dans SON jeu, pas entre les jeux. Deux parties de Rami ne peuvent
-// pas partager un code, une partie de Rami et une de Bataille si (elles
+// pas partager un code, une partie de Rami et une du 24 si (elles
 // n'entrent jamais en contact). Les caractères ambigus sont écartés du
 // tirage : un code se lit à voix haute ou se recopie d'un téléphone à
 // l'autre, un O pour un 0 ou un I pour un 1 coûte une tentative pour rien.

@@ -5,7 +5,7 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "test": "node server/simulate.js && node server/rami-simulate.js && node server/ascenseur-simulate.js && node server/skullking-simulate.js && node server/skullking-room-simulate.js && node server/vingtquatre-simulate.js && node server/vingtquatre-room-simulate.js"
+    "test": "node server/rami-simulate.js && node server/ascenseur-simulate.js && node server/skullking-simulate.js && node server/skullking-room-simulate.js && node server/vingtquatre-simulate.js && node server/vingtquatre-room-simulate.js"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,6 @@
 // Script de validation autonome pour server/rami.js : cas construits à la
-// main, à faire passer avant de brancher les vrais sockets (même principe
-// que server/simulate.js pour la Bataille).
+// main, à faire passer avant de brancher les vrais sockets — même principe
+// que les autres suites du projet.
 
 const {
   createDeck,

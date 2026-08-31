@@ -312,8 +312,7 @@ let latestState = null;
 // Position de chaque siège autour de la table ovale, en % de sa largeur et
 // de sa hauteur. Index 0 = moi, toujours en bas au centre ; les autres se
 // répartissent de gauche à droite dans l'ordre du tour, ce qui fait tourner
-// le jeu dans le sens des aiguilles d'une montre à l'écran. Même principe
-// que SEAT_POSITIONS côté Bataille.
+// le jeu dans le sens des aiguilles d'une montre à l'écran.
 const SEAT_POSITIONS = {
   3: [[50, 92], [14, 34], [86, 34]],
   4: [[50, 92], [8, 52], [50, 10], [92, 52]],
@@ -342,8 +341,7 @@ function seatLayout(state) {
 
 // Au-delà de ce nombre, les dos de cartes empiètent sur la table et masquent
 // le jeu (à 7 joueurs × 7 cartes, la table devient illisible) : on plafonne
-// l'empilement affiché et le compte exact passe dans une pastille. Même
-// solution que la pile de bataille côté Bataille.
+// l'empilement affiché et le compte exact passe dans une pastille.
 const MAX_VISIBLE_BACKS = 4;
 
 function renderSeats(state) {

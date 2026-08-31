@@ -4,15 +4,18 @@ Un site de jeux de cartes à jouer en ligne entre amis. On crée un salon, on
 partage son code de quatre caractères, et tout le monde joue depuis son navigateur —
 rien à installer, pas de compte à créer.
 
-Cinq jeux, cinq moteurs de règles distincts :
+Quatre jeux, quatre moteurs de règles distincts :
 
 | Jeu | Joueurs | Ce que c'est |
 |---|---|---|
-| **Bataille** | 2 à 4 | Le grand classique, batailles en chaîne comprises |
 | **Rami** | 2 | Rami français, variante maison |
 | **L'Ascenseur** | 3 à 7 | On annonce ses plis avant de jouer (variante du *Oh Hell!*) |
 | **Skull King** | 3 à 9 | 10 manches de pirates, avec les extensions (Butin, Kraken, Baleine…) |
 | **Le 24** | 2 à 8 | Course de calcul mental : quatre cartes, quatre opérations, tomber sur 24 |
+
+La Bataille, premier jeu du site, a été retirée le 31 août 2026 : elle se joue
+sans décision, tout le monde retourne sa carte et le sort tranche. Le 24 a pris
+sa place dans la vitrine.
 
 ## Lancer le site en local
 
@@ -32,22 +35,22 @@ leur téléphone.
 npm test
 ```
 
-Sept suites s'enchaînent, sans dépendance externe ni framework : une par moteur
-de règles (Bataille, Rami, Ascenseur, Skull King, Le 24) plus une sur la couche
-salon du Skull King et une sur celle du 24. Chacune est un simple script Node qui construit des situations de jeu
-et vérifie le résultat. Elles tournent aussi en CI sur chaque push et chaque pull
+Six suites s'enchaînent, sans dépendance externe ni framework : une par moteur
+de règles (Rami, Ascenseur, Skull King, Le 24) plus une sur la couche salon du
+Skull King et une sur celle du 24. Chacune est un simple script Node qui
+construit des situations de jeu et vérifie le résultat. Elles tournent aussi en CI sur chaque push et chaque pull
 request, et le déploiement échoue si l'une d'elles casse.
 
 ## Comment c'est rangé
 
-Le serveur suit le même découpage pour les cinq jeux :
+Le serveur suit le même découpage pour les quatre jeux :
 
 | Fichier | Rôle |
 |---|---|
 | `server/<jeu>.js` | Les règles pures : le deck, les coups légaux, qui remporte le pli. Aucune notion de réseau — c'est ce qui rend les tests simples |
 | `server/<jeu>-room.js` | Les salons : Socket.io, la table, les reconnexions, la diffusion de l'état à chaque joueur |
 | `server/<jeu>-simulate.js` | La suite de tests du moteur correspondant |
-| `server/index.js` | Le serveur Express, les salons de Bataille, et les routes techniques |
+| `server/index.js` | Le serveur Express et les trois routes techniques. Aucune règle de jeu : il ne fait que servir les pages et brancher les salons |
 
 Le 24 est le seul à ne pas être un jeu de plis, et le seul dont l'écran est
 pensé pour un ordinateur (disposition paysage, donne à gauche, suivi de partie
