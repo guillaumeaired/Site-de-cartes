@@ -456,6 +456,15 @@ h1 {
   margin: 1px 0 3px;
 }
 
+.game-preview-card--vingtquatre {
+  --accent: #a78bfa;
+  --accent-soft: rgba(167, 139, 250, 0.4);
+}
+
+.game-preview-card--vingtquatre .game-preview-tagline {
+  color: #c4b5fd;
+}
+
 .btn-icon {
   font-size: 1.3rem;
 }

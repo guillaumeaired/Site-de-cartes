@@ -9,6 +9,7 @@ const { makeRoomCode, sanitizeNickname } = require('./commun');
 const { recordGameStarted, getPlayCounts } = require('./play-counts');
 const { registerRamiHandlers, getStats: getRamiStats } = require('./rami-room');
 const { registerAscenseurHandlers, getStats: getAscenseurStats } = require('./ascenseur-room');
+const { registerVingtquatreHandlers, getStats: getVingtquatreStats } = require('./vingtquatre-room');
 const {
   registerSkullKingHandlers,
   setBotAdapter: setSkullKingBotAdapter,
@@ -95,6 +96,7 @@ app.get('/stats', (req, res) => {
     rami: getRamiStats(),
     ascenseur: getAscenseurStats(),
     skullking: getSkullKingStats(),
+    vingtquatre: getVingtquatreStats(),
   });
 });
 
@@ -521,6 +523,7 @@ io.on('connection', (socket) => {
   registerRamiHandlers(io, socket);
   registerAscenseurHandlers(io, socket);
   registerSkullKingHandlers(io, socket);
+  registerVingtquatreHandlers(io, socket);
 });
 
 // Filet de securite process : l'etat de toutes les parties (4 jeux) ne vit

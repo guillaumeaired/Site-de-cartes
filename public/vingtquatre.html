@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guimams — Le 24</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="vingtquatre.css" />
+</head>
+<body>
+  <main class="app v24-app">
+    <p id="v24-toast" class="hint v24-toast hidden"></p>
+    <p id="reconnect-overlay" class="reconnect-overlay hidden">🔌 Connexion perdue — reconnexion en cours…</p>
+
+    <section id="v24-screen-home" class="screen">
+      <a href="index.html" class="btn-link">← Tous les jeux</a>
+      <p class="mascot" aria-hidden="true">🧮</p>
+      <h1><span class="suit suit-black">♠</span>Le 24<span class="suit suit-red">♥</span></h1>
+      <p class="tagline">Quatre cartes, quatre opérations, un seul but : tomber sur 24. Le plus rapide marque.</p>
+      <button id="v24-btn-rules" class="btn-rules-link">📖 Règles du jeu</button>
+
+      <div class="nickname-field">
+        <label for="v24-input-nickname" class="visually-hidden">Ton pseudo</label>
+        <input id="v24-input-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      </div>
+
+      <button id="v24-btn-create" class="btn btn-primary btn-create">
+        <span class="btn-icon">🧮</span> Créer une partie
+      </button>
+      <div class="divider">ou rejoindre avec un code</div>
+      <form id="v24-form-join">
+        <label for="v24-input-code" class="visually-hidden">Code de la partie</label>
+        <input id="v24-input-code" type="text" maxlength="4" placeholder="A1B2" autocomplete="off" autocapitalize="characters" />
+        <button type="submit" class="btn">Rejoindre</button>
+      </form>
+      <p id="v24-home-error" class="error"></p>
+    </section>
+
+    <section id="v24-screen-waiting" class="screen hidden">
+      <button id="v24-btn-leave-waiting" class="btn-link">← Quitter</button>
+
+      <div id="v24-share-block" class="invite-card hidden">
+        <p class="invite-label">Code de la partie</p>
+        <div class="code-badge" id="v24-share-code"></div>
+        <button id="v24-btn-copy" class="btn btn-copy-link">🔗 Copier le lien</button>
+        <input id="v24-share-link" type="text" class="visually-hidden" readonly tabindex="-1" />
+      </div>
+
+      <div id="v24-lobby-players" class="lobby-players hidden">
+        <p class="invite-label">Joueurs — <span id="v24-lobby-count">1</span> (2 à 8)</p>
+        <ul id="v24-lobby-list" class="lobby-list"></ul>
+      </div>
+
+      <button id="v24-btn-start-game" class="btn btn-primary hidden">🎮 Lancer la partie</button>
+      <p id="v24-waiting-hint" class="hint"></p>
+    </section>
+
+    <section id="v24-screen-game" class="screen hidden">
+      <div class="v24-game-header">
+        <button id="v24-btn-leave-game" class="btn-link">← Quitter</button>
+        <p id="v24-round-indicator" class="v24-round-indicator"></p>
+        <button id="v24-btn-end-game" class="btn btn-small hidden">🏁 Terminer</button>
+      </div>
+
+      <p id="v24-disconnect-banner" class="v24-disconnect-banner hidden"></p>
+
+      <!-- Disposition paysage : la donne occupe la largeur, le suivi de partie
+           tient dans une colonne à droite (même parti pris que le Rami, dont
+           l'écran de jeu est plus large que ses écrans d'accueil). -->
+      <div class="v24-layout">
+        <div class="v24-main">
+          <div class="v24-chrono">
+            <div id="v24-chrono-bar" class="v24-chrono-bar"></div>
+            <span id="v24-chrono-text" class="v24-chrono-text">60</span>
+          </div>
+
+          <div id="v24-board" class="v24-board" role="group" aria-label="Les quatre cartes de la donne"></div>
+          <p id="v24-expression" class="v24-expression"></p>
+
+          <!-- Avant le buzz : on cherche de tête, rien n'est manipulable. -->
+          <div id="v24-buzz-zone" class="v24-buzz-zone">
+            <button id="v24-btn-buzz" class="v24-buzzer">
+              <span class="v24-buzzer-label">J'ai !</span>
+              <span class="v24-buzzer-sub">barre d'espace</span>
+            </button>
+            <p id="v24-buzz-status" class="v24-buzz-status"></p>
+          </div>
+
+          <!-- Après le buzz : seul celui qui a appuyé voit ceci, et il montre
+               sa combinaison en fusionnant les cartes. -->
+          <div id="v24-explain-zone" class="v24-explain-zone hidden">
+            <p id="v24-explain-timer" class="v24-explain-timer"></p>
+            <div id="v24-operators" class="v24-operators">
+              <button class="v24-op" data-op="+" aria-label="Plus">+</button>
+              <button class="v24-op" data-op="-" aria-label="Moins">−</button>
+              <button class="v24-op" data-op="*" aria-label="Multiplié par">×</button>
+              <button class="v24-op" data-op="/" aria-label="Divisé par">÷</button>
+            </div>
+            <div class="v24-actions">
+              <button id="v24-btn-undo" class="btn btn-small v24-btn-undo">↶ Annuler</button>
+              <button id="v24-btn-reset" class="btn btn-small v24-btn-reset">🔄 Tout refaire</button>
+            </div>
+          </div>
+
+          <p id="v24-feedback" class="v24-feedback"></p>
+        </div>
+
+        <aside class="v24-side">
+          <p class="v24-side-title">Score</p>
+          <div id="v24-scoreboard" class="v24-scoreboard"></div>
+          <button id="v24-btn-pass" class="btn btn-small v24-btn-pass">🏳️ Je passe</button>
+          <p class="v24-keyboard-hint">
+            <span><kbd>Espace</kbd> pour buzzer</span>
+            <span><kbd>1</kbd>–<kbd>4</kbd> une carte</span>
+            <span><kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> l'opération</span>
+            <span><kbd>⌫</kbd> annuler</span>
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <div id="v24-reveal" class="v24-reveal hidden">
+      <div class="v24-reveal-inner">
+        <p id="v24-reveal-emoji" class="v24-reveal-emoji"></p>
+        <h3 id="v24-reveal-title"></h3>
+        <p id="v24-reveal-formula" class="v24-reveal-formula"></p>
+        <p id="v24-reveal-note" class="v24-reveal-note"></p>
+        <div class="v24-reveal-timer"><div id="v24-reveal-bar" class="v24-reveal-bar"></div></div>
+      </div>
+    </div>
+
+    <section id="v24-screen-end" class="screen hidden">
+      <h2 id="v24-end-title"></h2>
+      <p id="v24-end-subtitle" class="hint"></p>
+      <table class="v24-score-table">
+        <thead><tr><th>Joueur</th><th>Manches gagnées</th></tr></thead>
+        <tbody id="v24-end-body"></tbody>
+      </table>
+      <button id="v24-btn-rematch" class="btn btn-primary">🔄 Rejouer</button>
+      <button id="v24-btn-leave-end" class="btn btn-leave-end">Quitter</button>
+    </section>
+  </main>
+
+  <div id="v24-rules-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Règles du 24</h2>
+
+      <h3>Le but</h3>
+      <ol>
+        <li>Quatre cartes sont retournées, de l'as (1) au roi (13). Il faut arriver à <strong>exactement 24</strong>.</li>
+        <li>On utilise <strong>les quatre cartes</strong>, chacune <strong>une seule fois</strong>, avec des additions, soustractions, multiplications et divisions.</li>
+        <li>Exemple : avec 8, 4, 3, 2 → (8 − 4) × 3 × 2 = 24.</li>
+        <li>C'est une course : tout le monde a les mêmes cartes, le premier qui trouve marque un point.</li>
+      </ol>
+
+      <h3>Comment ça se joue</h3>
+      <ol>
+        <li>Les quatre cartes s'affichent chez tout le monde en même temps. On cherche <strong>de tête</strong> : rien n'est manipulable à ce stade.</li>
+        <li>Dès que tu vois la solution, tu appuies sur <strong>« J'ai ! »</strong> (ou la barre d'espace). Le premier qui appuie prend la main, seul.</li>
+        <li>Le chrono de la donne se <strong>fige</strong> et tu as 20 secondes pour montrer ta combinaison.</li>
+      </ol>
+
+      <h3>Montrer sa combinaison</h3>
+      <ol>
+        <li>Touche une carte, puis une opération, puis une deuxième carte : les deux fusionnent en une seule carte qui porte le résultat.</li>
+        <li>Recommence jusqu'à ce qu'il n'en reste qu'une. Si elle vaut 24, la manche est à toi.</li>
+        <li>Tu peux te reprendre autant que tu veux dans tes 20 secondes (« Annuler », « Tout refaire »).</li>
+        <li>Les résultats intermédiaires ont le droit d'être des fractions (8 ÷ 3 = 8/3) et même des nombres négatifs — c'est souvent la clé des donnes difficiles.</li>
+      </ol>
+
+      <h3>Si tu buzzes dans le vide</h3>
+      <ol>
+        <li>Tes 20 secondes s'écoulent sans que tu tombes sur 24 : tu es <strong>écarté de cette donne</strong> (et d'elle seule, ton score ne bouge pas).</li>
+        <li>Le chrono repart où il s'était arrêté et les autres peuvent buzzer à leur tour.</li>
+        <li>Autrement dit : appuyer sans être sûr ne coûte pas de points, mais coûte la donne.</li>
+      </ol>
+
+      <h3>La donne</h3>
+      <ol>
+        <li>Chaque donne dure <strong>60 secondes</strong> de recherche. Si personne ne trouve, une solution s'affiche et on enchaîne.</li>
+        <li>« Je passe » ne coûte rien : si tout le monde passe, la manche s'arrête tout de suite au lieu d'attendre le chrono.</li>
+        <li>Toutes les donnes distribuées ont au moins une solution — si tu sèches, elle existe.</li>
+      </ol>
+
+      <h3>Fin de partie</h3>
+      <ol>
+        <li>Les donnes s'enchaînent sans fin : c'est l'hôte qui décide de s'arrêter avec « Terminer ». Le classement se fait sur le nombre de manches gagnées.</li>
+      </ol>
+
+      <button id="v24-btn-close-rules" class="btn btn-primary">Compris !</button>
+    </div>
+  </div>
+
+  <div id="v24-join-modal" class="modal hidden">
+    <div class="modal-content join-modal-content">
+      <p class="invite-label">Rejoindre la partie</p>
+      <label for="v24-join-modal-nickname" class="visually-hidden">Ton pseudo</label>
+      <input id="v24-join-modal-nickname" type="text" maxlength="16" placeholder="👤 Ton pseudo" autocomplete="off" />
+      <button id="v24-btn-join-modal" class="btn btn-primary">Rejoindre</button>
+      <p id="v24-join-modal-error" class="error"></p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="commun.js"></script>
+  <script src="vingtquatre.js"></script>
+</body>
+</html>

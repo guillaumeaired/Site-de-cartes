@@ -4,7 +4,7 @@ Un site de jeux de cartes à jouer en ligne entre amis. On crée un salon, on
 partage son code de quatre caractères, et tout le monde joue depuis son navigateur —
 rien à installer, pas de compte à créer.
 
-Quatre jeux, quatre moteurs de règles distincts :
+Cinq jeux, cinq moteurs de règles distincts :
 
 | Jeu | Joueurs | Ce que c'est |
 |---|---|---|
@@ -12,6 +12,7 @@ Quatre jeux, quatre moteurs de règles distincts :
 | **Rami** | 2 | Rami français, variante maison |
 | **L'Ascenseur** | 3 à 7 | On annonce ses plis avant de jouer (variante du *Oh Hell!*) |
 | **Skull King** | 3 à 7 | 10 manches de pirates, avec les extensions (Butin, Kraken, Baleine…) |
+| **Le 24** | 2 à 8 | Course de calcul mental : quatre cartes, quatre opérations, tomber sur 24 |
 
 ## Lancer le site en local
 
@@ -31,15 +32,15 @@ leur téléphone.
 npm test
 ```
 
-Cinq suites s'enchaînent, sans dépendance externe ni framework : une par moteur
-de règles (Bataille, Rami, Ascenseur, Skull King) plus une sur la couche salon du
-Skull King. Chacune est un simple script Node qui construit des situations de jeu
+Sept suites s'enchaînent, sans dépendance externe ni framework : une par moteur
+de règles (Bataille, Rami, Ascenseur, Skull King, Le 24) plus une sur la couche
+salon du Skull King et une sur celle du 24. Chacune est un simple script Node qui construit des situations de jeu
 et vérifie le résultat. Elles tournent aussi en CI sur chaque push et chaque pull
 request, et le déploiement échoue si l'une d'elles casse.
 
 ## Comment c'est rangé
 
-Le serveur suit le même découpage pour les quatre jeux :
+Le serveur suit le même découpage pour les cinq jeux :
 
 | Fichier | Rôle |
 |---|---|
@@ -47,6 +48,24 @@ Le serveur suit le même découpage pour les quatre jeux :
 | `server/<jeu>-room.js` | Les salons : Socket.io, la table, les reconnexions, la diffusion de l'état à chaque joueur |
 | `server/<jeu>-simulate.js` | La suite de tests du moteur correspondant |
 | `server/index.js` | Le serveur Express, les salons de Bataille, et les routes techniques |
+
+Le 24 est le seul à ne pas être un jeu de plis, et le seul dont l'écran est
+pensé pour un ordinateur (disposition paysage, donne à gauche, suivi de partie
+à droite, buzzer à la barre d'espace). Tout le monde reçoit les mêmes quatre
+cartes en même temps et cherche **de tête** : rien n'est manipulable tant que
+personne n'a appuyé sur « J'ai ! ». Le premier qui appuie prend la main seul,
+le chrono de la donne se fige, et il a 20 secondes pour montrer sa combinaison
+en fusionnant les cartes ; s'il n'y arrive pas, il est écarté de cette donne et
+le chrono repart pour les autres. Les fusions se font entièrement dans le
+navigateur (sinon chaque clic coûterait un aller-retour réseau) et le serveur
+rejoue la suite d'opérations reçue pour trancher. Son moteur contient aussi un
+solveur, qui sert à trois choses : ne jamais distribuer une donne insoluble,
+annoncer sa difficulté, et montrer une solution quand personne n'a trouvé.
+
+Deux suites de tests le couvrent plutôt qu'une : `vingtquatre-simulate.js` pour
+le moteur (solveur, fractions exactes, validation d'une réponse) et
+`vingtquatre-room-simulate.js` pour la machine à états du buzzer — qui a le
+droit d'appuyer, ce que coûte une explication ratée, le gel du chrono.
 
 Trois routes techniques : `/healthz` (surveillance de l'hébergeur), `/stats`
 (compteurs d'observabilité) et `/play-counts` (nombre de parties lancées par jeu,

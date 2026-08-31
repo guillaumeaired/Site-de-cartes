@@ -2,7 +2,7 @@
 // premier), recupere aupres du serveur. En cas d'echec (offline, serveur
 // qui se reveille) ou d'egalite, l'ordre de depart dans le HTML est
 // conserve (tri stable) - jamais d'ecran vide/casse si /play-counts echoue.
-const GAME_ORDER_KEY = { bataille: 0, rami: 1, ascenseur: 2, skullking: 3 };
+const GAME_ORDER_KEY = { bataille: 0, rami: 1, ascenseur: 2, skullking: 3, vingtquatre: 4 };
 
 fetch('/play-counts')
   .then((res) => (res.ok ? res.json() : Promise.reject(new Error('play-counts indisponible'))))

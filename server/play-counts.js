@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const GAMES = ['bataille', 'rami', 'ascenseur', 'skullking'];
+const GAMES = ['bataille', 'rami', 'ascenseur', 'skullking', 'vingtquatre'];
 const COUNTS_FILE = path.join(__dirname, '..', 'data', 'play-counts.json');
 
 function loadCounts() {

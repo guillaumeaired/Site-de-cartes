@@ -1,0 +1,1284 @@
+/* --- Base partagée avec les autres jeux (dupliquée volontairement, voir
+   rami.css pour le raisonnement) : mêmes composants d'accueil, de salon et de
+   modale, déclinés dans la couleur du 24 (violet — les quatre autres jeux ont
+   déjà pris le rouge, le vert, le bleu et l'orange). --- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 4px),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%),
+    radial-gradient(circle at 50% 0%, #4a2a86 0%, transparent 60%),
+    linear-gradient(160deg, #231044, #0c0618);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #fff;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #a78bfa66 0%, transparent 60%);
+  animation: felt-drift 18s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(circle, #fbbf2422 0%, transparent 55%);
+  animation: felt-drift 26s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes felt-drift {
+  0%, 100% {
+    transform: translate(-6%, -8%) scale(1);
+  }
+  50% {
+    transform: translate(6%, 6%) scale(1.15);
+  }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+  text-align: center;
+}
+
+.v24-app {
+  max-width: 720px;
+}
+
+h1 {
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 2.6rem;
+  margin: 4px auto 10px;
+  letter-spacing: 0;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #facc15;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+.mascot {
+  font-size: 2rem;
+  margin: 0 0 -6px;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45));
+  animation: mascot-idle 3s ease-in-out infinite;
+}
+
+@keyframes mascot-idle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.suit {
+  font-size: 1.5rem;
+  color: #f5f0e6;
+  -webkit-text-fill-color: #f5f0e6;
+  opacity: 0.85;
+}
+
+.suit-red {
+  color: #f0506e;
+  -webkit-text-fill-color: #f0506e;
+}
+
+.tagline {
+  margin: 0 0 14px;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.hint {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.v24-toast {
+  min-height: 1.2em;
+  margin: 0 0 10px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 20px;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #7c4dd6, #3f2288);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.btn:hover {
+  background: linear-gradient(160deg, #8f6ae4, #4f2f9e);
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.4);
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.btn-link {
+  display: block;
+  margin: 0 0 16px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.btn-rules-link {
+  display: inline-block;
+  margin: 0 0 32px;
+  padding: 5px 14px;
+  border: 2px solid #ffffff33;
+  border-radius: 20px;
+  background: #ffffff14;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-rules-link:hover {
+  background: #ffffff28;
+  color: #fff;
+}
+
+.btn-primary {
+  background: linear-gradient(160deg, #fde047, #facc15);
+  color: #1a1a1a;
+  border-color: #1a1208;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(160deg, #fef08a, #fde047);
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(250, 204, 21, 0.45);
+}
+
+.btn-primary:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-create {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: create-btn-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes create-btn-breathe {
+  0%, 100% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 21, 0.5);
+  }
+}
+
+.btn-icon {
+  font-size: 1.3rem;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.divider {
+  margin: 20px 0;
+  opacity: 0.55;
+  font-size: 0.85rem;
+}
+
+#v24-form-join {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+#v24-input-code {
+  width: 120px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 3px solid #1a1a1a;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.error {
+  color: #fca5a5;
+  min-height: 1.2em;
+  margin-top: 12px;
+}
+
+.nickname-field {
+  max-width: 260px;
+  margin: 0 auto 20px;
+}
+
+.nickname-field input,
+.join-modal-content input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid #ffffff33;
+  background: #ffffff11;
+  color: #fff;
+  font-size: 0.95rem;
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.nickname-field input:focus,
+.join-modal-content input:focus {
+  outline: none;
+  border-color: #facc15;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.invite-card {
+  margin: 24px auto 0;
+  padding: 24px 20px;
+  max-width: 280px;
+  background: #ffffff0d;
+  border: 3px solid #1a1208;
+  border-radius: 18px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.invite-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.7;
+  margin: 0 0 12px;
+}
+
+.invite-card .code-badge {
+  display: block;
+  margin: 0 auto 18px;
+  font-size: 2.1rem;
+}
+
+.code-badge {
+  font-weight: 800;
+  letter-spacing: 5px;
+  border-radius: 12px;
+  border: 3px solid #1a1208;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 10px;
+  background: #facc15;
+  color: #1a1208;
+}
+
+.btn-copy-link {
+  width: 100%;
+}
+
+.lobby-players {
+  margin: 24px auto;
+  max-width: 280px;
+}
+
+.lobby-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lobby-list li {
+  padding: 10px 14px;
+  background: #ffffff11;
+  border: 2px solid #ffffff33;
+  border-radius: 10px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.lobby-list li.lobby-host::after {
+  content: ' 👑';
+}
+
+/* --- Modernisation des menus créer/rejoindre (2026-07-30) : mêmes ajouts
+   dupliqués dans les 4 fichiers CSS, seule la couleur d'accent change —
+   reprend directement --accent défini pour ce jeu sur la grille du hub
+   (style.css), pour que l'identité visuelle se retrouve du hub jusqu'ici. --- */
+
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.screen:not(.hidden) {
+  animation: menu-pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nickname-field input,
+.join-modal-content input {
+  background: linear-gradient(160deg, #ffffff18, #ffffff0a);
+}
+
+.nickname-field input:focus,
+.join-modal-content input:focus {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
+}
+
+.invite-card {
+  background: linear-gradient(160deg, #ffffff16, #ffffff08);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35), 0 0 24px rgba(56, 189, 248, 0.4);
+  animation: menu-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.invite-card .code-badge {
+  animation: code-badge-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes code-badge-glow {
+  0%, 100% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  }
+  50% {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 189, 248, 0.4);
+  }
+}
+
+.lobby-list li {
+  background: linear-gradient(160deg, #ffffff16, #ffffff08);
+  border-left: 4px solid #a78bfa;
+  animation: menu-pop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.lobby-list li:nth-child(1) { animation-delay: 0.03s; }
+.lobby-list li:nth-child(2) { animation-delay: 0.08s; }
+.lobby-list li:nth-child(3) { animation-delay: 0.13s; }
+.lobby-list li:nth-child(4) { animation-delay: 0.18s; }
+.lobby-list li:nth-child(5) { animation-delay: 0.23s; }
+.lobby-list li:nth-child(6) { animation-delay: 0.28s; }
+.lobby-list li:nth-child(7) { animation-delay: 0.33s; }
+
+.join-modal-content {
+  text-align: center;
+}
+
+.join-modal-content input {
+  margin: 14px 0;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: #1a0f33;
+  border: 3px solid #1a1208;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 380px;
+  text-align: left;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35), 0 0 0 2px #F5C24C;
+}
+
+.modal-content h2,
+#v24-end-title {
+  margin-top: 0;
+  text-align: center;
+}
+
+/* Sous-titres de groupe dans les regles restructurees (mise en place /
+   annonces / deroulement du pli / score). */
+.modal-content h3 {
+  margin: 18px 0 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #facc15;
+}
+
+.modal-content h3:first-of-type {
+  margin-top: 0;
+}
+
+.modal-content ol {
+  padding-left: 20px;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+.modal-content ol + h3 {
+  margin-top: 16px;
+}
+
+.modal-content .btn {
+  display: block;
+  margin: 20px auto 0;
+}
+
+.reconnect-overlay {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  background: #1a1208;
+  border: 2px solid #facc15;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Bannière persistante (pas un toast qui s'efface) tant qu'un autre joueur
+   est déconnecté : contrairement au reconnect-overlay ci-dessus (qui parle
+   de MA propre connexion), celle-ci reste affichée en continu tant que
+   state.players contient un joueur avec connected:false, pour que la table
+   n'ait pas l'air juste figée sans raison. */
+.v24-disconnect-banner {
+  margin: 0 0 10px;
+  padding: 8px 14px;
+  background: #ffffff14;
+  border: 2px solid #facc15;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* --- Visage de carte classique (façon Balatro), hérité des autres jeux. Le
+   24 n'en garde que .card-red / .card-black, qui colorent ses tuiles-cartes ;
+   les coins et l'emblème ci-dessous ne servent pas ici, ils sont laissés pour
+   que ce socle reste identique d'un jeu à l'autre. --- */
+
+.card-corner {
+  position: absolute;
+  top: 4%;
+  left: 7%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.card-corner-rank {
+  font-size: 0.5em;
+  font-weight: 900;
+}
+
+.card-corner-suit {
+  font-size: 0.38em;
+}
+
+.card-emblem {
+  font-size: 2.1em;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
+}
+
+.card-red {
+  color: #e11d48;
+}
+
+.card-black {
+  color: #1a1a1a;
+}
+
+
+
+/* --- Écran de jeu ---------------------------------------------------------
+   Le 24 se joue d'abord sur un ordinateur : l'écran est donc pensé en
+   PAYSAGE, comme celui du Rami (qui s'élargit lui aussi en partie, cf.
+   .rami-app--game). La donne prend toute la largeur, le suivi de partie tient
+   dans une colonne à droite. En dessous de 900 px la colonne repasse sous la
+   donne, pour que ça reste jouable sur un téléphone. */
+
+.v24-app {
+  max-width: 460px;
+}
+
+.v24-app--game {
+  max-width: 1060px;
+}
+
+.v24-game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.v24-game-header .btn-link {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.v24-round-indicator {
+  margin: 0;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #f5f0e6;
+  letter-spacing: 0.02em;
+  cursor: help;
+}
+
+.v24-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 22px;
+  align-items: start;
+}
+
+.v24-main {
+  min-width: 0;
+}
+
+/* --- Chrono de la donne --- */
+
+.v24-chrono {
+  position: relative;
+  height: 24px;
+  margin: 0 0 22px;
+  border: 3px solid #1a1a1a;
+  border-radius: 999px;
+  background: #ffffff11;
+  overflow: hidden;
+}
+
+.v24-chrono-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #7c4dd6, #a78bfa);
+  /* Transition courte : le chrono est rafraîchi 10 fois par seconde, une
+     transition longue le ferait traîner derrière le compte réel. */
+  transition: width 0.12s linear, background 0.3s ease;
+}
+
+.v24-chrono-bar--urgent {
+  background: linear-gradient(90deg, #e11d48, #f0506e);
+  animation: v24-urgence 0.7s ease-in-out infinite;
+}
+
+/* Chrono figé : quelqu'un explique, le temps de recherche ne s'écoule plus.
+   Les rayures disent « en pause » sans qu'on ait à l'écrire. */
+.v24-chrono-bar--fige {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.28) 0 8px,
+    transparent 8px 16px
+  );
+  animation: none;
+  opacity: 0.75;
+}
+
+@keyframes v24-urgence {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.v24-chrono-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+/* --- Le plateau --- */
+
+.v24-board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 168px;
+}
+
+.v24-board--shake {
+  animation: v24-shake 0.4s ease;
+}
+
+@keyframes v24-shake {
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+
+/* Une tuile, c'est soit une carte de départ (rang + couleur, allure de carte à
+   jouer), soit le résultat d'une fusion (un jeton violet). La différence est
+   volontairement très visible : on doit voir d'un coup d'œil ce qui reste de
+   la donne d'origine. */
+.v24-tile {
+  position: relative;
+  width: 112px;
+  height: 158px;
+  padding: 0;
+  border: 3px solid #1a1a1a;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.v24-tile--carte {
+  background: #f5f0e6;
+  box-shadow: 0 5px 0 #1a1a1a, 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.v24-tile--resultat {
+  background: linear-gradient(160deg, #7c4dd6, #3f2288);
+  color: #fff;
+  box-shadow: 0 5px 0 #1a1a1a, 0 8px 20px rgba(167, 139, 250, 0.35);
+}
+
+/* Les cartes restent PLEINEMENT lisibles quand elles ne sont pas
+   manipulables : c'est justement le moment où on les regarde le plus fort,
+   pour chercher de tête. Seul le curseur dit qu'on ne peut pas y toucher. */
+.v24-tile:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.v24-tile:not(:disabled):hover,
+.v24-tile:not(:disabled):active {
+  transform: translateY(-5px);
+}
+
+/* Le plateau s'allume quand il devient manipulable : c'est le signal que la
+   main est à moi, doublé du changement de zone d'action en dessous. */
+.v24-board--actif .v24-tile {
+  box-shadow: 0 5px 0 #1a1a1a, 0 0 22px rgba(250, 204, 21, 0.22), 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* La tuile choisie en premier reste soulevée et cerclée d'or : c'est le seul
+   état à retenir entre deux clics, il doit être impossible à manquer. */
+.v24-tile--choisie {
+  border-color: #facc15;
+  transform: translateY(-10px);
+  box-shadow: 0 10px 0 #1a1a1a, 0 0 0 4px #facc1555, 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.v24-tile--neuve {
+  animation: v24-fusion 0.32s cubic-bezier(0.2, 1.4, 0.5, 1);
+}
+
+@keyframes v24-fusion {
+  from {
+    transform: scale(0.4) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+.v24-tile-valeur {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Les fractions (« 8/3 ») et les grands nombres ne doivent pas déborder de la
+   tuile : on rétrécit plutôt que de couper. */
+.v24-tile-valeur--longue {
+  font-size: 2rem;
+}
+
+.v24-tile-suit {
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.v24-tile-rang {
+  position: absolute;
+  bottom: 7px;
+  right: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+/* Le numéro du raccourci clavier, discret : utile sur ordinateur, masqué sur
+   les écrans tactiles (voir la requête média plus bas). */
+.v24-tile-index {
+  position: absolute;
+  top: 5px;
+  right: 9px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.3;
+}
+
+.v24-tile--carte .v24-tile-index {
+  color: #1a1a1a;
+}
+
+.v24-expression {
+  min-height: 1.4em;
+  margin: 14px 0 0;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-size: 1.05rem;
+  color: #cbd5e1;
+  word-break: break-word;
+}
+
+.v24-feedback {
+  min-height: 1.4em;
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.v24-feedback--erreur {
+  color: #fca5a5;
+}
+
+.v24-feedback--succes {
+  color: #86efac;
+}
+
+/* --- Le buzzer -----------------------------------------------------------
+   Le geste central du jeu : on cherche de tête, et on appuie. Il est donc
+   gros, doré, seul au milieu — rien d'autre n'est cliquable à ce moment-là. */
+
+.v24-buzz-zone {
+  margin-top: 18px;
+}
+
+.v24-buzzer {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 240px;
+  padding: 16px 40px;
+  border: 4px solid #1a1a1a;
+  border-radius: 999px;
+  background: linear-gradient(160deg, #facc15, #eab308);
+  color: #1a1208;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #1a1a1a, 0 10px 24px rgba(250, 204, 21, 0.25);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.2s ease;
+}
+
+.v24-buzzer-label {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.v24-buzzer-sub {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+
+.v24-buzzer:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 #1a1a1a;
+}
+
+.v24-buzzer:disabled {
+  cursor: default;
+  filter: grayscale(0.85);
+  opacity: 0.45;
+  box-shadow: 0 6px 0 #1a1a1a;
+}
+
+/* Respiration légère quand il est réellement pressable : attire l'œil sans
+   clignoter, on le regarde pendant une minute d'affilée. */
+.v24-buzzer--pret {
+  animation: v24-buzz-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes v24-buzz-breathe {
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+.v24-buzz-status {
+  min-height: 1.4em;
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.v24-buzz-status--attente {
+  color: #facc15;
+  font-weight: 700;
+}
+
+.v24-buzz-status--hors-jeu {
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+/* --- La zone d'explication (visible seulement quand on a la main) --------- */
+
+.v24-explain-zone {
+  margin-top: 18px;
+  padding: 14px;
+  border: 3px solid #facc1544;
+  border-radius: 14px;
+  background: #facc150d;
+}
+
+.v24-explain-timer {
+  margin: 0 0 12px;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #facc15;
+}
+
+.v24-explain-timer--urgent {
+  color: #f0506e;
+  animation: v24-urgence 0.6s ease-in-out infinite;
+}
+
+.v24-operators {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  max-width: 420px;
+  margin: 0 auto 12px;
+}
+
+.v24-op {
+  padding: 14px 0;
+  border: 3px solid #1a1a1a;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #ffffff18, #ffffff08);
+  color: #fff;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #1a1a1a;
+  transition: transform 0.12s ease, background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.v24-op:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #1a1a1a;
+}
+
+.v24-op:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Opération armée : elle attend la deuxième carte. Même code couleur que la
+   tuile choisie, pour qu'on lise « ces deux-là vont ensemble ». */
+.v24-op--armee {
+  background: linear-gradient(160deg, #facc15, #eab308);
+  color: #1a1208;
+  border-color: #1a1208;
+  transform: translateY(-2px);
+}
+
+.v24-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.v24-actions .btn {
+  padding: 9px 14px;
+  font-size: 0.82rem;
+}
+
+/* --- Colonne de droite : le suivi de partie ------------------------------ */
+
+.v24-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid #ffffff16;
+  border-radius: 14px;
+  background: #00000038;
+}
+
+.v24-side-title {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #ffffff77;
+  text-align: left;
+}
+
+.v24-scoreboard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v24-score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.v24-score-row--moi {
+  background: #a78bfa22;
+  font-weight: 700;
+}
+
+.v24-score-row--absent {
+  opacity: 0.5;
+}
+
+/* Qui a la main, en un coup d'œil : c'est l'information la plus utile de la
+   colonne pendant qu'on attend. */
+.v24-score-row--claime {
+  background: #facc1526;
+  box-shadow: inset 0 0 0 2px #facc1555;
+}
+
+.v24-score-row--hors-jeu .v24-score-nom {
+  opacity: 0.55;
+  text-decoration: line-through;
+  text-decoration-color: #ffffff55;
+}
+
+.v24-score-nom {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v24-score-etat {
+  font-size: 0.8rem;
+}
+
+.v24-score-points {
+  min-width: 22px;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #facc15;
+  text-align: right;
+}
+
+.v24-btn-pass {
+  width: 100%;
+  padding: 9px 6px;
+  font-size: 0.82rem;
+  background: linear-gradient(160deg, #ffffff18, #ffffff08);
+}
+
+.v24-keyboard-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  color: #ffffff66;
+  text-align: left;
+}
+
+.v24-keyboard-hint kbd {
+  padding: 1px 5px;
+  border: 1px solid #ffffff33;
+  border-radius: 4px;
+  background: #ffffff11;
+  font-family: inherit;
+  font-size: 0.68rem;
+}
+
+/* Le rappel clavier n'a aucun sens sur un écran tactile, pas plus que les
+   numéros de raccourci sur les tuiles. */
+@media (hover: none) and (pointer: coarse) {
+  .v24-keyboard-hint,
+  .v24-tile-index,
+  .v24-buzzer-sub {
+    display: none;
+  }
+}
+
+/* --- Révélation de fin de manche --- */
+
+.v24-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.v24-reveal.hidden {
+  display: none;
+}
+
+.v24-reveal-inner {
+  width: 100%;
+  max-width: 420px;
+  padding: 22px 20px 16px;
+  border: 4px solid #1a1a1a;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #3f2288, #1a0f33);
+  box-shadow: 0 10px 0 #1a1a1a, 0 16px 40px rgba(0, 0, 0, 0.6);
+  animation: v24-reveal-in 0.28s cubic-bezier(0.2, 1.3, 0.5, 1);
+}
+
+@keyframes v24-reveal-in {
+  from {
+    transform: scale(0.85) translateY(14px);
+    opacity: 0;
+  }
+}
+
+.v24-reveal-emoji {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.v24-reveal-inner h3 {
+  margin: 8px 0 12px;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+/* La formule est le vrai contenu de ce pop-up : c'est ce qu'on lit pour
+   apprendre quand on a séché. Elle passe donc avant tout le reste. */
+.v24-reveal-formula {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #00000044;
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #facc15;
+  word-break: break-word;
+}
+
+.v24-reveal-note {
+  margin: 0 0 14px;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.v24-reveal-timer {
+  height: 6px;
+  border-radius: 999px;
+  background: #ffffff16;
+  overflow: hidden;
+}
+
+.v24-reveal-bar {
+  height: 100%;
+  width: 100%;
+  background: #a78bfa;
+}
+
+/* --- Classement final --- */
+
+.v24-score-table {
+  width: 100%;
+  margin: 12px 0 18px;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.v24-score-table th,
+.v24-score-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #ffffff16;
+  text-align: left;
+}
+
+.v24-score-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #cbd5e1;
+}
+
+.v24-score-table tbody tr:first-child td {
+  font-weight: 800;
+  color: #facc15;
+}
+
+.btn-leave-end {
+  margin-top: 10px;
+  background: linear-gradient(160deg, #ffffff18, #ffffff08);
+}
+
+/* --- Écrans étroits : la colonne de droite repasse sous la donne --------- */
+
+@media (max-width: 900px) {
+  .v24-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .v24-tile {
+    width: 84px;
+    height: 120px;
+  }
+
+  .v24-tile-valeur {
+    font-size: 2.3rem;
+  }
+
+  .v24-board {
+    gap: 10px;
+    min-height: 130px;
+  }
+
+  .v24-buzzer {
+    min-width: 200px;
+    padding: 14px 30px;
+  }
+}
+
+@media (max-width: 400px) {
+  .v24-tile {
+    width: 70px;
+    height: 100px;
+  }
+
+  .v24-tile-valeur {
+    font-size: 1.9rem;
+  }
+
+  .v24-board {
+    gap: 7px;
+    min-height: 110px;
+  }
+}
