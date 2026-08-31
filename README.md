@@ -11,7 +11,7 @@ Cinq jeux, cinq moteurs de règles distincts :
 | **Bataille** | 2 à 4 | Le grand classique, batailles en chaîne comprises |
 | **Rami** | 2 | Rami français, variante maison |
 | **L'Ascenseur** | 3 à 7 | On annonce ses plis avant de jouer (variante du *Oh Hell!*) |
-| **Skull King** | 3 à 7 | 10 manches de pirates, avec les extensions (Butin, Kraken, Baleine…) |
+| **Skull King** | 3 à 9 | 10 manches de pirates, avec les extensions (Butin, Kraken, Baleine…) |
 | **Le 24** | 2 à 8 | Course de calcul mental : quatre cartes, quatre opérations, tomber sur 24 |
 
 ## Lancer le site en local
