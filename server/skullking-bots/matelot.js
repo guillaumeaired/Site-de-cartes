@@ -50,7 +50,8 @@ function bid(state) {
 }
 
 // Ce que le pli rapporterait de bonus à celui qui le prend avec ce coup
-// (14 capturés, Pirates sous le Skull King, Skull King sous la Sirène…).
+// (14 capturés, Sirènes sous un Pirate, Pirates sous le Skull King,
+// Skull King sous la Sirène…).
 function bonusDuCoup(state, coup) {
   const cartes = [...(state.currentTrick || []).map((t) => t.card), coup.posee];
   const r = resolveTrick(cartes);

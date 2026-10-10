@@ -327,6 +327,20 @@ check('bonus : capturer un 14 de couleur', trickBonusForWinner([num('vert', 14),
 check('bonus : capturer le 14 noir', trickBonusForWinner([num('noir', 14), num('jaune', 3)], 1), 20);
 check('bonus : capturer 2 pirates avec le skull king', trickBonusForWinner([pirate(), sk(), pirate()], 1), 60);
 check('bonus : capturer le skull king avec une sirène', trickBonusForWinner([sk(), siren()], 1), 40);
+check('bonus : capturer une sirène avec un pirate', trickBonusForWinner([siren(), pirate()], 1), 20);
+check('bonus : capturer les 2 sirènes avec un pirate', trickBonusForWinner([siren(), pirate(), siren()], 1), 40);
+check('bonus : la Tigresse jouée en Pirate prend aussi les 20', trickBonusForWinner([siren(), tigress('pirate')], 1), 20);
+{
+  // Le pli entier, pas seulement le barème : le Pirate gagne bien, et la
+  // boucle à trois (Sirène + Pirate + Skull King) ne donne rien au Pirate
+  // puisque c'est la Sirène qui l'emporte.
+  const cards = [siren(), pirate()];
+  const r = resolveTrick(cards);
+  check('pirate sur sirène : le pirate gagne et touche 20', trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx), 20);
+  const boucle = [pirate(), siren(), sk()];
+  const rb = resolveTrick(boucle);
+  check('boucle à trois : la sirène gagne et touche 40, pas les 20 du pirate', trickBonusForWinner(boucle, rb.winnerIdx, rb.excludedIdx), 40);
+}
 
 // --- computeRoundScore ---
 check('contrat 0 réussi, manche 3', computeRoundScore(0, 0, 3, 0), 30);
@@ -426,7 +440,7 @@ check(
   check('Mat le Forban capturé par une Sirène : bonus = 30', trickBonusForWinner(cards, r.winnerIdx, r.excludedIdx), 30);
 }
 check(
-  'Un Pirate classique capturé par une Sirène (sans Mat) ne donne toujours aucun bonus',
+  'Une Sirène créditée d\'un Pirate classique (sans Mat) ne touche aucun bonus',
   trickBonusForWinner([pirate(), siren()], 1, resolveTrick([pirate(), siren()]).excludedIdx),
   0
 );

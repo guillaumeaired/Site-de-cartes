@@ -222,7 +222,7 @@ Tout le Matelot, plus — par ordre de ce que ça rapporte à l'arène :
   ont coupé s'il veut perdre ;
 - **coupes** des adversaires prises en compte pour estimer si sa carte tient ;
 - **chasse aux bonus** quand l'annonce est tenable : faire tomber les 14,
-  Skull King sur Pirates, Sirène sur Skull King ;
+  Pirate sur Sirènes, Skull King sur Pirates, Sirène sur Skull King ;
 - **nuisance**, en simple départage : quand il veut perdre et que deux
   coups se valent, celui qui colle le pli à un adversaire qui a déjà son
   compte. Plus forte, elle passait avant le fait de se défaire de ses

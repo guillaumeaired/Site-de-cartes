@@ -455,7 +455,7 @@ function cardPowerText(card) {
     case 'pirate':
       return card.name && PIRATE_POWER_TEXT[card.name]
         ? `${card.name} — s'il/elle remporte le pli : ${PIRATE_POWER_TEXT[card.name]}`
-        : "Pirate — bat toutes les cartes numérotées et les Sirènes. Seul le Skull King le bat.";
+        : "Pirate — bat toutes les cartes numérotées et les Sirènes (+20 par Sirène capturée). Seul le Skull King le bat.";
     case 'siren':
       return "Sirène — bat toutes les cartes numérotées, mais perd contre un Pirate. Elle bat en revanche le Skull King : c'est la seule carte à le faire.";
     case 'skullking':
@@ -2418,8 +2418,8 @@ function renderRoundTricks(state) {
 //   - le socle : 10 x manche pour une annonce à zéro, 20 par pli annoncé
 //     sinon (c'est le barème d'une annonce RÉUSSIE, l'hypothèse du cadre) ;
 //   - les bonus de capture déjà encaissés cette manche (pendingBonus côté
-//     serveur : les 14, les Pirates pris au Skull King, les monstres du
-//     Coffre…), qui ne sont crédités qu'à un contrat exact — d'où leur place
+//     serveur : les 14, les Sirènes prises par un Pirate, les Pirates pris
+//     au Skull King, les monstres du Coffre…), qui ne sont crédités qu'à un contrat exact — d'où leur place
 //     ici et nulle part ailleurs ;
 //   - la mise de Rascal le Flambeur, gagnée aux mêmes conditions.
 //

@@ -448,6 +448,12 @@ function trickBonusForWinner(cards, winnerIdx, excludedIdx = new Set()) {
   // Sirène (élargissement propre à Mat, les vrais Pirates ne donnent ce
   // bonus que capturés par le Skull King).
   const firstMatePresent = activeCards.some((c) => effectiveKind(c) === 'firstmate');
+  // Un Pirate (Tigresse jouée en Pirate comprise) qui prend des Sirènes :
+  // +20 chacune. Mat le Forban n'y a pas droit — il perd contre une Sirène,
+  // il ne peut donc jamais en remporter une.
+  if (winnerKind === 'pirate') {
+    bonus += activeCards.filter((c) => effectiveKind(c) === 'siren').length * 20;
+  }
   if (winnerKind === 'skullking') {
     bonus += pirateCount * 30;
     if (firstMatePresent) bonus += 30;
