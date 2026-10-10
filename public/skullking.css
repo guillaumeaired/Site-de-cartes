@@ -1066,6 +1066,70 @@ h3 {
   color: var(--sk-brass-lo);
 }
 
+/* Le niveau du bot : une à trois petites têtes de mort en or, le crâne de
+   la carte Skull King de l'accueil (détouré de skull-sk.png), rangées dans
+   un petit cartouche arrondi posé au-dessus de la marque, sans la toucher.
+   Hors du flux : la marque garde exactement sa largeur, et les pseudos à
+   côté d'elle aussi — accolé au texte, un chiffre l'élargissait de quatre
+   pixels et coupait « Anne Bonny », qui tenait pile.
+
+   Sur une ligne de 33 px, la marque centrée ne laissait que dix pixels
+   au-dessus d'elle : elle descend de huit, pour que le cartouche et elle
+   forment ensemble un bloc centré dans la ligne. */
+.sk-lobby-bot:has(.sk-lobby-bot-niveau) {
+  position: relative;
+  top: 8px;
+}
+
+/* Le cartouche lui-même, le même sur la ligne du bot et dans le menu qui
+   l'ajoute : on retrouve son niveau d'un écran à l'autre. */
+.sk-cranes {
+  display: flex;
+  gap: 1px;
+  padding: 1px 3px;
+  border: 1px solid var(--sk-brass-lo);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Sur la ligne, il a la largeur de la marque quel que soit le niveau, les
+   crânes centrés dedans ; son filet suit celui de la marque, survol
+   compris. */
+.sk-lobby-bot-niveau {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: calc(100% + 3px);
+  justify-content: center;
+  padding: 1px 0;
+  border-color: inherit;
+  pointer-events: none;
+}
+
+/* Une taille fixe, en pixels entiers, quel que soit le nombre : à une
+   taille fractionnaire, Chrome rééchantillonnait chaque crâne différemment
+   et celui du milieu paraissait plus gros. */
+.sk-cranes i {
+  flex: 0 0 7px;
+  height: 10px;
+  background: url('assets/skin/crane-or.webp') center / contain no-repeat;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
+}
+
+/* Pour l'hôte, la marque est le bouton qui change le niveau du bot. Elle
+   garde son allure de mention : seul le survol dit qu'elle se clique. */
+button.sk-lobby-bot {
+  background: none;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+button.sk-lobby-bot:hover,
+button.sk-lobby-bot:focus-visible {
+  color: var(--sk-brass);
+  border-color: var(--sk-brass-lo);
+}
+
 /* Les deux ensemble : la croix se range contre la marque au lieu de partager
    l'espace libre avec elle. */
 .sk-lobby-bot + .sk-lobby-vire {
@@ -4276,6 +4340,141 @@ h3 {
   background: rgba(232, 206, 146, 0.10);
   box-shadow: none;
   transform: none;
+}
+
+/* Le bouton ouvre un menu : la flèche le dit, et se retourne quand il est
+   ouvert. */
+.sk-bot-add::after {
+  content: '▾';
+  display: inline-block;
+  margin-left: 7px;
+  font-size: 0.75em;
+  transition: transform 0.15s;
+}
+
+.sk-bot-add[aria-expanded='true']::after {
+  transform: rotate(180deg);
+}
+
+/* Le choix du niveau d'un bot. Il s'ancre sur la rangée d'actions — d'où sa
+   position relative, sans décalage, qui ne déplace rien — et se pose
+   au-dessus d'elle, par-dessus les planches : fermé, il ne prend aucune
+   place, ouvert, il ne pousse rien. */
+.sk-lobby-actions {
+  position: relative;
+}
+
+.sk-bot-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 30;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  transform: translateX(-50%);
+  border-radius: 5px;
+  text-align: left;
+  color: var(--sk-cream);
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, #2a1b0f, #150c06);
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 9, 3, 0.9),
+    inset 0 1px 0 rgba(232, 206, 146, 0.16),
+    0 0 0 1px var(--sk-brass-lo),
+    0 14px 32px rgba(0, 0, 0, 0.7);
+}
+
+.sk-bot-menu[hidden] {
+  display: none;
+}
+
+.sk-bot-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  margin: 0;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.sk-bot-menu-item:hover,
+.sk-bot-menu-item:focus-visible {
+  outline: none;
+  background: rgba(232, 206, 146, 0.1);
+}
+
+/* Le chiffre du niveau, en tête de ligne ; le cartouche de crânes, à côté
+   du nom, est celui que la marque BOT portera sur la ligne du bot. */
+.sk-bot-menu-chiffre {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--sk-brass-lo);
+  border-radius: 50%;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--sk-brass);
+}
+
+/* Le dernier niveau choisi : c'est celui qu'on reprend le plus souvent. */
+.sk-bot-menu-prefere .sk-bot-menu-chiffre {
+  border-color: var(--sk-brass);
+  background: var(--sk-brass);
+  color: var(--sk-oak-lo);
+}
+
+.sk-bot-menu-texte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* Le cartouche du niveau, en bout de ligne : la même taille pour les trois
+   niveaux, donc une seule colonne, et la hauteur du nom et de sa
+   difficulté réunis — la place y est, les crânes y sont plus grands que
+   sur la ligne du salon. */
+.sk-bot-menu-cranes {
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  width: 58px;
+  height: 30px;
+  padding: 0;
+}
+
+.sk-bot-menu-cranes i {
+  flex-basis: 14px;
+  height: 20px;
+}
+
+.sk-bot-menu-nom {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--sk-cream);
+}
+
+.sk-bot-menu-desc {
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: var(--sk-cream-3);
 }
 
 /* --- Historique des manches (panneau de scores → modale) --- */
@@ -10657,5 +10856,23 @@ h3 {
     max-height: calc(100dvh - 16px);
     padding: 16px 20px;
     overflow-y: auto;
+  }
+
+  /* --- LE CHOIX DU NIVEAU D'UN BOT -----------------------------------
+     Les actions sont en bas de la colonne de gauche : au-dessus du bouton,
+     il ne reste pas la hauteur du menu, qui sortait de l'écran par le haut.
+     Il s'ouvre donc à DROITE de la colonne, calé sur son pied, par-dessus
+     la zone qui défile — et se resserre pour tenir dans 360 px. */
+  .sk-bot-menu {
+    left: calc(100% + 10px);
+    bottom: 0;
+    transform: none;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .sk-bot-menu-item {
+    padding: 5px 8px;
   }
 }

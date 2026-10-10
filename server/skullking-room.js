@@ -61,6 +61,9 @@ const ESSAI_CARTES = Math.max(0, Math.min(20, Number(process.env.SK_ESSAI_CARTES
 // l'autre — une table à cinq et une table à neuf ne montrent pas les mêmes
 // chevauchements ni les mêmes pouvoirs.
 const ESSAI_BOTS = Math.max(0, Math.min(MAX_PLAYERS - 1, Number(process.env.SK_ESSAI_BOTS) || 0));
+// Le niveau des bots assis d'office (1 à 3). Par défaut le Mousse : il pose
+// au hasard, on suit sans peine ce qu'il fait pendant un essai.
+const ESSAI_NIVEAU = Number(process.env.SK_ESSAI_NIVEAU) || 1;
 // SK_ESSAI_CARTE braque le mode sur une carte, ou sur quelques-unes : toute
 // la main en est faite, autant d'exemplaires que la manche a de cartes. Le
 // tour d'horizon des pouvoirs est bon pour vérifier qu'ils existent tous ;
@@ -540,10 +543,11 @@ function giveFreePiece(room, player, preferee) {
 
 // Le seul chemin d'ajout d'un bot : le bouton de l'hôte et le mode essai
 // passent tous les deux par ici, pour que la pièce soit prise dans les deux
-// cas. Renvoie le joueur ajouté, ou null si la salle a refusé.
-function addBotToRoom(io, room) {
+// cas. Renvoie le joueur ajouté, ou null si la salle a refusé. Le niveau est
+// vérifié par l'adaptateur : une valeur inconnue retombe sur son défaut.
+function addBotToRoom(io, room, niveau) {
   if (!bots) return null;
-  const id = bots.addBot(io, room, registerSkullKingHandlers);
+  const id = bots.addBot(io, room, registerSkullKingHandlers, niveau);
   if (!id) return null;
   const bot = findPlayer(room, id);
   giveFreePiece(room, bot);
@@ -728,7 +732,13 @@ function broadcastLobby(io, room) {
         nickname: pp.nickname,
         piece: pp.piece || null,
         isBot: Boolean(bots && bots.isBot(pp.id)),
+        // Le niveau du bot (1 à 3, voir briefs/bots-skullking.md) : la
+        // marque « BOT » le porte, et l'hôte le change d'un clic.
+        botLevel: bots && bots.isBot(pp.id) && bots.botLevel ? bots.botLevel(pp.id) : null,
       })),
+      // Les niveaux proposés, dans l'ordre : c'est le serveur qui sait
+      // lesquels existent et comment ils s'appellent.
+      botLevels: bots && bots.botCatalogue ? bots.botCatalogue() : [],
       pieceKeys: PIECE_KEYS,
       chat: room.chat || [],
       hostId: room.hostId,
@@ -1733,7 +1743,7 @@ function registerSkullKingHandlers(io, socket) {
     if (ESSAI && ESSAI_BOTS && bots) {
       const maxPlayers = maxPlayersFor(extensionsOf(room));
       for (let i = 0; i < ESSAI_BOTS && room.players.length < maxPlayers; i++) {
-        addBotToRoom(io, room);
+        addBotToRoom(io, room, ESSAI_NIVEAU);
       }
     }
     broadcastLobby(io, room);
@@ -1962,7 +1972,7 @@ function registerSkullKingHandlers(io, socket) {
 
   // Ajoute un joueur automatique au salon. Réservé à l'hôte et au salon
   // d'attente ; ces gardes s'appliquent aussi à l'interface déployée.
-  socket.on('skullking-add-bot', () => {
+  socket.on('skullking-add-bot', (payload) => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby' || !bots) return;
     if (socket.id !== room.hostId) return;
@@ -1970,7 +1980,19 @@ function registerSkullKingHandlers(io, socket) {
     // L'arrivée s'annonce toute seule : le bot entre par le vrai handler
     // `skullking-join-room`, qui pousse déjà « Untel a rejoint le salon. »
     // Une seconde ligne ici l'écrivait deux fois dans le fil.
-    if (addBotToRoom(io, room)) broadcastLobby(io, room);
+    if (addBotToRoom(io, room, payload && payload.level)) broadcastLobby(io, room);
+  });
+
+  // Change le niveau d'un bot assis. Mêmes gardes que le retrait : l'hôte,
+  // le salon d'attente, et une cible qui est bien un bot — un joueur humain
+  // n'a pas de niveau à recevoir.
+  socket.on('skullking-set-bot-level', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby' || !bots || !bots.setBotLevel) return;
+    if (socket.id !== room.hostId) return;
+    const playerId = payload && payload.playerId;
+    if (!playerId || !bots.isBot(playerId) || !findPlayer(room, playerId)) return;
+    if (bots.setBotLevel(playerId, payload.level)) broadcastLobby(io, room);
   });
 
   // Retire un bot du salon. Un bot ajouté par erreur bloquait la partie

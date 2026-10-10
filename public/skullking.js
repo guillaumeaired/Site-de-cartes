@@ -707,6 +707,12 @@ function showScreen(name) {
   // où l'hôte lance la partie, il aurait laissé l'enseigne masquée au salon
   // SUIVANT, sans plus rien pour la rouvrir.
   if (name !== 'waiting') ouvrirRenommage(false);
+  // Même chose pour le choix du niveau d'un bot : ouvert au lancement, il
+  // aurait attendu, ouvert, le salon de la revanche.
+  // (Lu par le DOM et non par la constante : showScreen sert dès le
+  // chargement, avant que le script n'arrive à la déclaration du menu.)
+  const menuBots = document.getElementById('sk-bot-menu');
+  if (name !== 'waiting' && menuBots && !menuBots.hidden) fermerMenuBots(false);
   publierCentreDuPlateau();
 }
 
@@ -974,7 +980,113 @@ const lobbyRange = document.getElementById('sk-lobby-range');
 const btnStartGame = document.getElementById('sk-btn-start-game');
 const btnAddBot = document.getElementById('sk-btn-add-bot');
 
-btnAddBot.addEventListener('click', () => socket.emit('skullking-add-bot'));
+// « Ajouter un bot » ouvre le choix du niveau : une ligne par niveau, son
+// nom et sa difficulté, et un clic ajoute le bot. Le dernier niveau choisi
+// est retenu dans le navigateur et pris d'office au clavier : celui qui joue
+// toujours contre des Loups de mer n'a qu'à valider. Le serveur vérifie la
+// valeur ; s'il ne la connaît pas, il prend son défaut.
+const BOT_NIVEAU_PREF_KEY = 'sk-bot-niveau';
+const botMenu = document.getElementById('sk-bot-menu');
+// Les niveaux proposés, tels que le dernier salon reçu les décrit.
+let niveauxDeBots = [];
+
+// Le dernier niveau choisi, s'il existe encore ; sinon le Matelot.
+function niveauBotPrefere() {
+  const retenu = Number(lireReglage(BOT_NIVEAU_PREF_KEY));
+  return niveauxDeBots.some((n) => n.niveau === retenu) ? retenu : 2;
+}
+
+// Le niveau d'un bot en petites têtes de mort dans un cartouche arrondi :
+// une à trois, sur sa ligne du salon comme dans le menu qui l'ajoute.
+function cartoucheCranes(niveau, classe) {
+  const cranes = document.createElement('span');
+  cranes.className = `sk-cranes ${classe}`;
+  for (let i = 0; i < niveau; i++) {
+    cranes.appendChild(document.createElement('i'));
+  }
+  return cranes;
+}
+
+function remplirMenuBots() {
+  const prefere = niveauBotPrefere();
+  botMenu.replaceChildren(...niveauxDeBots.map((n) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'sk-bot-menu-item';
+    item.setAttribute('role', 'menuitem');
+    item.dataset.niveau = String(n.niveau);
+    if (n.niveau === prefere) item.classList.add('sk-bot-menu-prefere');
+    const chiffre = document.createElement('span');
+    chiffre.className = 'sk-bot-menu-chiffre';
+    chiffre.textContent = String(n.niveau);
+    const texte = document.createElement('span');
+    texte.className = 'sk-bot-menu-texte';
+    const nom = document.createElement('span');
+    nom.className = 'sk-bot-menu-nom';
+    nom.textContent = n.nom;
+    const description = document.createElement('span');
+    description.className = 'sk-bot-menu-desc';
+    description.textContent = n.description || '';
+    texte.append(nom, description);
+    item.append(chiffre, texte, cartoucheCranes(n.niveau, 'sk-bot-menu-cranes'));
+    item.addEventListener('click', () => {
+      ecrireReglage(BOT_NIVEAU_PREF_KEY, String(n.niveau));
+      socket.emit('skullking-add-bot', { level: n.niveau });
+      fermerMenuBots(true);
+    });
+    return item;
+  }));
+}
+
+function ouvrirMenuBots() {
+  // Sans niveaux connus (serveur d'avant les niveaux), le bouton ajoute
+  // directement, comme il l'a toujours fait.
+  if (!niveauxDeBots.length) {
+    socket.emit('skullking-add-bot');
+    return;
+  }
+  remplirMenuBots();
+  botMenu.hidden = false;
+  btnAddBot.setAttribute('aria-expanded', 'true');
+  const items = [...botMenu.querySelectorAll('.sk-bot-menu-item')];
+  (items.find((i) => i.classList.contains('sk-bot-menu-prefere')) || items[0]).focus();
+}
+
+function fermerMenuBots(rendreFocus) {
+  if (botMenu.hidden) return;
+  botMenu.hidden = true;
+  btnAddBot.setAttribute('aria-expanded', 'false');
+  if (rendreFocus && !btnAddBot.classList.contains('hidden')) btnAddBot.focus();
+}
+
+btnAddBot.addEventListener('click', () => {
+  if (botMenu.hidden) ouvrirMenuBots();
+  else fermerMenuBots(false);
+});
+
+// Flèches pour passer d'un niveau à l'autre, Échap pour refermer.
+botMenu.addEventListener('keydown', (e) => {
+  const items = [...botMenu.querySelectorAll('.sk-bot-menu-item')];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    fermerMenuBots(true);
+  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const pas = e.key === 'ArrowDown' ? 1 : -1;
+    items[(i + pas + items.length) % items.length].focus();
+  } else if (e.key === 'Tab') {
+    fermerMenuBots(false);
+  }
+});
+
+// Un clic ailleurs referme le menu.
+document.addEventListener('pointerdown', (e) => {
+  if (botMenu.hidden) return;
+  if (botMenu.contains(e.target) || btnAddBot.contains(e.target)) return;
+  fermerMenuBots(false);
+});
+
 const waitingHint = document.getElementById('sk-waiting-hint');
 const btnExtension = document.getElementById('sk-btn-extension');
 const extensionHint = document.getElementById('sk-extension-hint');
@@ -1730,7 +1842,7 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
   }
 }
 
-socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
+socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
   if (id) myId = id;
   // Avant tout le reste : le pseudo a pu changer depuis ce salon (voir
   // « Modifier »), et c'est celui du serveur qui part dans la session de
@@ -1769,10 +1881,33 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
     // Un bot le dit sur sa ligne, à droite, là où l'hôte porte sa barre de
     // capitaine : sans ça, « Anne Bonny » se lisait comme un matelot de plus
     // et on comptait les humains de travers.
+    //
+    // Elle porte aussi son niveau, en exposant sur son coin (une à trois
+    // petites têtes de mort) : c'est la seule chose qui distingue deux bots.
+    // Les crânes sont hors du flux,
+    // la marque ne s'élargit donc pas d'un pixel. Le nom du niveau est dans
+    // l'info-bulle. Pour l'hôte, la marque est un bouton : un clic passe au
+    // niveau suivant.
     if (p.isBot) {
-      const marque = document.createElement('span');
+      const niveaux = botLevels || [];
+      const niveau = niveaux.find((n) => n.niveau === p.botLevel);
+      const marque = document.createElement(isHost && niveaux.length > 1 ? 'button' : 'span');
       marque.className = 'sk-lobby-bot';
       marque.textContent = 'BOT';
+      if (niveau) marque.appendChild(cartoucheCranes(niveau.niveau, 'sk-lobby-bot-niveau'));
+      if (niveau) {
+        const libelle = `${niveau.nom} — niveau ${niveau.niveau} sur ${niveaux.length}`;
+        marque.title = isHost && niveaux.length > 1 ? `${libelle} (cliquer pour changer)` : libelle;
+        marque.setAttribute('aria-label', `${p.nickname} : bot ${libelle}`);
+      }
+      if (marque.tagName === 'BUTTON') {
+        marque.type = 'button';
+        marque.addEventListener('click', () => {
+          const suivant = niveau ? (niveau.niveau % niveaux.length) + 1 : 1;
+          ecrireReglage(BOT_NIVEAU_PREF_KEY, String(suivant));
+          socket.emit('skullking-set-bot-level', { playerId: p.id, level: suivant });
+        });
+      }
       li.appendChild(marque);
     }
     // Renvoyer un bot au port. L'hôte seul peut le faire, et le serveur
@@ -1839,6 +1974,9 @@ socket.on('skullking-lobby-update', ({ code, players, hostId, isHost, canStart, 
 
   btnStartGame.classList.toggle('hidden', !isHost);
   btnAddBot.classList.toggle('hidden', !(isHost && players.length < maxPlayers));
+  niveauxDeBots = botLevels || [];
+  // Table pleine, ou plus hôte : le bouton disparaît, son menu avec lui.
+  if (btnAddBot.classList.contains('hidden')) fermerMenuBots(false);
   btnStartGame.disabled = !canStart;
   if (isHost) {
     waitingHint.textContent = canStart
