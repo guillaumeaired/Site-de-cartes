@@ -1066,23 +1066,10 @@ h3 {
   color: var(--sk-brass-lo);
 }
 
-/* Le niveau du bot : une à trois petites têtes de mort en or, le crâne de
-   la carte Skull King de l'accueil (détouré de skull-sk.png), rangées dans
-   un petit cartouche arrondi posé au-dessus de la marque, sans la toucher.
-   Hors du flux : la marque garde exactement sa largeur, et les pseudos à
-   côté d'elle aussi — accolé au texte, un chiffre l'élargissait de quatre
-   pixels et coupait « Anne Bonny », qui tenait pile.
-
-   Sur une ligne de 33 px, la marque centrée ne laissait que dix pixels
-   au-dessus d'elle : elle descend de huit, pour que le cartouche et elle
-   forment ensemble un bloc centré dans la ligne. */
-.sk-lobby-bot:has(.sk-lobby-bot-niveau) {
-  position: relative;
-  top: 8px;
-}
-
-/* Le cartouche lui-même, le même sur la ligne du bot et dans le menu qui
-   l'ajoute : on retrouve son niveau d'un écran à l'autre. */
+/* Le cartouche du niveau d'un bot : une à trois petites têtes de mort en
+   or, le crâne de la carte Skull King de l'accueil (détouré de
+   skull-sk.png). Le même sur la ligne du bot et dans le menu qui l'ajoute :
+   on retrouve son niveau d'un écran à l'autre. */
 .sk-cranes {
   display: flex;
   gap: 1px;
@@ -1092,18 +1079,21 @@ h3 {
   background: rgba(0, 0, 0, 0.3);
 }
 
-/* Sur la ligne, il a la largeur de la marque quel que soit le niveau, les
-   crânes centrés dedans ; son filet suit celui de la marque, survol
-   compris. */
-.sk-lobby-bot-niveau {
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  bottom: calc(100% + 3px);
+/* Sur la ligne, le cartouche EST la marque : il remplace « BOT ». Une
+   largeur fixe, tout juste celle de trois crânes, quel que soit le niveau :
+   les pseudos à côté ne bougent pas d'un bot à l'autre, et « Barbe-Rousse »
+   tient encore — à 31 px, il perdait son « SE ». Les crânes sont centrés
+   dedans, et le filet est celui, éteint, de la marque, qui s'allume au
+   survol. */
+.sk-lobby-bot.sk-lobby-bot-niveau {
   justify-content: center;
-  padding: 1px 0;
-  border-color: inherit;
-  pointer-events: none;
+  align-items: center;
+  width: 27px;
+  height: 14px;
+  padding: 1px;
+  border-color: var(--sk-brass-dead);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* Une taille fixe, en pixels entiers, quel que soit le nombre : à une

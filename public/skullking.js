@@ -997,10 +997,11 @@ function niveauBotPrefere() {
 }
 
 // Le niveau d'un bot en petites têtes de mort dans un cartouche arrondi :
-// une à trois, sur sa ligne du salon comme dans le menu qui l'ajoute.
-function cartoucheCranes(niveau, classe) {
-  const cranes = document.createElement('span');
-  cranes.className = `sk-cranes ${classe}`;
+// une à trois, sur sa ligne du salon comme dans le menu qui l'ajoute. Sur
+// la ligne, le cartouche est la marque elle-même (un bouton pour l'hôte) :
+// on le remplit au lieu d'en créer un.
+function cartoucheCranes(niveau, classe, cranes = document.createElement('span')) {
+  cranes.classList.add('sk-cranes', classe);
   for (let i = 0; i < niveau; i++) {
     cranes.appendChild(document.createElement('i'));
   }
@@ -1882,10 +1883,10 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
     // capitaine : sans ça, « Anne Bonny » se lisait comme un matelot de plus
     // et on comptait les humains de travers.
     //
-    // Elle porte aussi son niveau, en exposant sur son coin (une à trois
-    // petites têtes de mort) : c'est la seule chose qui distingue deux bots.
-    // Les crânes sont hors du flux,
-    // la marque ne s'élargit donc pas d'un pixel. Le nom du niveau est dans
+    // La marque est son niveau : une à trois petites têtes de mort dans un
+    // cartouche, la seule chose qui distingue deux bots, et qui suffit à
+    // dire que c'en est un. « BOT » ne s'écrit plus qu'en secours, face à
+    // un serveur qui ne donne pas de niveau. Le nom du niveau est dans
     // l'info-bulle. Pour l'hôte, la marque est un bouton : un clic passe au
     // niveau suivant.
     if (p.isBot) {
@@ -1893,8 +1894,8 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
       const niveau = niveaux.find((n) => n.niveau === p.botLevel);
       const marque = document.createElement(isHost && niveaux.length > 1 ? 'button' : 'span');
       marque.className = 'sk-lobby-bot';
-      marque.textContent = 'BOT';
-      if (niveau) marque.appendChild(cartoucheCranes(niveau.niveau, 'sk-lobby-bot-niveau'));
+      if (niveau) cartoucheCranes(niveau.niveau, 'sk-lobby-bot-niveau', marque);
+      else marque.textContent = 'BOT';
       if (niveau) {
         const libelle = `${niveau.nom} — niveau ${niveau.niveau} sur ${niveaux.length}`;
         marque.title = isHost && niveaux.length > 1 ? `${libelle} (cliquer pour changer)` : libelle;
