@@ -7,6 +7,10 @@ frappée sur la carte, comme l'emblème de la Tigresse : sans elle, un 0/14 pos�
 le pli et que l'autre le donne. C'est aussi elle qu'on choisit dans le cadre,
 plutôt que deux boutons de texte.
 
+Les pastilles jaunes ne viennent pas de cette planche : peintes or sur ocre,
+elles ne se lisaient pas, et ont été repeintes chiffre noir à part (voir
+pieces_jaunes.py).
+
 Deux rangées de quatre sur page blanche : les 0 en haut, les 14 en bas, dans
 l'ordre des familles. Même découpe RONDE que les pièces de bonus — diamètre lu
 sur la largeur, haut sur le bord supérieur, les deux mesures que l'ombre
@@ -20,6 +24,8 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+from pieces_jaunes import PASTILLES as SOURCE_JAUNE, detourer
 
 RACINE = Path(__file__).resolve().parent.parent
 SOURCE = RACINE / 'public/assets/skin/src/pastilles-0-14-sk.png'
@@ -56,6 +62,10 @@ def main():
     if not SOURCE.exists():
         print(f'absent : {SOURCE}', file=sys.stderr)
         return 1
+    if not SOURCE_JAUNE.exists():
+        print(f'absent : {SOURCE_JAUNE}', file=sys.stderr)
+        return 1
+    jaunes = detourer(SOURCE_JAUNE)
     im = Image.open(SOURCE).convert('RGB')
     a = np.asarray(im).astype(np.float32)
     hors = np.linalg.norm(a - PAGE, axis=2) > SEUIL
@@ -69,13 +79,19 @@ def main():
         if len(colonnes) != len(FAMILLES):
             print(f'rangée {valeur} : {len(colonnes)} pastilles au lieu de {len(FAMILLES)}', file=sys.stderr)
             return 1
+        lot = {}
         for famille, (x0, x1) in zip(FAMILLES, colonnes):
             cote = int((x1 - x0) * 0.99)
             cx = (x0 + x1) // 2
             gx, gy = cx - cote // 2, y0 + (x1 - x0 - cote) // 2
             p = im.crop((gx, gy, gx + cote, gy + cote)).convert('RGBA')
             p.putalpha(masque_rond(cote))
-            p = p.resize((COTE, COTE), Image.LANCZOS)
+            lot[famille] = (p.resize((COTE, COTE), Image.LANCZOS), cote)
+        # Or sur ocre ne se lit pas : la jaune vient de la planche repeinte
+        # chiffre noir, dans le même ordre (0 puis 14).
+        p = jaunes[VALEURS.index(valeur)]
+        lot['jaune'] = (p.resize((COTE, COTE), Image.LANCZOS), p.width)
+        for famille, (p, cote) in lot.items():
             dest = OUT / f'pastille-{valeur}-{famille}.webp'
             tmp = dest.with_suffix('.tmp.png')
             p.save(tmp)

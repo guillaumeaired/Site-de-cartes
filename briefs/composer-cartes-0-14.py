@@ -45,6 +45,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from pieces_jaunes import MEDAILLON as SRC_JAUNE, detourer
+
 RACINE = Path(__file__).resolve().parent.parent
 SRC = RACINE / 'public/assets/skin/src/0-14-sk.png'
 CARTES = RACINE / 'public/assets/cards'
@@ -115,6 +117,12 @@ def main():
     if len(lot) != len(FAMILLES):
         print(f'{len(lot)} pastilles au lieu de {len(FAMILLES)}', file=sys.stderr)
         return 1
+    # Or sur ocre ne se lit pas : la pastille jaune vient de la pièce
+    # repeinte chiffre noir (voir pieces_jaunes.py).
+    if not SRC_JAUNE.exists():
+        print(f'absent : {SRC_JAUNE}', file=sys.stderr)
+        return 1
+    lot[0] = detourer(SRC_JAUNE)[0]
 
     for pastille, (couleur, prefixe) in zip(lot, FAMILLES):
         source = CARTES / f'{prefixe}-{MODELE}.webp'
