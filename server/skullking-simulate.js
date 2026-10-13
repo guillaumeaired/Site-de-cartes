@@ -122,7 +122,8 @@ check('annonce invalide : négative', isValidBid(-1, 5), false);
 check('numérotées : la plus haute de la couleur menée gagne', winnerIdx([num('vert', 5), num('jaune', 12), num('vert', 9)]), 2);
 check('numérotées : le noir gagne quel que soit son chiffre', winnerIdx([num('vert', 14), num('noir', 2), num('jaune', 10)]), 1);
 check('fuite : ne gagne jamais face à une numérotée', winnerIdx([esc(), num('vert', 2)]), 1);
-check('tout-fuites : la 1ère jouée "gagne"', winnerIdx([esc(), esc(), esc()]), 0);
+check('tout-fuites : aucune ne gagne', winnerIdx([esc(), esc(), esc()]), null);
+check('tout-fuites : pli détruit', destroyed([esc(), esc(), esc()]), true);
 check('pirate bat une numérotée', winnerIdx([num('noir', 14), pirate()]), 1);
 check('pirate bat une sirène (sans skull king)', winnerIdx([siren(), pirate()]), 1);
 check('skull king bat les pirates (sans sirène)', winnerIdx([pirate(), sk(), pirate()]), 1);
@@ -132,10 +133,11 @@ check('tigresse-en-pirate compte comme un pirate', winnerIdx([num('noir', 14), t
 check('destroyed=false hors Kraken/Baleine', destroyed([num('vert', 5), num('jaune', 12)]), false);
 
 // --- Butin (Loot) ---
-check('butin seul : agit comme une fuite', winnerIdx([loot(), num('vert', 2)]), 1);
+check('butin : perd face à une numérotée', winnerIdx([loot(), num('vert', 2)]), 1);
 check('butin : perd même face à un pirate', winnerIdx([loot(), pirate()]), 1);
-check('tout-fuites + butin : le butin gagne exceptionnellement', winnerIdx([esc(), loot(), esc()]), 1);
-check('tout-fuites + 2 butins : le premier joué gagne', winnerIdx([esc(), loot(), loot()]), 1);
+check('butin seul : pli défaussé', winnerIdx([loot()]), null);
+check('fuites + butin : pli défaussé', winnerIdx([esc(), loot(), esc()]), null);
+check('deux butins : pli défaussé', winnerIdx([esc(), loot(), loot()]), null);
 
 // --- Kraken ---
 {
@@ -541,23 +543,18 @@ check('Baleine puis Kraken puis Raie : la Raie (dernière) décide', destroyed([
 // --- Dernière Salve : ne gagne jamais ---
 check('Dernière Salve ne gagne jamais face à une numérotée', winnerIdx([lastvolley(), num('vert', 2)]), 1);
 
-// --- Pli où plus rien ne peut gagner : la première Fuite ramasse s'il y en a
-// une, sinon seulement le pli est défaussé. Livret de l'extension, « A FEW
-// NOTES » : « Davy Jones' Locker, The Last Volley, The Spotted Stingray, and
-// Walk the Plank are not escape cards, and don't act like one in a trick. If
-// played in a trick where the remaining cards played are all escape cards,
-// the first escape played will win the trick. »
+// --- Pli où plus rien ne peut gagner : une Fuite ne ramasse jamais le pli,
+// même si elle est seule face à des spéciales non gagnantes.
 {
   const cards = [esc(), lastvolley(), plank(undefined)];
   const r = resolveTrick(cards);
-  check('Fuite + Dernière Salve + Planche : la Fuite ramasse, le pli n\'est pas défaussé', r.destroyed, false);
-  check('Fuite + Dernière Salve + Planche : c\'est la PREMIÈRE Fuite jouée qui gagne', r.winnerIdx, 0);
+  check('Fuite + Dernière Salve + Planche : pli défaussé', r.destroyed, true);
+  check('Fuite + Dernière Salve + Planche : aucune Fuite ne gagne', r.winnerIdx, null);
 }
 {
-  // Une Fuite posée APRÈS les non-gagnantes gagne tout autant : c'est la
-  // première FUITE qui compte, pas la première carte du pli.
+  // La position des Fuites ne change rien : elles ne gagnent jamais.
   const cards = [lastvolley(), esc(), plank(undefined), esc()];
-  check('Dernière Salve en tête puis deux Fuites : la première Fuite gagne', winnerIdx(cards), 1);
+  check('Dernière Salve en tête puis deux Fuites : pli défaussé', winnerIdx(cards), null);
 }
 {
   // L'exemple du livret, mot pour mot : que des spéciales non gagnantes,
@@ -567,18 +564,23 @@ check('Dernière Salve ne gagne jamais face à une numérotée', winnerIdx([last
   check('Davy Jones + Raie + Planche (aucune Fuite) : pli défaussé', r.destroyed, true);
   check('Davy Jones + Raie + Planche : mené par l\'entameur d\'origine', r.leaderIdx, 0);
 }
-check('Mais "que des Fuites" (sans les nouvelles cartes) reste gagné par la première', winnerIdx([esc(), esc()]), 0);
-check('Butin reste exceptionnel même mélangé aux nouvelles cartes non-gagnantes', winnerIdx([lastvolley(), loot(), plank(undefined)]), 1);
+check('Que des Fuites : pli défaussé', winnerIdx([esc(), esc()]), null);
+check('Butin + Dernière Salve + Planche : pli défaussé', winnerIdx([lastvolley(), loot(), plank(undefined)]), null);
+check('Planche seule : pli défaussé', winnerIdx([plank(undefined)]), null);
+check('Dernière Salve seule : pli défaussé', winnerIdx([lastvolley()]), null);
+check('Kraken seul : pli défaussé', winnerIdx([kraken()]), null);
+check('Baleine seule : pli défaussé', winnerIdx([whale()]), null);
+check('Raie Tachetée seule : pli défaussé', winnerIdx([stingray()]), null);
 
 // --- Joker/Wild 15 et 0/14 (déjà "résolus" au moment où ils entrent dans le pli) ---
 check('Joker (couleur prise = vert) bat une autre numérotée vert', winnerIdx([num('vert', 14), wild15('vert')]), 1);
 check('Joker perd face à l\'atout noir', winnerIdx([num('noir', 5), wild15('vert')]), 0);
-check('0/14 déclaré à 14 se comporte comme un vrai 14 (bonus couleur)', trickBonusForWinner([declared014('vert', 14), num('jaune', 3)], 0), 10);
+check('0/14 déclaré à 14 ne rapporte pas le bonus d’un 14', trickBonusForWinner([declared014('vert', 14), num('jaune', 3)], 0), 0);
+check('0/14 noir déclaré à 14 ne rapporte pas non plus le bonus noir', trickBonusForWinner([declared014('noir', 14), num('jaune', 3)], 0), 0);
 // Le 0/14 déclaré à 0 est une carte NUMÉROTÉE, la plus basse du paquet, pas
 // une Fuite déguisée. Livret de base, p. 10 : « Les cartes Fuite sont jouées
 // pour ne pas gagner. Elles perdent contre TOUTES les autres cartes. » Un 0
-// en est une autre — et le Butin, qui se comporte comme une Fuite, ne gagne
-// que faute de mieux : face à un 0, il y a mieux.
+// en est une autre — et le Butin ne peut jamais gagner, même seul.
 check('0/14 déclaré à 0 bat une Fuite', winnerIdx([esc(), declared014('vert', 0)]), 1);
 check('0/14 déclaré à 0 posé en premier bat quand même la Fuite', winnerIdx([declared014('vert', 0), esc()]), 0);
 check('0/14 déclaré à 0 bat un Butin', winnerIdx([declared014('vert', 0), loot()]), 0);

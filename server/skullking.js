@@ -211,10 +211,9 @@ function effectiveKind(card) {
 // suffit pour ça). "neutralized" est un marqueur interne (jamais posé sur
 // une vraie carte) utilisé pour désamorcer un Monstre Marin détruit par le
 // Coffre de Davy Jones ou un Pirate retiré par Marcher sur la Planche, sans
-// les faire compter comme des Fuites dans la règle "que des Fuites → la
-// première gagne" (elles n'ont rien d'une Fuite, elles doivent juste être
-// hors-course).
-const NEVER_WINS = new Set(['escape', 'lastvolley', 'plank', 'davyjones', 'neutralized']);
+// les faire compter comme des Fuites : une Fuite ne peut jamais remporter
+// un pli, elles doivent juste être hors-course.
+const NEVER_WINS = new Set(['escape', 'loot', 'lastvolley', 'plank', 'davyjones', 'neutralized']);
 const MONSTER_KINDS = ['kraken', 'whale', 'stingray'];
 
 // Hiérarchie "normale" (aucun effet de Monstre Marin actif à ce stade,
@@ -237,28 +236,11 @@ function resolveHierarchy(cards, kinds) {
   // risquée, et c'est tout l'intérêt de la carte.
   const neverWinning = (i) => NEVER_WINS.has(kinds[i]);
 
-  // Un pli où plus rien ne peut gagner. Trois issues, dans cet ordre :
-  //
-  // 1. Le Butin l'emporte (le premier joué s'il y en a deux) — il ne gagne
-  //    jamais face à une vraie carte, mais entre cartes qui ne gagnent pas
-  //    il reste le mieux classé.
-  // 2. Sinon, LA PREMIÈRE FUITE JOUÉE gagne, même si le pli contient aussi
-  //    des cartes d'extension qui ne gagnent jamais. Le livret est explicite :
-  //    « Davy Jones' Locker, The Last Volley, The Spotted Stingray, and Walk
-  //    the Plank are not escape cards, and don't act like one in a trick. If
-  //    played in a trick where the remaining cards played are all escape
-  //    cards, the first escape played will win the trick. » On exigeait
-  //    auparavant que le pli ne contienne QUE des Fuites : une Dernière Salve
-  //    posée au milieu de deux Fuites détruisait le pli au lieu de le laisser
-  //    à la première d'entre elles.
-  // 3. Sinon — aucune Fuite, que des spéciales non gagnantes — le pli est
-  //    défaussé, et c'est l'entameur qui mène le suivant. Le livret en donne
-  //    l'exemple : Davy Jones + Raie Tachetée + Marcher sur la Planche.
-  if (kinds.every((k, i) => neverWinning(i) || k === 'loot')) {
-    const lootIdx = kinds.indexOf('loot');
-    if (lootIdx !== -1) return { winnerIdx: lootIdx };
-    const fuiteIdx = kinds.indexOf('escape');
-    if (fuiteIdx !== -1) return { winnerIdx: fuiteIdx };
+  // Un pli où toutes les cartes restantes sont hors course est défaussé.
+  // Fuite, Butin, Planche, Dernière Salve et Coffre ne peuvent jamais
+  // remporter un pli, même seules ou mêlées les unes aux autres. L'entameur
+  // mène alors le pli suivant.
+  if (kinds.every((_, i) => neverWinning(i))) {
     return { winnerIdx: null, allNeverWin: true };
   }
 
@@ -436,7 +418,9 @@ function trickBonusForWinner(cards, winnerIdx, excludedIdx = new Set()) {
   cards.forEach((c, i) => {
     if (excludedIdx.has(i)) return;
     if (c.kind !== 'number') return;
-    if (c.value === 14) bonus += c.suit === 'noir' ? 20 : 10;
+    // Le 0/14 déclaré à 14 conserve sa valeur pour le pli, mais ce n'est
+    // pas un « vrai » 14 à capturer : il ne rapporte donc aucun bonus.
+    if (c.value === 14 && !c.wild14) bonus += c.suit === 'noir' ? 20 : 10;
     if (c.ext && c.value === 8) bonus += 5;
     if (c.ext && c.value === 7) bonus -= 5;
   });
