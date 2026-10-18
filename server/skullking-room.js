@@ -949,7 +949,13 @@ function stateFor(room, p) {
     // que le tapis marque d'un jeton : le donneur n'en a plus, personne ne
     // jouant en fonction de qui distribue, et room.dealerIndex ne sert donc
     // plus qu'ici, à faire tourner l'entame d'une manche à l'autre.
-    leaderPlayerId: inRound && room.players[room.leaderIndex] ? room.players[room.leaderIndex].id : null,
+    //
+    // C'est le premier de l'ordre de jeu RÉEL, et pas room.leaderIndex tout
+    // court : celui qui a posé une Dernière Salve et remporte l'avant-dernier
+    // pli n'a plus de carte pour le dernier. Son voisin de gauche entame à sa
+    // place (voir activeOrderThisTrick), et le jeton doit passer chez lui —
+    // il restait sinon sur un siège qui n'a rien à jouer.
+    leaderPlayerId: inRound && activeOrderThisTrick(room)[0] ? activeOrderThisTrick(room)[0].id : null,
     roundNumber: roundNumber(room),
     totalRounds: room.roundSequence.length,
     cardsInRound: room.cardsInRound,

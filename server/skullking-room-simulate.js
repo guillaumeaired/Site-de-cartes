@@ -722,4 +722,17 @@ PACE_PRESETS.forEach((preset) => {
   check('quitter le récap ne renvoie rien à personne', Object.keys(io2.recu), []);
 }
 
+// --- Dernière Salve : le jeton d'entame suit le joueur qui entame vraiment.
+// Alice a posé la Salve et gagné l'avant-dernier pli : elle mène en
+// principe, mais n'a plus de carte. Bob, à sa gauche, entame — et le jeton
+// doit être chez lui, pas resté sur le siège d'Alice.
+{
+  const room = { ...makeRoom([]), sittingOutIds: new Set(['p1']) };
+  room.players[1].hand = [numberCard];
+  room.players[2].hand = [pirateCard];
+  const vue = stateFor(room, room.players[0]);
+  check('Salve : le jeton passe au voisin de gauche du meneur sans carte', vue.leaderPlayerId, 'p2');
+  check('Salve : et c\'est bien à lui de jouer', vue.turnPlayerId, 'p2');
+}
+
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);
