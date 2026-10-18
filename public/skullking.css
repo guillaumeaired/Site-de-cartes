@@ -1749,6 +1749,11 @@ button.sk-lobby-bot:focus-visible {
   display: block;
 }
 
+/* Les manches à venir : le même or, resté dans l'ombre de la barre. */
+.sk-dbl--futur {
+  filter: brightness(0.55) saturate(0.85);
+}
+
 /* La manche en cours respire — la seule chose qui bouge dans la piste. */
 .sk-dbl--now {
   width: 88%;

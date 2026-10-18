@@ -1991,6 +1991,7 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
   // le repère de pli déjà animé (sinon la manche 1 / pli 1 de la partie
   // suivante porterait la même clé que celui de la partie précédente).
   startRevealPlayed = false;
+  myRoundResults.clear();
   lastDevouredTrick = null;
   lastPlankedTrick = null;
   lastDavyTrick = null;
@@ -2253,8 +2254,8 @@ function seatLayout(state) {
 
 // Résultat de MES manches passées, accumulé au fil de la partie (le serveur
 // n'envoie l'historique complet que sur demande, à l'ouverture de la modale).
-// Sert à frapper les doublons du bandeau : laiton = contrat tenu, cuivre
-// oxydé = raté.
+// Ne sert plus qu'à l'infobulle des doublons du bandeau. Vidé au retour au
+// salon : sinon la partie suivante héritait des manches de la précédente.
 const myRoundResults = new Map();
 
 // Rang gravé dans le registre : c'est lui qui bouge d'une manche à l'autre,
@@ -2284,9 +2285,9 @@ function renderRoundIndicator(state) {
   // précisément pour ça — son dessin d'origine portait dix alvéoles en dur,
   // et une partie en 5 manches en aurait laissé cinq vides.
   //
-  // La matière dit tout : laiton frappé = contrat tenu, cuivre oxydé =
-  // raté, laiton vierge = manche à venir, liseré gravé = manche en cours.
-  // Quatre états qui se distinguent à la forme, pas seulement à la couleur.
+  // Rien que des doublons d'or à tête de mort : celui de la manche en cours
+  // porte le liseré gravé et respire, ceux des manches à venir restent dans
+  // l'ombre (voir .sk-dbl--futur).
   chainEl.innerHTML = '';
   const capG = document.createElement('i');
   capG.className = 'sk-chain-bout sk-chain-bout--g';
@@ -2297,13 +2298,10 @@ function renderRoundIndicator(state) {
     cell.className = 'sk-chain-alveole';
 
     const past = myRoundResults.get(i);
-    const face = i === state.roundNumber ? 'courant'
-      : past === true ? 'tenu'
-      : past === false ? 'rate'
-      : 'vierge';
     const d = document.createElement('img');
-    d.className = 'sk-dbl' + (i === state.roundNumber ? ' sk-dbl--now' : '');
-    d.src = `assets/skin/doublon-${face}.webp`;
+    d.className = 'sk-dbl'
+      + (i === state.roundNumber ? ' sk-dbl--now' : i > state.roundNumber ? ' sk-dbl--futur' : '');
+    d.src = `assets/skin/doublon-${i === state.roundNumber ? 'courant' : 'tenu'}.webp`;
     d.alt = '';
     d.title = i === state.roundNumber
       ? `Manche ${i} — en cours`
