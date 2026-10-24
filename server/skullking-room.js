@@ -984,12 +984,19 @@ function stateFor(room, p) {
     base.hand = blindRound1 ? p.hand.map((c) => ({ id: c.id, kind: 'hidden' })) : p.hand;
     base.myBid = room.bids ? room.bids[p.id] : undefined;
     // Ce que la manche rapportera si SON contrat est tenu : le cadre « Gain »
-    // le recompose côté client à partir de l'annonce, de ces deux nombres et
+    // le recompose côté client à partir de l'annonce, de ces trois nombres et
     // du numéro de manche. Les siens seulement — un joueur n'a pas à lire les
     // captures des autres avant la fin de la manche, et le tapis les lui a de
     // toute façon montrées pli par pli.
     base.myPendingBonus = p.pendingBonus || 0;
     base.myRascalStake = p.rascalStake || 0;
+    // Les +20 de Butin, comptés comme endRound les paiera si les deux alliés
+    // tiennent : 20 par alliance où l'on figure, de chaque côté — un joueur
+    // à la fois poseur et gagnant (Dernière Salve) touche les deux.
+    base.myLootBonus = (room.lootAlliances || []).reduce(
+      (s, a) => s + (a.lootPlayerId === p.id ? 20 : 0) + (a.winnerId === p.id ? 20 : 0),
+      0
+    );
   }
   if (room.phase === 'playing' || room.phase === 'power') {
     // La Tigresse annonce son choix EN SE POSANT, comme dans la règle

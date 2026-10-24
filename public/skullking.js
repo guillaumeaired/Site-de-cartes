@@ -2419,12 +2419,11 @@ function renderRoundTricks(state) {
 //     serveur : les 14, les Sirènes prises par un Pirate, les Pirates pris
 //     au Skull King, les monstres du Coffre…), qui ne sont crédités qu'à un contrat exact — d'où leur place
 //     ici et nulle part ailleurs ;
-//   - la mise de Rascal le Flambeur, gagnée aux mêmes conditions.
-//
-// Le Butin en est absent, et c'est volontaire : ses +20 tiennent aussi à
-// l'exactitude de l'ALLIÉ, que ce cadre ne peut pas préjuger. Il est annoncé
-// en toutes lettres sous le total quand une alliance existe, plutôt que
-// gonflé dedans.
+//   - la mise de Rascal le Flambeur, gagnée aux mêmes conditions ;
+//   - les +20 du Butin pour chaque alliance formée. Ils tiennent aussi à
+//     l'exactitude de l'ALLIÉ, que ce cadre ne peut pas préjuger : ils sont
+//     comptés dans le total (c'est ce que la manche rapporte si tout le monde
+//     tient) et la condition est rappelée en toutes lettres dans le détail.
 function renderGain(state) {
   const me = (state.players || []).find((p) => p.id === myId);
   const enManche = state.phase === 'playing' || state.phase === 'power';
@@ -2437,7 +2436,8 @@ function renderGain(state) {
   const socle = me.bid === 0 ? 10 * (state.roundNumber || 1) : 20 * me.bid;
   const bonus = state.myPendingBonus || 0;
   const mise = state.myRascalStake || 0;
-  const total = socle + bonus + mise;
+  const butin = state.myLootBonus || 0;
+  const total = socle + bonus + mise + butin;
   gainValue.textContent = total > 0 ? `+${total}` : String(total);
 
   // Un pli de trop et le contrat ne peut PLUS être tenu : on ne rend pas un
@@ -2452,13 +2452,11 @@ function renderGain(state) {
   // total qui ne vient que du socle, « contrat 40 » répète le chiffre du
   // dessus et n'apprend rien.
   const lignes = [];
-  if (bonus || mise) {
+  if (bonus || mise || butin) {
     lignes.push(`contrat ${socle}`);
     if (bonus) lignes.push(`bonus ${bonus > 0 ? '+' : ''}${bonus}`);
     if (mise) lignes.push(`mise +${mise}`);
-  }
-  if ((state.lootAllies || []).includes(myId)) {
-    lignes.push('+20 par Butin si ton allié tient aussi');
+    if (butin) lignes.push(`Butin +${butin} si ton allié tient aussi`);
   }
   // Le détail des composantes n'a plus rien à expliquer une fois le contrat
   // dépassé : il ne reste qu'à dire pourquoi le chiffre est barré.
