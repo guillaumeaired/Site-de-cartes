@@ -5458,6 +5458,61 @@ button.sk-lobby-bot:focus-visible {
   grid-column: 2 / span 2;
 }
 
+/* LA SUITE, derrière la flèche : quatre pièces en carré au milieu, deux
+   sur deux. Le quinconce ne se fait pas à quatre sans laisser un côté plus
+   lourd que l'autre ; le carré, lui, tient sur les deux rangées de la
+   vitrine et la grille ne change pas de hauteur. Placées à la main : la
+   vitrine laisse l'auto-placement faire, ici il partirait de la gauche. */
+.sk-piece-grid--suite > :nth-child(1) { grid-area: 1 / 4 / auto / span 2; }
+.sk-piece-grid--suite > :nth-child(2) { grid-area: 1 / 6 / auto / span 2; }
+.sk-piece-grid--suite > :nth-child(3) { grid-area: 2 / 4 / auto / span 2; }
+.sk-piece-grid--suite > :nth-child(4) { grid-area: 2 / 6 / auto / span 2; }
+
+/* La flèche tient dans la demi-case que le quinconce laisse vide en bout de
+   seconde rangée : à droite sous la vitrine (elle mène à la suite), à gauche
+   sous la suite (elle ramène). Elle ne prend donc la place d'aucune pièce,
+   et la grille garde sa hauteur d'une page à l'autre. Un chevron de laiton,
+   le même trait que celui des volets repliables (.sk-fold). */
+.sk-piece-grid > .sk-piece-fleche {
+  grid-area: 2 / 10 / auto / span 1;
+  align-self: center;
+  width: calc(var(--sk-piece-cote, 48px) * 0.46);
+  height: calc(var(--sk-piece-cote, 48px) * 0.46);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(16, 9, 3, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.sk-piece-grid--suite > .sk-piece-fleche {
+  grid-area: 2 / 1 / auto / span 1;
+}
+
+.sk-piece-fleche::before {
+  content: '';
+  width: 28%;
+  height: 28%;
+  margin-left: -12%;
+  border-right: 2px solid var(--sk-brass-hi);
+  border-bottom: 2px solid var(--sk-brass-hi);
+  transform: rotate(-45deg);
+}
+
+.sk-piece-grid--suite > .sk-piece-fleche::before {
+  margin-left: 12%;
+  transform: rotate(135deg);
+}
+
+.sk-piece-fleche:hover {
+  background: rgba(16, 9, 3, 0.7);
+  transform: scale(1.12);
+}
+
 .sk-piece-btn {
   position: relative;
   width: var(--sk-piece-cote, 48px);

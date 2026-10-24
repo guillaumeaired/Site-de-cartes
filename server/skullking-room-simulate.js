@@ -645,8 +645,10 @@ PACE_PRESETS.forEach((preset) => {
 // null en attendant le départ, l'écran en montrait une (dérivée du pseudo) que
 // le voisin pouvait s'approprier : deux matelots au même crâne.
 {
+  // La vitrine seule : la suite est réservée à l'hôte, le hasard n'y puise pas.
+  const tirables = 9;
   const salle = { players: [] };
-  for (let i = 0; i < PIECE_KEYS.length; i++) {
+  for (let i = 0; i < tirables; i++) {
     salle.players.push({ id: `p${i}`, nickname: `Matelot ${i}`, piece: null });
     giveFreePiece(salle, salle.players[salle.players.length - 1]);
   }
@@ -655,13 +657,19 @@ PACE_PRESETS.forEach((preset) => {
   check(
     "chaque arrivant repart avec une pièce, aucune n'est laissée en suspens",
     prises.filter(Boolean).length,
-    PIECE_KEYS.length
+    tirables
   );
 
   check(
     'et jamais deux fois la même, y compris à table pleine',
     new Set(prises).size,
-    PIECE_KEYS.length
+    tirables
+  );
+
+  check(
+    "le hasard ne sort jamais une pièce réservée à l'hôte",
+    prises.every((k) => PIECE_KEYS.indexOf(k) < 9),
+    true
   );
 
   const deTrop = { id: 'p-detrop', nickname: 'Le passager clandestin', piece: null };
@@ -696,6 +704,18 @@ PACE_PRESETS.forEach((preset) => {
   check(
     "une préférence inventée ne crée pas de pièce hors du lot",
     PIECE_KEYS.includes(rusé.piece),
+    true
+  );
+
+  const hote = { id: 'p-hote', nickname: "L'hôte", piece: null };
+  const invite = { id: 'p-invite', nickname: "L'invité", piece: null };
+  const salleHote = { hostId: hote.id, players: [hote, invite] };
+  giveFreePiece(salleHote, hote, 'pieuvre');
+  check("l'hôte retrouve à la porte sa pièce de la suite", hote.piece, 'pieuvre');
+  giveFreePiece(salleHote, invite, 'canon');
+  check(
+    "un invité qui l'avait gardée d'un salon où il était hôte repart avec une pièce de la vitrine",
+    PIECE_KEYS.indexOf(invite.piece) < 9 && Boolean(invite.piece),
     true
   );
 

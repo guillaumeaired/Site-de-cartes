@@ -12,8 +12,10 @@ function loadActiveRoom() {
   }
 }
 function clearActiveRoom() {
-  // Nouveau salon = nouvelle table : la préférence de pièce sera reproposée.
+  // Nouveau salon = nouvelle table : la préférence de pièce sera reproposée,
+  // et le choix de pièce rouvrira sur la page qui montre la sienne.
   piecePrefApplied = false;
+  pieceSuiteOuverte = null;
   sessionStorage.removeItem(ACTIVE_ROOM_KEY);
 }
 
@@ -1209,6 +1211,10 @@ const PIECE_PREF_KEY = 'guimams-sk-piece';
 const piecePicker = document.getElementById('sk-piece-picker');
 const pieceGrid = document.getElementById('sk-piece-grid');
 let piecePrefApplied = false;
+// Le choix de pièce a deux pages : la vitrine des neuf, et la suite derrière
+// une flèche. null tant que le salon n'est pas dessiné — il s'ouvre alors
+// sur la page qui porte SA pièce, sinon on ne verrait pas laquelle on a.
+let pieceSuiteOuverte = null;
 
 // Envoyée avec le pseudo à la création comme à l'arrivée : le serveur réserve
 // une pièce dès qu'on s'assied (sinon celle qu'on nous montre reste offerte au
@@ -1305,15 +1311,23 @@ function renderPiecePicker(players) {
   if (!piecePrefApplied && me) {
     piecePrefApplied = true;
     const pref = pieceMemorisee();
-    if (pref && pref !== me.piece && PIECE_BY_KEY[pref] && !takenBy.has(pref)) {
+    if (pref && pref !== me.piece && pieceOuverte(pref) && !takenBy.has(pref)) {
       socket.emit('skullking-set-piece', { piece: pref });
       return; // le lobby suivant redessinera avec le bon choix
     }
   }
 
+  if (pieceSuiteOuverte === null && me && me.piece) {
+    pieceSuiteOuverte = PIECES.findIndex((p) => p.key === me.piece) >= PIECES_EN_VITRINE;
+  }
+  // La suite est réservée à l'hôte : les autres n'ont ni la page ni la flèche.
+  const suite = myIsHost && Boolean(pieceSuiteOuverte);
+  const page = suite ? PIECES.slice(PIECES_EN_VITRINE) : PIECES.slice(0, PIECES_EN_VITRINE);
+
   piecePicker.classList.remove('hidden');
+  pieceGrid.classList.toggle('sk-piece-grid--suite', suite);
   pieceGrid.innerHTML = '';
-  PIECES.forEach((piece) => {
+  page.forEach((piece) => {
     const owner = takenBy.get(piece.key);
     const mine = owner && owner.id === myId;
     const btn = document.createElement('button');
@@ -1335,6 +1349,22 @@ function renderPiecePicker(players) {
     });
     pieceGrid.appendChild(btn);
   });
+
+  // La flèche loge dans la demi-case que le quinconce laisse libre : à droite
+  // sous la vitrine, à gauche sous la suite. La grille garde ses deux rangées
+  // d'une page à l'autre, et rien ne bouge sous elle.
+  if (!myIsHost) return;
+  const fleche = document.createElement('button');
+  fleche.type = 'button';
+  fleche.className = 'sk-piece-fleche';
+  fleche.title = suite ? 'Revenir aux premières pièces' : 'Plus de pièces';
+  fleche.setAttribute('aria-label', fleche.title);
+  fleche.addEventListener('click', () => {
+    pieceSuiteOuverte = !suite;
+    renderPiecePicker(players);
+    pieceGrid.querySelector('.sk-piece-fleche').focus();
+  });
+  pieceGrid.appendChild(fleche);
 }
 
 // LE SALON NE BOUGE PLUS QUAND QUELQU'UN ARRIVE. La planche de l'équipage
@@ -2536,7 +2566,25 @@ const PIECES = [
     key: 'crochet', label: 'Crochet', color: '#900d2f',
     svg: '<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>',
   },
+  // Derrière la flèche du choix de pièce (voir PIECES_EN_VITRINE). Plus de
+  // `svg` : elles sont nées médaillons peints, sans silhouette d'avant.
+  { key: 'pieuvre', label: 'Pieuvre', color: '#302e28' },
+  { key: 'ivrogne', label: 'Ivrogne', color: '#cc4733' },
+  { key: 'poison', label: 'Poison', color: '#7a8006' },
+  { key: 'canon', label: 'Canon', color: '#746755' },
 ];
+
+// Les neuf premières se montrent d'emblée dans le salon ; les autres
+// attendent derrière une flèche que seul l'hôte voit. Même découpe que
+// PIECE_KEYS côté serveur, qui refuse la suite à tout autre et ne la tire
+// jamais au hasard.
+const PIECES_EN_VITRINE = 9;
+
+// Ce que je peux prendre : la vitrine, et la suite si j'ai ouvert le salon.
+function pieceOuverte(key) {
+  const rang = PIECES.findIndex((p) => p.key === key);
+  return rang !== -1 && (rang < PIECES_EN_VITRINE || myIsHost);
+}
 
 const PIECE_BY_KEY = Object.fromEntries(PIECES.map((p) => [p.key, p]));
 
@@ -2549,7 +2597,7 @@ function pieceFor(player) {
   const nickname = (player && player.nickname) || '';
   let hash = 0;
   for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
-  return PIECES[hash % PIECES.length];
+  return PIECES[hash % PIECES_EN_VITRINE];
 }
 
 // L'émail des médaillons est peint sombre — c'est ce qui lui donne son

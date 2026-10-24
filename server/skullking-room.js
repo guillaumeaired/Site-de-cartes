@@ -497,24 +497,42 @@ function davyJonesSwallow(cards) {
 // salon d'attente. Le serveur ne connaît que les clés - le dessin vit côté
 // client (voir PIECES dans public/skullking.js) ; les deux listes doivent
 // rester alignées.
+//
+// Les neuf premières sont la vitrine, ouverte à tous. Les suivantes, derrière
+// une flèche du choix de pièce, sont RÉSERVÉES À L'HÔTE — le privilège de
+// celui qui a ouvert le salon. Le hasard ne les sort donc jamais : il donnerait
+// à un invité ce qu'il n'a pas le droit de prendre. La vitrine suffit à elle
+// seule à une table pleine (neuf joueurs au plus, voir maxPlayersFor).
 const PIECE_KEYS = [
   'crane', 'ancre', 'voilier', 'sabre', 'boussole',
   'coffre', 'barre', 'bouteille', 'crochet',
+  'pieuvre', 'ivrogne', 'poison', 'canon',
 ];
+const PIECES_EN_VITRINE = 9;
+
+// Ce que le hasard peut encore donner : la vitrine seule.
+function piecesTirables(room) {
+  const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
+  return PIECE_KEYS.slice(0, PIECES_EN_VITRINE).filter((k) => !prises.has(k));
+}
+
+// Une pièce du lot, et de la vitrine sauf pour l'hôte. Si l'hôte quitte le
+// salon, son successeur hérite du privilège ; la pièce de l'ancien part avec
+// lui, il n'y a donc rien à reprendre à personne.
+function pieceAutorisee(room, player, piece) {
+  const rang = PIECE_KEYS.indexOf(piece);
+  return rang !== -1 && (rang < PIECES_EN_VITRINE || player.id === room.hostId);
+}
 
 // Filet de sécurité au lancement : si une pièce manque encore (partie reprise
 // d'un salon d'avant l'attribution à l'arrivée), on la comble au hasard parmi
 // celles qui restent — au hasard et non la première libre, sinon la même
 // partie donnerait toujours le crâne au même distrait.
 function assignMissingPieces(room) {
-  const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
-  const libres = PIECE_KEYS.filter((k) => !prises.has(k));
-  for (let i = libres.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [libres[i], libres[j]] = [libres[j], libres[i]];
-  }
   for (const p of room.players) {
-    if (!p.piece) p.piece = libres.pop() || null;
+    if (p.piece) continue;
+    const libres = piecesTirables(room);
+    p.piece = libres[Math.floor(Math.random() * libres.length)] || null;
   }
 }
 
@@ -532,12 +550,12 @@ function assignMissingPieces(room) {
 // exaucé à la porte, il ne peut plus lui passer sous le nez entre-temps.
 function giveFreePiece(room, player, preferee) {
   if (!player || player.piece) return;
-  const prises = new Set(room.players.map((p) => p.piece).filter(Boolean));
-  const libres = PIECE_KEYS.filter((k) => !prises.has(k));
-  if (libres.includes(preferee)) {
+  const prise = room.players.some((p) => p.piece === preferee);
+  if (!prise && pieceAutorisee(room, player, preferee)) {
     player.piece = preferee;
     return;
   }
+  const libres = piecesTirables(room);
   player.piece = libres[Math.floor(Math.random() * libres.length)] || null;
 }
 
@@ -1922,7 +1940,7 @@ function registerSkullKingHandlers(io, socket) {
     const player = findPlayer(room, socket.id);
     if (!player) return;
     const piece = payload && payload.piece;
-    if (!PIECE_KEYS.includes(piece)) return;
+    if (!pieceAutorisee(room, player, piece)) return;
     if (room.players.some((p) => p.id !== socket.id && p.piece === piece)) {
       sendError(socket, 'Cette pièce est déjà prise par un autre joueur.');
       return;
