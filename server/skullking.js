@@ -451,8 +451,8 @@ function trickBonusForWinner(cards, winnerIdx, excludedIdx = new Set()) {
 
 // bonus = somme des trickBonusForWinner accumulés pendant la manche par ce
 // joueur (Davy Jones inclus : +20/Monstre détruit ajouté séparément côté
-// skullking-room.js au même titre que trickBonusForWinner, car il dépend
-// du nombre détruit CE pli-ci), créditée uniquement si son annonce est
+// skullking-room.js au joueur qui a posé le Coffre — pas au vainqueur du
+// pli, le Coffre ne gagnant jamais), créditée uniquement si son annonce est
 // réussie exactement. Les bonus Butin (+20/+20) et la mise Rascal sont
 // ajoutés séparément côté skullking-room.js, car ils dépendent de
 // l'exactitude d'un AUTRE joueur.

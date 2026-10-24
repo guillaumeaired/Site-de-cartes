@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, resoudreLePliComplet, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -547,6 +547,39 @@ const pliSansPirate = roomAvecPli([
 check('aucun Pirate : la Planche ne retire rien', demanderCiblePlanche(ioMuet, pliSansPirate), false);
 check('et ne désigne personne', pliSansPirate.currentTrick[0].card.removesId, undefined);
 clearTimeout(pliSansPirate.inactivityTimer);
+
+// --- LE COFFRE DE DAVY JONES PAIE QUI LE POSE ---------------------------
+//
+// Le Coffre ne remporte jamais le pli, mais les +20 par Monstre englouti
+// reviennent à son joueur. On les versait au vainqueur du pli : le poseur du
+// Coffre ne touchait rien, et un pli défaussé ne payait personne.
+{
+  const room = roomAvecPli([
+    { playerId: 'p1', card: { id: 'n5', kind: 'number', suit: 'vert', value: 5 } },
+    { playerId: 'p2', card: { id: 'kr', kind: 'kraken' } },
+    { playerId: 'p3', card: { id: 'dj', kind: 'davyjones' } },
+    { playerId: 'p4', card: { id: 'wh', kind: 'whale' } },
+  ]);
+  resoudreLePliComplet(ioMuet, room);
+  const bonusDe = (id) => room.players.find((p) => p.id === id).pendingBonus;
+  check('Coffre : le pli revient à la numérotée', room.lastTrickResult.winnerId, 'p1');
+  check('Coffre : le poseur ne ramasse pas le pli', room.players.find((p) => p.id === 'p3').tricksWon, 0);
+  check('Coffre : +20 par Monstre englouti pour le poseur', bonusDe('p3'), 40);
+  check('Coffre : rien pour le vainqueur du pli', bonusDe('p1'), 0);
+  clearTimeout(room.trickTimer);
+}
+{
+  // Plus rien pour gagner une fois les Monstres avalés : le pli est défaussé,
+  // et le Coffre est payé quand même.
+  const room = roomAvecPli([
+    { playerId: 'p1', card: { id: 'dj', kind: 'davyjones' } },
+    { playerId: 'p2', card: { id: 'kr', kind: 'kraken' } },
+  ]);
+  resoudreLePliComplet(ioMuet, room);
+  check('Coffre + Monstre seuls : pli défaussé', room.lastTrickResult.destroyed, true);
+  check('Coffre + Monstre seuls : le poseur touche quand même +20', room.players.find((p) => p.id === 'p1').pendingBonus, 20);
+  clearTimeout(room.trickTimer);
+}
 
 // --- LE RYTHME DE LA PARTIE : ce que le salon a le droit de régler -----
 //

@@ -1559,7 +1559,6 @@ function resoudreLePliComplet(io, room) {
     const winner = findPlayer(room, winnerId);
     winner.tricksWon += 1;
     winner.pendingBonus += trickBonusForWinner(cards, result.winnerIdx, result.excludedIdx);
-    winner.pendingBonus += result.monstersDestroyed * 20;
     // Alliance Butin : chaque Butin posé par un AUTRE joueur que le
     // vainqueur forme une alliance avec lui (sauf s'il a gagné lui-même
     // via le cas exceptionnel "tout-Fuites + Butin", déjà exclu ici
@@ -1569,6 +1568,14 @@ function resoudreLePliComplet(io, room) {
         room.lootAlliances.push({ lootPlayerId: t.playerId, winnerId });
       }
     });
+  }
+  // Les +20 par Monstre englouti vont à qui a posé le Coffre, pas au
+  // vainqueur du pli : le Coffre ne gagne jamais le pli, mais ses Monstres
+  // lui reviennent quand même — pli remporté par un autre ou défaussé.
+  if (result.monstersDestroyed) {
+    const coffre = room.currentTrick.find((t) => effectiveKind(t.card) === 'davyjones');
+    const poseur = coffre && findPlayer(room, coffre.playerId);
+    if (poseur) poseur.pendingBonus += result.monstersDestroyed * 20;
   }
   const leaderId = room.currentTrick[result.leaderIdx].playerId;
   const devorees = devoreesParLeVainqueur(cards, result);
@@ -2380,6 +2387,9 @@ module.exports = {
   devoreesParLeVainqueur,
   plankedCardIds,
   davyJonesSwallow,
+  // Exporté pour éprouver à qui vont les points d'un pli (le Coffre de Davy
+  // Jones paie qui le pose, pas qui ramasse).
+  resoudreLePliComplet,
   powerResultMessage,
   stateFor,
   // Exporté pour pouvoir l'éprouver : la donne truquée n'est pilotée que par
