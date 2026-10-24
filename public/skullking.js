@@ -3776,6 +3776,16 @@ function renderBidChoices(state) {
   bidChoices.appendChild(hint);
 }
 
+// Un joueur dans la consigne : son médaillon à gauche, son pseudo à côté.
+// C'est le jeton qu'on reconnaît d'un coup d'œil sur le tapis, bien avant
+// de lire le nom.
+function joueurBandeau(p) {
+  const piece = PIECE_BY_KEY[p.piece] || pieceFor(p);
+  return '<span class="sk-ti-joueur">' +
+    `<img class="sk-ti-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />` +
+    `<b class="sk-ti-nom">${escapeHTML(p.nickname)}</b></span>`;
+}
+
 function renderTurnIndicator(state) {
   if (state.phase === 'power') {
     turnIndicator.textContent = ''; // le bandeau de pouvoir porte déjà le message
@@ -3788,10 +3798,12 @@ function renderTurnIndicator(state) {
           ? 'Ta carte reste cachée — base ton annonce sur celles que tu vois des autres.'
           : 'Combien de plis vas-tu remporter cette manche ?';
     } else {
-      const waiting = state.players.filter((p) => !p.hasBid).map((p) => p.nickname);
-      turnIndicator.textContent = waiting.length
-        ? `Annonce envoyée (${state.myBid}) — tu peux encore changer d'avis tant que tout le monde n'a pas annoncé. En attente de : ${waiting.join(', ')}…`
-        : 'Tout le monde a annoncé, révélation…';
+      const waiting = state.players.filter((p) => !p.hasBid);
+      if (waiting.length) {
+        turnIndicator.innerHTML = `<span class="sk-ti-ligne">En attente de ${waiting.map((p) => joueurBandeau(p)).join(' ')}</span>`;
+      } else {
+        turnIndicator.textContent = 'Tout le monde a annoncé, révélation…';
+      }
     }
     return;
   }
@@ -3813,7 +3825,14 @@ function renderTurnIndicator(state) {
     return;
   }
   if (!state.isMyTurn) {
-    turnIndicator.textContent = `${nicknameOf(state, state.turnPlayerId)} joue…`;
+    const joueur = state.players.find((p) => p.id === state.turnPlayerId);
+    if (joueur) {
+      // Toute la phrase en grand, pas seulement le nom : « joue… » restait
+      // en petit à côté et se lisait comme une note de bas de page.
+      turnIndicator.innerHTML = `<span class="sk-ti-ligne sk-ti-grand">${joueurBandeau(joueur)} joue…</span>`;
+    } else {
+      turnIndicator.textContent = `${nicknameOf(state, state.turnPlayerId)} joue…`;
+    }
     return;
   }
   // En paysage on a la place de rappeler la couleur demandée dans la consigne,

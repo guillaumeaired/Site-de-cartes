@@ -2884,6 +2884,44 @@ button.sk-lobby-bot:focus-visible {
   font-weight: 600;
 }
 
+/* Un joueur nommé dans la consigne : médaillon puis pseudo, sur une ligne.
+   En `em` pour suivre les tailles de police que la consigne prend selon
+   l'écran. */
+/* La phrase entière est une rangée centrée : posé en ligne, le médaillon
+   tirait le pseudo vers le milieu de la ligne pendant que le reste du texte
+   restait sur la ligne de base, et « joue… » tombait plus bas que le nom. */
+.sk-ti-ligne {
+  /* En bloc, pas en ligne : posée en ligne, la rangée s'asseyait sur la
+     ligne de base et laissait sous elle la place des jambages — le contenu
+     remontait dans la pilule. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15em 0.45em;
+  /* Le médaillon est plus haut que le texte : sans ce jour il touchait les
+     bords de la pilule. */
+  padding: 0.25em 0;
+}
+
+.sk-ti-joueur {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+}
+
+.sk-ti-piece {
+  width: 1.5em;
+  height: 1.5em;
+  object-fit: contain;
+  flex: none;
+}
+
+.sk-ti-grand {
+  font-size: 1.3em;
+}
+
 .sk-bid-choices {
   display: flex;
   flex-wrap: wrap;
