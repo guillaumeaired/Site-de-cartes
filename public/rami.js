@@ -144,6 +144,15 @@ formJoin.addEventListener('submit', (e) => {
   socket.emit('rami-join-room', { code, nickname, token: getPlayerToken() });
 });
 
+// Entrée dans le champ pseudo vaut le bouton Rejoindre ; click() ne fait
+// rien tant que le bouton est désactivé, donc pas de double envoi.
+joinModalNickname.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    btnJoinModal.click();
+  }
+});
+
 btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
 btnCloseRules.addEventListener('click', () => rulesModal.classList.add('hidden'));
 
