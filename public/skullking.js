@@ -818,17 +818,292 @@ formJoin.addEventListener('submit', (e) => {
   socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken(), piece: pieceMemorisee() });
 });
 
-// Entrée dans le champ pseudo vaut le bouton Rejoindre ; click() ne fait
-// rien tant que le bouton est désactivé, donc pas de double envoi.
-joinModalNickname.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.isComposing) {
-    e.preventDefault();
-    btnJoinModal.click();
-  }
-});
+// --- Les règles -------------------------------------------------------
+// Une pile de fiches plutôt qu'une page : quatre pour le jeu de base, puis
+// une par famille d'extension retenue. Chaque ligne tient en quelques mots,
+// avec la carte ou le visage à côté ; le texte complet reste un clic plus
+// loin, dans la fiche de carte (ouvrirFiche) que le salon ouvre déjà.
+//
+// Les extensions affichées suivent l'écran d'où l'on ouvre : toutes depuis
+// l'accueil, où l'on découvre le jeu ; celles cochées depuis le salon ;
+// celles de la partie en jeu. Tenues à jour par le salon et par l'état de
+// jeu (voir skullking-lobby-update et renderState).
+let reglesExtensions = {};
+let reglesIndex = 0;
+let reglesDetails = [];
 
-btnRules.addEventListener('click', () => rulesModal.classList.remove('hidden'));
-btnCloseRules.addEventListener('click', () => rulesModal.classList.add('hidden'));
+const reglesFiche = document.getElementById('sk-regles-fiche');
+const reglesPoints = document.getElementById('sk-regles-points');
+const reglesPrec = document.getElementById('sk-regles-prec');
+const reglesSuiv = document.getElementById('sk-regles-suiv');
+
+// Le centre du visage sur chaque Pirate peint, en fraction de la carte :
+// la tête ronde des fiches est un recadrage de l'illustration, pas une
+// image à part. Relevé sur les planches, pas calculé.
+const REGLES_VISAGES = {
+  'classique-rosie': [0.46, 0.37],
+  'classique-will': [0.46, 0.3],
+  'classique-rascal': [0.61, 0.3],
+  'classique-juanita': [0.5, 0.29],
+  'classique-harry': [0.52, 0.27],
+  'classique-mary': [0.47, 0.33],
+  pablo: [0.54, 0.3],
+  guigui: [0.62, 0.36],
+  mams: [0.54, 0.3],
+  anto: [0.6, 0.44],
+};
+
+const REGLES_PIRATES = [
+  { name: 'Rosie la Douce', effet: 'choisit qui entame le pli suivant' },
+  { name: 'Will le Bandit', effet: 'pioche 2 cartes, en défausse 2' },
+  { name: 'Rascal le Flambeur', effet: 'mise 10 ou 20 de plus sur son annonce' },
+  { name: 'Juanita Jade', effet: 'regarde les cartes non distribuées' },
+  { name: 'Harry le Géant', effet: 'change son annonce de ±1' },
+  { name: 'Mary Thorne', effet: 'un joueur jouera une carte au hasard au pli suivant', ext: 'marythorne' },
+];
+
+const REGLES_SPECIALES = [
+  { carte: { kind: 'escape' }, nom: 'Fuite', effet: 'perd toujours' },
+  { carte: { kind: 'tigress' }, nom: 'Tigresse', effet: 'Pirate ou Fuite, au choix' },
+  { carte: { kind: 'loot' }, nom: 'Butin', effet: 'perd · allié du gagnant : +20 chacun si vos deux annonces sont justes' },
+  { carte: { kind: 'kraken' }, nom: 'Kraken', effet: 'détruit le pli, personne ne le gagne' },
+  { carte: { kind: 'whale' }, nom: 'Baleine blanche', effet: 'les spéciales ne comptent plus : le plus haut chiffre gagne' },
+];
+
+const REGLES_EXT_CHIFFRES = [
+  { carte: { kind: 'number', suit: 'vert', value: 7, ext: true }, nom: '7', effet: '−5 à qui gagne le pli', ext: 'numerotees' },
+  { carte: { kind: 'number', suit: 'jaune', value: 8, ext: true }, nom: '8', effet: '+5 à qui gagne le pli', ext: 'numerotees' },
+  { carte: { kind: 'number', suit: 'violet', value: null, wild14: true, ext: true }, nom: '0/14', effet: 'vaut 0 ou 14, au choix · jamais de bonus', ext: 'numerotees' },
+  { carte: { kind: 'wild15' }, nom: 'Joker', effet: 'vaut 15, couleur au choix', ext: 'joker' },
+];
+
+const REGLES_EXT_SPECIALES = [
+  { carte: { kind: 'firstmate' }, nom: 'Mat le Forban', effet: 'bat les Pirates, perd contre Skull King et Sirène · pris : +30', ext: 'firstmate' },
+  { carte: { kind: 'stingray' }, nom: 'Raie Tachetée', effet: 'comme la Baleine, mais le plus bas gagne', ext: 'stingray' },
+  { carte: { kind: 'lastvolley' }, nom: 'Dernière Salve', effet: 'perd · tu rejoues une carte après tout le monde', ext: 'lastvolley' },
+  { carte: { kind: 'plank' }, nom: 'Planche', effet: 'perd · jette un Pirate du pli, au choix', ext: 'plank' },
+  { carte: { kind: 'davyjones' }, nom: 'Coffre de Davy Jones', effet: 'perd · détruit les monstres : +20 chacun', ext: 'davyjones' },
+];
+
+// null : toutes les extensions (l'accueil).
+function reglesActif(ext) {
+  return !ext || reglesExtensions === null || !!reglesExtensions[ext];
+}
+
+// La clé d'illustration d'une carte, sous la forme des classes
+// `sk-card--art-*` : elles ne posent que la variable --art, que la vignette
+// reprend telle quelle.
+function reglesArt(carte) {
+  if (carte.kind === 'number') {
+    const planche = SUIT_ART[carte.suit];
+    return carte.wild14 ? `${planche}-014` : `${planche}-${carte.value}`;
+  }
+  return artFor(carte);
+}
+
+function reglesVignette(carte) {
+  return `<i class="sk-regles-carte sk-card--art-${reglesArt(carte)}" aria-hidden="true"></i>`;
+}
+
+function reglesTete(name) {
+  const cle = artFor({ kind: 'pirate', name });
+  const [x, y] = REGLES_VISAGES[cle] || [0.5, 0.26];
+  return `<i class="sk-regles-tete sk-card--art-${cle}" style="--vx:${x};--vy:${y}" aria-hidden="true"></i>`;
+}
+
+// Une ligne de fiche : le visuel, le nom, l'effet en quelques mots. Elle
+// s'ouvre sur la fiche de carte complète — d'où un bouton. `marquer` : une
+// carte d'extension glissée sur une fiche du jeu de base (Mary Thorne parmi
+// les Pirates) le dit, depuis l'accueil où tout est montré. Sur une fiche
+// d'extension, la fiche entière le dit déjà.
+function reglesLigne(visuel, nom, effet, carte, marquer) {
+  const i = reglesDetails.push({ nom, carte }) - 1;
+  const marque = marquer && reglesExtensions === null ? '<span class="sk-regles-ext">ext.</span>' : '';
+  return `<li><button class="sk-regles-ligne" type="button" data-detail="${i}">${visuel}`
+    + `<span class="sk-regles-texte"><b>${nom}</b>${marque} ${effet}</span></button></li>`;
+}
+
+function reglesListe(lignes) {
+  return `<ul class="sk-regles-liste">${lignes
+    .filter((l) => reglesActif(l.ext))
+    .map((l) => reglesLigne(reglesVignette(l.carte), l.nom, l.effet, l.carte, false))
+    .join('')}</ul>`;
+}
+
+function reglesManche() {
+  return `<ul class="sk-regles-faits">
+      <li><img src="assets/skin/doublon-tenu.webp" alt="" class="sk-regles-logo" /><span><b>10 manches</b> · manche <i>n</i> = <i>n</i> cartes</span></li>
+      <li><img src="assets/skin/annonce-3.webp" alt="" class="sk-regles-logo" /><span><b>Annonce</b> : combien de plis tu feras, en secret, révélé d'un coup</span></li>
+      <li>${reglesVignette({ kind: 'number', suit: 'vert', value: 7 })}<span><b>Couleur</b> : suis celle de la 1<sup>re</sup> numérotée si tu peux · spéciales toujours jouables</span></li>
+    </ul>
+    <table class="sk-regles-score">
+      <thead><tr><th></th><th>juste</th><th>ratée</th></tr></thead>
+      <tbody>
+        <tr><th>Annonce 0</th><td class="plus">+10 × <i>n</i></td><td class="moins">−10 × <i>n</i></td></tr>
+        <tr><th>Annonce 1 ou +</th><td class="plus">+20 / pli</td><td class="moins">−10 / pli d'écart</td></tr>
+      </tbody>
+    </table>
+    <p class="sk-regles-note">Bonus de capture : seulement si l'annonce est juste.</p>`;
+}
+
+// L'échelle des numérotées, puis le cycle des trois personnages. Chaque
+// flèche va du gagnant au perdant et porte le bonus qu'il empoche : c'est
+// la même figure pour savoir qui l'emporte et ce que ça rapporte.
+function reglesPli() {
+  const fig = (carte, nom, sous) => `<figure>${reglesVignette(carte)}<figcaption>${nom}<small>${sous}</small></figcaption></figure>`;
+  const cycle = (carte, nom, cls) => `<figure class="sk-regles-cycle-carte ${cls}">${reglesVignette(carte)}<figcaption>${nom}</figcaption></figure>`;
+  return `<p class="sk-regles-consigne">Du plus faible au plus fort :</p>
+    <div class="sk-regles-echelle">
+      ${fig({ kind: 'escape' }, 'Fuite', 'perd')}
+      <span class="sk-regles-inf" aria-label="perd contre">&lt;</span>
+      ${fig({ kind: 'number', suit: 'vert', value: 14 }, 'Couleur', '14 : +10')}
+      <span class="sk-regles-inf" aria-label="perd contre">&lt;</span>
+      ${fig({ kind: 'number', suit: 'noir', value: 14 }, 'Noir · atout', '14 : +20')}
+      <span class="sk-regles-inf" aria-label="perd contre">&lt;</span>
+      <span class="sk-regles-echelle-suite">les 3<br />personnages</span>
+    </div>
+    <div class="sk-regles-cycle" role="img" aria-label="Le Skull King bat les Pirates (+30 chacun), un Pirate bat les Sirènes (+20 chacune), une Sirène bat le Skull King (+40).">
+      <svg viewBox="0 0 260 214" aria-hidden="true">
+        <defs><marker id="sk-regles-pointe" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" /></marker></defs>
+        <path d="M100 32 Q46 36 40 116" />
+        <path d="M74 158 L186 158" />
+        <path d="M220 116 Q214 36 160 32" />
+        <text x="50" y="58">+30</text>
+        <text x="130" y="150">+20</text>
+        <text x="210" y="58">+40</text>
+        <text class="sk-regles-cycle-cle" x="130" y="114">→ bat</text>
+      </svg>
+      ${cycle({ kind: 'skullking' }, 'Skull King', 'sk-regles-cycle--haut')}
+      ${cycle({ kind: 'pirate', name: 'Rascal le Flambeur' }, 'Pirate', 'sk-regles-cycle--gauche')}
+      ${cycle({ kind: 'siren', variant: 1 }, 'Sirène', 'sk-regles-cycle--droite')}
+    </div>
+    <p class="sk-regles-note">Les trois dans le pli : la Sirène gagne. À égalité, la 1<sup>re</sup> posée.</p>`;
+}
+
+function reglesPirates() {
+  const lignes = REGLES_PIRATES
+    .filter((p) => reglesActif(p.ext))
+    .map((p) => reglesLigne(reglesTete(p.name), p.name, p.effet, { kind: 'pirate', name: p.name }, p.ext))
+    .join('');
+  return `<p class="sk-regles-consigne">Leur pouvoir joue s'ils gagnent le pli.</p>
+    <ul class="sk-regles-liste sk-regles-liste--tetes">${lignes}</ul>
+    <p class="sk-regles-note">Le Skull King hérite du pouvoir des Pirates qu'il prend. Au dernier pli, seul Harry agit.</p>`;
+}
+
+function reglesFiches() {
+  const fiches = [
+    { cle: 'manche', titre: 'La manche', corps: reglesManche },
+    { cle: 'pli', titre: 'Le pli', corps: reglesPli },
+    { cle: 'pirates', titre: 'Les pirates', corps: reglesPirates },
+    { cle: 'speciales', titre: 'Cartes spéciales', corps: () => reglesListe(REGLES_SPECIALES) },
+  ];
+  if (REGLES_EXT_CHIFFRES.some((l) => reglesActif(l.ext))) {
+    fiches.push({ cle: 'chiffres', titre: 'Chiffres', ext: true, corps: () => reglesListe(REGLES_EXT_CHIFFRES) });
+  }
+  if (REGLES_EXT_SPECIALES.some((l) => reglesActif(l.ext))) {
+    fiches.push({ cle: 'ext-speciales', titre: 'Spéciales', ext: true, corps: () => reglesListe(REGLES_EXT_SPECIALES) });
+  }
+  return fiches;
+}
+
+function renderRegles() {
+  const fiches = reglesFiches();
+  reglesIndex = Math.max(0, Math.min(reglesIndex, fiches.length - 1));
+  const fiche = fiches[reglesIndex];
+  reglesDetails = [];
+  const kicker = fiche.ext ? 'Extension' : 'Règles';
+  reglesFiche.className = `sk-regles-fiche sk-regles-fiche--${fiche.cle}${fiche.ext ? ' sk-regles-fiche--ext' : ''}`;
+  reglesFiche.innerHTML = `<p class="sk-regles-kicker">${kicker} · ${reglesIndex + 1}/${fiches.length}</p>`
+    + `<h2 id="sk-regles-titre" class="sk-regles-titre">${fiche.titre}</h2>${fiche.corps()}`;
+  reglesPoints.innerHTML = fiches.map((f, i) => `<button type="button" class="sk-regles-point${f.ext ? ' sk-regles-point--ext' : ''}"`
+    + ` data-fiche="${i}" aria-label="${f.titre}"${i === reglesIndex ? ' aria-current="true"' : ''}></button>`).join('');
+  reglesPrec.disabled = reglesIndex === 0;
+  reglesSuiv.disabled = reglesIndex === fiches.length - 1;
+}
+
+// Toutes les fiches prennent la hauteur de la plus haute : les flèches et
+// les points ne bougent pas d'une fiche à l'autre. Mesurée plutôt que fixée
+// — elle dépend de la largeur, des polices et des extensions retenues.
+function caleHauteurRegles() {
+  const garde = reglesIndex;
+  reglesFiche.style.minHeight = '';
+  let haute = 0;
+  for (let i = 0; i < reglesFiches().length; i++) {
+    reglesIndex = i;
+    renderRegles();
+    haute = Math.max(haute, reglesFiche.offsetHeight);
+  }
+  reglesIndex = garde;
+  renderRegles();
+  reglesFiche.style.minHeight = `${haute}px`;
+}
+
+function ouvrirRegles() {
+  // Depuis l'accueil on n'est d'aucune partie : tout le paquet est montré.
+  if (!screens.home.classList.contains('hidden')) {
+    reglesExtensions = null;
+    reglesSignature = '';
+  }
+  reglesIndex = 0;
+  rulesModal.classList.remove('hidden');
+  caleHauteurRegles();
+}
+
+function fermerRegles() {
+  rulesModal.classList.add('hidden');
+}
+
+function reglesOuvertes() {
+  return !rulesModal.classList.contains('hidden');
+}
+
+// Le salon et l'état de jeu passent par ici : la pile se recompose sous les
+// yeux si l'hôte coche une extension pendant qu'on lit.
+// L'état de jeu arrive à chaque coup : on ne recompose que si le paquet a
+// changé (extensions ou visages), sinon la fiche se redessinerait sous le
+// doigt à chaque carte posée.
+let reglesSignature = '';
+function setReglesExtensions(extensions) {
+  reglesExtensions = extensions || {};
+  const signature = JSON.stringify([reglesExtensions, deckStyle]);
+  if (signature === reglesSignature) return;
+  reglesSignature = signature;
+  if (reglesOuvertes()) caleHauteurRegles();
+}
+
+function allerFiche(i) {
+  reglesIndex = i;
+  renderRegles();
+}
+
+btnRules.addEventListener('click', ouvrirRegles);
+document.getElementById('sk-btn-rules-waiting').addEventListener('click', ouvrirRegles);
+document.getElementById('sk-btn-rules-game').addEventListener('click', ouvrirRegles);
+btnCloseRules.addEventListener('click', fermerRegles);
+reglesPrec.addEventListener('click', () => allerFiche(reglesIndex - 1));
+reglesSuiv.addEventListener('click', () => allerFiche(reglesIndex + 1));
+reglesPoints.addEventListener('click', (e) => {
+  const point = e.target.closest('[data-fiche]');
+  if (point) allerFiche(Number(point.dataset.fiche));
+});
+reglesFiche.addEventListener('click', (e) => {
+  const ligne = e.target.closest('[data-detail]');
+  if (!ligne) return;
+  const { nom, carte } = reglesDetails[Number(ligne.dataset.detail)];
+  ouvrirFiche(nom, { cartes: [carte], texte: cardPowerText(carte) || '' });
+});
+rulesModal.addEventListener('click', (e) => {
+  if (e.target === rulesModal) fermerRegles();
+});
+// En capture : la fiche de carte, ouverte par-dessus, se ferme seule sur
+// Échap (son écouteur passe après) — les règles restent alors ouvertes
+// derrière elle.
+document.addEventListener('keydown', (e) => {
+  if (!reglesOuvertes() || !document.getElementById('sk-card-modal').classList.contains('hidden')) return;
+  if (e.key === 'Escape') fermerRegles();
+  else if (e.key === 'ArrowLeft' && !reglesPrec.disabled) allerFiche(reglesIndex - 1);
+  else if (e.key === 'ArrowRight' && !reglesSuiv.disabled) allerFiche(reglesIndex + 1);
+}, true);
 
 // --- Historique des manches ---
 // Le pop-up de fin de manche s'efface au bout de quelques secondes : ce
@@ -1142,6 +1417,15 @@ const joinModal = document.getElementById('sk-join-modal');
 const joinModalNickname = document.getElementById('sk-join-modal-nickname');
 const btnJoinModal = document.getElementById('sk-btn-join-modal');
 const joinModalError = document.getElementById('sk-join-modal-error');
+
+// Entrée dans le champ pseudo vaut le bouton Rejoindre ; click() ne fait
+// rien tant que le bouton est désactivé, donc pas de double envoi.
+joinModalNickname.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    btnJoinModal.click();
+  }
+});
 
 let myIsHost = false;
 
@@ -1982,6 +2266,7 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
   // vignettes du salon en sont déjà tirées.
   setDeckStyle(deck);
   renderDeckPicker(deck, isHost);
+  setReglesExtensions(extensions);
 
   renderRoundsPicker(totalRounds, minRounds, maxRounds, isHost);
   renderPacePicker(pace, paceSettings, pacePresets, pacePreset, isHost);
@@ -6435,6 +6720,7 @@ function applyState(state) {
   // repasse pas par le salon et n'aurait sinon jamais appris lequel est en
   // jeu.
   setDeckStyle(state.deckStyle);
+  setReglesExtensions(state.extensions);
   showReconnectingOverlay(false);
   joinModal.classList.add('hidden');
   hideAllChoicePanels();

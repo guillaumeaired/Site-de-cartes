@@ -926,6 +926,524 @@ h3 {
   color: var(--sk-cream-2);
 }
 
+/* LES RÈGLES — une pile de fiches de parchemin dans le cadre de bois. Une
+   fiche à la fois, toutes à la même hauteur : la navigation ne saute pas
+   d'une fiche à l'autre. */
+
+/* Le bouton qui les ouvre est un bout de la même fiche : parchemin, encre
+   bordeaux, crâne d'or. Ni laiton (réservé à l'action de l'écran) ni lien
+   discret : il doit se voir au premier regard. */
+.sk-regles-bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--sk-wine);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  background:
+    radial-gradient(120% 120% at 50% 40%, transparent 50%, rgba(122, 90, 32, 0.32)),
+    linear-gradient(170deg, var(--sk-parch-hi), var(--sk-parch) 55%, var(--sk-parch-lo));
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 90, 32, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.sk-regles-bouton::before,
+.sk-regles-bouton::after {
+  content: '';
+  width: 16px;
+  height: 18px;
+  background: url('assets/skin/crane-or.webp') center / contain no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(42, 27, 12, 0.6));
+}
+
+.sk-regles-bouton:hover,
+.sk-regles-bouton:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.sk-regles-bouton:active {
+  filter: brightness(0.92);
+  transform: translateY(1px);
+}
+
+/* Au salon, centré au-dessus de la planche des extensions. Hors grille à
+   trois planches, il ouvre simplement la pile. */
+.sk-regles-bouton--salon {
+  display: flex;
+  width: fit-content;
+  margin: 0 auto 10px;
+}
+
+/* En jeu, sous le bandeau, un peu en retrait de son bord gauche, et en
+   double : sur la scène, à côté des cartes, un bouton de lien se perdait. */
+.sk-regles-bouton--jeu {
+  position: absolute;
+  left: 22px;
+  top: calc(100% + 12px);
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 6px;
+  font-size: 1.15rem;
+}
+
+.sk-regles-bouton--jeu::before,
+.sk-regles-bouton--jeu::after {
+  width: 26px;
+  height: 30px;
+}
+
+.sk-regles {
+  width: 100%;
+  max-width: 400px;
+  padding: 16px 16px 12px;
+}
+
+.sk-regles-fermer {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--sk-parch-ink);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.sk-regles-fermer:hover {
+  opacity: 1;
+  background: rgba(122, 90, 32, 0.16);
+}
+
+.sk-regles-fiche {
+  box-sizing: border-box;
+  padding: 12px 14px 14px;
+  border-radius: 10px;
+  color: var(--sk-parch-ink);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.86rem;
+  line-height: 1.32;
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(122, 90, 32, 0.3)),
+    linear-gradient(170deg, var(--sk-parch-hi), var(--sk-parch) 55%, var(--sk-parch-lo));
+  box-shadow:
+    inset 0 0 0 1px rgba(122, 90, 32, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+.sk-regles-kicker {
+  margin: 0;
+  text-align: center;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sk-brass-lo);
+}
+
+.sk-regles-fiche--ext .sk-regles-kicker {
+  color: var(--sk-wine);
+}
+
+.sk-regles .sk-regles-titre {
+  margin: 0 0 10px;
+  font-size: 1.18rem;
+  color: var(--sk-wine);
+  text-shadow: none;
+}
+
+.sk-regles-consigne {
+  margin: 0 0 10px;
+  text-align: center;
+  font-style: italic;
+}
+
+.sk-regles-note {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.76rem;
+  font-style: italic;
+  color: rgba(42, 27, 12, 0.78);
+}
+
+.sk-regles-fiche sup {
+  font-size: 0.6em;
+}
+
+/* Les vignettes : une vraie illustration du paquet, à l'échelle d'une
+   icône. Les classes `sk-card--art-*` ne posent que la variable --art. */
+.sk-regles-carte {
+  display: block;
+  flex: none;
+  width: 34px;
+  aspect-ratio: 7 / 10;
+  border-radius: 4px;
+  background: #1a0e06 var(--art) 50% 50% / cover no-repeat;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* La tête d'un Pirate : sa carte recadrée sur le visage (--vx, --vy : le
+   centre du visage en fraction de la carte, voir REGLES_VISAGES). La carte
+   est agrandie 2,6 fois ; 3,714 = 2,6 × 10/7 pour la hauteur. */
+.sk-regles-tete {
+  --d: 40px;
+  display: block;
+  flex: none;
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background-color: #1a0e06;
+  background-image: var(--art);
+  background-repeat: no-repeat;
+  background-size: calc(var(--d) * 2.6) auto;
+  background-position:
+    calc(var(--d) / 2 - var(--vx) * var(--d) * 2.6)
+    calc(var(--d) / 2 - var(--vy) * var(--d) * 3.714);
+  box-shadow:
+    0 0 0 2px var(--sk-brass),
+    0 0 0 3px rgba(42, 27, 12, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.sk-regles-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sk-regles-ligne {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sk-regles-liste--tetes .sk-regles-ligne {
+  padding: 5px 8px;
+}
+
+.sk-regles-ligne:hover,
+.sk-regles-ligne:focus-visible {
+  outline: none;
+  background: rgba(122, 90, 32, 0.16);
+}
+
+.sk-regles-texte b {
+  display: block;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--sk-wine);
+}
+
+/* Depuis l'accueil, toutes les extensions sont montrées : la marque dit
+   lesquelles ne sont pas du jeu de base. */
+.sk-regles-ext {
+  display: inline-block;
+  margin-right: 5px;
+  padding: 0 4px 1px;
+  border-radius: 3px;
+  background: var(--sk-wine);
+  color: var(--sk-parch-hi);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  vertical-align: 1px;
+}
+
+.sk-regles-texte b + .sk-regles-ext {
+  margin-top: 1px;
+}
+
+/* La manche : deux faits, puis le barème. */
+.sk-regles-faits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.sk-regles-faits li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sk-regles-logo {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.sk-regles-faits .sk-regles-carte {
+  width: 27px;
+  margin: 0 5px;
+}
+
+.sk-regles-faits b {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.78rem;
+  color: var(--sk-wine);
+}
+
+.sk-regles-score {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.sk-regles-score th,
+.sk-regles-score td {
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(122, 90, 32, 0.32);
+  text-align: center;
+}
+
+.sk-regles-score th {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--sk-parch-ink);
+}
+
+.sk-regles-score tbody th {
+  text-align: left;
+}
+
+.sk-regles-score thead th {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sk-brass-lo);
+}
+
+.sk-regles-score .plus {
+  color: #2E6B2A;
+  font-weight: 600;
+}
+
+.sk-regles-score .moins {
+  color: var(--sk-wine);
+  font-weight: 600;
+}
+
+/* Le pli : l'échelle des numérotées, puis le cycle des personnages. */
+.sk-regles-echelle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+}
+
+.sk-regles-echelle figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 70px;
+  margin: 0;
+}
+
+.sk-regles-echelle .sk-regles-carte {
+  width: 36px;
+}
+
+.sk-regles-echelle figcaption,
+.sk-regles-cycle-carte figcaption {
+  margin-top: 4px;
+  text-align: center;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sk-regles-echelle small {
+  display: block;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sk-wine);
+}
+
+.sk-regles-inf {
+  padding-top: 15px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sk-brass-lo);
+}
+
+.sk-regles-echelle-suite {
+  width: 54px;
+  padding-top: 12px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-style: italic;
+  line-height: 1.2;
+}
+
+/* Le cycle : trois cartes en triangle, une flèche du gagnant au perdant,
+   et sur chaque flèche le bonus que le gagnant empoche. Les coordonnées
+   sont celles du viewBox, en pixels : le cadre ne se met pas à l'échelle. */
+.sk-regles-cycle {
+  position: relative;
+  width: 260px;
+  height: 214px;
+  margin: 12px auto 0;
+}
+
+.sk-regles-cycle svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.sk-regles-cycle path {
+  fill: none;
+  stroke: var(--sk-wine);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  marker-end: url(#sk-regles-pointe);
+}
+
+.sk-regles-cycle marker path {
+  fill: var(--sk-wine);
+  stroke: none;
+}
+
+.sk-regles-cycle text {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: var(--sk-wine);
+  paint-order: stroke;
+  stroke: var(--sk-parch-hi);
+  stroke-width: 3px;
+}
+
+.sk-regles-cycle .sk-regles-cycle-cle {
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 500;
+  fill: var(--sk-parch-ink);
+}
+
+.sk-regles-cycle-carte {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 48px;
+  margin: 0;
+}
+
+.sk-regles-cycle-carte .sk-regles-carte {
+  width: 48px;
+}
+
+.sk-regles-cycle--haut { left: 106px; top: 0; }
+.sk-regles-cycle--gauche { left: 18px; top: 124px; }
+.sk-regles-cycle--droite { left: 194px; top: 124px; }
+
+/* La navigation : flèches et points. Les extensions sont des losanges —
+   on voit d'un coup d'œil combien de fiches elles ajoutent. */
+.sk-regles-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.sk-regles-fleche {
+  width: 34px;
+  height: 34px;
+  padding: 0 0 3px;
+  border: 1px solid rgba(184, 137, 53, 0.5);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sk-cream);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sk-regles-fleche:hover:not(:disabled) {
+  background: rgba(184, 137, 53, 0.16);
+}
+
+.sk-regles-fleche:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.sk-regles-points {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sk-regles-point {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid var(--sk-brass);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sk-regles-point--ext {
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.sk-regles-point[aria-current="true"] {
+  background: var(--sk-brass-hi);
+  border-color: var(--sk-brass-hi);
+}
+
 .sk-ext-tally {
   margin: 10px 0 0;
   padding-top: 9px;
@@ -9057,6 +9575,21 @@ button.sk-lobby-bot:focus-visible {
     max-width: none;
   }
 
+  /* Les trois planches gardent leurs hauts alignés : le bouton des règles
+     flotte au-dessus de la pile, dans le vide laissé à gauche des
+     réglages. */
+  #sk-screen-waiting .sk-lobby-pile {
+    position: relative;
+  }
+
+  .sk-regles-bouton--salon {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 18px);
+    margin: 0 auto;
+  }
+
   /* La discussion tient le bout de la rangée, à droite de l'équipage : c'est
      à lui qu'on écrit, et le fil se lit à côté de la liste de ceux qui
      attendent plutôt que sous le code de la partie. Une planche plus étroite
@@ -9562,6 +10095,15 @@ button.sk-lobby-bot:focus-visible {
     justify-content: center;
     gap: 16px;
     margin-top: 8px;
+  }
+
+  /* La grille rabote toujours ses côtés et son pied, mais plus son haut :
+     le bouton dépasse au-dessus d'elle. `clip-path` sur la boîte de bord
+     (sans bordure, elle vaut celle de rembourrage) coupe au même endroit
+     que l'`overflow: hidden` qu'il remplace. */
+  #sk-screen-waiting .sk-lobby-grid {
+    overflow: visible;
+    clip-path: inset(-80px 0 0 0);
   }
 
   #sk-screen-waiting .sk-lobby-chat { grid-column: 3; grid-row: 1; max-width: none; }
@@ -10944,6 +11486,115 @@ button.sk-lobby-bot:focus-visible {
     max-height: calc(100dvh - 16px);
     padding: 16px 20px;
     overflow-y: auto;
+  }
+
+  /* --- LES RÈGLES ----------------------------------------------------
+     Une fiche de bureau fait 470 px de haut : couchée sur un téléphone,
+     elle passe en deux colonnes et prend la largeur qu'elle gagne en
+     hauteur — les flèches restent à l'écran, sans défiler. */
+  #sk-rules-modal {
+    padding: 8px;
+  }
+
+  /* Le bouton suit le bandeau resserré d'un cran : il reste le plus voyant
+     du coin sans peser plus lourd que la barre au-dessus de lui. */
+  .sk-regles-bouton {
+    gap: 5px;
+    padding: 4px 7px;
+    font-size: 0.64rem;
+  }
+
+  .sk-regles-bouton::before,
+  .sk-regles-bouton::after {
+    width: 13px;
+    height: 15px;
+  }
+
+  .sk-regles-bouton--salon {
+    position: static;
+    margin: 0 auto 8px;
+  }
+
+  .sk-regles-bouton--jeu {
+    left: 14px;
+    top: calc(100% + 6px);
+    gap: 8px;
+    padding: 7px 11px;
+    font-size: 0.86rem;
+  }
+
+  .sk-regles-bouton--jeu::before,
+  .sk-regles-bouton--jeu::after {
+    width: 18px;
+    height: 21px;
+  }
+
+  .sk-regles {
+    max-width: min(720px, 100%);
+    padding: 8px 10px 6px;
+  }
+
+  .sk-regles-fermer {
+    top: 12px;
+    right: 14px;
+  }
+
+  .sk-regles-fiche {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-content: start;
+    column-gap: 18px;
+    padding: 6px 12px 8px;
+  }
+
+  .sk-regles-fiche > * {
+    grid-column: 1 / -1;
+  }
+
+  .sk-regles .sk-regles-titre {
+    margin-bottom: 6px;
+  }
+
+  .sk-regles-liste {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 8px;
+  }
+
+  .sk-regles-fiche--manche .sk-regles-faits {
+    grid-column: 1;
+    margin: 0;
+  }
+
+  .sk-regles-fiche--manche .sk-regles-score {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: center;
+  }
+
+  .sk-regles-fiche--pli .sk-regles-consigne,
+  .sk-regles-fiche--pli .sk-regles-echelle,
+  .sk-regles-fiche--pli .sk-regles-note {
+    grid-column: 1;
+  }
+
+  .sk-regles-fiche--pli .sk-regles-echelle {
+    margin-top: 8px;
+  }
+
+  .sk-regles-fiche--pli .sk-regles-cycle {
+    grid-column: 2;
+    grid-row: 3 / span 3;
+    margin-top: 0;
+  }
+
+  .sk-regles-nav {
+    margin-top: 6px;
+  }
+
+  .sk-regles-fleche {
+    width: 30px;
+    height: 30px;
   }
 
   /* --- LE CHOIX DU NIVEAU D'UN BOT -----------------------------------
