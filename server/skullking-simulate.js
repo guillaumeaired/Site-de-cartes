@@ -314,6 +314,17 @@ check('doit suivre : aucune couleur imposée encore', mustFollowSuit([num('vert'
   check('jouable : une carte spéciale reste toujours jouable', isCardPlayable(pirate(), hand, trick), true);
   check('jouable : la Tigresse reste toujours jouable', isCardPlayable(tigress('escape'), hand, trick), true);
 }
+
+// Le Joker n'est pas un atout : il ne prend jamais le noir, donc il ne suit
+// pas une entame noire tant qu'on a du noir en main.
+{
+  const joker = { id: 'j', kind: 'wild15' };
+  const entameNoire = [{ card: num('noir', 4) }];
+  check('Joker bloqué : noir demandé et du noir en main', isCardPlayable(joker, [joker, num('noir', 2), num('vert', 9)], entameNoire), false);
+  check('Joker libre : noir demandé mais plus de noir en main', isCardPlayable(joker, [joker, num('vert', 9)], entameNoire), true);
+  check('Joker libre : une autre couleur demandée, il la prend', isCardPlayable(joker, [joker, num('vert', 9)], [{ card: num('vert', 3) }]), true);
+  check('Joker libre : rien n\'est encore demandé', isCardPlayable(joker, [joker, num('noir', 2)], [{ card: pirate() }]), true);
+}
 {
   const trick = [{ card: num('vert', 9) }];
   const hand = [num('jaune', 7), pirate()];

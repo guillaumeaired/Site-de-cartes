@@ -1666,6 +1666,15 @@ button.sk-lobby-bot:focus-visible {
   opacity: 1;
 }
 
+/* Le second temps du renvoi d'un joueur : la croix devient une question,
+   rouge d'emblée, pour qu'on sache qu'un clic de plus débarque pour de bon. */
+.sk-lobby-vire.sk-lobby-vire-confirme {
+  color: #d4574a;
+  opacity: 1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .lobby-list li:nth-child(1) { animation-delay: 0.03s; }
 .lobby-list li:nth-child(2) { animation-delay: 0.08s; }
 .lobby-list li:nth-child(3) { animation-delay: 0.13s; }
@@ -6212,6 +6221,17 @@ button.sk-lobby-bot:focus-visible {
 
 .sk-end-actions {
   margin-top: 16px;
+}
+
+/* Le récap vu par un spectateur : à la place de « Rejouer », ce qui va lui
+   arriver. Une ligne de texte, pas un bouton — il n'a rien à faire. */
+.sk-end-spectator-note {
+  margin: 0;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.82rem;
+  color: var(--sk-cream);
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
 
 /* --- Le cadre des faits marquants ---------------------------------
@@ -11614,4 +11634,27 @@ button.sk-lobby-bot:focus-visible {
   .sk-bot-menu-item {
     padding: 5px 8px;
   }
+}
+
+/* Confirmation de départ en pleine partie : une question, deux boutons côte
+   à côte, « Rester » en premier parce que c'est le clic sans conséquence. */
+.sk-leave-confirm-content {
+  width: min(360px, 100%);
+  text-align: center;
+}
+
+.sk-leave-confirm-text {
+  margin: 0 0 18px;
+}
+
+.sk-leave-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sk-leave-confirm-actions .btn {
+  min-width: 120px;
+  margin: 0;
 }

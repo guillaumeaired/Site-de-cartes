@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, resoudreLePliComplet, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, resoudreLePliComplet, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect, joinAsSpectator, backToLobby, spectatorView, kickFromLobby } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -786,6 +786,119 @@ PACE_PRESETS.forEach((preset) => {
   const vue = stateFor(room, room.players[0]);
   check('Salve : le jeton passe au voisin de gauche du meneur sans carte', vue.leaderPlayerId, 'p2');
   check('Salve : et c\'est bien à lui de jouer', vue.turnPlayerId, 'p2');
+}
+
+// --- LES SPECTATEURS : ARRIVÉS PAR LE LIEN EN PLEINE PARTIE --------------
+// Le lien d'invitation ne refuse plus une partie lancée : on la regarde
+// depuis le bord de la table — sans main, sans voir une annonce avant les
+// autres — et on s'assoit au retour au salon.
+{
+  function ioEspion() {
+    const recu = {};
+    return {
+      recu,
+      to: (id) => ({
+        emit: (event, data) => {
+          (recu[id] = recu[id] || []).push({ event, data });
+        },
+      }),
+    };
+  }
+  const evenements = (io, id) => (io.recu[id] || []).map((e) => e.event);
+  const dernierEtat = (io, id) => [...(io.recu[id] || [])].reverse().find((e) => e.event === 'skullking-state').data;
+
+  const room = { ...makeRoom([]), code: 'VUE1', phase: 'bidding', bids: { p1: 2 } };
+  room.players.forEach((p, i) => (p.hand = [{ id: `h${i}`, kind: 'number', suit: 'vert', value: i + 1 }]));
+  const io = ioEspion();
+  const socket = { id: 's1', data: {}, emit: () => {} };
+  joinAsSpectator(io, socket, room, 'Zoé', { token: 'tok-zoe' });
+
+  check('le spectateur est inscrit au bord de la table, pas à la table', [room.spectators.length, room.players.length], [1, 3]);
+  check('sa socket est rattachée au salon', socket.data.skullkingRoom, 'VUE1');
+  const vue = dernierEtat(io, 's1');
+  check('il reçoit l\'état, marqué spectateur', [vue.spectator, vue.phase, vue.code], [true, 'bidding', 'VUE1']);
+  check('sans aucune main', vue.hand, []);
+  check('et sans voir une annonce avant la révélation', vue.players.map((p) => p.bid), [undefined, undefined, undefined]);
+  check('les joueurs le voient arriver', dernierEtat(io, 'p2').spectators, [{ id: 's1', nickname: 'Zoé' }]);
+  check('et l\'arrivée s\'écrit dans la discussion', room.chat.at(-1).text, 'Zoé regarde la partie.');
+
+  // Le même appareil qui revient par le lien : une seule chaise.
+  const socket2 = { id: 's1b', data: {}, emit: () => {} };
+  joinAsSpectator(io, socket2, room, 'Zoé', { token: 'tok-zoe' });
+  check('revenir par le lien ne dédouble pas le spectateur', room.spectators.map((s) => s.id), ['s1b']);
+
+  // Retour au salon : il s'assoit.
+  room.phase = 'game-end';
+  const io2 = ioEspion();
+  backToLobby(io2, room);
+  check('au salon, le spectateur prend place à la table', room.players.map((p) => p.nickname), ['Alice', 'Bob', 'Chloé', 'Zoé']);
+  check('il n\'y a plus personne au bord', room.spectators, []);
+  check('il reçoit le salon comme les autres', evenements(io2, 's1b').includes('skullking-lobby-update'), true);
+  check('avec une pièce à lui', Boolean(room.players[3].piece), true);
+  check('et sa main de départ est vide', room.players[3].hand, []);
+}
+
+// Le dernier joueur s'en va pendant que d'autres regardent : personne ne
+// lancerait plus la revanche à leur place, la salle revient d'elle-même au
+// salon et ils s'y assoient — l'un d'eux en devient l'hôte.
+{
+  const io = { to: () => ({ emit: () => {} }) };
+  const room = { ...makeRoom([]), code: 'VUE2', phase: 'game-end', finalRanking: [] };
+  room.players = [makePlayer('p1', 'Alice')];
+  room.spectators = [{ id: 's1', nickname: 'Zoé', token: 't', connected: true }];
+  finalizeSkullKingDisconnect(io, room, 'p1', 'left');
+  check('le salon rouvre pour les spectateurs', room.phase, 'lobby');
+  check('Zoé est assise, Alice n\'y est plus', room.players.map((p) => p.nickname), ['Zoé']);
+  check('et Zoé tient le salon', room.hostId, 's1');
+}
+
+// Table pleine au retour au salon : le spectateur en trop est prévenu.
+{
+  const recu = [];
+  const io = { to: (id) => ({ emit: (event) => recu.push([id, event]) }) };
+  const room = { ...makeRoom([]), code: 'VUE3', phase: 'game-end' };
+  const plein = require('./skullking').maxPlayersFor({});
+  room.players = Array.from({ length: plein }, (_, i) => makePlayer(`p${i}`, `J${i}`));
+  room.hostId = 'p0';
+  room.spectators = [{ id: 's1', nickname: 'Zoé', token: 't', connected: true }];
+  backToLobby(io, room);
+  check('table pleine : personne ne s\'ajoute', room.players.length, plein);
+  check('et le spectateur en trop l\'apprend', recu.some(([id, e]) => id === 's1' && e === 'skullking-spectator-dropped'), true);
+}
+
+
+// --- L'hôte débarque un joueur du salon : jamais lui-même, et le renvoyé ne
+// revient pas par le même lien.
+{
+  const recu = [];
+  const io = { to: (id) => ({ emit: (e) => recu.push([id, e]) }) };
+  const room = makeRoom([]);
+  room.code = 'KICK';
+  room.phase = 'lobby';
+  room.players.forEach((p) => { p.token = `t-${p.id}`; });
+  check("l'hôte ne se débarque pas lui-même", kickFromLobby(io, room, 'p1'), false);
+  check('un inconnu ne se débarque pas', kickFromLobby(io, room, 'zz'), false);
+  check('Bob est débarqué', kickFromLobby(io, room, 'p2'), true);
+  check('il quitte la table', room.players.map((p) => p.id), ['p1', 'p3']);
+  check('il en est prévenu', recu.some(([id, e]) => id === 'p2' && e === 'skullking-kicked'), true);
+  check('et ne reçoit plus le salon', recu.some(([id, e]) => id === 'p2' && e === 'skullking-lobby-update'), false);
+  check('son jeton est retenu', room.kickedTokens.has('t-p2'), true);
+  check('le fil le dit', room.chat[room.chat.length - 1].text, 'Bob a été débarqué par le capitaine.');
+}
+
+
+// --- Après une Dernière Salve, un joueur a deux cartes dans le pli : c'est
+// la carte qui mène que l'écran doit cercler, pas les deux.
+{
+  const pli = [
+    { playerId: 'p1', card: { id: 'salve', kind: 'lastvolley' } },
+    { playerId: 'p2', card: { id: 'v5', kind: 'number', suit: 'vert', value: 5 } },
+    { playerId: 'p3', card: { id: 'v3', kind: 'number', suit: 'vert', value: 3 } },
+    { playerId: 'p1', card: { id: 'v9', kind: 'number', suit: 'vert', value: 9 } },
+  ];
+  const vu = stateFor(makeRoom(pli), { id: 'p2', hand: [] });
+  check('Salve : le joueur qui mène', vu.leadingPlayerId, 'p1');
+  check('Salve : la carte qui mène est celle d\'après, pas la Salve', vu.leadingCardId, 'v9');
 }
 
 console.log(`skullking-room-simulate.js : ${n}/${n} assertions passées.`);

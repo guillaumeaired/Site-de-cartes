@@ -193,6 +193,13 @@ function mustFollowSuit(hand, ledSuit) {
 // l'est toujours : une numérotée seulement si elle respecte la couleur
 // imposée, ou si le joueur n'a aucune carte de cette couleur.
 function isCardPlayable(card, hand, trick) {
+  // Le Joker n'est pas un atout : il ne prend jamais le noir (voir sa pose
+  // dans skullking-room.js). Quand le noir est demandé et qu'on en a en main,
+  // il ne suit donc pas la couleur et reste bloqué comme une numérotée d'une
+  // autre couleur. Sur une autre entame, il prend la couleur demandée.
+  if (card.kind === 'wild15') {
+    return ledSuitOf(trick) !== 'noir' || !mustFollowSuit(hand, 'noir');
+  }
   if (card.kind !== 'number') return true;
   const ledSuit = ledSuitOf(trick);
   if (ledSuit === null || card.suit === ledSuit) return true;

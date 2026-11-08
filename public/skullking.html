@@ -472,6 +472,9 @@
       </div>
 
       <div class="sk-end-actions">
+        <!-- Un spectateur ne lance pas la revanche : il s'assoit quand la
+             table la lance (voir setSpectating). -->
+        <p id="sk-end-spectator-note" class="sk-end-spectator-note hidden">Tu prendras place à la table dès que la revanche sera lancée.</p>
         <button id="sk-btn-rematch" class="btn btn-primary">Rejouer</button>
         <button id="sk-btn-leave-end" class="btn btn-rouge">Quitter</button>
       </div>
@@ -528,6 +531,20 @@
       <h2>Manches précédentes</h2>
       <div id="sk-history-body" class="sk-history-body"></div>
       <button id="sk-btn-close-history" class="btn btn-primary">Fermer</button>
+    </div>
+  </div>
+
+  <!-- « Quitter » en pleine partie ne se joue plus sur un clic égaré : le
+       bouton est collé au logo, et le départ d'un joueur arrête la partie
+       pour toute la table. -->
+  <div id="sk-leave-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sk-leave-confirm-title">
+    <div class="modal-content sk-leave-confirm-content">
+      <h2 id="sk-leave-confirm-title">Quitter la partie ?</h2>
+      <p class="sk-leave-confirm-text">La partie s'arrêtera pour toute la table.</p>
+      <div class="sk-leave-confirm-actions">
+        <button id="sk-btn-leave-cancel" class="btn btn-primary" type="button">Rester</button>
+        <button id="sk-btn-leave-confirm" class="btn btn-rouge" type="button">Quitter</button>
+      </div>
     </div>
   </div>
 

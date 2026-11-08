@@ -721,8 +721,74 @@ function destinataires(room) {
   return room.players.filter((p) => !p.gone);
 }
 
+// Les spectateurs : arrivés par le lien alors que la partie était déjà
+// lancée. Ils ne sont pas dans room.players — l'ordre des plis, la donne et
+// les scores n'en savent rien — mais ils reçoivent tout ce que la table
+// reçoit, vu d'une chaise vide (voir stateFor) : aucune main, aucune annonce
+// avant la révélation. Au retour au salon, ils prennent place à la table
+// (voir seatSpectators).
+function spectatorsOf(room) {
+  if (!room.spectators) room.spectators = [];
+  return room.spectators;
+}
+
+function findSpectator(room, id) {
+  return spectatorsOf(room).find((s) => s.id === id);
+}
+
+function findSpectatorByToken(room, token) {
+  if (!token) return null;
+  return spectatorsOf(room).find((s) => s.token === token);
+}
+
+// Ce qu'un spectateur passe à stateFor : une chaise vide. Les champs lus sur
+// le joueur (sa main, ses bonus en attente) y sont vides, et son id ne figure
+// dans aucune annonce ni aucun pouvoir — il ne voit donc que ce que tout le
+// monde voit.
+function spectatorView(s) {
+  return { id: s.id, nickname: s.nickname, hand: [], pendingBonus: 0, rascalStake: 0, spectator: true };
+}
+
 function broadcastToRoom(io, room, event, data) {
   for (const p of destinataires(room)) io.to(p.id).emit(event, data);
+  for (const s of spectatorsOf(room)) io.to(s.id).emit(event, data);
+}
+
+function humanPlayersLeft(room) {
+  return destinataires(room).filter((p) => !bots || !bots.isBot(p.id));
+}
+
+function closeRoom(room) {
+  clearRoomTimers(room);
+  spectatorsOf(room).forEach((s) => clearTimeout(s.disconnectTimer));
+  if (bots) bots.forgetRoom(room);
+  rooms.delete(room.code);
+}
+
+// Le retour au salon : les spectateurs s'assoient, tant qu'il reste des
+// places. Ceux qui ne tiennent pas — la table était pleine — sont prévenus
+// et rendus à l'accueil plutôt que laissés devant un salon où ils ne sont
+// pas.
+function seatSpectators(io, room) {
+  const maxPlayers = maxPlayersFor(extensionsOf(room));
+  const waiting = spectatorsOf(room);
+  room.spectators = [];
+  waiting.forEach((s) => {
+    clearTimeout(s.disconnectTimer);
+    const sock = io.sockets && io.sockets.sockets ? io.sockets.sockets.get(s.id) : null;
+    if (room.players.length >= maxPlayers) {
+      io.to(s.id).emit('skullking-spectator-dropped', { reason: 'full', maxPlayers });
+      if (sock) sock.data.skullkingRoom = null;
+      return;
+    }
+    // Déconnecté au moment du retour au salon : son siège serait vide, on ne
+    // le garde pas.
+    if (s.connected === false) return;
+    const player = newPlayer(s.id, s.nickname, s.token);
+    room.players.push(player);
+    giveFreePiece(room, player, s.piece);
+    pushSystemChat(io, room, `${s.nickname} prend place à la table.`);
+  });
 }
 
 // Bots (server/skullking-bot.js) : branchés par injection pour que ce module
@@ -817,6 +883,10 @@ function currentTrickPreview(room) {
   const destroyerIdx = result.destroyerIdx;
   return {
     leaderId: entry ? entry.playerId : null,
+    // La CARTE qui mène, pas seulement son joueur : après une Dernière
+    // Salve, un joueur a deux cartes dans le pli, et seule l'une des deux
+    // peut mener (la Salve ne gagne jamais).
+    leaderCardId: entry ? entry.card.id : null,
     destroyed: result.destroyed,
     destroyedBy: destroyerIdx != null && destroyerIdx !== -1 ? effectiveKind(cards[destroyerIdx]) : null,
     // Les cartes mises hors course par un Monstre Marin. Renvoyées pendant
@@ -934,8 +1004,13 @@ function stateFor(room, p) {
   // `pp.hand[0]` sur une main de dix aurait montré une carte au hasard.
   const base = {
     phase: room.phase,
+    code: room.code,
     myId: p.id,
     isHost: p.id === room.hostId,
+    // Vrai pour qui regarde sans jouer (voir spectatorView) : l'écran retire
+    // la main et les commandes, et annonce qu'on s'assoira au salon.
+    spectator: Boolean(p.spectator),
+    spectators: spectatorsOf(room).map((s) => ({ id: s.id, nickname: s.nickname })),
     players: room.players.map((pp) => ({
       id: pp.id,
       nickname: pp.nickname,
@@ -1035,6 +1110,7 @@ function stateFor(room, p) {
     base.trickNumber = room.trickNumber;
     const preview = currentTrickPreview(room);
     base.leadingPlayerId = preview.leaderId;
+    base.leadingCardId = preview.leaderCardId;
     base.trickWillBeDestroyed = preview.destroyed;
     base.trickDestroyedBy = preview.destroyedBy;
     base.trickNeutralisedCardIds = preview.neutralisedCardIds;
@@ -1084,10 +1160,21 @@ function stateFor(room, p) {
   return base;
 }
 
-function broadcastState(io, room) {
+// L'état seul, à tout le monde : sans relancer ni le rappel d'inactivité ni
+// les bots. C'est ce qu'il faut quand seul le bord de la table change (un
+// spectateur arrive ou s'en va) — relancer les bots leur ferait jouer deux
+// fois le même coup.
+function emitState(io, room) {
   for (const p of destinataires(room)) {
     io.to(p.id).emit('skullking-state', stateFor(room, p));
   }
+  for (const s of spectatorsOf(room)) {
+    io.to(s.id).emit('skullking-state', stateFor(room, spectatorView(s)));
+  }
+}
+
+function broadcastState(io, room) {
+  emitState(io, room);
   scheduleInactivityCheck(io, room);
   // Les bots « voient » l'état par ce même point de passage : ils
   // n'ont pas de vraie socket pour recevoir l'événement ci-dessus.
@@ -1462,10 +1549,11 @@ function startGame(io, room) {
   startRound(io, room);
 }
 
-function removeFromLobby(io, room, id) {
+function removeFromLobby(io, room, id, verbe = 'a quitté le salon') {
   const idx = room.players.findIndex((p) => p.id === id);
   if (idx === -1) return;
   const [removed] = room.players.splice(idx, 1);
+  clearTimeout(removed.disconnectTimer);
   // Une salle où il ne reste que des bots n'a plus de raison d'exister
   // (personne ne la verra jamais) : on la ferme comme une salle vide.
   const humansLeft = room.players.filter((p) => !bots || !bots.isBot(p.id));
@@ -1480,7 +1568,7 @@ function removeFromLobby(io, room, id) {
   }
   // Le seul chemin de sortie du salon : « Quitter » comme le délai de grâce
   // d'une déconnexion y passent (finalizeSkullKingDisconnect).
-  pushSystemChat(io, room, `${removed.nickname} a quitté le salon.`);
+  pushSystemChat(io, room, `${removed.nickname} ${verbe}.`);
   broadcastToRoom(io, room, 'skullking-player-left', { nickname: removed.nickname });
   broadcastLobby(io, room);
 }
@@ -1489,6 +1577,25 @@ function removeFromLobby(io, room, id) {
 // de grâce expiré, ou "Quitter" explicite) met fin à la partie pour tout le
 // monde, classement sur le score courant — retirer un seul joueur casserait
 // l'ordre des plis et la main déjà distribuée des autres.
+// L'hôte renvoie un joueur humain du salon. Le renvoyé est prévenu et rendu
+// à l'accueil ; son jeton est retenu pour que le lien ne le rassoie pas à la
+// seconde (voir skullking-join-room). Le jeton vit dans le navigateur, ce
+// n'est donc pas un bannissement à toute épreuve — juste de quoi qu'un
+// renvoi ne s'annule pas d'un clic sur le même lien.
+function kickFromLobby(io, room, id) {
+  const player = findPlayer(room, id);
+  if (!player || id === room.hostId || (bots && bots.isBot(id))) return false;
+  if (player.token) {
+    if (!room.kickedTokens) room.kickedTokens = new Set();
+    room.kickedTokens.add(player.token);
+  }
+  io.to(id).emit('skullking-kicked');
+  const sock = io.sockets && io.sockets.sockets ? io.sockets.sockets.get(id) : null;
+  if (sock) sock.data.skullkingRoom = null;
+  removeFromLobby(io, room, id, 'a été débarqué par le capitaine');
+  return true;
+}
+
 function finalizeSkullKingDisconnect(io, room, id, reason) {
   const player = findPlayer(room, id);
   if (!player) return;
@@ -1503,10 +1610,18 @@ function finalizeSkullKingDisconnect(io, room, id, reason) {
   player.gone = true;
 
   // Plus personne pour regarder : la salle n'a plus de raison d'exister.
-  if (destinataires(room).every((p) => bots && bots.isBot(p.id))) {
-    clearRoomTimers(room);
+  if (humanPlayersLeft(room).length === 0 && spectatorsOf(room).length === 0) {
+    closeRoom(room);
+    return;
+  }
+
+  // Le dernier joueur s'en va et il ne reste que des spectateurs : personne
+  // ne lancerait plus la revanche à leur place, la salle revient d'elle-même
+  // au salon et ils s'y assoient.
+  if (humanPlayersLeft(room).length === 0) {
     if (bots) bots.forgetRoom(room);
-    rooms.delete(room.code);
+    if (room.phase !== 'game-end') finishGame(io, room);
+    backToLobby(io, room);
     return;
   }
 
@@ -1525,6 +1640,10 @@ function handleExplicitLeave(io, socket) {
   const room = rooms.get(code);
   socket.data.skullkingRoom = null;
   if (!room) return;
+  if (findSpectator(room, socket.id)) {
+    removeSpectator(io, room, socket.id);
+    return;
+  }
   finalizeSkullKingDisconnect(io, room, socket.id, 'left');
 }
 
@@ -1534,6 +1653,19 @@ function handleDisconnecting(io, socket) {
   const room = rooms.get(code);
   socket.data.skullkingRoom = null;
   if (!room) return;
+
+  // Un spectateur qui recharge la page revient par skullking-rejoin-room :
+  // on lui garde sa chaise le temps du délai de grâce, comme à un joueur du
+  // salon.
+  const spectator = findSpectator(room, socket.id);
+  if (spectator) {
+    spectator.connected = false;
+    clearTimeout(spectator.disconnectTimer);
+    spectator.disconnectTimer = setTimeout(() => {
+      if (rooms.get(code) === room) removeSpectator(io, room, spectator.id);
+    }, DISCONNECT_GRACE_MS);
+    return;
+  }
 
   const player = findPlayer(room, socket.id);
   if (!player) return;
@@ -1723,6 +1855,88 @@ function validerCiblePlanche(io, room, removesId) {
   resoudreLePliComplet(io, room);
 }
 
+function backToLobby(io, room) {
+  room.phase = 'lobby';
+  // Ceux qui ont quitté figuraient au classement final, ils n'ont rien à
+  // faire dans le salon de la revanche.
+  room.players = destinataires(room);
+  room.players.forEach((p) => {
+    p.hand = [];
+    p.tricksWon = 0;
+    p.pendingBonus = 0;
+    p.rascalStake = 0;
+    p.totalScore = 0;
+    p.roundHistory = [];
+  });
+  seatSpectators(io, room);
+  if (!findPlayer(room, room.hostId) || (bots && bots.isBot(room.hostId))) {
+    const humans = room.players.filter((p) => !bots || !bots.isBot(p.id));
+    const pool = humans.length ? humans : room.players;
+    room.hostId = pool[Math.floor(Math.random() * pool.length)].id;
+  }
+  broadcastLobby(io, room);
+}
+
+function newPlayer(id, nickname, token) {
+  return {
+    id,
+    nickname,
+    piece: null,
+    token,
+    connected: true,
+    disconnectTimer: null,
+    hand: [],
+    tricksWon: 0,
+    pendingBonus: 0,
+    rascalStake: 0,
+    totalScore: 0,
+    roundHistory: [],
+  };
+}
+
+// Rejoindre une partie déjà lancée : on la regarde depuis le bord de la
+// table, et on s'assoit au retour au salon.
+function joinAsSpectator(io, socket, room, nickname, payload) {
+  const token = payload && payload.token;
+  // Le même appareil qui revient (page rouverte par le lien) : on reprend sa
+  // place de spectateur plutôt que d'en ajouter une seconde.
+  const existing = findSpectatorByToken(room, token);
+  if (existing) {
+    clearTimeout(existing.disconnectTimer);
+    existing.disconnectTimer = null;
+    existing.id = socket.id;
+    existing.connected = true;
+    existing.nickname = nickname;
+  } else {
+    spectatorsOf(room).push({
+      id: socket.id,
+      nickname,
+      token,
+      piece: (payload && payload.piece) || null,
+      connected: true,
+      disconnectTimer: null,
+    });
+    pushSystemChat(io, room, `${nickname} regarde la partie.`);
+  }
+  socket.data.skullkingRoom = room.code;
+  emitState(io, room);
+}
+
+function removeSpectator(io, room, id) {
+  const list = spectatorsOf(room);
+  const idx = list.findIndex((s) => s.id === id);
+  if (idx === -1) return;
+  const [removed] = list.splice(idx, 1);
+  clearTimeout(removed.disconnectTimer);
+  // Plus personne pour regarder : même règle que pour les joueurs.
+  if (humanPlayersLeft(room).length === 0 && list.length === 0) {
+    closeRoom(room);
+    return;
+  }
+  pushSystemChat(io, room, `${removed.nickname} ne regarde plus la partie.`);
+  emitState(io, room);
+}
+
 function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-create-room', (payload) => {
     const nickname = sanitizeNickname(payload && payload.nickname);
@@ -1793,8 +2007,16 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, "Cette partie n'existe pas (ou plus).");
       return;
     }
+    if (room.kickedTokens && payload && room.kickedTokens.has(payload.token)) {
+      sendError(socket, "L'hôte t'a retiré de cette partie.");
+      return;
+    }
     if (room.phase !== 'lobby') {
-      sendError(socket, 'Cette partie a déjà commencé.');
+      if (!nickname) {
+        sendError(socket, 'Choisis un pseudo avant de rejoindre.');
+        return;
+      }
+      joinAsSpectator(io, socket, room, nickname, payload);
       return;
     }
     const maxPlayers = maxPlayersFor(extensionsOf(room));
@@ -1806,20 +2028,7 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, 'Choisis un pseudo avant de rejoindre.');
       return;
     }
-    room.players.push({
-      id: socket.id,
-      nickname,
-      piece: null,
-      token: payload && payload.token,
-      connected: true,
-      disconnectTimer: null,
-      hand: [],
-      tricksWon: 0,
-      pendingBonus: 0,
-      rascalStake: 0,
-      totalScore: 0,
-      roundHistory: [],
-    });
+    room.players.push(newPlayer(socket.id, nickname, payload && payload.token));
     // Même règle que pour l'hôte : la pièce est prise à l'instant où il
     // s'assied, donc jamais deux fois.
     giveFreePiece(room, room.players[room.players.length - 1], payload && payload.piece);
@@ -1977,7 +2186,7 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-chat', (payload) => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room) return;
-    const player = findPlayer(room, socket.id);
+    const player = findPlayer(room, socket.id) || findSpectator(room, socket.id);
     if (!player) return;
 
     const text = sanitizeChatText(payload && payload.text);
@@ -2048,6 +2257,19 @@ function registerSkullKingHandlers(io, socket) {
     removeFromLobby(io, room, playerId);
   });
 
+  // Renvoie un joueur humain du salon. Point d'entrée distinct du retrait de
+  // bot, qui reste incapable de toucher un humain. Gardes : l'hôte, le salon
+  // d'attente (en pleine partie, un départ arrête tout — pas question de le
+  // déclencher pour un autre), et jamais soi-même.
+  socket.on('skullking-kick-player', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    if (socket.id !== room.hostId) return;
+    const playerId = payload && payload.playerId;
+    if (!playerId) return;
+    kickFromLobby(io, room, playerId);
+  });
+
   socket.on('skullking-start-game', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'lobby') return;
@@ -2061,22 +2283,10 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-rematch', () => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!room || room.phase !== 'game-end') return;
-    room.phase = 'lobby';
-    // Ceux qui ont quitté figuraient au classement final, ils n'ont rien à
-    // faire dans le salon de la revanche.
-    room.players = destinataires(room);
-    if (!findPlayer(room, room.hostId)) {
-      room.hostId = room.players[Math.floor(Math.random() * room.players.length)].id;
-    }
-    room.players.forEach((p) => {
-      p.hand = [];
-      p.tricksWon = 0;
-      p.pendingBonus = 0;
-      p.rascalStake = 0;
-      p.totalScore = 0;
-      p.roundHistory = [];
-    });
-    broadcastLobby(io, room);
+    // La revanche se lance depuis la table : un spectateur attend qu'on la
+    // lance, il n'arrache pas les joueurs à leur récap.
+    if (!findPlayer(room, socket.id)) return;
+    backToLobby(io, room);
   });
 
   // Annonce simultanée : chaque joueur choisit en aveugle, la révélation a
@@ -2090,6 +2300,7 @@ function registerSkullKingHandlers(io, socket) {
     // terminée (donc tant que tout le monde n'a pas annoncé) - une fois
     // que tous ont choisi, la phase passe à 'playing' et ce handler ne
     // fait plus rien de toute façon.
+    if (!findPlayer(room, socket.id)) return;
     const bid = Number(payload && payload.bid);
     if (!isValidBid(bid, room.cardsInRound)) {
       sendError(socket, 'Annonce invalide.');
@@ -2365,6 +2576,18 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
     const player = findPlayerByToken(room, payload && payload.token);
+    // Un spectateur qui recharge la page retrouve sa chaise au bord de la
+    // table (voir handleDisconnecting).
+    const spectator = !player && findSpectatorByToken(room, payload && payload.token);
+    if (spectator) {
+      clearTimeout(spectator.disconnectTimer);
+      spectator.disconnectTimer = null;
+      spectator.id = socket.id;
+      spectator.connected = true;
+      socket.data.skullkingRoom = code;
+      socket.emit('skullking-rejoin-ok', stateFor(room, spectatorView(spectator)));
+      return;
+    }
     // Un joueur qui a cliqué « Quitter » a quitté : son siège ne se reprend
     // pas au rafraîchissement de la page.
     if (!player || player.gone) {
@@ -2423,6 +2646,13 @@ module.exports = {
   // Le départ en pleine partie : exporté pour pouvoir vérifier que celui qui
   // part ne reçoit plus rien — un handler socket ne le laisse pas voir.
   finalizeSkullKingDisconnect,
+  // Le renvoi d'un joueur par l'hôte : exporté pour éprouver ses gardes.
+  kickFromLobby,
+  // Les spectateurs : exportés pour éprouver qu'ils ne voient aucune main et
+  // qu'ils s'assoient au retour au salon.
+  joinAsSpectator,
+  backToLobby,
+  spectatorView,
   // La pièce prise à l'arrivée : exportée pour éprouver qu'aucune n'est
   // distribuée deux fois, ce que les handlers socket ne permettent pas de
   // vérifier ici.

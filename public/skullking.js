@@ -131,6 +131,13 @@ function mustFollowSuit(hand, ledSuit) {
   return ledSuit !== null && hand.some((c) => c.kind === 'number' && c.suit === ledSuit);
 }
 function isCardPlayable(card, hand, trick) {
+  // Le Joker n'est pas un atout : il ne prend jamais le noir (voir sa pose
+  // dans skullking-room.js). Quand le noir est demandé et qu'on en a en main,
+  // il ne suit donc pas la couleur et reste bloqué comme une numérotée d'une
+  // autre couleur. Sur une autre entame, il prend la couleur demandée.
+  if (card.kind === 'wild15') {
+    return ledSuitOf(trick) !== 'noir' || !mustFollowSuit(hand, 'noir');
+  }
   if (card.kind !== 'number') return true;
   const ledSuit = ledSuitOf(trick);
   if (ledSuit === null || card.suit === ledSuit) return true;
@@ -496,7 +503,7 @@ function cardPowerText(card) {
     case 'davyjones':
       return 'Coffre de Davy Jones — ne remporte jamais le pli. Détruit tous les Monstres Marins présents (Kraken, Baleine, Raie) : +20 points par Monstre détruit.';
     case 'wild15':
-      return "Joker — tu choisis sa couleur au moment de la poser (sauf si une couleur est déjà imposée). Il vaut alors 15, la plus haute valeur du jeu.";
+      return "Joker — tu choisis sa couleur au moment de la poser (sauf si une couleur est déjà imposée). Il vaut alors 15, la plus haute valeur du jeu. Ce n'est pas un atout : quand le noir est demandé et que tu en as, tu dois jouer ton noir.";
     case 'number': {
       if (card.wild14 && card.value == null) {
         // « perd toujours » était faux : un 0 reste une carte numérotée, la
@@ -1460,8 +1467,37 @@ function goHome() {
   showScreen('home');
 }
 
+// Quitter en pleine partie passe par une confirmation : le départ d'un joueur
+// arrête la partie pour toute la table (finalizeSkullKingDisconnect côté
+// serveur). Le salon, l'écran de fin et les spectateurs restent à un clic.
+const leaveConfirmModal = document.getElementById('sk-leave-confirm-modal');
+const btnLeaveCancel = document.getElementById('sk-btn-leave-cancel');
+
+function fermerConfirmationDepart() {
+  leaveConfirmModal.classList.add('hidden');
+}
+
+document.getElementById('sk-btn-leave-game').addEventListener('click', () => {
+  if (iAmSpectator) {
+    goHome();
+    return;
+  }
+  leaveConfirmModal.classList.remove('hidden');
+  btnLeaveCancel.focus();
+});
+btnLeaveCancel.addEventListener('click', fermerConfirmationDepart);
+document.getElementById('sk-btn-leave-confirm').addEventListener('click', () => {
+  fermerConfirmationDepart();
+  goHome();
+});
+leaveConfirmModal.addEventListener('click', (e) => {
+  if (e.target === leaveConfirmModal) fermerConfirmationDepart();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fermerConfirmationDepart();
+});
+
 btnLeaveWaiting.addEventListener('click', goHome);
-document.getElementById('sk-btn-leave-game').addEventListener('click', goHome);
 document.getElementById('sk-btn-leave-end').addEventListener('click', goHome);
 
 const copyDefaultLabel = btnCopy.innerHTML;
@@ -2168,6 +2204,7 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
 
 socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
   if (id) myId = id;
+  setSpectating(false);
   // Avant tout le reste : le pseudo a pu changer depuis ce salon (voir
   // « Modifier »), et c'est celui du serveur qui part dans la session de
   // reconnexion — sinon on se retrouverait sous son ancien nom en revenant.
@@ -2244,6 +2281,25 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
       vire.title = `Retirer ${p.nickname}`;
       vire.setAttribute('aria-label', `Retirer ${p.nickname}`);
       vire.addEventListener('click', () => socket.emit('skullking-remove-bot', { playerId: p.id }));
+      li.appendChild(vire);
+    }
+    // Débarquer un joueur humain : même croix, mais en deux temps. Un
+    // premier clic la change en « Débarquer ? », un second confirme — un ami
+    // renvoyé d'un faux clic devrait redemander le lien.
+    if (isHost && !p.isBot && p.id !== myId) {
+      const vire = document.createElement('button');
+      vire.type = 'button';
+      vire.className = 'sk-lobby-vire';
+      vire.dataset.nickname = p.nickname;
+      libelleRenvoi(vire, p.nickname, renvoiEnAttente === p.id);
+      vire.addEventListener('click', () => {
+        if (renvoiEnAttente === p.id) {
+          annulerRenvoi();
+          socket.emit('skullking-kick-player', { playerId: p.id });
+          return;
+        }
+        demanderRenvoi(vire, p.id, p.nickname);
+      });
       li.appendChild(vire);
     }
     lobbyList.appendChild(li);
@@ -2380,6 +2436,41 @@ socket.on('skullking-power-result', ({ title, detail }) => {
 // partie. Avec `reason`, c'est un départ en pleine partie — celui-là met fin
 // à la manche pour tout le monde, et le fil de la table n'est pas l'endroit
 // où l'apprendre.
+// Le renvoi d'un joueur attend un second clic, trois secondes au plus. Le
+// salon est redessiné à chaque arrivée : l'attente vit ici, pas sur le bouton,
+// pour qu'un redessin ne l'efface pas.
+let renvoiEnAttente = null;
+let renvoiTimer = null;
+
+function libelleRenvoi(bouton, nickname, enAttente) {
+  bouton.classList.toggle('sk-lobby-vire-confirme', enAttente);
+  bouton.textContent = enAttente ? 'Débarquer ?' : '✕';
+  bouton.title = enAttente ? `Confirmer le renvoi de ${nickname}` : `Renvoyer ${nickname} du salon`;
+  bouton.setAttribute('aria-label', bouton.title);
+}
+
+function demanderRenvoi(bouton, id, nickname) {
+  renvoiEnAttente = id;
+  libelleRenvoi(bouton, nickname, true);
+  clearTimeout(renvoiTimer);
+  renvoiTimer = setTimeout(() => {
+    renvoiEnAttente = null;
+    document.querySelectorAll('.sk-lobby-vire-confirme').forEach((b) => {
+      libelleRenvoi(b, b.dataset.nickname, false);
+    });
+  }, 3000);
+}
+
+function annulerRenvoi() {
+  renvoiEnAttente = null;
+  clearTimeout(renvoiTimer);
+}
+
+socket.on('skullking-kicked', () => {
+  showToast('Le capitaine t’a débarqué du salon.');
+  goHome();
+});
+
 socket.on('skullking-player-left', ({ nickname, reason }) => {
   if (reason) showToast(`${nickname} a quitté la partie — retour au classement actuel.`);
 });
@@ -3613,7 +3704,16 @@ function renderTrick(state) {
     // La profondeur reste celle du SIÈGE : la carte appartient à sa place
     // autour de la table, pas à la ligne où elle a fini par se poser.
     slot.style.setProperty('--sk-depth', k.toFixed(3));
-    if (t.playerId === state.leadingPlayerId) {
+    // La carte qui mène se désigne par son id. Par le joueur, les DEUX
+    // cartes de celui qui a posé une Dernière Salve prenaient le halo : la
+    // Salve passait pour gagnante, et au ramassage les cartes du pli — la
+    // vraie gagnante comprise — tombaient DANS la Salve, donc dessous. Le
+    // joueur ne sert plus que de secours face à un serveur qui ne donne pas
+    // l'id.
+    const mene = state.leadingCardId
+      ? t.card.id === state.leadingCardId
+      : t.playerId === state.leadingPlayerId;
+    if (mene) {
       slot.classList.add('sk-trick-card--leading');
       // Le pli est tombé : ce n'est plus « celle qui mène », c'est celle qui
       // emporte. Elle passe au premier plan et respire, pour qu'on la trouve
@@ -4054,8 +4154,8 @@ let bidRoundRef = null;
 
 function renderBidChoices(state) {
   bidChoices.innerHTML = '';
-  bidChoices.classList.toggle('hidden', state.phase !== 'bidding');
-  if (state.phase !== 'bidding') {
+  bidChoices.classList.toggle('hidden', state.phase !== 'bidding' || Boolean(state.spectator));
+  if (state.phase !== 'bidding' || state.spectator) {
     pendingBid = null;
     return;
   }
@@ -4134,7 +4234,7 @@ function renderTurnIndicator(state) {
     return;
   }
   if (state.phase === 'bidding') {
-    if (state.myBid === undefined) {
+    if (state.myBid === undefined && !state.spectator) {
       turnIndicator.textContent =
         state.roundNumber === 1
           ? 'Ta carte reste cachée — base ton annonce sur celles que tu vois des autres.'
@@ -4730,6 +4830,11 @@ const objectiveEl = document.getElementById('sk-objective');
 const objectiveTextEl = document.getElementById('sk-objective-text');
 
 function objectiveState(state) {
+  // Le cadre de l'objectif est celui qui dit « ce que tu as à faire » : pour
+  // un spectateur, c'est d'attendre la fin de la partie.
+  if (state.spectator) {
+    return { ton: 'ok', texte: 'Tu regardes la partie. Tu prendras place à la table au retour au salon.' };
+  }
   const me = state.players.find((p) => p.id === myId);
   if (!me) return null;
 
@@ -6784,6 +6889,30 @@ function playStartReveal(players, starterId) {
   setTimeout(() => overlay.classList.add('hidden'), ROUE_DUREE + ROUE_LECTURE);
 }
 
+// --- Spectateur -----------------------------------------------------
+// Qui arrive par le lien d'une partie déjà lancée la regarde sans jouer :
+// pas de main, pas d'annonce à faire, pas de revanche à lancer. La classe
+// posée sur le corps de page sert aux quelques retraits que le rendu ne
+// fait pas déjà de lui-même (le bouton « Rejouer » du récap).
+let iAmSpectator = false;
+const endSpectatorNote = document.getElementById('sk-end-spectator-note');
+const btnRematch = document.getElementById('sk-btn-rematch');
+
+function setSpectating(on) {
+  iAmSpectator = on;
+  document.body.classList.toggle('sk-spectating', on);
+  if (btnRematch) btnRematch.classList.toggle('hidden', on);
+  if (endSpectatorNote) endSpectatorNote.classList.toggle('hidden', !on);
+}
+
+// La table était pleine au retour au salon : il n'y avait pas de chaise pour
+// lui. On le dit, et on le rend à l'accueil plutôt que de le laisser devant
+// un récap qui ne bougera plus.
+socket.on('skullking-spectator-dropped', ({ maxPlayers }) => {
+  showToast(`La table est complète (${maxPlayers} joueurs) : pas de place pour toi à la revanche.`);
+  goHome();
+});
+
 // --- Dispatch d'état ---
 
 function applyState(state) {
@@ -6797,6 +6926,15 @@ function applyState(state) {
   }
   myId = state.myId;
   myIsHost = state.isHost;
+  // Arrivé par le lien en pleine partie : on regarde depuis le bord de la
+  // table. La salle est retenue comme celle d'un joueur — recharger la page
+  // ramène à la même chaise (skullking-rejoin-room), et on y prend place au
+  // retour au salon.
+  setSpectating(Boolean(state.spectator));
+  if (state.spectator && state.code) {
+    saveActiveRoom(state.code, myNickname);
+    afficherCodeDePartie(state.code);
+  }
   // Le paquet arrive avec chaque état : une reconnexion en pleine manche ne
   // repasse pas par le salon et n'aurait sinon jamais appris lequel est en
   // jeu.
@@ -6813,7 +6951,7 @@ function applyState(state) {
     hideRoundPopup();
     showScreen('game');
     renderGame(state);
-    if (state.roundNumber === 1 && !startRevealPlayed) {
+    if (state.roundNumber === 1 && !startRevealPlayed && !state.spectator) {
       startRevealPlayed = true;
       playStartReveal(state.players, state.leaderPlayerId);
     }
