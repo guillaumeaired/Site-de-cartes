@@ -101,8 +101,8 @@ function cartesVisees(paquet) {
 const ORDRE_ESSAI = [
   'pirate',      // les cinq nommés, un pouvoir chacun
   'tigress',     // le choix Pirate / Fuite au moment de la pose
-  'firstmate',   // Mat le Forban, qui hérite des pouvoirs qu'il capture
-  'skullking',   // qui en hérite aussi, et dévore les Pirates
+  'firstmate',   // Mat le Forban, qui rafle les Pirates sans leur pouvoir
+  'skullking',   // qui dévore les Pirates et hérite de leur pouvoir
   'siren',
   'plank', 'davyjones', 'lastvolley', 'wild15',
   'kraken', 'whale', 'stingray', 'loot',
@@ -394,8 +394,8 @@ function eligiblePlankTargets(trick) {
   return trick.filter((t) => effectiveKind(t.card) === 'pirate');
 }
 
-// Pouvoirs hérités par Mat le Forban ET le Skull King quand ils remportent un
-// pli : chaque Pirate classique capturé (retiré par la Planche exclu, voir
+// Pouvoirs hérités par le Skull King quand il remporte un pli (pas par Mat
+// le Forban, qui mange les Pirates sans prendre leur pouvoir) : chaque Pirate classique capturé (retiré par la Planche exclu, voir
 // excludedIdx) transmet le sien, à résoudre à la suite les uns des autres.
 // Sur le tout dernier pli d'une manche, seul celui d'Harry le Géant survit.
 function capturedPirateKeys(trick, excludedIdx, isLastTrick) {
@@ -1338,7 +1338,7 @@ function resolvePowerDone(io, room) {
   const playerId = room.pendingPower.playerId;
   const announce = powerResultMessage(room);
   if (announce) broadcastToRoom(io, room, 'skullking-power-result', announce);
-  // Mat le Forban : plusieurs pouvoirs de Pirates capturés à résoudre à la
+  // Skull King : plusieurs pouvoirs de Pirates capturés à résoudre à la
   // suite (file constituée à la résolution du pli, voir plus bas) - on
   // enchaîne sur le suivant avant de ramasser le pli pour de bon, en
   // conservant le meneur déjà éventuellement changé par un pouvoir
@@ -1640,15 +1640,13 @@ function resoudreLePliComplet(io, room) {
         return;
       }
     }
-    // Mat le Forban ET le Skull King : héritent du/des pouvoir(s) de
-    // tout(s) Pirate(s) classique(s) capturé(s) dans le même pli (retiré
-    // par la Planche exclu, voir result.excludedIdx), à résoudre à la
-    // suite les uns des autres - sans toucher au bonus de capture normal,
-    // géré séparément dans trickBonusForWinner. Pour le Skull King c'est
-    // nouveau (jusqu'ici seul le Pirate qui remportait lui-même le pli
-    // déclenchait son propre pouvoir - le manger avec le Skull King ne
-    // donnait jamais rien).
-    if (winningCard && (winningCard.kind === 'firstmate' || winningCard.kind === 'skullking')) {
+    // Le Skull King hérite du/des pouvoir(s) de tout(s) Pirate(s)
+    // classique(s) capturé(s) dans le même pli (retiré par la Planche exclu,
+    // voir result.excludedIdx), à résoudre à la suite les uns des autres -
+    // sans toucher au bonus de capture normal, géré séparément dans
+    // trickBonusForWinner. Mat le Forban, lui, rafle les Pirates sans
+    // exécuter leur pouvoir : choix de la maison, il ne gagne que le pli.
+    if (winningCard && winningCard.kind === 'skullking') {
       const powerKeys = capturedPirateKeys(room.currentTrick, result.excludedIdx, isLastTrick);
       if (powerKeys.length) {
         room.pendingPowerQueue = powerKeys.slice(1);

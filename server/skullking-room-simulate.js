@@ -93,7 +93,7 @@ check(
   );
 }
 
-// --- Skull King (et Mat le Forban) mangent des Pirates : héritage des
+// --- Le Skull King mange des Pirates : héritage des
 // pouvoirs, quel que soit qui a effectivement remporté le pli.
 const rosieCard = { id: 'p1', kind: 'pirate', name: "Rosie la Douce" };
 const willCard = { id: 'p2', kind: 'pirate', name: 'Will le Bandit' };

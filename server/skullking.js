@@ -13,10 +13,10 @@ const EXTENSION_PIRATE_NAME = 'Mary Thorne';
 // Clé courte du pouvoir associé à chaque pirate nommé, utilisée côté
 // serveur (skullking-room.js) pour savoir quelle phase de pouvoir déclencher
 // quand ce pirate remporte un pli avec sa propre carte. Mat le Forban n'a
-// pas d'entrée ici : son "pouvoir" n'est pas le sien, il hérite de ceux des
-// pirates classiques capturés dans le même pli - mécanique à part, gérée
-// dans skullking-room.js via une file de pouvoirs plutôt qu'un seul pouvoir
-// direct.
+// pas d'entrée ici : il n'a aucun pouvoir, et n'exécute pas non plus celui
+// des Pirates qu'il capture. Seul le Skull King en hérite - mécanique à
+// part, gérée dans skullking-room.js via une file de pouvoirs plutôt qu'un
+// seul pouvoir direct.
 const PIRATE_POWER_BY_NAME = {
   "Rosie la Douce": 'rosie',
   'Will le Bandit': 'will',

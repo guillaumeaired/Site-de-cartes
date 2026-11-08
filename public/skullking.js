@@ -477,7 +477,7 @@ function cardPowerText(card) {
       // carte : il perd contre une Sirène SEULE (un vrai Pirate la bat),
       // capturer des Pirates ne lui rapporte aucun bonus (ce privilège est
       // au seul Skull King), et il vaut +30 à qui le prend — Sirène comprise.
-      return "Mat le Forban — bat tous les Pirates, perd contre le Skull King et contre une Sirène (même seule). S'il remporte le pli, il hérite du/des pouvoir(s) du/des Pirate(s) capturé(s), sans aucun bonus de points. Le Skull King ou une Sirène qui le capturent gagnent +30.";
+      return "Mat le Forban — bat tous les Pirates, perd contre le Skull King et contre une Sirène (même seule). S'il remporte le pli, il ne gagne aucun bonus et le pouvoir des Pirates capturés ne se déclenche pas. Le Skull King ou une Sirène qui le capturent gagnent +30.";
     case 'stingray':
       return "Raie Tachetée — comme la Baleine blanche, mais c'est la carte la PLUS BASSE qui remporte le pli (à égalité, la première posée).";
     case 'lastvolley':
@@ -878,7 +878,7 @@ const REGLES_EXT_CHIFFRES = [
 ];
 
 const REGLES_EXT_SPECIALES = [
-  { carte: { kind: 'firstmate' }, nom: 'Mat le Forban', effet: 'bat les Pirates, perd contre Skull King et Sirène · pris : +30', ext: 'firstmate' },
+  { carte: { kind: 'firstmate' }, nom: 'Mat le Forban', effet: 'bat les Pirates sans prendre leur pouvoir, perd contre Skull King et Sirène · pris : +30', ext: 'firstmate' },
   { carte: { kind: 'stingray' }, nom: 'Raie Tachetée', effet: 'comme la Baleine, mais le plus bas gagne', ext: 'stingray' },
   { carte: { kind: 'lastvolley' }, nom: 'Dernière Salve', effet: 'perd · tu rejoues une carte après tout le monde', ext: 'lastvolley' },
   { carte: { kind: 'plank' }, nom: 'Planche', effet: 'perd · jette un Pirate du pli, au choix', ext: 'plank' },
@@ -987,7 +987,7 @@ function reglesPirates() {
     .join('');
   return `<p class="sk-regles-consigne">Leur pouvoir joue s'ils gagnent le pli.</p>
     <ul class="sk-regles-liste sk-regles-liste--tetes">${lignes}</ul>
-    <p class="sk-regles-note">Le Skull King hérite du pouvoir des Pirates qu'il prend. Au dernier pli, seul Harry agit.</p>`;
+    <p class="sk-regles-note">Le Skull King hérite du pouvoir des Pirates qu'il prend, Mat le Forban non. Au dernier pli, seul Harry agit.</p>`;
 }
 
 function reglesFiches() {
@@ -2367,7 +2367,7 @@ socket.on('skullking-power-result', ({ title, detail }) => {
   powerAnnounceTitle.textContent = title || '';
   powerAnnounceDetail.textContent = detail || '';
   // Retire puis remet la classe pour rejouer l'animation quand deux pouvoirs
-  // s'enchaînent (Mat le Forban ou le Skull King qui en hérite plusieurs).
+  // s'enchaînent (le Skull King qui en hérite plusieurs).
   powerAnnounceEl.classList.add('hidden');
   void powerAnnounceEl.offsetWidth;
   powerAnnounceEl.classList.remove('hidden');
@@ -3406,7 +3406,7 @@ function renderTrick(state) {
 
   // Pendant la pause de fin de pli, le même pli est rediffusé à chaque
   // broadcast : un pouvoir de Pirate qui s'ouvre, un joueur qui se
-  // reconnecte, la file de Mat le Forban qui enchaîne. Redessiner recrée les
+  // reconnecte, la file du Skull King qui enchaîne. Redessiner recrée les
   // cases, donc RANNULE les animations en cours — les cartes que la gagnante
   // venait d'avaler réapparaissaient à leur place, et le garde-fou qui
   // empêche de rejouer deux fois l'animation du même pli (lastWonTrick) les

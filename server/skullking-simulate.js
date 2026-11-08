@@ -449,7 +449,8 @@ check(
 {
   // Le sens INVERSE de la capture, celui qu'on croit toujours symétrique :
   // Mat rafle les Pirates du pli et n'en tire rien. Le bonus de +30 par
-  // Pirate appartient au seul Skull King ; Mat n'hérite que des pouvoirs.
+  // Pirate appartient au seul Skull King, et Mat n'hérite pas non plus
+  // des pouvoirs (seul le Skull King en hérite).
   const cards = [pirate(), pirate(), firstmate()];
   const r = resolveTrick(cards);
   check('Mat le Forban capturant des Pirates : il gagne le pli', r.winnerIdx, 2);
