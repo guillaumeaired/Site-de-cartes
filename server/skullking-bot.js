@@ -19,7 +19,8 @@ const { nouvelleMemoire, observer } = require('./skullking-bots/commun');
 // l'écran pendant un test, pas voir la manche se dérouler d'un coup.
 const BOT_THINK_MS = 700;
 
-// La manche 1 a son rythme à elle, et ce n'est pas un rythme de bot : les
+// Le dernier pli de chaque manche (toute la manche 1, donc) a son rythme à
+// lui, et ce n'est pas un rythme de bot : en manche 1 les
 // cartes de tout le monde sont sur le tapis depuis l'annonce, personne n'a
 // rien à décider, et chaque client pose la sienne tout seul après un temps de
 // lecture (MANCHE1_LECTURE_MS, côté skullking.js). Un bot qui répondrait à
@@ -111,10 +112,11 @@ function driveBots(io, room, stateFor) {
       continue;
     }
     if (pending.has(player.id)) continue; // une action est déjà programmée
-    // Seule la POSE de la manche 1 prend le temps long : l'annonce, elle, se
-    // fait à couvert et en même temps que celle des autres, il n'y a rien à
-    // regarder tomber.
-    const attente = state.roundNumber === 1 && tache === 'play'
+    // Seule la POSE du dernier pli (toute la manche 1 comprise) prend le
+    // temps long, celui des cartes qui se posent seules côté client :
+    // l'annonce, elle, se fait à couvert et en même temps que celle des
+    // autres, il n'y a rien à regarder tomber.
+    const attente = state.trickNumber === state.cardsInRound && tache === 'play'
       ? BOT_MANCHE1_MS
       : BOT_THINK_MS;
     const timer = setTimeout(() => {

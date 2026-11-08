@@ -4189,65 +4189,144 @@ function renderTurnIndicator(state) {
   }
 }
 
-// --- Manche 1 : la carte se pose toute seule -----------------------------
-// Une seule carte en main, et l'annonce est faite : il n'y a plus rien à
-// décider. Le clic ne disait rien que l'état ne sût déjà, il ne faisait
-// qu'attendre. On la pose donc, après un temps de lecture — le tapis porte
-// encore toutes les cartes de la manche, c'est le moment où on les compare.
+// --- Dernier pli : la carte se pose toute seule --------------------------
+// Au dernier pli de chaque manche, chacun n'a plus qu'une carte en main : il
+// n'y a plus rien à décider. Le clic ne disait rien que l'état ne sût déjà,
+// il ne faisait qu'attendre. On la pose donc, après un temps de lecture.
+// C'est aussi toute la manche 1, où le tapis porte encore toutes les cartes
+// de la manche : c'est le moment où on les compare.
 //
-// Quatre cartes gardent leur clic, parce qu'elles demandent une DÉCLARATION
-// et pas un choix de carte : la Tigresse (Pirate ou Fuite), le 0/14 (0 ou
-// 14), le Joker (sa couleur) et Marcher sur la Planche (sa cible). Les
-// poser d'office déciderait à la place du joueur.
+// Celui qui a posé une Dernière Salve n'a plus de carte au dernier pli : le
+// serveur le retire de l'ordre de jeu (sittingOutIds), son tour ne vient
+// jamais et il n'y a rien à poser pour lui.
 //
-// LE RYTHME. Chaque client attend ce temps-là quand vient SON tour : la
-// manche 1 se déroule donc comme un vrai tour de table, une carte après
-// l'autre, et non d'un bloc. Il faut le temps de voir la carte se redresser
-// et de revenir aux autres — les cartes sont TOUTES visibles depuis
-// l'annonce, on ne découvre pas une carte, on regarde une carte connue
-// changer de camp, et un déplacement se suit plus lentement qu'une image se
-// lit.
+// Trois cartes demandent une DÉCLARATION et pas un choix de carte : la
+// Tigresse (Pirate ou Fuite), le 0/14 (0 ou 14) et le Joker (sa couleur, s'il
+// est la première numérotée du pli). Les poser d'office déciderait à la place
+// du joueur. Le cadre s'ouvre donc dès le début du dernier pli, sans attendre
+// le tour : la déclaration est retenue ici et la carte part avec elle quand
+// son tour vient. Qui préfère voir les autres cartes d'abord ferme le cadre ;
+// il se rouvre à son tour. Marcher sur la Planche, elle, ne déclare rien à la
+// pose — sa cible se désigne une fois le pli complet.
+//
+// LE RYTHME. Chaque client attend ce temps-là quand vient SON tour : le pli
+// se déroule donc comme un vrai tour de table, une carte après l'autre, et
+// non d'un bloc. Il faut le temps de voir la carte partir et de revenir aux
+// autres.
 //
 // Mais ce temps-là est un temps d'attente, pas un temps de décision : à 2,2 s
-// la manche entière traînait, une table à six y passait treize secondes à ne
-// rien faire. 1,2 s : de quoi suivre chaque carte qui part sans que la manche
+// la manche 1 entière traînait, une table à six y passait treize secondes à
+// ne rien faire. 1,2 s : de quoi suivre chaque carte qui part sans que le pli
 // devienne un compte à rebours. Une table à six est servie en sept secondes.
 //
-// Les bots de test tiennent le même rythme en manche 1 (voir
-// BOT_MANCHE1_MS) : sinon la manche se déroule à leur pas à eux, et le
-// réglage ne se voit que dans une partie entre humains.
+// Les bots de test tiennent le même rythme au dernier pli (voir
+// BOT_MANCHE1_MS) : sinon le pli se déroule à leur pas à eux, et le réglage
+// ne se voit que dans une partie entre humains.
 const MANCHE1_LECTURE_MS = 1200;
 let carteAutoJouee = null;
 let carteAutoTimer = null;
+// La déclaration faite d'avance : { cardId, extra }, envoyée avec la carte.
+let declarationAnticipee = null;
+// Le cadre de déclaration déjà ouvert d'office pour cette carte : avant le
+// tour (`avant`), puis une seconde fois au tour s'il a été fermé (`tour`).
+let cadreOuvertAvant = null;
+let cadreOuvertAuTour = null;
 
-function demandeUneDeclaration(card) {
-  if (card.kind === 'tigress' || card.kind === 'wild15' || card.kind === 'plank') return true;
+function estLeDernierPli(state) {
+  return state.phase === 'playing' && state.trickNumber === state.cardsInRound;
+}
+
+// `trick` : le pli tel qu'il est. Un Joker ne déclare sa couleur que s'il
+// ouvre la couleur du pli ; une numérotée déjà posée la lui impose.
+function demandeUneDeclaration(card, trick) {
+  if (card.kind === 'tigress') return true;
+  if (card.kind === 'wild15') return ledSuitOf(trick || []) === null;
   return card.kind === 'number' && card.wild14 && card.value == null;
 }
 
-function poserSeuleEnManche1(state) {
+// Ouvre le cadre de déclaration de cette carte, comme le clic dans la main.
+function ouvrirDeclaration(carte) {
+  hideAllChoicePanels();
+  bidChoices.classList.add('hidden');
+  if (carte.kind === 'tigress') {
+    pendingTigressCardId = carte.id;
+    tigressChoiceEl.classList.remove('hidden');
+  } else if (carte.kind === 'wild15') {
+    pendingJokerCardId = carte.id;
+    jokerChoiceEl.classList.remove('hidden');
+  } else {
+    pendingDeclareCardId = carte.id;
+    declareChoiceEl.dataset.famille = carte.suit;
+    declareChoiceEl.classList.remove('hidden');
+  }
+}
+
+// Ce que les boutons des cadres font d'une déclaration : à mon tour, la carte
+// part tout de suite ; avant, la déclaration est retenue pour le dernier pli.
+function declarer(cardId, extra) {
+  const s = latestState;
+  if (s && !s.isMyTurn && estLeDernierPli(s)) {
+    declarationAnticipee = { cardId, extra };
+    pendingTigressCardId = null;
+    pendingJokerCardId = null;
+    pendingDeclareCardId = null;
+    hideAllChoicePanels();
+    showToast('Noté : ta carte partira toute seule à ton tour.');
+    return;
+  }
+  playCard(cardId, extra);
+}
+
+function poserSeuleAuDernierPli(state) {
   // Toute sortie de la phase de jeu remet le garde à zéro : les identifiants
   // de carte sont refaits à chaque donne (s0, s1, …) et reviennent donc d'une
   // manche à l'autre. Sans ce reset, une carte portant un identifiant déjà
   // posé automatiquement ne le serait plus jamais.
   if (state.phase !== 'playing') {
     carteAutoJouee = null;
+    declarationAnticipee = null;
+    cadreOuvertAvant = null;
+    cadreOuvertAuTour = null;
     clearTimeout(carteAutoTimer);
     return;
   }
-  if (state.roundNumber !== 1 || state.trickPaused || !state.isMyTurn) return;
+  if (!estLeDernierPli(state) || state.trickPaused) return;
   const main = state.hand || [];
   if (main.length !== 1) return;
   const carte = main[0];
-  if (carte.id === carteAutoJouee || demandeUneDeclaration(carte)) return;
+  if (carte.id === carteAutoJouee) return;
+  const declaree = declarationAnticipee && declarationAnticipee.cardId === carte.id;
+  if (!declaree && demandeUneDeclaration(carte, state.currentTrick)) {
+    // Chaque état reçu ferme les cadres (applyState) : on rouvre tant que la
+    // déclaration n'est pas faite, sauf si le joueur l'a fermé lui-même.
+    if (!state.isMyTurn) {
+      if (cadreOuvertAvant === null || cadreOuvertAvant.id !== carte.id) cadreOuvertAvant = { id: carte.id, ferme: false };
+      if (!cadreOuvertAvant.ferme) ouvrirDeclaration(carte);
+    } else {
+      if (cadreOuvertAuTour === null || cadreOuvertAuTour.id !== carte.id) cadreOuvertAuTour = { id: carte.id, ferme: false };
+      if (!cadreOuvertAuTour.ferme) ouvrirDeclaration(carte);
+    }
+    return;
+  }
+  if (!state.isMyTurn) return;
   carteAutoJouee = carte.id;
+  const extra = declaree ? declarationAnticipee.extra : undefined;
   clearTimeout(carteAutoTimer);
   carteAutoTimer = setTimeout(() => {
     // L'état a pu changer pendant l'attente (reconnexion, pli ramassé) : on
     // relit avant de poser plutôt que de faire refuser la carte par le serveur.
     const s = latestState;
-    if (s && s.phase === 'playing' && s.isMyTurn && !s.trickPaused) playCard(carte.id);
+    if (s && s.phase === 'playing' && s.isMyTurn && !s.trickPaused) playCard(carte.id, extra);
   }, MANCHE1_LECTURE_MS);
+}
+
+// Le joueur ferme lui-même un cadre de déclaration : on ne le lui remet pas
+// sous le nez à chaque carte posée par les autres. Avant son tour, il se
+// rouvrira au tour ; à son tour, il reprend la carte dans sa main.
+function cadreFermeParLeJoueur() {
+  const s = latestState;
+  const cadre = s && s.isMyTurn ? cadreOuvertAuTour : cadreOuvertAvant;
+  if (cadre) cadre.ferme = true;
 }
 
 function hideAllChoicePanels() {
@@ -4267,16 +4346,17 @@ function playCard(cardId, extra) {
 }
 
 btnTigressPirate.addEventListener('click', () => {
-  if (pendingTigressCardId) playCard(pendingTigressCardId, { chosenAs: 'pirate' });
+  if (pendingTigressCardId) declarer(pendingTigressCardId, { chosenAs: 'pirate' });
 });
 btnTigressEscape.addEventListener('click', () => {
-  if (pendingTigressCardId) playCard(pendingTigressCardId, { chosenAs: 'escape' });
+  if (pendingTigressCardId) declarer(pendingTigressCardId, { chosenAs: 'escape' });
 });
 
 // Le cadre couvre tout l'écran : sans porte de sortie, un clic de travers sur
 // la Tigresse bloquerait le tour. Fermer ne joue rien — la carte retourne
 // simplement dans l'éventail.
 function fermerChoixTigresse() {
+  cadreFermeParLeJoueur();
   pendingTigressCardId = null;
   tigressChoiceEl.classList.add('hidden');
 }
@@ -4361,13 +4441,14 @@ let pendingDeclareCardId = null;
 
 document.querySelectorAll('.sk-btn-joker-color').forEach((btn) => {
   btn.addEventListener('click', () => {
-    if (pendingJokerCardId) playCard(pendingJokerCardId, { chosenSuit: btn.dataset.suit });
+    if (pendingJokerCardId) declarer(pendingJokerCardId, { chosenSuit: btn.dataset.suit });
   });
 });
 // On peut ressortir du cadre sans avoir déclaré : un clic de travers ne doit
 // pas coûter la carte. Les trois mêmes portes de sortie que le cadre de la
 // Tigresse — le bouton, le fond, la touche d'échappement.
 function fermerChoixDeclaration() {
+  cadreFermeParLeJoueur();
   pendingDeclareCardId = null;
   hideAllChoicePanels();
   if (latestState) renderBidChoices(latestState);
@@ -4380,10 +4461,10 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !declareChoiceEl.classList.contains('hidden')) fermerChoixDeclaration();
 });
 document.getElementById('sk-btn-declare-0').addEventListener('click', () => {
-  if (pendingDeclareCardId) playCard(pendingDeclareCardId, { declaredValue: 0 });
+  if (pendingDeclareCardId) declarer(pendingDeclareCardId, { declaredValue: 0 });
 });
 document.getElementById('sk-btn-declare-14').addEventListener('click', () => {
-  if (pendingDeclareCardId) playCard(pendingDeclareCardId, { declaredValue: 14 });
+  if (pendingDeclareCardId) declarer(pendingDeclareCardId, { declaredValue: 14 });
 });
 
 // Pouvoir de Will le Bandit : les 2 cartes à rendre se désignent dans le
@@ -5983,7 +6064,7 @@ function renderGame(state) {
   renderBidChoices(state);
   renderHand(state);
   renderScoreboard(state);
-  poserSeuleEnManche1(state);
+  poserSeuleAuDernierPli(state);
   // En dernier : le feutre vient d'être mis à sa taille, c'est le moment où
   // le mesurer donne la bonne réponse.
   publierCentreDuPlateau();
