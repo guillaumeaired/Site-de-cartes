@@ -1,5 +1,5 @@
-// Le classement Elo : les comptes qui ont au moins une partie classée, du
-// plus haut au plus bas. Sa propre ligne est surlignée.
+// Le classement Elo : tous les comptes, même sans partie (ils sont à leur
+// cote de départ, 1200), du plus haut au plus bas. Sa propre ligne est surlignée.
 
 const lignes = document.getElementById('classement-lignes');
 const vide = document.getElementById('classement-vide');

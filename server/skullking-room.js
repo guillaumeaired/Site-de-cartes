@@ -534,8 +534,11 @@ function pieceAutorisee(room, player, piece) {
   if (rang === -1) return false;
   const proprietaire = PIECES_NOMINATIVES[piece];
   if (proprietaire) {
+    // Espaces ignorées : « SkullyMaster » et « Skully master » sont le même
+    // propriétaire, seule la casse et les blancs les séparaient.
+    const cle = (x) => pseudoKey(x).replace(/ /g, '');
     return Boolean(player.userId && player.accountPseudo)
-      && pseudoKey(player.accountPseudo) === pseudoKey(proprietaire);
+      && cle(player.accountPseudo) === cle(proprietaire);
   }
   return rang < PIECES_EN_VITRINE || player.id === room.hostId;
 }

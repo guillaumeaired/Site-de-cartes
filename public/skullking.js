@@ -3134,7 +3134,7 @@ const PIECES_NOMINATIVES = { pieuvre: 'Skully master' };
 let myAccountPseudo = null;
 
 function memeCompte(a, b) {
-  const cle = (x) => String(x).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const cle = (x) => String(x).normalize('NFKC').toLowerCase().replace(/\s+/g, '');
   return Boolean(a && b) && cle(a) === cle(b);
 }
 

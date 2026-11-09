@@ -128,9 +128,11 @@ function createMemoryStore() {
       return after;
     },
     async leaderboard(limit) {
+      // Tous les comptes, y compris ceux qui n'ont encore rien joué : ils
+      // figurent à leur cote de départ (ELO_INITIAL), derrière ceux qui ont
+      // déjà joué à cote égale.
       return [...users.values()]
-        .filter((u) => u.gamesPlayed > 0)
-        .sort((a, b) => b.elo - a.elo || b.gamesPlayed - a.gamesPlayed)
+        .sort((a, b) => b.elo - a.elo || b.gamesPlayed - a.gamesPlayed || a.id - b.id)
         .slice(0, limit)
         .map(publicUser);
     },
@@ -255,7 +257,7 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
     },
     async leaderboard(limit) {
       const { rows } = await pool.query(
-        'SELECT * FROM sk_users WHERE games_played > 0 ORDER BY elo DESC, games_played DESC LIMIT $1',
+        'SELECT * FROM sk_users ORDER BY elo DESC, games_played DESC, id ASC LIMIT $1',
         [limit],
       );
       return rows.map(row).map(publicUser);
