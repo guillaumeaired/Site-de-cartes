@@ -1051,6 +1051,9 @@ function stateFor(room, p) {
       nickname: pp.nickname,
       piece: pp.piece || null,
       connected: pp.connected !== false,
+      // La cote du compte assis (ou de celui qui a quitté le siège, qu'un bot
+      // finit pour lui) : le registre agrandi l'affiche à côté du score.
+      ...coteDuSiege(pp),
       handCount: pp.hand ? pp.hand.length : 0,
       tricksWon: pp.tricksWon || 0,
       // Les chiffres cumulés ne révèlent aucune information sur la manche en
@@ -1520,6 +1523,16 @@ function clearRoomTimers(room) {
 // jour manche après manche) de quoi se comparer autrement que par le score :
 // combien d'annonces tenues, combien de plis pris, la meilleure et la pire
 // manche, la plus longue série.
+// Qui est assis, du point de vue du classement : un compte (avec sa cote du
+// moment), un invité, ou un bot. Un siège quitté en cours de route garde la
+// cote de celui qui est parti — c'est lui que la partie classe, pas le bot.
+function coteDuSiege(p) {
+  const isBot = Boolean(bots && bots.isBot(p.id));
+  if (p.leaver) return { elo: p.leaver.userId ? p.leaver.elo : null, isGuest: !p.leaver.userId, isBot: false };
+  if (p.userId) return { elo: p.elo, isGuest: false, isBot };
+  return { elo: null, isGuest: !isBot, isBot };
+}
+
 function playerRecap(p) {
   const h = p.roundHistory || [];
   const exact = h.filter((r) => r.made === r.bid).length;
@@ -1547,6 +1560,11 @@ function playerRecap(p) {
     piece: p.piece || null,
     // A quitté en cours de route : un bot a fini la partie à sa place.
     left: Boolean(p.leaver),
+    // La cote AVANT le calcul de fin (rateGame y ajoute ensuite `elo`, avec
+    // l'avant, l'après et l'écart, quand la partie est classée) : le récap
+    // donne ainsi la cote de chaque compte, classée ou non.
+    cote: coteDuSiege(p).elo,
+    isBot: coteDuSiege(p).isBot,
     total: p.totalScore,
     rounds: h.length,
     exact,
@@ -1945,33 +1963,33 @@ function resoudreLePliComplet(io, room) {
 
   room.trickTimer = setTimeout(() => {
     if (rooms.get(room.code) !== room) return;
-    const winningCard = room.lastWinningCard;
     const isLastTrick = room.trickNumber === room.cardsInRound;
-    if (winningCard && winningCard.kind === 'pirate' && winningCard.name) {
-      const powerKey = PIRATE_POWER_BY_NAME[winningCard.name];
-      // Tous les pouvoirs sauf celui d'Harry le Géant sont indisponibles
-      // sur le dernier pli de la manche.
-      if (powerKey === 'harry' || !isLastTrick) {
-        startPiratePower(io, room, powerKey, winnerId, leaderId);
-        return;
-      }
-    }
-    // Le Skull King hérite du/des pouvoir(s) de tout(s) Pirate(s)
-    // classique(s) capturé(s) dans le même pli (retiré par la Planche exclu,
-    // voir result.excludedIdx), à résoudre à la suite les uns des autres -
-    // sans toucher au bonus de capture normal, géré séparément dans
-    // trickBonusForWinner. Mat le Forban, lui, rafle les Pirates sans
-    // exécuter leur pouvoir : choix de la maison, il ne gagne que le pli.
-    if (winningCard && winningCard.kind === 'skullking') {
-      const powerKeys = capturedPirateKeys(room.currentTrick, result.excludedIdx, isLastTrick);
-      if (powerKeys.length) {
-        room.pendingPowerQueue = powerKeys.slice(1);
-        startPiratePower(io, room, powerKeys[0], winnerId, leaderId);
-        return;
-      }
+    const powerKeys = powerKeysAfterTrick(room.lastWinningCard, room.currentTrick, result.excludedIdx, isLastTrick);
+    if (powerKeys.length) {
+      room.pendingPowerQueue = powerKeys.slice(1);
+      startPiratePower(io, room, powerKeys[0], winnerId, leaderId);
+      return;
     }
     finishTrickCollection(io, room, leaderId);
   }, paceMs(room, 'trick') + (result.destroyed && result.krakenIdx >= 0 ? KRAKEN_EXTRA_MS : 0));
+}
+
+// Les pouvoirs à résoudre une fois le pli ramassé, dans l'ordre. Un Pirate
+// nommé qui gagne déclenche le sien. Le Skull King hérite de celui de chaque
+// Pirate classique capturé dans le même pli (retiré par la Planche exclu,
+// voir excludedIdx), à résoudre à la suite les uns des autres - sans toucher
+// au bonus de capture, géré à part dans trickBonusForWinner. Mat le Forban,
+// lui, rafle les Pirates sans exécuter leur pouvoir : il ne gagne que le pli.
+// Sur le dernier pli de la manche, seul Harry le Géant agit encore : Rascal
+// n'a plus rien à miser, Rosie et Mary plus de pli suivant à régler.
+function powerKeysAfterTrick(winningCard, trick, excludedIdx, isLastTrick) {
+  if (!winningCard) return [];
+  if (winningCard.kind === 'pirate' && winningCard.name) {
+    const powerKey = PIRATE_POWER_BY_NAME[winningCard.name];
+    return powerKey && (powerKey === 'harry' || !isLastTrick) ? [powerKey] : [];
+  }
+  if (winningCard.kind === 'skullking') return capturedPirateKeys(trick, excludedIdx, isLastTrick);
+  return [];
 }
 
 // --- MARCHER SUR LA PLANCHE : LA CIBLE SE DÉSIGNE À LA FIN DU PLI ------
@@ -2695,6 +2713,13 @@ function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-power-rascal', (payload) => {
     const room = rooms.get(socket.data.skullkingRoom);
     if (!guardPower(room, socket, 'rascal')) return;
+    // Ceinture et bretelles : le pouvoir ne s'ouvre jamais sur le dernier pli
+    // (voir powerKeysAfterTrick), une mise qui arriverait quand même là est
+    // refusée - la manche se solde, il n'y a plus rien sur quoi parier.
+    if (room.trickNumber >= room.cardsInRound) {
+      sendError(socket, 'Rascal le Flambeur ne mise pas sur le dernier pli.');
+      return;
+    }
     const stake = Number(payload && payload.stake);
     if (![0, 10, 20].includes(stake)) {
       sendError(socket, 'Mise invalide.');
@@ -2837,6 +2862,7 @@ module.exports = {
   validerCiblePlanche,
   activeOrderThisTrick,
   capturedPirateKeys,
+  powerKeysAfterTrick,
   devoreesParLeVainqueur,
   plankedCardIds,
   davyJonesSwallow,

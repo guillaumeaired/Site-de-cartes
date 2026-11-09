@@ -37,14 +37,38 @@ function choisirMode(m) {
   aide.classList.toggle('hidden', m !== 'register');
   erreur.textContent = '';
   inputPseudo.focus();
+dessinerPin();
+// Un remplissage automatique au chargement arrive parfois après le script.
+setTimeout(dessinerPin, 600);
 }
 
 onglets.forEach((b) => b.addEventListener('click', () => choisirMode(b.dataset.mode)));
+
+// Les quatre cases du code : un point par chiffre tapé, et la case où ira
+// le prochain chiffre marquée tant que le champ a le focus.
+const casesPin = [...document.querySelectorAll('.sk-pin-case')];
+function dessinerPin() {
+  const n = inputCode.value.length;
+  casesPin.forEach((c, i) => {
+    c.textContent = i < n ? '•' : '';
+    c.classList.toggle('sk-pin-case--pleine', i < n);
+    c.classList.toggle('sk-pin-case--courante', i === Math.min(n, casesPin.length - 1));
+  });
+}
 
 // Le champ du code n'accepte que des chiffres, même collés.
 inputCode.addEventListener('input', () => {
   const propre = inputCode.value.replace(/\D/g, '').slice(0, 4);
   if (propre !== inputCode.value) inputCode.value = propre;
+  dessinerPin();
+});
+// Le gestionnaire de mots de passe peut remplir le champ sans « input ».
+inputCode.addEventListener('change', dessinerPin);
+// Le curseur reste toujours en bout de code : les cases se remplissent
+// dans l'ordre, on ne corrige qu'en effaçant.
+inputCode.addEventListener('focus', () => {
+  const fin = inputCode.value.length;
+  requestAnimationFrame(() => inputCode.setSelectionRange && inputCode.setSelectionRange(fin, fin));
 });
 
 form.addEventListener('submit', async (e) => {
@@ -54,6 +78,9 @@ form.addEventListener('submit', async (e) => {
   if (!pseudo) {
     erreur.textContent = 'Entre ton pseudo.';
     inputPseudo.focus();
+dessinerPin();
+// Un remplissage automatique au chargement arrive parfois après le script.
+setTimeout(dessinerPin, 600);
     return;
   }
   if (!/^\d{4}$/.test(pin)) {
@@ -79,9 +106,11 @@ form.addEventListener('submit', async (e) => {
         inputPseudo.value = pseudo;
         erreur.textContent = 'Aucun compte à ce pseudo : crée-le avec ce code.';
         inputCode.value = pin;
+        dessinerPin();
         btnValider.focus();
       } else {
         inputCode.value = '';
+        dessinerPin();
         inputCode.focus();
       }
       return;
@@ -115,3 +144,6 @@ fetch('/api/me', { credentials: 'same-origin' })
   .catch(() => {});
 
 inputPseudo.focus();
+dessinerPin();
+// Un remplissage automatique au chargement arrive parfois après le script.
+setTimeout(dessinerPin, 600);

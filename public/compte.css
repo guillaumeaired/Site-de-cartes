@@ -4,30 +4,58 @@
    il reprend les couleurs (--sk-*), les polices et les boutons de laiton :
    rien ici ne redessine ce qui existe déjà, ça ne fait qu'ajouter. */
 
-/* --- Le bandeau d'identité, en haut à droite de l'accueil --------------
+/* --- Le bandeau d'identité, en haut à droite -------------------------
    Le pendant de « ← Tous les jeux » en haut à gauche : posé en fixe, il ne
-   pousse rien dans la colonne de l'accueil. */
+   pousse rien dans la colonne de l'accueil. Une plaque de bois cerclée de
+   laiton : le pseudo, la cote en gros chiffres, puis le bouton du
+   classement. Il suit l'accueil, le salon et le récap de fin ; pendant la
+   partie, la table a besoin de tout l'écran. */
 .sk-compte {
   position: fixed;
-  top: 12px;
-  right: 16px;
-  z-index: 4;
+  top: 10px;
+  right: 14px;
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: 14px;
-  max-width: calc(100vw - 32px);
+  gap: 10px;
+  max-width: calc(100vw - 28px);
+  padding: 5px 6px 5px 12px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.07), rgba(0, 0, 0, 0.3)),
+    rgba(20, 12, 6, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(214, 170, 82, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.55);
   font-family: 'Cinzel', Georgia, serif;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--sk-cream);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
+body:has(#sk-screen-game:not(.hidden)) .sk-compte {
+  display: none;
+}
+
+/* Hors de l'accueil (salon, récap), on est à table : se déconnecter n'y a
+   pas de sens, et la plaque se fait plus courte. Sur un écran bas (téléphone
+   en paysage), le pseudo s'efface aussi — la plaque mordait sur le logo. */
+body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-lien {
+  display: none;
+}
+
+@media (max-height: 520px) {
+  body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-nom {
+    display: none;
+  }
+  body:has(#sk-screen-home.hidden) .sk-compte {
+    padding-left: 6px;
+  }
+}
+
 .sk-compte-nom {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -35,10 +63,64 @@
 }
 
 .sk-compte-elo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 2px 8px 3px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.4);
   font-family: 'Bitter', Georgia, serif;
-  font-weight: 700;
   color: var(--sk-brass-hi);
   letter-spacing: 0.02em;
+}
+
+.sk-compte-elo b {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-compte-elo small {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sk-brass);
+}
+
+/* Le bouton du classement, en laiton : on doit le trouver sans le
+   chercher. */
+.sk-compte-classement {
+  flex-shrink: 0;
+  padding: 6px 11px 5px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #e2bd6a, #b48530 55%, #8a6220);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 210, 0.55),
+    inset 0 0 0 1px rgba(60, 38, 10, 0.6),
+    0 2px 0 rgba(0, 0, 0, 0.5);
+  color: #2a1906;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-shadow: 0 1px 0 rgba(255, 236, 190, 0.45);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sk-compte-classement::before {
+  content: '\2655\00a0';
+}
+
+.sk-compte-classement:hover,
+.sk-compte-classement:focus-visible {
+  background: linear-gradient(180deg, #f0d083, #c4963b 55%, #9a6e25);
 }
 
 .sk-compte-lien {
@@ -47,6 +129,7 @@
   background: none;
   color: var(--sk-cream-2);
   font: inherit;
+  font-size: 0.6rem;
   letter-spacing: inherit;
   text-transform: uppercase;
   text-decoration: none;
@@ -159,14 +242,65 @@ input.sk-pseudo-compte {
   margin-bottom: 10px;
 }
 
-.sk-porte-code {
-  letter-spacing: 0.6em;
-  font-family: 'Bitter', Georgia, serif !important;
+/* Le code en quatre cases, une par chiffre. Le vrai champ est posé dessus,
+   transparent : c'est lui qui reçoit la frappe, le collage et
+   l'autoremplissage ; les cases ne font que montrer où l'on en est. */
+.sk-pin-libelle {
+  display: block;
+  margin: 0 0 7px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.62rem;
   font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--sk-cream-3);
 }
 
-.sk-porte-code::placeholder {
-  letter-spacing: normal;
+.sk-pin-cases {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sk-pin-case {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 54px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #1a120b, #241a12);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.65);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--sk-brass-hi);
+  transition: box-shadow 0.15s ease;
+}
+
+.sk-pin-case--pleine {
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.6), inset 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.sk-pin-cases:focus-within .sk-pin-case--courante {
+  box-shadow:
+    inset 0 0 0 1px var(--sk-brass),
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(184, 137, 53, 0.28);
+}
+
+.nickname-field input.sk-pin-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  opacity: 0;
+  cursor: text;
 }
 
 .sk-porte-aide {
@@ -273,11 +407,99 @@ input.sk-pseudo-compte {
 
 @media (max-width: 420px) {
   .sk-compte {
-    gap: 10px;
+    gap: 7px;
+    padding-left: 9px;
     font-size: 0.6rem;
+  }
+  .sk-compte-classement {
+    padding: 5px 8px 4px;
+    font-size: 0.58rem;
   }
   .sk-classement th:nth-child(5),
   .sk-classement td:nth-child(5) {
     display: none;
   }
+}
+
+/* --- La cote sur la ligne du salon ------------------------------------
+   Juste après le pseudo, en chiffres de laiton : le pseudo se tronque
+   avant elle, jamais l'inverse. */
+.sk-lobby-elo {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-brass-hi);
+  text-shadow: none;
+}
+
+.lobby-list .sk-lobby-nom {
+  min-width: 0;
+}
+
+/* --- La colonne Elo du registre agrandi -------------------------------
+   Une septième colonne, à droite du score ; les six autres gardent leurs
+   largeurs (voir .sk-grand-row dans skullking.css). */
+.sk-grand-registre--elo .sk-grand-row {
+  grid-template-columns: 2.3rem 34px minmax(0, 1fr) 4.5rem 2.9rem 3rem 3.6rem;
+}
+
+.sk-grand-elo {
+  text-align: right;
+  font-weight: 700;
+  color: #7a5414;
+}
+
+.sk-grand-elo--sans {
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.85em;
+  color: #6b4c1d;
+}
+
+/* --- La colonne Elo du récap de fin ----------------------------------- */
+/* Six colonnes au lieu de cinq dans la même planche : les cellules se
+   resserrent d'autant, sans quoi la colonne Elo sortait du cadre. */
+.sk-end-table--elo th,
+.sk-end-table--elo td {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+/* La cote et, dessous, ce que la partie lui a fait : sur une seule ligne,
+   la colonne poussait le tableau hors de sa planche. */
+.sk-end-table td.sk-end-cote {
+  text-align: right;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.sk-end-cote .sk-end-elo {
+  display: block;
+  font-size: 0.68em;
+}
+
+.sk-end-table th:last-child:not(:nth-child(5)) {
+  text-align: right;
+}
+
+.sk-end-cote-val {
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-brass-hi);
+}
+
+.sk-end-cote-sans {
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.85em;
+  color: var(--sk-cream-3);
 }

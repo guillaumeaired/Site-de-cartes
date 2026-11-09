@@ -4,7 +4,7 @@
 // Designer 2026-08-12 : les bugs de ciblage passaient inaperçus malgré une
 // suite de tests moteur qui passe.
 const assert = require('assert');
-const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, resoudreLePliComplet, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect, joinAsSpectator, backToLobby, spectatorView, kickFromLobby } = require('./skullking-room');
+const { eligiblePlankTargets, demanderCiblePlanche, validerCiblePlanche, activeOrderThisTrick, capturedPirateKeys, powerKeysAfterTrick, resoudreLePliComplet, devoreesParLeVainqueur, plankedCardIds, powerResultMessage, stateFor, PACE_SETTINGS, PACE_PRESETS, paceOf, paceMs, pacePresetOf, giveFreePiece, PIECE_KEYS, finalizeSkullKingDisconnect, joinAsSpectator, backToLobby, spectatorView, kickFromLobby } = require('./skullking-room');
 
 let n = 0;
 function check(label, actual, expected) {
@@ -143,6 +143,20 @@ check(
   ),
   ['harry']
 );
+
+// --- Rascal le Flambeur ne mise jamais sur le dernier pli : ni en le
+// gagnant lui-même, ni par le Skull King qui le capture.
+{
+  const rascal = { id: 'ra', kind: 'pirate', name: 'Rascal le Flambeur' };
+  const sk = { id: 'sk', kind: 'skullking' };
+  const pli = [{ playerId: 'x', card: rascal }, { playerId: 'y', card: { id: 'n2', kind: 'number', suit: 'vert', value: 2 } }];
+  const pliSk = [{ playerId: 'x', card: rascal }, { playerId: 'y', card: sk }];
+  check('Rascal gagne un pli ordinaire : il mise', powerKeysAfterTrick(rascal, pli, new Set(), false), ['rascal']);
+  check('Rascal gagne le dernier pli : pas de mise', powerKeysAfterTrick(rascal, pli, new Set(), true), []);
+  check('le Skull King prend Rascal au dernier pli : pas de mise', powerKeysAfterTrick(sk, pliSk, new Set(), true), []);
+  check('Harry agit encore au dernier pli', powerKeysAfterTrick({ id: 'h', kind: 'pirate', name: 'Harry le Géant' }, pli, new Set(), true), ['harry']);
+  check('Mat le Forban ne transmet rien', powerKeysAfterTrick({ id: 'fm', kind: 'firstmate' }, pli, new Set(), false), []);
+}
 
 check(
   'un Pirate sans pouvoir connu (nom absent de PIRATE_POWER_BY_NAME) ne transmet rien',

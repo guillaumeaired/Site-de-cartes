@@ -31,9 +31,21 @@
             <label for="porte-pseudo" class="visually-hidden">Ton pseudo</label>
             <input id="porte-pseudo" name="username" type="text" maxlength="16" placeholder="Ton pseudo" autocomplete="username" autocapitalize="words" required />
           </div>
-          <div class="nickname-field">
-            <label for="porte-code" class="visually-hidden">Ton code à 4 chiffres</label>
-            <input id="porte-code" class="sk-porte-code" name="password" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="Code à 4 chiffres" autocomplete="current-password" required />
+          <!-- Le code s'écrit dans quatre cases, une par chiffre : on voit
+               d'un coup qu'il en faut quatre, ni plus ni moins. Il n'y a
+               qu'UN vrai champ, transparent, posé sur les cases : le
+               gestionnaire de mots de passe, le collage et le pavé
+               numérique du téléphone marchent comme avec un champ normal
+               (voir dessinerPin dans connexion.js). -->
+          <div class="nickname-field sk-pin">
+            <label for="porte-code" class="sk-pin-libelle">Code à 4 chiffres</label>
+            <div class="sk-pin-cases">
+              <input id="porte-code" class="sk-pin-input" name="password" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required />
+              <span class="sk-pin-case" aria-hidden="true"></span>
+              <span class="sk-pin-case" aria-hidden="true"></span>
+              <span class="sk-pin-case" aria-hidden="true"></span>
+              <span class="sk-pin-case" aria-hidden="true"></span>
+            </div>
           </div>
           <p id="porte-aide" class="sk-porte-aide hidden">Choisis un pseudo et un code à 4 chiffres. Retiens-le bien : il n'y a pas de « code oublié ».</p>
           <button id="porte-valider" type="submit" class="btn btn-primary btn-create">Se connecter</button>

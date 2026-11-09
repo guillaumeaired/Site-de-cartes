@@ -9,7 +9,9 @@
 //   - connecté, le pseudo est celui du compte : les champs le portent déjà
 //     et ne se modifient pas (le serveur l'impose de toute façon) ;
 //   - un bandeau en haut à droite dit qui l'on est, avec sa cote, le lien
-//     du classement et de quoi se connecter ou se déconnecter.
+//     du classement et de quoi se connecter ou se déconnecter. Il reste à
+//     l'accueil, au salon et au récap de fin (la feuille de style le retire
+//     pendant la partie, où la table prend tout l'écran).
 
 const COMPTE_INVITE_KEY = 'skullking:invite';
 
@@ -54,29 +56,40 @@ function compteBandeau() {
     bandeau.id = 'sk-compte';
     bandeau.className = 'sk-compte';
     bandeau.setAttribute('aria-label', 'Ton compte');
-    const home = document.getElementById('sk-screen-home');
-    (home || document.body).appendChild(bandeau);
+    // Sur le corps de la page et pas dans l'accueil : le bandeau suit
+    // l'accueil, le salon et le récap de fin.
+    document.body.appendChild(bandeau);
   }
   bandeau.textContent = '';
 
   const nom = document.createElement('span');
   nom.className = 'sk-compte-nom';
-  if (compte.user) {
-    nom.textContent = compte.user.pseudo;
-    const elo = document.createElement('span');
-    elo.className = 'sk-compte-elo';
-    elo.textContent = `${compte.user.elo} Elo`;
-    elo.title = `${compte.user.gamesPlayed} partie(s) classée(s), ${compte.user.wins} victoire(s)`;
-    nom.appendChild(elo);
-  } else {
-    nom.textContent = 'Invité';
-  }
+  nom.textContent = compte.user ? compte.user.pseudo : 'Invité';
   bandeau.appendChild(nom);
 
+  // La cote, en plaque de laiton : c'est le chiffre qu'on vient voir.
+  if (compte.user) {
+    const elo = document.createElement('span');
+    elo.className = 'sk-compte-elo';
+    elo.innerHTML = `<b>${Number(compte.user.elo)}</b><small>Elo</small>`;
+    elo.title = `${compte.user.gamesPlayed} partie(s) classée(s), ${compte.user.wins} victoire(s)`;
+    bandeau.appendChild(elo);
+  }
+
+  // Un vrai bouton de laiton, pas un lien de texte. Hors de l'accueil (salon,
+  // récap), il ouvre un autre onglet : quitter la page ferait quitter la
+  // table.
   const classement = document.createElement('a');
   classement.href = 'classement.html';
-  classement.className = 'sk-compte-lien';
+  classement.className = 'sk-compte-classement';
   classement.textContent = 'Classement';
+  classement.addEventListener('click', (e) => {
+    const home = document.getElementById('sk-screen-home');
+    if (home && home.classList.contains('hidden')) {
+      e.preventDefault();
+      window.open(classement.href, '_blank', 'noopener');
+    }
+  });
   bandeau.appendChild(classement);
 
   if (compte.user) {
@@ -102,6 +115,14 @@ function compteBandeau() {
     entrer.textContent = 'Se connecter';
     bandeau.appendChild(entrer);
   }
+}
+
+// La cote a bougé (fin d'une partie classée, voir renderGameEnd) : le
+// bandeau la reprend sans attendre un rechargement.
+function compteMajCote(elo) {
+  if (!compte.user || elo == null || compte.user.elo === elo) return;
+  compte.user.elo = elo;
+  compteBandeau();
 }
 
 fetch('/api/me', { credentials: 'same-origin' })

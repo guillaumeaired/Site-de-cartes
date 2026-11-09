@@ -79,6 +79,9 @@ const siege = vueJack.players.find((p) => p.nickname === 'Anne');
 check('le siège d’Anne est tenu par un bot', siege && bots.isBot(siege.id));
 check('la barre passe à un humain', vueJack.isHost === true || mary.last['skullking-state'].isHost === true);
 check('les autres sont prévenus', jack.last['skullking-player-replaced'].nickname === 'Anne');
+const jackVu = vueJack.players.find((p) => p.nickname === 'Jack');
+check('l’état de partie donne la cote de chaque compte', jackVu && jackVu.elo === 1200 && !jackVu.isGuest && !jackVu.isBot);
+check('le siège repris garde la cote du partant', siege && siege.elo === 1200 && !siege.isBot);
 
 // Un joueur seul face aux bots qui s'en va : la partie s'arrête, retour à
 // l'accueil (pas de spectateur d'une partie entre bots).

@@ -50,17 +50,19 @@ const PIRATE_SHORT_NAME = {
   'Harry le Géant': 'Harry',
   'Mary Thorne': 'Mary',
 };
-// Ce que déclenche chaque pirate nommé s'IL remporte le pli avec sa propre
-// carte — affiché en infobulle sur la carte, pour savoir à quoi s'attendre
-// avant même de la jouer.
+// Ce que déclenche chaque pirate nommé s'il remporte le pli avec sa propre
+// carte : affiché en infobulle sur la carte, pour savoir à quoi s'attendre
+// avant même de la jouer. Chaque phrase suit « s'il / si elle remporte le
+// pli, », d'où le pronom en tête et le genre de chacun à côté.
 const PIRATE_POWER_TEXT = {
-  "Rosie la Douce": "Choisit qui entame le pli suivant (pas sur le dernier pli).",
-  'Will le Bandit': 'Pioche 2 cartes non distribuées et en défausse 2 (pas sur le dernier pli).',
-  'Rascal le Flambeur': "Peut miser 10 ou 20 points de plus sur sa propre annonce (pas sur le dernier pli).",
-  'Juanita Jade': 'Regarde les cartes non distribuées ce tour-ci (pas sur le dernier pli).',
-  'Harry le Géant': 'Modifie sa propre annonce de ±1 (même sur le dernier pli).',
-  'Mary Thorne': 'Force un joueur choisi à jouer une carte aléatoire de sa main au pli suivant (pas sur le dernier pli).',
+  "Rosie la Douce": "elle choisit qui entame le pli suivant, elle-même comprise (pas sur le dernier pli).",
+  'Will le Bandit': 'il pioche 2 cartes non distribuées, puis en défausse 2 de sa main (pas sur le dernier pli).',
+  'Rascal le Flambeur': "il peut miser 10 ou 20 points de plus sur sa propre annonce, gagnés si elle est juste et perdus sinon (pas sur le dernier pli).",
+  'Juanita Jade': 'elle regarde les cartes non distribuées de la manche (pas sur le dernier pli).',
+  'Harry le Géant': 'il peut changer sa propre annonce de 1 pli, en plus ou en moins (même sur le dernier pli).',
+  'Mary Thorne': "elle désigne un joueur, elle-même comprise. Une carte est tirée au hasard dans la main de ce joueur : au pli suivant, il est obligé de jouer celle-là, même si elle ne suit pas la couleur demandée (pas sur le dernier pli).",
 };
+const PIRATE_FEMININ = new Set(["Rosie la Douce", 'Juanita Jade', 'Mary Thorne']);
 
 // Tri d'affichage de la main : par couleur (vert/jaune/violet/noir) puis
 // par hauteur croissante, les cartes spéciales groupées à la fin - purement
@@ -463,8 +465,8 @@ function cardPowerText(card) {
   switch (card.kind) {
     case 'pirate':
       return card.name && PIRATE_POWER_TEXT[card.name]
-        ? `${card.name} — s'il/elle remporte le pli : ${PIRATE_POWER_TEXT[card.name]}`
-        : "Pirate — bat toutes les cartes numérotées et les Sirènes (+20 par Sirène capturée). Seul le Skull King le bat.";
+        ? `${card.name} : ${PIRATE_FEMININ.has(card.name) ? 'si elle' : "s'il"} remporte le pli, ${PIRATE_POWER_TEXT[card.name]}`
+        : "Pirate : bat toutes les cartes numérotées et les Sirènes (+20 par Sirène capturée). Seul le Skull King le bat.";
     case 'siren':
       return "Sirène — bat toutes les cartes numérotées, mais perd contre un Pirate. Elle bat en revanche le Skull King : c'est la seule carte à le faire.";
     case 'skullking':
@@ -866,7 +868,7 @@ const REGLES_PIRATES = [
   { name: 'Rascal le Flambeur', effet: 'mise 10 ou 20 de plus sur son annonce' },
   { name: 'Juanita Jade', effet: 'regarde les cartes non distribuées' },
   { name: 'Harry le Géant', effet: 'change son annonce de ±1' },
-  { name: 'Mary Thorne', effet: 'un joueur jouera une carte au hasard au pli suivant', ext: 'marythorne' },
+  { name: 'Mary Thorne', effet: 'désigne un joueur : sa carte du pli suivant est tirée au hasard dans sa main', ext: 'marythorne' },
 ];
 
 const REGLES_SPECIALES = [
@@ -882,11 +884,11 @@ const REGLES_EXT_CHIFFRES = [
   { carte: { kind: 'number', suit: 'jaune', value: 8, ext: true }, nom: '8', effet: '+5 à qui gagne le pli', ext: 'numerotees' },
   { carte: { kind: 'number', suit: 'violet', value: null, wild14: true, ext: true }, nom: '0/14', effet: 'vaut 0 ou 14, au choix · jamais de bonus', ext: 'numerotees' },
   { carte: { kind: 'wild15' }, nom: 'Joker', effet: 'vaut 15, couleur au choix', ext: 'joker' },
+  { carte: { kind: 'stingray' }, nom: 'Raie Tachetée', effet: 'comme la Baleine, mais le plus bas gagne', ext: 'stingray' },
 ];
 
 const REGLES_EXT_SPECIALES = [
   { carte: { kind: 'firstmate' }, nom: 'Mat le Forban', effet: 'bat les Pirates sans prendre leur pouvoir, perd contre Skull King et Sirène · pris : +30', ext: 'firstmate' },
-  { carte: { kind: 'stingray' }, nom: 'Raie Tachetée', effet: 'comme la Baleine, mais le plus bas gagne', ext: 'stingray' },
   { carte: { kind: 'lastvolley' }, nom: 'Dernière Salve', effet: 'perd · tu rejoues une carte après tout le monde', ext: 'lastvolley' },
   { carte: { kind: 'plank' }, nom: 'Planche', effet: 'perd · jette un Pirate du pli, au choix', ext: 'plank' },
   { carte: { kind: 'davyjones' }, nom: 'Coffre de Davy Jones', effet: 'perd · détruit les monstres : +20 chacun', ext: 'davyjones' },
@@ -937,6 +939,20 @@ function reglesListe(lignes) {
     .join('')}</ul>`;
 }
 
+// Une remarque de bas de fiche : ce qu'on oublie et qui change l'issue d'un
+// pli. Un triangle d'alerte devant, pour qu'on ne la prenne pas pour une
+// légende.
+function reglesNote(html) {
+  return `<p class="sk-regles-note"><svg class="sk-regles-alerte" viewBox="0 0 24 22" aria-hidden="true">`
+    + '<path d="M12 1.5 L23 20.5 H1 Z" /><rect x="10.9" y="7.6" width="2.2" height="7" rx="1.1" /><circle cx="12" cy="17.4" r="1.25" /></svg>'
+    + `<span><span class="visually-hidden">Attention : </span>${html}</span></p>`;
+}
+
+function reglesNotes(...notes) {
+  const presentes = notes.filter(Boolean);
+  return presentes.length ? `<div class="sk-regles-notes">${presentes.map(reglesNote).join('')}</div>` : '';
+}
+
 function reglesManche() {
   return `<ul class="sk-regles-faits">
       <li><img src="assets/skin/doublon-tenu.webp" alt="" class="sk-regles-logo" /><span><b>10 manches</b> · manche <i>n</i> = <i>n</i> cartes</span></li>
@@ -950,7 +966,7 @@ function reglesManche() {
         <tr><th>Annonce 1 ou +</th><td class="plus">+20 / pli</td><td class="moins">−10 / pli d'écart</td></tr>
       </tbody>
     </table>
-    <p class="sk-regles-note">Bonus de capture : seulement si l'annonce est juste.</p>`;
+    ${reglesNotes("Bonus de capture : seulement si l'annonce est juste.")}`;
 }
 
 // L'échelle des numérotées, puis le cycle des trois personnages. Chaque
@@ -984,7 +1000,10 @@ function reglesPli() {
       ${cycle({ kind: 'pirate', name: 'Rascal le Flambeur' }, 'Pirate', 'sk-regles-cycle--gauche')}
       ${cycle({ kind: 'siren', variant: 1 }, 'Sirène', 'sk-regles-cycle--droite')}
     </div>
-    <p class="sk-regles-note">Les trois dans le pli : la Sirène gagne. À égalité, la 1<sup>re</sup> posée.</p>`;
+    ${reglesNotes(
+      'Les trois dans le pli : la Sirène gagne. À égalité, la 1<sup>re</sup> posée.',
+      "Le Skull King prend le pouvoir des Pirates qu'il bat."
+    )}`;
 }
 
 function reglesPirates() {
@@ -994,7 +1013,10 @@ function reglesPirates() {
     .join('');
   return `<p class="sk-regles-consigne">Leur pouvoir joue s'ils gagnent le pli.</p>
     <ul class="sk-regles-liste sk-regles-liste--tetes">${lignes}</ul>
-    <p class="sk-regles-note">Le Skull King hérite du pouvoir des Pirates qu'il prend, Mat le Forban non. Au dernier pli, seul Harry agit.</p>`;
+    ${reglesNotes(
+      "Plusieurs Pirates dans le pli : le 1<sup>er</sup> posé remporte le pli.",
+      'Au dernier pli, seul Harry agit.'
+    )}`;
 }
 
 function reglesFiches() {
@@ -1002,13 +1024,32 @@ function reglesFiches() {
     { cle: 'manche', titre: 'La manche', corps: reglesManche },
     { cle: 'pli', titre: 'Le pli', corps: reglesPli },
     { cle: 'pirates', titre: 'Les pirates', corps: reglesPirates },
-    { cle: 'speciales', titre: 'Cartes spéciales', corps: () => reglesListe(REGLES_SPECIALES) },
+    // Entre Monstres, c'est le dernier posé qui agit (voir resolveTrick) :
+    // avec la Raie, ils peuvent être trois.
+    {
+      cle: 'speciales',
+      titre: 'Cartes spéciales',
+      corps: () => reglesListe(REGLES_SPECIALES) + reglesNotes(reglesActif('stingray')
+        ? 'Plusieurs Monstres dans le pli (Kraken, Baleine, Raie) : seul le dernier posé agit.'
+        : 'Kraken et Baleine dans le même pli : seul le 2<sup>e</sup> posé agit.'),
+    },
   ];
-  if (REGLES_EXT_CHIFFRES.some((l) => reglesActif(l.ext))) {
-    fiches.push({ cle: 'chiffres', titre: 'Chiffres', ext: true, corps: () => reglesListe(REGLES_EXT_CHIFFRES) });
-  }
-  if (REGLES_EXT_SPECIALES.some((l) => reglesActif(l.ext))) {
-    fiches.push({ cle: 'ext-speciales', titre: 'Spéciales', ext: true, corps: () => reglesListe(REGLES_EXT_SPECIALES) });
+  // Deux pages à peu près égales : les cartes qui jouent sur la VALEUR
+  // (7, 8, 0/14, Joker, et la Raie où le plus bas gagne), puis celles qui
+  // jouent sur le pli. Avec peu d'extensions cochées, une seule page suffit.
+  const valeurs = REGLES_EXT_CHIFFRES.filter((l) => reglesActif(l.ext));
+  const speciales = REGLES_EXT_SPECIALES.filter((l) => reglesActif(l.ext));
+  const forban = reglesActif('firstmate')
+    ? () => reglesNotes(
+      'Mat le Forban bat les Pirates, mais ne prend pas leur pouvoir.',
+      'Mat le Forban, un Pirate et une Sirène dans le même pli : la Sirène gagne.'
+    )
+    : () => '';
+  if (valeurs.length + speciales.length <= 5 && valeurs.length && speciales.length) {
+    fiches.push({ cle: 'ext-speciales', titre: 'Cartes en plus', ext: true, corps: () => reglesListe([...valeurs, ...speciales]) + forban() });
+  } else {
+    if (valeurs.length) fiches.push({ cle: 'chiffres', titre: 'Valeurs', ext: true, corps: () => reglesListe(valeurs) });
+    if (speciales.length) fiches.push({ cle: 'ext-speciales', titre: 'Spéciales', ext: true, corps: () => reglesListe(speciales) + forban() });
   }
   return fiches;
 }
@@ -2261,12 +2302,18 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
     nom.textContent = p.nickname;
     nom.style.color = couleurJoueur(p);
     li.appendChild(nom);
-    // La cote de qui a un compte, « invité » pour les autres — dans la bulle
-    // du nom : la ligne n'a pas la place d'une marque de plus, le pseudo s'y
-    // tronquait déjà. Que la partie soit classée ou non se lit au-dessus du
-    // rôle (voir lobbyRange).
-    if (p.elo != null) nom.title = `${p.nickname} — ${p.elo} Elo`;
-    else if (p.isGuest) nom.title = `${p.nickname} — invité, ses parties ne comptent pas au classement`;
+    // La cote de qui a un compte s'écrit sur sa ligne, juste après le
+    // pseudo (qui se tronque avant elle) ; l'invité le dit dans la bulle du
+    // nom. Que la partie soit classée ou non se lit au-dessus du rôle (voir
+    // lobbyRange).
+    if (p.elo != null) {
+      nom.title = `${p.nickname} — ${p.elo} Elo`;
+      const cote = document.createElement('span');
+      cote.className = 'sk-lobby-elo';
+      cote.textContent = p.elo;
+      cote.title = `Cote Elo de ${p.nickname}`;
+      li.appendChild(cote);
+    } else if (p.isGuest) nom.title = `${p.nickname} — invité, ses parties ne comptent pas au classement`;
     if (p.id === hostId) li.classList.add('lobby-host');
     // Un bot le dit sur sa ligne, à droite, là où l'hôte porte sa barre de
     // capitaine : sans ça, « Anne Bonny » se lisait comme un matelot de plus
@@ -5179,7 +5226,11 @@ function renderRegistreAgrandi(state) {
   const tete = document.createElement('div');
   tete.className = 'sk-grand-row sk-grand-row--tete';
   tete.setAttribute('aria-hidden', 'true');
-  ['Rang', '', 'Équipage', 'Annonces', 'Plis', 'Score'].forEach((libelle) => {
+  // La colonne Elo n'apparaît que là où les comptes existent : un serveur
+  // sans comptes ne donne de cote à personne.
+  const avecCotes = state.players.some((p) => p.elo != null || p.isGuest);
+  rankingBody.classList.toggle('sk-grand-registre--elo', avecCotes);
+  ['Rang', '', 'Équipage', 'Annonces', 'Plis', 'Score', ...(avecCotes ? ['Elo'] : [])].forEach((libelle) => {
     const c = document.createElement('span');
     c.textContent = libelle;
     tete.appendChild(c);
@@ -5235,11 +5286,29 @@ function renderRegistreAgrandi(state) {
     total.textContent = s.total;
     row.appendChild(total);
 
+    if (avecCotes) row.appendChild(celluleCote(p));
+
     // Rien d'autre sous la ligne : la planche agrandie est un classement, pas
     // une fiche de joueur. Séries, zéros et meilleure manche restent au récap
     // de fin, où on a le temps de les lire.
     rankingBody.appendChild(row);
   });
+}
+
+// La cote d'un siège dans le registre agrandi : le chiffre pour un compte,
+// une mention pour les autres.
+function celluleCote(p) {
+  const cote = document.createElement('span');
+  cote.className = 'sk-grand-elo';
+  if (p && p.elo != null) {
+    cote.textContent = p.elo;
+    cote.title = `Cote Elo de ${p.nickname}`;
+  } else {
+    cote.classList.add('sk-grand-elo--sans');
+    cote.textContent = p && p.isBot ? 'bot' : 'invité';
+    cote.title = 'Pas de compte : ne compte pas au classement';
+  }
+  return cote;
 }
 
 function ouvrirRegistreAgrandi() {
@@ -5593,7 +5662,13 @@ function renderChoixPirate(pending, hint, consigne, choix) {
 //
 // Les angles sont ceux de computeSeatPositionsEven : même formule, même
 // départ en bas, donc le petit tapis et le grand ne peuvent pas diverger.
-function renderChoixTapis(pending, hint, consigne, state, onPick) {
+// Mary Thorne désigne elle aussi QUELQU'UN, et la place compte autant : celui
+// qu'elle vise jouera sa carte imposée avant ou après elle. Elle prend donc
+// le même tapis. `phrase(p, moi)` dit la conséquence du clic sur un siège,
+// `desactive(o)` éteint un siège qu'on ne peut pas viser, `detail(o)` ajoute
+// une ligne sous le pseudo.
+function renderChoixTapis(pending, hint, consigne, state, onPick, opts = {}) {
+  const phraseDe = opts.phrase || ((p, moi) => (moi ? 'Tu entames toi-même le pli suivant' : `${p.nickname} entame le pli suivant`));
   powerPanel.classList.add('sk-power-panel--choix', 'sk-power-panel--tapis');
   powerPanel.appendChild(portraitPirate(pending.kind));
 
@@ -5641,16 +5716,22 @@ function renderChoixTapis(pending, hint, consigne, state, onPick) {
     nom.textContent = p.id === myId ? `${p.nickname} (toi)` : p.nickname;
     btn.appendChild(nom);
 
+    const option = parId.get(p.id);
+    if (opts.detail) {
+      const detail = document.createElement('span');
+      detail.className = 'sk-mini-detail';
+      detail.textContent = opts.detail(option);
+      btn.appendChild(detail);
+    }
+    if (opts.desactive && opts.desactive(option)) btn.disabled = true;
+
     // Le tapis ne dit rien à qui ne le voit pas : le libellé porte donc la
     // conséquence en toutes lettres, et non le seul pseudo.
-    const phrase =
-      p.id === myId
-        ? 'Tu entames toi-même le pli suivant'
-        : `${p.nickname} entame le pli suivant`;
+    const phrase = phraseDe(p, p.id === myId);
     btn.title = phrase;
     btn.setAttribute('aria-label', phrase);
 
-    btn.addEventListener('click', () => onPick(parId.get(p.id)));
+    btn.addEventListener('click', () => onPick(option));
     tapis.appendChild(btn);
   });
 
@@ -5733,20 +5814,24 @@ function renderPower(state) {
       renderChoixPirate(pending, hint, 'Qui entame le pli suivant ?', []);
     }
   } else if (pending.kind === 'marythorne') {
-    renderChoixPirate(
-      pending,
-      hint,
-      // La question porte sur QUELQU'UN, pas sur une main : « dans la main de
-      // qui tirer une carte » faisait du joueur un contenant, et reléguait
-      // entre parenthèses la seule chose qui compte — que celui qu'on désigne
-      // devra la jouer.
-      'Qui devra tirer une carte au hasard au pli suivant ?',
-      pending.options.map((o) => ({
-        label: `${o.id === myId ? `${o.nickname} (toi)` : o.nickname} — ${o.handCount} carte${o.handCount > 1 ? 's' : ''}`,
-        disabled: o.handCount === 0,
-        onPick: () => socket.emit('skullking-power-marythorne', { targetId: o.id }),
-      }))
-    );
+    // La question porte sur QUELQU'UN, pas sur une main : celui qu'on
+    // désigne ne choisira pas sa carte au pli suivant, le hasard la tire
+    // pour lui. Même tapis que Rosie : on vise un siège, pas un pseudo.
+    const consigne = 'Qui jouera une carte tirée au hasard au pli suivant ?';
+    const cartes = (o) => `${o.handCount} carte${o.handCount > 1 ? 's' : ''}`;
+    if ((pending.options || []).length) {
+      renderChoixTapis(pending, hint, consigne, state, (o) => {
+        socket.emit('skullking-power-marythorne', { targetId: o.id });
+      }, {
+        phrase: (p, moi) => (moi
+          ? 'Tu joueras toi-même une carte tirée au hasard au pli suivant'
+          : `${p.nickname} jouera une carte tirée au hasard au pli suivant`),
+        detail: cartes,
+        desactive: (o) => o.handCount === 0,
+      });
+    } else {
+      renderChoixPirate(pending, hint, consigne, []);
+    }
   } else if (pending.kind === 'rascal') {
     renderChoixPirate(
       pending,
@@ -6695,6 +6780,21 @@ function renderScoreCurve(ranking) {
   );
 }
 
+const endEloHead = document.getElementById('sk-end-elo-head');
+
+// La cote au récap : partie classée, la nouvelle cote et ce qu'elle a gagné
+// ou perdu ; partie non classée, la cote du compte telle quelle ; ni compte
+// ni cote, une mention.
+function celluleCoteFin(r) {
+  if (r.elo) {
+    const sens = r.elo.delta >= 0 ? 'sk-end-elo--up' : 'sk-end-elo--down';
+    const ecart = `${r.elo.delta >= 0 ? '+' : '−'}${Math.abs(r.elo.delta)}`;
+    return `<span class="sk-end-cote-val" title="Cote Elo : ${r.elo.before} → ${r.elo.after}">${r.elo.after}</span><span class="sk-end-elo ${sens}">${ecart}</span>`;
+  }
+  if (r.cote != null) return `<span class="sk-end-cote-val" title="Partie non classée : cote inchangée">${r.cote}</span>`;
+  return `<span class="sk-end-cote-sans" title="Pas de compte : ne compte pas au classement">${r.isBot ? 'bot' : 'invité'}</span>`;
+}
+
 function renderGameEnd(state) {
   const ranking = state.finalRanking;
   const winner = ranking[0];
@@ -6711,6 +6811,18 @@ function renderGameEnd(state) {
   // c'est celle-là qu'on garde en capture. Le pseudo y a sa place.
   endTitle.innerHTML =
     `<span class="sk-end-winner">${trophee}${nomColore(winner)}</span> remporte la partie !`;
+  // La colonne Elo : seulement là où les comptes existent (un serveur sans
+  // comptes ne donne de cote à personne, et les récaps d'avant n'ont pas le
+  // champ).
+  const avecCotes = ranking.some((r) => r.elo || r.cote != null)
+    || (state.players || []).some((p) => p.isGuest);
+  if (endEloHead) {
+    endEloHead.classList.toggle('hidden', !avecCotes);
+    endEloHead.closest('table').classList.toggle('sk-end-table--elo', avecCotes);
+  }
+  // Ma nouvelle cote passe aussi dans le bandeau du compte.
+  const mienne = ranking.find((r) => r.id === myId);
+  if (mienne && mienne.elo && typeof compteMajCote === 'function') compteMajCote(mienne.elo.after);
   endBody.innerHTML = ranking
     .map((r, i) => {
       const rang = ROMAN[i + 1] || `${i + 1}`;
@@ -6719,15 +6831,11 @@ function renderGameEnd(state) {
       const annonces = r.rounds ? `${r.exact} sur ${r.rounds}` : '—';
       const plis = r.tricks == null ? '—' : r.tricks;
       const moi = r.id === myId ? ' class="sk-end-row--me"' : '';
-      // Partie classée : la nouvelle cote suit le nom, avec ce qu'elle a
-      // gagné ou perdu. Les invités et les bots n'en ont pas.
-      const elo = r.elo
-        ? ` <span class="sk-end-elo ${r.elo.delta >= 0 ? 'sk-end-elo--up' : 'sk-end-elo--down'}" title="Cote Elo : ${r.elo.before} → ${r.elo.after}">${r.elo.delta >= 0 ? '+' : '−'}${Math.abs(r.elo.delta)}</span>`
-        : '';
       // Parti en cours de route : le bot a fini sa main, le nom le dit.
       const parti = r.left ? ' <span class="sk-end-parti" title="A quitté la partie, un bot a fini à sa place">(parti)</span>' : '';
-      const nom = `<span class="sk-end-name">${medaillon(r)}${nomColore(r)}${parti}${elo}</span>`;
-      return `<tr${moi}><td>${rang}</td><td class="sk-end-name-cell">${nom}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td></tr>`;
+      const nom = `<span class="sk-end-name">${medaillon(r)}${nomColore(r)}${parti}</span>`;
+      const cote = avecCotes ? `<td class="sk-end-cote">${celluleCoteFin(r)}</td>` : '';
+      return `<tr${moi}><td>${rang}</td><td class="sk-end-name-cell">${nom}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td>${cote}</tr>`;
     })
     .join('');
 

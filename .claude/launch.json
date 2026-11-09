@@ -4,8 +4,23 @@
     {
       "name": "bataille-en-ligne",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start"],
-      "port": 3000
+      "runtimeArgs": [
+        "run",
+        "start"
+      ],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "skullking-seul",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "SITE=skullking",
+        "PORT=3001",
+        "node",
+        "server/index.js"
+      ],
+      "port": 3001
     }
   ]
 }

@@ -1077,12 +1077,48 @@ h3 {
   font-style: italic;
 }
 
+/* Les remarques de bas de fiche : ce qui change l'issue d'un pli et qu'on
+   oublie. Un cartouche bordeaux, un triangle d'alerte devant : elles ne
+   doivent pas passer pour une légende en petit. */
+.sk-regles-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
 .sk-regles-note {
-  margin: 10px 0 0;
-  text-align: center;
-  font-size: 0.76rem;
-  font-style: italic;
-  color: rgba(42, 27, 12, 0.78);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: rgba(122, 28, 28, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(122, 28, 28, 0.32);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--sk-parch-ink);
+}
+
+.sk-regles-alerte {
+  flex: none;
+  width: 18px;
+  height: 17px;
+  margin-top: 1px;
+}
+
+.sk-regles-alerte path {
+  fill: #c0392b;
+  stroke: #7a1c1c;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.sk-regles-alerte rect,
+.sk-regles-alerte circle {
+  fill: #fff6e0;
 }
 
 .sk-regles-fiche sup {
@@ -8015,6 +8051,20 @@ button.sk-lobby-bot:focus-visible {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
+/* Mary Thorne : combien de cartes reste-t-il dans la main visée. Un siège
+   sans carte ne peut pas être désigné : il s'éteint. */
+.sk-mini-detail {
+  font-size: clamp(0.6rem, 1.8cqh, 0.72rem);
+  font-style: italic;
+  color: rgba(244, 228, 193, 0.72);
+}
+
+.sk-mini-siege:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: translate(-50%, -50%);
+}
+
 /* SOUS UNE CERTAINE TAILLE, PLUS DE PLAN DE TABLE. Un plan n'a d'intérêt
    que s'il reste lisible : sur une scène étroite (téléphone tenu debout,
    fenêtre réduite au quart), les sièges se chevauchaient et débordaient du
@@ -8064,6 +8114,10 @@ button.sk-lobby-bot:focus-visible {
 
   .sk-mini-siege:active {
     transform: scale(0.98);
+  }
+
+  .sk-mini-siege:disabled {
+    transform: none;
   }
 }
 
@@ -11593,8 +11647,7 @@ button.sk-lobby-bot:focus-visible {
   }
 
   .sk-regles-fiche--pli .sk-regles-consigne,
-  .sk-regles-fiche--pli .sk-regles-echelle,
-  .sk-regles-fiche--pli .sk-regles-note {
+  .sk-regles-fiche--pli .sk-regles-echelle {
     grid-column: 1;
   }
 
