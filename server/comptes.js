@@ -19,6 +19,8 @@ const { promisify } = require('util');
 const { sanitizeNickname } = require('./commun');
 const { ELO_INITIAL } = require('./elo');
 const { normaliserCode, pieceDuCode } = require('./pieces-a-code');
+const { PIECES_COMMUNES, PIECES_A_CODE } = require('./pieces');
+const { profilDepuisParties } = require('./profil');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -65,7 +67,7 @@ function tokenHash(token) {
 
 function publicUser(u) {
   if (!u) return null;
-  return { id: u.id, pseudo: u.pseudo, elo: u.elo, gamesPlayed: u.gamesPlayed, wins: u.wins };
+  return { id: u.id, pseudo: u.pseudo, elo: u.elo, gamesPlayed: u.gamesPlayed, wins: u.wins, piece: u.piece || null };
 }
 
 // --- Stockage en mémoire --------------------------------------------------
@@ -84,7 +86,7 @@ function createMemoryStore() {
     async createUser(pseudo, pinHash) {
       const key = pseudoKey(pseudo);
       if (byKey.has(key)) return null;
-      const user = { id: nextId++, pseudo, pinHash, elo: ELO_INITIAL, gamesPlayed: 0, wins: 0 };
+      const user = { id: nextId++, pseudo, pinHash, elo: ELO_INITIAL, gamesPlayed: 0, wins: 0, piece: null };
       users.set(user.id, user);
       byKey.set(key, user.id);
       return { ...user };
@@ -99,6 +101,18 @@ function createMemoryStore() {
     },
     async allPseudoKeys() {
       return [...byKey.keys()];
+    },
+    // Ce que le profil lit des autres comptes : leur nom et leur pièce.
+    async allUsers() {
+      return [...users.values()].map((u) => ({ id: u.id, pseudo: u.pseudo, piece: u.piece || null }));
+    },
+    async setUserPiece(id, piece) {
+      const u = users.get(id);
+      if (u) u.piece = piece;
+    },
+    // Les parties classées, dans l'ordre où elles ont été jouées.
+    async allGames() {
+      return games.map((g) => ({ ...g }));
     },
     async createSession(hash, userId, expiresAt) {
       sessions.set(hash, { userId, expiresAt });
@@ -170,6 +184,7 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
       elo: r.elo,
       gamesPlayed: r.games_played,
       wins: r.wins,
+      piece: r.piece || null,
     };
 
   return {
@@ -207,6 +222,9 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
           results JSONB NOT NULL
         );
       `);
+      // La pièce de profil, venue après les comptes : ajoutée aux tables
+      // existantes sans rien toucher d'autre.
+      await pool.query('ALTER TABLE sk_users ADD COLUMN IF NOT EXISTS piece TEXT');
       await pool.query('DELETE FROM sk_sessions WHERE expires_at < now()');
     },
     async createUser(pseudo, pinHash) {
@@ -233,6 +251,20 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
     async allPseudoKeys() {
       const { rows } = await pool.query('SELECT pseudo_key FROM sk_users');
       return rows.map((r) => r.pseudo_key);
+    },
+    async allUsers() {
+      const { rows } = await pool.query('SELECT id, pseudo, piece FROM sk_users');
+      return rows.map((r) => ({ id: r.id, pseudo: r.pseudo, piece: r.piece || null }));
+    },
+    async setUserPiece(id, piece) {
+      await pool.query('UPDATE sk_users SET piece = $2 WHERE id = $1', [id, piece]);
+    },
+    // Toute l'histoire, relue à chaque profil : quelques milliers de parties
+    // entre amis tiennent sans peine. Si ça grossit, filtrer en SQL sur
+    // `results @> '[{"userId": …}]'` pour les parties récentes.
+    async allGames() {
+      const { rows } = await pool.query('SELECT played_at, results FROM sk_games ORDER BY played_at, id');
+      return rows.map((r) => ({ playedAt: new Date(r.played_at).getTime(), results: r.results }));
     },
     async createSession(hash, userId, expiresAt) {
       await pool.query('INSERT INTO sk_sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)', [
@@ -441,6 +473,40 @@ function createComptes({
     return { piece };
   }
 
+  // Le profil d'un compte : sa cote, sa pièce, ses pièces gagnées, la courbe
+  // de sa cote et ses duels (voir profil.js).
+  async function profilDe(user) {
+    const [pieces, games, users] = await Promise.all([
+      store.piecesOf(user.id),
+      store.allGames(),
+      store.allUsers(),
+    ]);
+    const p = profilDepuisParties(user.id, games, users, pseudoKey);
+    // La cote du compte fait foi pour le dernier point : la partie a pu être
+    // relue d'un résumé arrondi, ou une autre écrite entre-temps.
+    if (!p.courbe.length) p.courbe.push({ at: null, elo: user.elo });
+    else p.courbe[p.courbe.length - 1].elo = user.elo;
+    return { user: publicUser(user), pieces, ...p };
+  }
+
+  // La pièce de profil : un jeton commun, ou un jeton personnel que le compte
+  // a gagné. null la rend au hasard du pseudo (voir profil.js côté client).
+  async function choisirPiece(userId, piece) {
+    if (piece === null) {
+      await store.setUserPiece(userId, null);
+      return { piece: null };
+    }
+    if (PIECES_COMMUNES.includes(piece)) {
+      await store.setUserPiece(userId, piece);
+      return { piece };
+    }
+    if (PIECES_A_CODE.includes(piece) && (await store.piecesOf(userId)).includes(piece)) {
+      await store.setUserPiece(userId, piece);
+      return { piece };
+    }
+    return { error: 'Tu n’as pas cette pièce.' };
+  }
+
   function registerRoutes(app, express) {
     const json = express.json({ limit: '2kb' });
     const wrap = (fn) => (req, res) =>
@@ -518,6 +584,31 @@ function createComptes({
     );
 
     app.get(
+      '/api/profil',
+      wrap(async (req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        const user = await userFromCookieHeader(req.headers.cookie);
+        if (!user) return res.status(401).json({ error: 'Connecte-toi pour voir ton profil.' });
+        res.json(await profilDe(user));
+      }),
+    );
+
+    app.post(
+      '/api/profil/piece',
+      json,
+      wrap(async (req, res) => {
+        const user = await userFromCookieHeader(req.headers.cookie);
+        if (!user) return res.status(401).json({ error: 'Connecte-toi pour choisir ta pièce.' });
+        const brut = req.body ? req.body.piece : undefined;
+        const piece = brut === null ? null : typeof brut === 'string' ? brut : undefined;
+        if (piece === undefined) return res.status(400).json({ error: 'Choisis une pièce.' });
+        const r = await choisirPiece(user.id, piece);
+        if (r.error) return res.status(403).json(r);
+        res.json(r);
+      }),
+    );
+
+    app.get(
       '/api/leaderboard',
       wrap(async (req, res) => {
         res.setHeader('Cache-Control', 'no-store');
@@ -547,6 +638,8 @@ function createComptes({
     registerRoutes,
     socketMiddleware,
     redeemCode,
+    profilDe,
+    choisirPiece,
     applyGameResult: (game) => store.applyGameResult(game),
   };
 }

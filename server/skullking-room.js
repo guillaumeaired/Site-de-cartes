@@ -505,14 +505,8 @@ function davyJonesSwallow(cards) {
 // celui qui a ouvert le salon. Le hasard ne les sort donc jamais : il donnerait
 // à un invité ce qu'il n'a pas le droit de prendre. La vitrine suffit à elle
 // seule à une table pleine (neuf joueurs au plus, voir maxPlayersFor).
-const PIECES_DE_BASE = [
-  'crane', 'ancre', 'voilier', 'sabre', 'boussole',
-  'coffre', 'barre', 'bouteille', 'crochet',
-  'pieuvre', 'ivrogne', 'poison', 'canon',
-];
-// Puis les pièces à code (voir pieces-a-code.js) qui n'y sont pas déjà — la
-// pieuvre garde son rang d'origine.
-const PIECE_KEYS = [...PIECES_DE_BASE, ...PIECES_A_CODE.filter((k) => !PIECES_DE_BASE.includes(k))];
+// Les listes elles-mêmes vivent dans pieces.js, que le profil partage.
+const { PIECE_KEYS } = require('./pieces');
 const PIECES_EN_VITRINE = 9;
 
 // Ce que le hasard peut encore donner : la vitrine seule.
@@ -1677,7 +1671,10 @@ function rateGame(io, room, ranking) {
       })),
       // Le pseudo de table ET celui du compte : un nom de table ne dit pas,
       // relu des mois plus tard, à quel compte la partie a compté.
+      // L'id du compte en plus : c'est lui que relit le profil (courbe de la
+      // cote, duels contre chacun), même si le pseudo change un jour.
       summary: ranking.map((r) => ({
+        userId: (rated.find((e) => e.seat.id === r.id) || {}).userId || null,
         nickname: r.nickname,
         account: r.accountPseudo || null,
         total: r.total,

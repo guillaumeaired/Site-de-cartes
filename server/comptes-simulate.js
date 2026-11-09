@@ -250,6 +250,64 @@ async function main() {
     }
   }
 
+  // --- Profil : courbe de la cote, némésis, sous-fifres, pièce -----------
+  {
+    const store = createMemoryStore();
+    const comptes = createComptes({ store });
+    const moi = await store.createUser('Moi', 'x');
+    const anne = await store.createUser('Anne', 'x');
+    const jack = await store.createUser('Jack', 'x');
+    const zoe = await store.createUser('Zoé', 'x');
+    const ligne = (u, total, before, after, extra = {}) => ({
+      userId: u.id, nickname: u.pseudo, account: u.pseudo, total, left: false,
+      elo: { before, after, delta: after - before }, ...extra,
+    });
+    const partie = (lignes) => store.applyGameResult({
+      rounds: 1,
+      results: lignes.filter((l) => l.userId).map((l) => ({ userId: l.userId, delta: l.elo.delta, won: false })),
+      summary: lignes,
+    });
+    // 1. Anne me bat, je bats Jack.
+    await partie([ligne(anne, 90, 1200, 1216), ligne(moi, 50, 1200, 1200), ligne(jack, 10, 1200, 1184)]);
+    // 2. Jack me bat — résumé ancien, sans userId : retrouvé par le pseudo.
+    await partie([
+      { nickname: 'jack', account: 'JACK', total: 80, left: false, elo: { before: 1184, after: 1200, delta: 16 } },
+      { nickname: 'Moi', account: 'Moi', total: 20, left: false, elo: { before: 1200, after: 1184, delta: -16 } },
+      { nickname: 'Invité', account: null, total: 300, left: false, elo: null },
+    ]);
+    // 3. Je bats Zoé, qui a quitté la table, malgré son score.
+    await partie([ligne(zoe, 500, 1200, 1180, { left: true }), ligne(moi, 10, 1184, 1204)]);
+    // 4. Je bats encore Zoé.
+    await partie([ligne(moi, 60, 1204, 1220), ligne(zoe, 30, 1180, 1164)]);
+    // 5. Égalité avec Anne.
+    await partie([ligne(moi, 40, 1220, 1220), ligne(anne, 40, 1216, 1216)]);
+
+    const profil = await comptes.profilDe(await store.findUserById(moi.id));
+    check('profil : la courbe part de la cote de départ', profil.courbe[0].elo === 1200 && profil.courbe[0].at === null);
+    check('profil : un point par partie classée', profil.courbe.length === 6);
+    check('profil : un invité n’est pas un adversaire', profil.adversaires.every((a) => a.pseudo !== 'Invité'));
+    const contre = (nom) => profil.adversaires.find((a) => a.pseudo === nom);
+    check('profil : contre Anne, une défaite et un nul', contre('Anne').defaites === 1 && contre('Anne').nuls === 1);
+    check('profil : un vieux résumé retrouve son compte', contre('Jack').victoires === 1 && contre('Jack').defaites === 1);
+    check('profil : qui quitte la table perd', contre('Zoé').victoires === 2 && contre('Zoé').defaites === 0);
+    check('profil : deux némésis ex aequo', profil.nemesis.map((a) => a.pseudo).sort().join() === 'Anne,Jack');
+    check('profil : le premier sous-fifre est Zoé', profil.sousFifres[0].pseudo === 'Zoé' && profil.sousFifres.length === 2);
+    const zoeVue = await comptes.profilDe(await store.findUserById(zoe.id));
+    check('profil : Zoé a pour némésis Moi', zoeVue.nemesis.length === 1 && zoeVue.nemesis[0].pseudo === 'Moi');
+    check('profil : sans sous-fifre, la liste est vide', zoeVue.sousFifres.length === 0);
+    const neuf = await store.createUser('Neuf', 'x');
+    const vide = await comptes.profilDe(await store.findUserById(neuf.id));
+    check('profil vierge : un seul point, à la cote de départ', vide.courbe.length === 1 && vide.courbe[0].elo === ELO_INITIAL);
+
+    check('pièce commune choisie', (await comptes.choisirPiece(moi.id, 'canon')).piece === 'canon');
+    check('la pièce paraît au classement', (await store.leaderboard(10)).find((u) => u.id === moi.id).piece === 'canon');
+    check('jeton personnel non gagné refusé', Boolean((await comptes.choisirPiece(moi.id, 'pomme')).error));
+    await comptes.redeemCode(moi.id, 'rodi', '9.9.9.9');
+    check('jeton personnel gagné accepté', (await comptes.choisirPiece(moi.id, 'pomme')).piece === 'pomme');
+    check('pièce inconnue refusée', Boolean((await comptes.choisirPiece(moi.id, 'licorne')).error));
+    check('profil : la pièce de l’adversaire suit', (await comptes.profilDe(await store.findUserById(zoe.id))).nemesis[0].piece === 'pomme');
+  }
+
   console.log(`\ncomptes-simulate.js : ${ok}/${ok + ko} assertions passées.`);
   if (ko) process.exit(1);
 }

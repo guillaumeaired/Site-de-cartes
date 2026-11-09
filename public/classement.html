@@ -21,25 +21,63 @@
         <img src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
       </h1>
 
-      <div class="sk-porte-panneau">
-        <h2 class="sk-classement-titre">Classement Elo</h2>
-        <table class="sk-classement">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Pirate</th>
-              <th>Elo</th>
-              <th title="Parties classées">Parties</th>
-              <th title="Parties finies en tête de la table">Victoires</th>
-            </tr>
-          </thead>
-          <tbody id="classement-lignes"></tbody>
-        </table>
-        <p id="classement-vide" class="sk-classement-vide hidden">Personne n'a encore de compte : crée le tien pour apparaître au classement.</p>
-        <p class="sk-porte-aide" style="margin: 14px 0 0">Seules les parties menées jusqu'au bout entre au moins deux comptes font bouger la cote.</p>
+      <div class="sk-classement-scene">
+        <!-- Ses rivaux à gauche, le classement au milieu, la courbe de sa cote
+             à droite. Les deux cadres sont toujours là : vides, ils disent ce
+             qu'ils montreront. -->
+        <aside id="cadre-rivaux" class="sk-classement-rivaux">
+          <section class="sk-porte-panneau sk-cadre-rival sk-cadre-rival--nemesis" aria-labelledby="nemesis-titre">
+            <div class="sk-titre-aide">
+              <h2 class="sk-rival-titre"><span id="nemesis-titre">Ton némésis</span></h2>
+              <button type="button" class="sk-aide" aria-expanded="false" aria-controls="aide-nemesis" aria-label="Qu’est-ce que la némésis ?">?</button>
+              <p id="aide-nemesis" class="sk-aide-bulle" hidden>Le joueur contre qui tu as perdu le plus de duels — plusieurs s’ils sont ex aequo.</p>
+            </div>
+            <ul id="nemesis" class="sk-rival-liste"></ul>
+          </section>
+          <section class="sk-porte-panneau sk-cadre-rival sk-cadre-rival--fifres" aria-labelledby="fifres-titre">
+            <div class="sk-titre-aide">
+              <h2 id="fifres-titre" class="sk-rival-titre">Tes sous-fifres</h2>
+              <button type="button" class="sk-aide" aria-expanded="false" aria-controls="aide-fifres" aria-label="Qu’est-ce qu’un sous-fifre ?">?</button>
+              <p id="aide-fifres" class="sk-aide-bulle" hidden>Les joueurs que tu as le plus battus en duel, avec leur pièce et ton bilan contre eux.</p>
+            </div>
+            <ul id="sous-fifres" class="sk-rival-liste"></ul>
+          </section>
+        </aside>
+
+        <div class="sk-porte-panneau sk-classement-panneau">
+          <div class="sk-classement-entete">
+            <div class="sk-titre-aide sk-titre-aide--gauche">
+              <h2 class="sk-classement-titre">Classement Elo</h2>
+              <button type="button" class="sk-aide" aria-expanded="false" aria-controls="aide-elo" aria-label="Comment se calcule la cote ?">?</button>
+              <p id="aide-elo" class="sk-aide-bulle" hidden>Chaque partie classée compte un duel contre chaque autre compte à table : finir devant lui, c’est le battre ; derrière, perdre contre lui ; à égalité, un nul. Battre un joueur mieux coté rapporte plus, perdre contre un moins bien coté coûte plus. Qui quitte la table perd tous ses duels.</p>
+            </div>
+            <button id="classement-profil" type="button" class="sk-compte-classement hidden">Profil</button>
+          </div>
+          <table class="sk-classement">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Pirate</th>
+                <th>Elo</th>
+                <th title="Parties classées">Parties</th>
+                <th title="Parties finies en tête de la table">Victoires</th>
+              </tr>
+            </thead>
+            <tbody id="classement-lignes"></tbody>
+          </table>
+          <p id="classement-vide" class="sk-classement-vide hidden">Personne n'a encore de compte : crée le tien pour apparaître au classement.</p>
+          <p class="sk-porte-aide" style="margin: 14px 0 0">Seules les parties menées jusqu'au bout entre au moins deux comptes font bouger la cote.</p>
+        </div>
+
+        <aside id="cadre-courbe" class="sk-porte-panneau sk-cadre-courbe" aria-labelledby="courbe-titre">
+          <h2 id="courbe-titre" class="sk-classement-titre">Ta cote</h2>
+          <div id="courbe" class="sk-courbe"></div>
+          <p id="courbe-bilan" class="sk-courbe-bilan"></p>
+        </aside>
       </div>
     </section>
   </main>
+  <script src="profil.js"></script>
   <script src="classement.js"></script>
 </body>
 </html>

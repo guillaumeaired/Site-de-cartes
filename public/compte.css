@@ -499,3 +499,660 @@ input.sk-pseudo-compte {
   font-size: 0.85em;
   color: var(--sk-cream-3);
 }
+
+/* =====================================================================
+   LE PROFIL — un cadre par-dessus la page (voir profil.js) : le pseudo, la
+   cote, et la collection des pièces pour choisir celle qui représente le
+   joueur.
+   ===================================================================== */
+.sk-profil-medaillon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  line-height: 0;
+}
+
+.sk-profil-medaillon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+/* Dans le bandeau : à l'accueil seulement, comme le bouton du profil — au
+   salon et au récap, la plaque garde sa largeur d'avant. */
+.sk-compte .sk-compte-piece {
+  width: 24px;
+  height: 24px;
+  margin-right: -4px;
+}
+
+body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-piece,
+body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-profil {
+  display: none;
+}
+
+button.sk-compte-classement {
+  border: 0;
+}
+
+.sk-profil-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(4, 8, 10, 0.72);
+  backdrop-filter: blur(2px);
+  overflow-y: auto;
+}
+
+.sk-profil-fond.hidden {
+  display: none;
+}
+
+.sk-profil {
+  position: relative;
+  text-align: left;
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+  padding: 18px 20px 20px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.06), rgba(0, 0, 0, 0.3)),
+    rgba(18, 11, 6, 0.97);
+  box-shadow:
+    inset 0 0 0 1px rgba(214, 170, 82, 0.5),
+    0 22px 50px rgba(0, 0, 0, 0.7);
+  color: var(--sk-cream);
+  animation: sk-profil-entree 0.22s ease-out;
+}
+
+@keyframes sk-profil-entree {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-profil {
+    animation: none;
+  }
+}
+
+.sk-profil-fermer {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sk-cream-2);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sk-profil-fermer:hover,
+.sk-profil-fermer:focus-visible {
+  color: var(--sk-cream);
+}
+
+.sk-profil-surtitre {
+  margin: 0 0 12px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sk-brass);
+}
+
+.sk-profil-tete {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(184, 137, 53, 0.25);
+}
+
+.sk-profil-medaillon--grand {
+  width: 76px;
+  height: 76px;
+}
+
+.sk-profil-ident {
+  min-width: 0;
+}
+
+.sk-profil-pseudo {
+  margin: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.15rem;
+}
+
+.sk-profil-cote {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 0 0 4px;
+  padding: 2px 9px 3px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.4);
+  font-family: 'Bitter', Georgia, serif;
+  color: var(--sk-brass-hi);
+}
+
+.sk-profil-cote b {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-profil-cote small {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sk-brass);
+}
+
+.sk-profil-bilan {
+  margin: 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.86rem;
+  color: var(--sk-cream-2);
+}
+
+.sk-profil-titre {
+  margin: 16px 0 2px;
+  font-size: 0.9rem;
+}
+
+.sk-profil-aide {
+  margin: 0 0 12px;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--sk-cream-2);
+}
+
+.sk-profil-aide--pied {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  color: var(--sk-cream-3);
+}
+
+.sk-profil-famille {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 14px 0 8px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sk-cream-2);
+}
+
+.sk-profil-famille small {
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--sk-cream-3);
+}
+
+.sk-profil-grille {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sk-profil-case {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 2px 5px;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.18);
+  color: var(--sk-cream-2);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+button.sk-profil-case:hover,
+button.sk-profil-case:focus-visible {
+  background: rgba(184, 137, 53, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.55);
+  outline: none;
+}
+
+.sk-profil-case .sk-profil-medaillon {
+  width: 40px;
+  height: 40px;
+}
+
+.sk-profil-case-nom {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.6rem;
+}
+
+.sk-profil-case--portee {
+  background: rgba(184, 137, 53, 0.22);
+  box-shadow: inset 0 0 0 2px var(--sk-brass);
+  color: var(--sk-cream);
+  cursor: default;
+}
+
+.sk-profil-case--verrou {
+  justify-content: center;
+  min-height: 66px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(203, 177, 131, 0.35);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.1);
+  cursor: default;
+}
+
+.sk-profil-erreur {
+  margin: 12px 0 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.86rem;
+  color: #e09a90;
+}
+
+.sk-profil-erreur.hidden {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .sk-profil {
+    padding: 16px 14px 16px;
+  }
+  .sk-profil-grille {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* =====================================================================
+   LE CLASSEMENT À TROIS CADRES — ses rivaux à gauche, le classement au
+   milieu, la courbe de sa cote à droite. Sous 1180 px, le classement
+   passe devant et les deux autres se rangent dessous ; sous 760 px, tout
+   s'empile.
+   ===================================================================== */
+.sk-classement-scene {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 520px;
+  margin: 18px auto auto;
+}
+
+.sk-classement-scene > .sk-porte-panneau,
+.sk-classement-scene .sk-porte-panneau {
+  max-width: none;
+  margin: 0;
+}
+
+.sk-classement-panneau {
+  order: -1;
+}
+
+@media (min-width: 760px) {
+  .sk-classement-scene {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 760px;
+  }
+  .sk-classement-panneau {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1180px) {
+  .sk-classement-scene {
+    grid-template-columns: 300px minmax(0, 520px) 300px;
+    max-width: 1168px;
+    align-items: start;
+  }
+  .sk-classement-panneau {
+    order: 0;
+    grid-column: auto;
+  }
+}
+
+.sk-classement-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.sk-classement-entete .sk-classement-titre {
+  margin: 0;
+}
+
+.sk-classement-pirate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sk-classement-pseudo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-classement .sk-classement-piece {
+  width: 24px;
+  height: 24px;
+}
+
+.sk-classement td:nth-child(2) {
+  max-width: 0;
+}
+
+/* --- Un cadre vide : ce qu'il montrera, puis où l'on en est ---------- */
+.sk-cadre-explication {
+  text-align: left;
+}
+
+.sk-cadre-explication p {
+  margin: 0;
+  font-family: 'Spectral', Georgia, serif;
+  line-height: 1.4;
+}
+
+.sk-cadre-explication-quoi {
+  font-size: 0.86rem;
+  color: var(--sk-cream-2);
+}
+
+.sk-cadre-explication-etat {
+  margin-top: 8px !important;
+  padding-top: 8px;
+  border-top: 1px solid rgba(184, 137, 53, 0.18);
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--sk-cream-3);
+}
+
+/* Un cadre de rivaux encore vide : où l'on en est. */
+.sk-rival-etat {
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.84rem;
+  color: var(--sk-cream-3);
+}
+
+/* --- Les « ? » à côté des titres ------------------------------------ */
+.sk-titre-aide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.sk-titre-aide--gauche {
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.sk-titre-aide h2 {
+  margin: 0;
+}
+
+.sk-aide {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.55);
+  color: var(--sk-brass-hi);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.sk-aide:hover,
+.sk-aide:focus-visible,
+.sk-aide[aria-expanded='true'] {
+  background: rgba(184, 137, 53, 0.3);
+  color: var(--sk-cream);
+  outline: none;
+}
+
+.sk-aide-bulle {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 10;
+  width: min(270px, calc(100vw - 48px));
+  margin: 0;
+  padding: 9px 12px 10px;
+  border-radius: 3px;
+  transform: translateX(-50%);
+  background: rgba(10, 6, 3, 0.97);
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.5), 0 10px 24px rgba(0, 0, 0, 0.6);
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.86rem;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  color: var(--sk-cream-2);
+}
+
+.sk-titre-aide--gauche .sk-aide-bulle {
+  left: 0;
+  transform: none;
+}
+
+.sk-aide-bulle[hidden] {
+  display: none;
+}
+
+/* La bulle déborde de son cadre : celui-ci passe devant ses voisins tant
+   qu'elle est ouverte (les cadres ont chacun leur contexte d'empilement). */
+.sk-porte-panneau:has(.sk-aide[aria-expanded='true']) {
+  position: relative;
+  z-index: 5;
+}
+
+/* --- La courbe ----------------------------------------------------- */
+.sk-cadre-courbe .sk-classement-titre {
+  margin-bottom: 10px;
+}
+
+.sk-courbe {
+  position: relative;
+  color: var(--sk-brass-hi);
+}
+
+.sk-courbe-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.sk-courbe-grille {
+  stroke: rgba(184, 137, 53, 0.14);
+  stroke-width: 1;
+}
+
+.sk-courbe-axe {
+  fill: var(--sk-cream-3);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-courbe-trait {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.sk-courbe-point {
+  fill: currentColor;
+  stroke: #120b06;
+  stroke-width: 2;
+}
+
+.sk-courbe-regle {
+  stroke: rgba(242, 214, 154, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.sk-courbe-bulle {
+  position: absolute;
+  z-index: 1;
+  transform: translate(10px, -50%);
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 4px;
+  padding: 5px 8px 6px;
+  border-radius: 3px;
+  background: rgba(10, 6, 3, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(214, 170, 82, 0.45), 0 6px 14px rgba(0, 0, 0, 0.5);
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.78rem;
+  color: var(--sk-cream-2);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.sk-courbe-bulle--gauche {
+  transform: translate(calc(-100% - 10px), -50%);
+}
+
+.sk-courbe-bulle.hidden {
+  display: none;
+}
+
+.sk-courbe-bulle b {
+  color: var(--sk-cream);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-courbe-bulle small {
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
+  color: var(--sk-cream-3);
+}
+
+.sk-courbe-bilan {
+  margin: 8px 0 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-size: 0.8rem;
+  color: var(--sk-cream-2);
+}
+
+/* --- Les rivaux ---------------------------------------------------- */
+.sk-classement-rivaux {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.sk-rival-titre {
+  margin: 0;
+  font-size: 0.86rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sk-cadre-rival--nemesis {
+  box-shadow: inset 0 0 0 1px rgba(156, 42, 34, 0.55), 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+
+.sk-cadre-rival--nemesis .sk-rival-titre {
+  color: #e09a90;
+}
+
+.sk-rival-liste {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sk-rival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sk-rival .sk-rival-piece {
+  width: 38px;
+  height: 38px;
+}
+
+.sk-cadre-rival--nemesis .sk-rival .sk-rival-piece {
+  width: 46px;
+  height: 46px;
+}
+
+.sk-rival-texte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.sk-rival-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.9rem;
+  color: var(--sk-cream);
+}
+
+.sk-rival-bilan {
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.74rem;
+  color: var(--sk-cream-2);
+}

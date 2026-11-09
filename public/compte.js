@@ -62,6 +62,12 @@ function compteBandeau() {
   }
   bandeau.textContent = '';
 
+  // La pièce du profil, devant le pseudo (voir profil.js) — à l'accueil
+  // seulement : au salon, c'est la pièce de table qui compte.
+  if (compte.user && typeof profilPieceDe === 'function') {
+    bandeau.appendChild(profilMedaillon(profilPieceDe(compte.user), 'sk-compte-piece'));
+  }
+
   const nom = document.createElement('span');
   nom.className = 'sk-compte-nom';
   nom.textContent = compte.user ? compte.user.pseudo : 'Invité';
@@ -74,6 +80,16 @@ function compteBandeau() {
     elo.innerHTML = `<b>${Number(compte.user.elo)}</b><small>Elo</small>`;
     elo.title = `${compte.user.gamesPlayed} partie(s) classée(s), ${compte.user.wins} victoire(s)`;
     bandeau.appendChild(elo);
+  }
+
+  // Le profil s'ouvre en cadre par-dessus l'accueil : rien ne quitte la page.
+  if (compte.user && typeof profilOuvrir === 'function') {
+    const profil = document.createElement('button');
+    profil.type = 'button';
+    profil.className = 'sk-compte-classement sk-compte-profil';
+    profil.textContent = 'Profil';
+    profil.addEventListener('click', profilOuvrir);
+    bandeau.appendChild(profil);
   }
 
   // Un vrai bouton de laiton, pas un lien de texte. Hors de l'accueil (salon,
@@ -116,6 +132,13 @@ function compteBandeau() {
     bandeau.appendChild(entrer);
   }
 }
+
+// La pièce du profil a changé : le médaillon du bandeau la reprend.
+window.addEventListener('profil:piece', (e) => {
+  if (!compte.user) return;
+  compte.user.piece = e.detail.piece;
+  compteBandeau();
+});
 
 // La cote a bougé (fin d'une partie classée, voir renderGameEnd) : le
 // bandeau la reprend sans attendre un rechargement.
