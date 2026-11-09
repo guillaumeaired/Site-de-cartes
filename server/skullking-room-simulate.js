@@ -732,28 +732,25 @@ PACE_PRESETS.forEach((preset) => {
   const assis = salle.players.slice(0, tirables);
   check('chaque arrivant repart aussi avec une couleur', assis.every((p) => COULEURS.includes(p.couleur)), true);
   check('et jamais deux fois la même', new Set(assis.map((p) => p.couleur)).size, tirables);
-  check('le passager de trop a encore une couleur : il y en a douze pour neuf places', COULEURS.includes(deTrop.couleur), true);
+  check('le passager de trop a encore une couleur : il y en a quatorze pour neuf places', COULEURS.includes(deTrop.couleur), true);
 
   const peintre = { id: 'p-peintre', nickname: 'Le peintre', piece: null };
   const salleCouleur = { players: [peintre] };
   giveFreePiece(salleCouleur, peintre, 'ancre', 'rose');
-  check('la couleur gardée du dernier salon est rendue si elle est libre', peintre.couleur, 'rose');
-  check('et elle compte comme choisie', peintre.couleurChoisie, true);
+  check('la couleur apportée (profil ou appareil) est rendue si elle est libre', peintre.couleur, 'rose');
 
   const envieux = { id: 'p-envieux', nickname: "L'envieux", piece: null };
   salleCouleur.players.push(envieux);
   giveFreePiece(salleCouleur, envieux, 'crane', 'rose');
   check("la même couleur chez deux joueurs ne va qu'au premier", envieux.couleur !== 'rose' && COULEURS.includes(envieux.couleur), true);
-  check("faute de mieux, il prend la couleur de son motif", envieux.couleur, 'rouge');
 
   const sansAvis = { id: 'p-sansavis', nickname: 'Sans avis', piece: null };
   giveFreePiece({ players: [sansAvis] }, sansAvis, 'ancre');
-  check("sans préférence, la couleur est celle du motif", sansAvis.couleur, 'marine');
-  check("et elle ne compte pas comme choisie", Boolean(sansAvis.couleurChoisie), false);
+  check("sans préférence, une couleur libre au hasard", COULEURS.includes(sansAvis.couleur), true);
 
   const fluo = { id: 'p-fluo', nickname: 'Fluo', piece: null };
   giveFreePiece({ players: [fluo] }, fluo, 'ancre', 'fluo');
-  check("une couleur inventée ne passe pas", fluo.couleur, 'marine');
+  check("une couleur inventée ne passe pas", fluo.couleur !== 'fluo' && COULEURS.includes(fluo.couleur), true);
 
   // La pieuvre est une pièce à code : ni à l'hôte, ni à un invité, ni à un
   // compte qui n'a pas saisi le code — à tous ceux qui l'ont saisi.

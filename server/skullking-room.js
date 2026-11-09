@@ -507,7 +507,7 @@ function davyJonesSwallow(cards) {
 // seule à une table pleine (neuf joueurs au plus, voir maxPlayersFor).
 // Les listes elles-mêmes vivent dans pieces.js, que le profil partage.
 const { PIECE_KEYS } = require('./pieces');
-const { COULEURS, couleurValide, couleurParDefaut } = require('./couleurs');
+const { COULEURS, couleurValide } = require('./couleurs');
 const PIECES_EN_VITRINE = 9;
 
 // Ce que le hasard peut encore donner : la vitrine seule.
@@ -555,20 +555,14 @@ function couleurLibre(room, player, couleur) {
   return couleurValide(couleur) && !couleursPrises(room, player).has(couleur);
 }
 
-// Une couleur à qui n'en a pas : celle qu'il préfère si elle est libre (le
-// choix gardé par son appareil), sinon celle de son motif, sinon une libre au
-// hasard. `couleurChoisie` retient qu'il l'a voulue : tant qu'il n'a rien
-// choisi, sa couleur suit son motif (voir skullking-set-piece).
+// Une couleur à qui n'en a pas : celle qu'il apporte si elle est libre (la
+// couleur de sa pièce de profil pour un compte, celle gardée par son appareil
+// pour un invité — c'est le client qui l'envoie), sinon une libre au hasard.
+// La couleur ne suit plus le motif : elle ne change que si on la change.
 function donnerCouleur(room, player, preferee) {
   if (!player || player.couleur) return;
   if (couleurLibre(room, player, preferee)) {
     player.couleur = preferee;
-    player.couleurChoisie = true;
-    return;
-  }
-  const defaut = couleurParDefaut(player.piece);
-  if (couleurLibre(room, player, defaut)) {
-    player.couleur = defaut;
     return;
   }
   const prises = couleursPrises(room, player);
@@ -589,8 +583,8 @@ function donnerCouleur(room, player, preferee) {
 // C'est le même souhait qu'exauçait le client une fois le salon dessiné —
 // exaucé à la porte, il ne peut plus lui passer sous le nez entre-temps.
 //
-// La couleur suit la même porte : `couleurPreferee` est celle que l'appareil
-// a gardée, rendue si elle est libre (voir donnerCouleur).
+// La couleur suit la même porte : `couleurPreferee` est celle que le joueur
+// apporte, rendue si elle est libre (voir donnerCouleur).
 function giveFreePiece(room, player, preferee, couleurPreferee) {
   if (!player) return;
   if (!player.piece) {
@@ -2170,9 +2164,8 @@ function newPlayer(id, nickname, token, account = null) {
     id,
     nickname,
     piece: null,
-    // La couleur du joueur à table (voir donnerCouleur), et s'il l'a choisie.
+    // La couleur du joueur à table (voir donnerCouleur).
     couleur: null,
-    couleurChoisie: false,
     token,
     // Le compte derrière le siège (null pour un invité ou un bot) : c'est lui
     // que la fin de partie classe.
@@ -2459,12 +2452,11 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
     player.piece = piece;
-    // Tant qu'il n'a pas choisi de couleur, elle suit son motif : prendre
-    // l'Ancre l'habille de marine, comme avant que les couleurs se choisissent.
-    if (!player.couleurChoisie) {
-      const defaut = couleurParDefaut(piece);
-      if (couleurLibre(room, player, defaut)) player.couleur = defaut;
-    }
+    // Le salon montre chaque pièce libre dans une couleur à elle : on la
+    // prend comme on la voit. Une couleur prise entre-temps ne passe pas — le
+    // joueur garde alors la sienne, et le salon redessiné le lui montre.
+    const couleur = payload && payload.couleur;
+    if (couleur && couleurLibre(room, player, couleur)) player.couleur = couleur;
     broadcastLobby(io, room);
   });
 
@@ -2483,14 +2475,7 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
     player.couleur = couleur;
-    player.couleurChoisie = true;
     broadcastLobby(io, room);
-    // Un compte garde la couleur choisie à table : c'est elle qui habille sa
-    // pièce dans le menu du compte, au profil et au classement. Un échec
-    // d'écriture ne change rien à la table.
-    if (comptes && player.userId && comptes.choisirCouleur) {
-      comptes.choisirCouleur(player.userId, couleur).catch(() => {});
-    }
   });
 
   // Un code de pièce, tapé dans le cadre « Jeton personnel » du salon. Le
@@ -2526,9 +2511,6 @@ function registerSkullKingHandlers(io, socket) {
         }
         if (room.phase === 'lobby' && !room.players.some((p) => p !== player && p.piece === res.piece)) {
           player.piece = res.piece;
-          if (!player.couleurChoisie && couleurLibre(room, player, couleurParDefaut(res.piece))) {
-            player.couleur = couleurParDefaut(res.piece);
-          }
         }
         socket.emit('skullking-code-ok', { piece: res.piece });
         broadcastLobby(io, room);

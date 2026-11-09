@@ -18,6 +18,7 @@ Usage :
     python3 briefs/normaliser-anneau.py
     python3 briefs/refaire-clous-anneau.py
     python3 briefs/composer-pieces-couleur.py --ecrire
+    python3 briefs/composer-pieces-couleur.py --ecrire --motifs surf   (un seul motif)
 
 Recolorer l'émail : il est gris neutre (saturation ~0,05), donc sa luminance
 porte tout le relief — grain, paillettes, ombres des clous. On garde cette
@@ -123,7 +124,7 @@ def rayon_exterieur(alpha):
 # du rayon, sillon sombre à 0,68) : à l'échelle 1, il resterait visible dans le
 # trou et doublerait celui de l'anneau. On grossit leur centre pour le glisser
 # dessous — leur sillon tombe alors à 0,715, là où l'Ancre et le Crâne ont le leur.
-ZOOM = {'pomme': 1.06, 'taureau': 1.06, 'visa': 1.06, 'viseur': 1.06, 'harvard': 1.06}
+ZOOM = {'pomme': 1.06, 'taureau': 1.06, 'visa': 1.06, 'viseur': 1.06, 'harvard': 1.06, 'surf': 1.06}
 
 
 # Ce qui passe PAR-DESSUS le cadre : sur l'original, la pointe et le manche du
@@ -269,6 +270,10 @@ def ecrire_jeu(rgb, alpha, masque):
         return cle
 
     cles = sorted(f.stem[len('piece-'):] for f in SOURCES.glob('piece-*.webp'))
+    # --motifs surf : n'écrit que ces motifs-là (ajout d'une pièce sans réécrire les autres).
+    if '--motifs' in sys.argv:
+        voulus = set(sys.argv[sys.argv.index('--motifs') + 1].split(','))
+        cles = [c for c in cles if c in voulus]
     with ThreadPoolExecutor(max_workers=6) as pool:
         for cle in pool.map(un_motif, cles):
             print('  ', cle)

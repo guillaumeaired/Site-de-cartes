@@ -807,7 +807,7 @@ btnCreate.addEventListener('click', () => {
   myNickname = nickname;
   setCreateBusy(true, 'Création…');
   suivreSalonChat(null);
-  socket.emit('skullking-create-room', { nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
+  socket.emit('skullking-create-room', { nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurDArrivee() });
 });
 
 formJoin.addEventListener('submit', (e) => {
@@ -831,7 +831,7 @@ formJoin.addEventListener('submit', (e) => {
     socket.emit('skullking-rejoin-room', { code, token: getPlayerToken() });
     return;
   }
-  socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
+  socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurDArrivee() });
 });
 
 // --- Les règles -------------------------------------------------------
@@ -1689,8 +1689,10 @@ function pieceMemorisee() {
   }
 }
 
-// La couleur, gardée et renvoyée à la porte de la même façon que la pièce :
-// le serveur la rend si personne à la table ne l'a déjà.
+// La couleur qu'on apporte à la porte du salon : celle de sa pièce de profil
+// pour un compte, celle gardée par l'appareil (dernière table) pour un
+// invité. Le serveur la rend si personne à la table ne l'a déjà, sinon il en
+// tire une libre au hasard. La couleur de table ne remonte jamais au profil.
 const COULEUR_PREF_KEY = 'guimams-sk-couleur';
 function couleurMemorisee() {
   try {
@@ -1699,17 +1701,20 @@ function couleurMemorisee() {
     return null;
   }
 }
-// Ma couleur à cette table, telle que le serveur l'a donnée : les pièces du
-// choix se montrent dans cette couleur, puisque c'est ainsi qu'on les portera.
+function couleurDArrivee() {
+  if (typeof compte !== 'undefined' && compte.user && typeof profilPieceDe === 'function') {
+    return profilPieceDe(compte.user).couleur;
+  }
+  return couleurMemorisee();
+}
+// Ma couleur à cette table, telle que le serveur l'a donnée.
 let maCouleur = null;
 // La palette des couleurs, ouverte par un clic sur sa propre pièce.
 let paletteOuverte = false;
-// La couleur que je viens de demander à la palette : quand le serveur la
-// confirme, le menu du compte la reprend (voir annoncerCouleurAuCompte).
-let couleurDemandee = null;
-// Les joueurs de la table où je suis, salon ou partie : le profil, ouvert
-// par-dessus, en a besoin pour barrer leurs couleurs.
-let joueursALaTable = [];
+// La couleur dans laquelle chaque pièce LIBRE se montre au salon, motif =>
+// couleur (voir couleursDesPiecesLibres). Gardée d'un dessin à l'autre : une
+// pièce ne change de couleur que si la sienne vient d'être prise.
+const couleurAffichee = new Map();
 
 // --- Son pseudo, en enseigne de la planche, et le champ qui le change ------
 // Le pseudo se tape une fois sur l'écran d'accueil — ou pas du tout quand on
@@ -1792,11 +1797,12 @@ function libelleCompte(p) {
 }
 
 // Un médaillon du choix de pièce : libre, à moi, ou pris par un autre.
-// Les motifs se montrent dans MA couleur (voir maCouleur) : on voit d'avance
-// la pièce qu'on portera. Un clic sur la sienne ouvre la palette.
+// La mienne et celles des autres se montrent dans la couleur de leur joueur ;
+// une pièce libre, dans la sienne (voir couleursDesPiecesLibres) — et on la
+// prend dans cette couleur-là. Un clic sur la sienne ouvre la palette.
 function boutonPiece(motif, takenBy) {
-  const piece = habiller(motif, maCouleur);
-  const owner = takenBy.get(piece.key);
+  const owner = takenBy.get(motif.key);
+  const piece = habiller(motif, owner ? pieceFor(owner).couleur : couleurAffichee.get(motif.key) || maCouleur);
   const mine = owner && owner.id === myId;
   const fermee = Boolean(owner) && !mine;
   const btn = document.createElement('button');
@@ -1829,10 +1835,11 @@ function boutonPiece(motif, takenBy) {
     if (btn.disabled) return;
     try {
       localStorage.setItem(PIECE_PREF_KEY, piece.key);
+      localStorage.setItem(COULEUR_PREF_KEY, piece.couleur);
     } catch (e) {
       /* navigation privée : le choix vaut pour cette partie, sans plus */
     }
-    socket.emit('skullking-set-piece', { piece: piece.key });
+    socket.emit('skullking-set-piece', { piece: piece.key, couleur: piece.couleur });
   });
   return btn;
 }
@@ -2271,10 +2278,7 @@ function renderPalette(players) {
       } catch (err) {
         /* navigation privée : le choix vaut pour cette partie, sans plus */
       }
-      if (!mine) {
-        couleurDemandee = c.key;
-        socket.emit('skullking-set-couleur', { couleur: c.key });
-      }
+      if (!mine) socket.emit('skullking-set-couleur', { couleur: c.key });
       paletteOuverte = false;
       renderPiecePicker(dernierEquipage);
     });
@@ -2283,39 +2287,51 @@ function renderPalette(players) {
   paletteEl.appendChild(grille);
 }
 
-// La couleur choisie à table est aussi celle du compte (le serveur
-// l'enregistre, voir skullking-set-couleur) : la pièce du menu du compte, à
-// gauche du pseudo, se repeint aussitôt — compte.js écoute `profil:piece`.
-function annoncerCouleurAuCompte(couleur) {
-  if (typeof compte === 'undefined' || !compte.user || compte.user.couleur === couleur) return;
-  window.dispatchEvent(new CustomEvent('profil:piece', { detail: { piece: compte.user.piece || null, couleur } }));
-}
-
-// L'autre sens : une couleur choisie dans le profil, ouvert depuis le salon,
-// passe aussi à table. Le profil n'offre que des couleurs libres (voir
-// profilCouleursPrises) ; le serveur tranche de toute façon.
-window.addEventListener('profil:piece', (e) => {
-  const couleur = e.detail && e.detail.couleur;
-  if (!couleur || couleur === maCouleur || screens.waiting.classList.contains('hidden')) return;
-  try {
-    localStorage.setItem(COULEUR_PREF_KEY, couleur);
-  } catch (err) {
-    /* navigation privée */
-  }
-  socket.emit('skullking-set-couleur', { couleur });
-});
-
-// Les couleurs portées par les AUTRES joueurs de ma table, pour le profil :
-// on ne peut pas y prendre la couleur de quelqu'un avec qui l'on joue.
-// Hors table (accueil), rien n'est pris.
-window.profilCouleursPrises = () => {
-  const prises = new Map();
-  if (!screens.home.classList.contains('hidden')) return prises;
-  joueursALaTable.forEach((p) => {
-    if (p.id !== myId && p.couleur) prises.set(p.couleur, p.nickname);
+// LES PIÈCES LIBRES DU SALON, CHACUNE DANS SA COULEUR. Chaque pièce se
+// montre d'abord dans SA couleur par défaut (COULEUR_PAR_DEFAUT : le Crâne
+// rouge, la Pieuvre noire, le Taureau blanc…). Une couleur qu'un joueur porte
+// (moi compris) n'est jamais montrée sur une pièce libre : si quelqu'un la
+// prend, la pièce qui la montrait en tire une autre au hasard, et retrouve la
+// sienne dès qu'elle se libère. Deux pièces libres ne partagent une couleur
+// que faute de mieux — ou parce que c'est leur couleur à toutes les deux (le
+// Crâne et Harvard sont rouges, mais pas sur la même page). À table, jamais
+// deux joueurs de la même couleur : le serveur y veille.
+function couleursDesPiecesLibres(motifs, players) {
+  const portees = new Set(players.map((p) => p.couleur).filter(Boolean));
+  const libres = COULEURS.map((c) => c.key).filter((k) => !portees.has(k));
+  const auHasard = (liste) => liste[Math.floor(Math.random() * liste.length)];
+  const montrees = new Set();
+  const sansDefaut = [];
+  motifs.forEach((cle) => {
+    const defaut = COULEUR_PAR_DEFAUT[cle];
+    if (defaut && !portees.has(defaut)) {
+      couleurAffichee.set(cle, defaut);
+      montrees.add(defaut);
+    } else {
+      sansDefaut.push(cle);
+    }
   });
-  return prises;
-};
+  // Puis celles dont la couleur par défaut est portée : elles gardent la
+  // couleur tirée au dessin précédent si elle tient encore — seules celles
+  // dont la couleur vient d'être prise (ou qui en doublent une autre)
+  // changent, sans en déloger une troisième.
+  const aRepeindre = [];
+  sansDefaut.forEach((cle) => {
+    const c = couleurAffichee.get(cle);
+    if (c && !portees.has(c) && !montrees.has(c)) montrees.add(c);
+    else aRepeindre.push(cle);
+  });
+  aRepeindre.forEach((cle) => {
+    let c = couleurAffichee.get(cle);
+    const inutilisees = libres.filter((k) => !montrees.has(k));
+    // Doublon sans autre couleur disponible : on garde la sienne plutôt que
+    // d'en changer à chaque dessin.
+    if (inutilisees.length) c = auHasard(inutilisees);
+    else if (!c || portees.has(c)) c = auHasard(libres) || c;
+    couleurAffichee.set(cle, c);
+    montrees.add(c);
+  });
+}
 
 // Un clic ailleurs ou Échap referment la palette, comme tout ce qui s'ouvre.
 document.addEventListener('click', (e) => {
@@ -2335,17 +2351,19 @@ document.addEventListener('keydown', (e) => {
 
 function renderPiecePicker(players) {
   dernierEquipage = players;
-  joueursALaTable = players;
   const me = players.find((p) => p.id === myId);
   if (me) maCouleur = pieceFor(me).couleur;
-  if (couleurDemandee && maCouleur === couleurDemandee) {
-    couleurDemandee = null;
-    annoncerCouleurAuCompte(maCouleur);
-  }
   const takenBy = new Map();
   players.forEach((p) => {
     if (p.piece) takenBy.set(p.piece, p);
   });
+  // Toutes les pièces qu'on peut voir au salon (vitrine, suite, jetons
+  // personnels) : leurs couleurs sont tirées ensemble, pour qu'aucune ne
+  // répète celle d'une autre tant qu'il en reste.
+  couleursDesPiecesLibres(
+    PIECES.map((p) => p.key).filter((k) => !takenBy.has(k)),
+    players,
+  );
   renderPalette(players);
 
   // Une seule fois par salon : si la pièce gardée sur cet appareil est
@@ -3202,7 +3220,7 @@ btnJoinModal.addEventListener('click', () => {
   btnJoinModal.disabled = true;
   myNickname = nickname;
   suivreSalonChat(roomFromUrl.toUpperCase());
-  socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
+  socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurDArrivee() });
 });
 
 // --- Partie en cours ---
@@ -3678,8 +3696,9 @@ const PIECES = [
   { key: 'taureau', label: 'Taureau' },
   { key: 'viseur', label: 'Carbon Away' },
   { key: 'harvard', label: 'Harvard' },
+  { key: 'surf', label: 'Surf' },
 ];
-const PIECES_A_CODE = ['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard'];
+const PIECES_A_CODE = ['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard', 'surf'];
 
 // Les neuf premières se montrent d'emblée dans le salon ; les autres
 // attendent derrière une flèche que seul l'hôte voit. Même découpe que
@@ -3742,8 +3761,8 @@ const COULEUR_PAR_DEFAUT = {
   crane: 'rouge', ancre: 'marine', voilier: 'vert', sabre: 'violet',
   boussole: 'jaune', coffre: 'turquoise', barre: 'orange', bouteille: 'anis',
   crochet: 'magenta',
-  pieuvre: 'ciel', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
-  pomme: 'ciel', visa: 'rose', taureau: 'rose', viseur: 'menthe', harvard: 'rouge',
+  pieuvre: 'noir', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
+  pomme: 'ciel', visa: 'rose', taureau: 'blanc', viseur: 'vert', harvard: 'rouge', surf: 'violet',
 };
 
 // Un motif habillé d'une couleur : ce que la table montre d'un joueur.
@@ -7783,7 +7802,6 @@ function applyState(state) {
   }
   myId = state.myId;
   myIsHost = state.isHost;
-  if (Array.isArray(state.players)) joueursALaTable = state.players;
   // Arrivé par le lien en pleine partie : on regarde depuis le bord de la
   // table. La salle est retenue comme celle d'un joueur — recharger la page
   // ramène à la même chaise (skullking-rejoin-room), et on y prend place au
@@ -7867,7 +7885,7 @@ socket.on('skullking-rejoin-failed', (payload) => {
   rejoinFallback = null;
   if (fallback && fallback !== 'link') {
     myNickname = fallback.nickname;
-    socket.emit('skullking-join-room', { code: fallback.code, nickname: fallback.nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
+    socket.emit('skullking-join-room', { code: fallback.code, nickname: fallback.nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurDArrivee() });
     return;
   }
   if (fallback === 'link') {

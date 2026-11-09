@@ -674,7 +674,6 @@ function createComptes({
     redeemCode,
     profilDe,
     choisirPiece,
-    choisirCouleur,
     applyGameResult: (game) => store.applyGameResult(game),
   };
 }

@@ -17,6 +17,7 @@ const CODES = {
   belg: 'taureau',
   remz: 'viseur',
   toto: 'harvard',
+  iqmm: 'surf',
 };
 
 const PIECES_A_CODE = Object.values(CODES);

@@ -23,7 +23,7 @@ const PROFIL_PIECES_COMMUNES = [
 // Les jetons personnels : gagnés un par un avec un code, dans le salon.
 const PROFIL_PIECES_PERSONNELLES = [
   ['pieuvre', 'Pieuvre'], ['pomme', 'Apple'], ['visa', 'Visa'],
-  ['taureau', 'Taureau'], ['viseur', 'Carbon Away'], ['harvard', 'Harvard'],
+  ['taureau', 'Taureau'], ['viseur', 'Carbon Away'], ['harvard', 'Harvard'], ['surf', 'Surf'],
 ].map(([key, label]) => ({ key, label }));
 
 const PROFIL_PIECE_PAR_CLE = Object.fromEntries(
@@ -47,8 +47,8 @@ const PROFIL_COULEUR_PAR_DEFAUT = {
   crane: 'rouge', ancre: 'marine', voilier: 'vert', sabre: 'violet',
   boussole: 'jaune', coffre: 'turquoise', barre: 'orange', bouteille: 'anis',
   crochet: 'magenta',
-  pieuvre: 'ciel', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
-  pomme: 'ciel', visa: 'rose', taureau: 'rose', viseur: 'menthe', harvard: 'rouge',
+  pieuvre: 'noir', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
+  pomme: 'ciel', visa: 'rose', taureau: 'blanc', viseur: 'vert', harvard: 'rouge', surf: 'violet',
 };
 
 // Un motif dans une couleur : l'image de la pièce et l'émail qui la peint.
@@ -261,21 +261,18 @@ function profilDessinerCollection() {
   const portee = profilPieceDe(d.user);
   const miennes = new Set(d.pieces || []);
 
-  // Les quatorze couleurs, celle du compte marquée. Ouvert depuis une table,
-  // celles des autres joueurs sont barrées, comme dans la palette du salon.
-  const prises = profilCouleursPrisesALaTable();
+  // Les quatorze couleurs, celle du compte marquée. Toutes se choisissent :
+  // deux comptes peuvent avoir la même pièce de profil, c'est à table
+  // seulement que deux joueurs ne partagent jamais une couleur.
   const couleurs = fond.querySelector('[data-famille="couleurs"]');
   couleurs.textContent = '';
   PROFIL_COULEURS.forEach((c) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     const portee_ = c.key === portee.couleur;
-    const autre = portee_ ? null : prises.get(c.key);
-    btn.className =
-      'sk-profil-couleur' + (portee_ ? ' sk-profil-couleur--portee' : '') + (autre ? ' sk-profil-couleur--prise' : '');
+    btn.className = 'sk-profil-couleur' + (portee_ ? ' sk-profil-couleur--portee' : '');
     btn.style.setProperty('--sk-couleur', c.hex);
-    btn.disabled = Boolean(autre);
-    btn.title = autre ? `${c.label} — prise par ${autre}` : portee_ ? `${c.label} — ta couleur` : c.label;
+    btn.title = portee_ ? `${c.label} — ta couleur` : c.label;
     btn.setAttribute('aria-label', btn.title);
     btn.setAttribute('aria-pressed', String(portee_));
     btn.addEventListener('click', () => profilChoisirCouleur(c.key));
@@ -333,25 +330,12 @@ function profilChoisir(cle) {
     });
 }
 
-// Les couleurs des autres joueurs de la table, couleur => pseudo. C'est la
-// page du Skull King qui le sait (window.profilCouleursPrises) ; ailleurs,
-// au classement, aucune n'est prise.
-function profilCouleursPrisesALaTable() {
-  try {
-    if (typeof window.profilCouleursPrises === 'function') return window.profilCouleursPrises();
-  } catch (e) {
-    /* rien de pris */
-  }
-  return new Map();
-}
-
 // Choisir une couleur la porte aussitôt ; la collection reste ouverte, ses
 // motifs se repeignent dans la nouvelle couleur.
 function profilChoisirCouleur(cle) {
   const d = profilEtat.donnees;
   if (!d || profilEtat.envoi) return;
   if (profilPieceDe(d.user).couleur === cle) return;
-  if (profilCouleursPrisesALaTable().has(cle)) return;
   profilEtat.envoi = true;
   profilErreur('');
   fetch('/api/profil/couleur', {

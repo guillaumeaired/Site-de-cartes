@@ -219,7 +219,7 @@ async function main() {
     check('un code inconnu est refusé', !(await comptes.redeemCode(b.id, 'zzzz', '2.2.2.2')).piece);
     check('trois lettres ne font pas un code', /quatre/.test((await comptes.redeemCode(b.id, 'abc', '2.2.2.2')).error));
     check('un invité ne peut pas utiliser de code', !(await comptes.redeemCode(null, 'sput', '3.3.3.3')).piece);
-    const codes = { sput: 'visa', belg: 'taureau', remz: 'viseur', toto: 'harvard' };
+    const codes = { sput: 'visa', belg: 'taureau', remz: 'viseur', toto: 'harvard', iqmm: 'surf' };
     for (const [code, piece] of Object.entries(codes)) {
       check(`le code ${code} donne ${piece}`, (await comptes.redeemCode(b.id, code.toUpperCase(), '2.2.2.2')).piece === piece);
     }
@@ -232,7 +232,7 @@ async function main() {
   // --- Pièces à code dans le salon --------------------------------------
   {
     const { giveFreePiece, PIECE_KEYS } = require('./skullking-room');
-    check('les pièces à code sont dans le lot', ['pomme', 'visa', 'taureau', 'viseur', 'harvard'].every((k) => PIECE_KEYS.includes(k)));
+    check('les pièces à code sont dans le lot', ['pomme', 'visa', 'taureau', 'viseur', 'harvard', 'surf'].every((k) => PIECE_KEYS.includes(k)));
     check('sans doublon (la pieuvre y était déjà)', new Set(PIECE_KEYS).size === PIECE_KEYS.length);
     const hote = { id: 'h', piece: null, userId: 1, accountPseudo: 'Hote', ownedPieces: [] };
     giveFreePiece({ hostId: 'h', players: [hote] }, hote, 'pomme');
@@ -243,7 +243,7 @@ async function main() {
     for (let i = 0; i < 40; i++) {
       const x = { id: 'x' + i, piece: null };
       giveFreePiece({ hostId: 'h', players: [x] }, x);
-      if (['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard'].includes(x.piece)) {
+      if (['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard', 'surf'].includes(x.piece)) {
         check('le hasard ne donne jamais une pièce à code', false);
         break;
       }

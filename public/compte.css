@@ -1315,28 +1315,6 @@ button.sk-profil-case:focus-visible {
   outline: none;
 }
 
-.sk-profil-couleur--prise {
-  position: relative;
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.sk-profil-couleur--prise:hover {
-  transform: none;
-}
-
-.sk-profil-couleur--prise::after {
-  content: '';
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 50%;
-  height: 2px;
-  border-radius: 2px;
-  background: #fff5e6;
-  transform: rotate(-45deg);
-}
-
 .sk-profil-couleur--portee {
   box-shadow:
     0 0 0 2px #e8ce92,

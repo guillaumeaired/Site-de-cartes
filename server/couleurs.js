@@ -18,15 +18,15 @@ const COULEURS = [
   'blanc', 'noir',
 ];
 
-// La couleur d'un motif tant que son joueur n'en a pas choisi : la plus
-// proche de l'émail de son médaillon d'origine. Les neuf de la vitrine ont
-// chacune la leur, pour qu'une table où personne ne choisit reste lisible.
+// La couleur d'un motif tant que son COMPTE n'en a pas choisi (pièce de
+// profil) : la plus proche de l'émail de son médaillon d'origine. À table, la
+// couleur ne dépend plus du motif (voir donnerCouleur dans skullking-room.js).
 const COULEUR_PAR_DEFAUT = {
   crane: 'rouge', ancre: 'marine', voilier: 'vert', sabre: 'violet',
   boussole: 'jaune', coffre: 'turquoise', barre: 'orange', bouteille: 'anis',
   crochet: 'magenta',
-  pieuvre: 'ciel', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
-  pomme: 'ciel', visa: 'rose', taureau: 'rose', viseur: 'menthe', harvard: 'rouge',
+  pieuvre: 'noir', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
+  pomme: 'ciel', visa: 'rose', taureau: 'blanc', viseur: 'vert', harvard: 'rouge', surf: 'violet',
 };
 
 function couleurValide(couleur) {
