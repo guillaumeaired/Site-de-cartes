@@ -283,6 +283,8 @@ function dessinerProfil(profil) {
   dessinerCourbe(profil.courbe);
   document.getElementById('nemesis-titre').textContent =
     profil.nemesis.length > 1 ? 'Tes némésis' : 'Ton némésis';
+  document.getElementById('fifres-titre').textContent =
+    profil.sousFifres.length > 1 ? 'Tes sous-fifres' : 'Ton sous-fifre';
   dessinerRivaux(profil.nemesis, document.getElementById('nemesis'), 'defaites',
     connecte ? 'Personne ne t’a encore battu.' : 'Connecte-toi pour démasquer le tien.');
   dessinerRivaux(profil.sousFifres, document.getElementById('sous-fifres'), 'victoires',
