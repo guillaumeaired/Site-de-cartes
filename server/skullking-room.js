@@ -507,7 +507,7 @@ function davyJonesSwallow(cards) {
 // seule à une table pleine (neuf joueurs au plus, voir maxPlayersFor).
 // Les listes elles-mêmes vivent dans pieces.js, que le profil partage.
 const { PIECE_KEYS } = require('./pieces');
-const { COULEURS, couleurValide } = require('./couleurs');
+const { COULEURS, couleurValide, couleurParDefaut } = require('./couleurs');
 const PIECES_EN_VITRINE = 9;
 
 // Ce que le hasard peut encore donner : la vitrine seule.
@@ -2511,6 +2511,11 @@ function registerSkullKingHandlers(io, socket) {
         }
         if (room.phase === 'lobby' && !room.players.some((p) => p !== player && p.piece === res.piece)) {
           player.piece = res.piece;
+          // Une pièce qu'on vient de gagner se porte d'abord dans SA couleur
+          // par défaut — celle du grattage. Portée par un autre joueur, on
+          // garde la sienne : deux joueurs n'ont jamais la même couleur.
+          const defaut = couleurParDefaut(res.piece);
+          if (couleurLibre(room, player, defaut)) player.couleur = defaut;
         }
         socket.emit('skullking-code-ok', { piece: res.piece });
         broadcastLobby(io, room);

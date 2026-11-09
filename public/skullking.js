@@ -1730,6 +1730,7 @@ const couleurAffichee = new Map();
 const lobbyIdentite = document.querySelector('.sk-lobby-identite');
 const lobbyMoi = document.getElementById('sk-lobby-moi');
 const btnRename = document.getElementById('sk-btn-rename');
+const btnCouleur = document.getElementById('sk-btn-couleur');
 const renameForm = document.getElementById('sk-rename-form');
 const renameInput = document.getElementById('sk-rename-input');
 const btnRenameCancel = document.getElementById('sk-btn-rename-cancel');
@@ -1799,7 +1800,8 @@ function libelleCompte(p) {
 // Un médaillon du choix de pièce : libre, à moi, ou pris par un autre.
 // La mienne et celles des autres se montrent dans la couleur de leur joueur ;
 // une pièce libre, dans la sienne (voir couleursDesPiecesLibres) — et on la
-// prend dans cette couleur-là. Un clic sur la sienne ouvre la palette.
+// prend dans cette couleur-là. La couleur se change à côté du pseudo (voir
+// btnCouleur), pas sur le jeton : un clic sur le sien ne fait rien.
 function boutonPiece(motif, takenBy) {
   const owner = takenBy.get(motif.key);
   const piece = habiller(motif, owner ? pieceFor(owner).couleur : couleurAffichee.get(motif.key) || maCouleur);
@@ -1813,26 +1815,12 @@ function boutonPiece(motif, takenBy) {
   btn.title = fermee
     ? `${piece.label} — pris par ${owner.nickname}`
     : mine
-      ? `${piece.label}, ta pièce — clique pour changer de couleur`
+      ? `${piece.label}, ta pièce`
       : piece.label;
   btn.setAttribute('aria-label', btn.title);
   btn.innerHTML = pieceSVG(piece);
-  if (mine) {
-    // La pastille arc-en-ciel dit qu'un clic ici change la couleur.
-    const pastille = document.createElement('span');
-    pastille.className = 'sk-piece-pinceau';
-    pastille.setAttribute('aria-hidden', 'true');
-    btn.appendChild(pastille);
-    btn.setAttribute('aria-haspopup', 'true');
-    btn.setAttribute('aria-expanded', String(paletteOuverte));
-  }
-  btn.addEventListener('click', (e) => {
-    if (mine) {
-      e.stopPropagation();
-      ouvrirPalette(!paletteOuverte);
-      return;
-    }
-    if (btn.disabled) return;
+  btn.addEventListener('click', () => {
+    if (mine || btn.disabled) return;
     try {
       localStorage.setItem(PIECE_PREF_KEY, piece.key);
       localStorage.setItem(COULEUR_PREF_KEY, piece.couleur);
@@ -2024,14 +2012,17 @@ socket.on('skullking-code-ok', ({ piece }) => {
   finCodeJeton();
   messageCodeJeton('');
   fermerFenetreCode(true);
-  // Le serveur la met déjà ; on la garde aussi pour la prochaine partie.
+  // Le serveur la met déjà, dans sa couleur par défaut si personne ne la
+  // porte ; on garde les deux pour la prochaine partie.
+  const couleur = COULEUR_PAR_DEFAUT[piece];
   try {
     localStorage.setItem(PIECE_PREF_KEY, piece);
+    if (couleur) localStorage.setItem(COULEUR_PREF_KEY, couleur);
   } catch (e) {
     /* navigation privée */
   }
-  // Révélée dans MA couleur : c'est ainsi que la table la verra.
-  if (PIECE_BY_KEY[piece]) ouvrirGrattage(habiller(PIECE_BY_KEY[piece], maCouleur));
+  // Révélée dans SA couleur par défaut, celle qu'elle a en sortant du coffre.
+  if (PIECE_BY_KEY[piece]) ouvrirGrattage(habiller(PIECE_BY_KEY[piece], couleur));
 });
 
 // --- Le grattage ---------------------------------------------------------
@@ -2245,10 +2236,19 @@ function ouvrirPalette(ouverte) {
   }
 }
 
+btnCouleur.addEventListener('click', (e) => {
+  e.stopPropagation();
+  ouvrirPalette(!paletteOuverte);
+});
+
 function renderPalette(players) {
+  btnCouleur.setAttribute('aria-expanded', String(paletteOuverte));
   paletteEl.classList.toggle('hidden', !paletteOuverte);
   paletteEl.innerHTML = '';
   if (!paletteOuverte) return;
+  // Elle tombe sous la bande du pseudo, là où est la pastille qui l'ouvre.
+  const bande = lobbyIdentite.getBoundingClientRect();
+  paletteEl.style.top = `${bande.bottom - piecePicker.getBoundingClientRect().top + 6}px`;
   const prisePar = new Map();
   players.forEach((p) => {
     if (p.id !== myId && p.couleur) prisePar.set(p.couleur, p);
@@ -2344,8 +2344,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && paletteOuverte) {
     paletteOuverte = false;
     renderPiecePicker(dernierEquipage);
-    const mienne = pieceGrid.querySelector('.sk-piece-btn--mine');
-    if (mienne) mienne.focus();
+    btnCouleur.focus();
   }
 });
 

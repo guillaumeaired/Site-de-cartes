@@ -6157,28 +6157,34 @@ button.sk-lobby-bot:focus-visible {
   transform: rotate(-45deg);
 }
 
-/* LA COULEUR DE SA PIÈCE. Sur sa propre pièce, une pastille arc-en-ciel dit
-   qu'un clic change la couleur ; la palette s'ouvre alors PAR-DESSUS la
-   planche, juste sous la grille — positionnée en absolu, elle ne prend
-   aucune place et rien ne bouge dans le salon quand on l'ouvre. */
+/* LA COULEUR DE SA PIÈCE. Au bord gauche de la bande du pseudo, une pastille
+   arc-en-ciel dit qu'un clic change la couleur ; la palette s'ouvre alors
+   PAR-DESSUS la planche, sous la bande du pseudo (top posé par
+   renderPalette) — positionnée en absolu, elle ne prend aucune place et rien
+   ne bouge dans le salon quand on l'ouvre. */
 .sk-piece-picker {
   position: relative;
 }
 
-.sk-piece-btn--mine {
-  cursor: pointer;
-}
-
-.sk-piece-pinceau {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 34%;
-  height: 34%;
+.sk-lobby-couleur {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   background: conic-gradient(#c4161c, #f0701a, #f4c81e, #9ec21e, #2f8a3a, #62d6a6, #0c9aa0, #45b0ea, #1f48a8, #6d3fc4, #c4207e, #f4a8c8, #c4161c);
-  box-shadow: 0 0 0 2px var(--sk-brass-hi), 0 0 0 3px rgba(16, 9, 3, 0.9), 0 2px 4px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--sk-brass-lo), 0 0 0 3px rgba(16, 9, 3, 0.9);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.sk-lobby-couleur:hover,
+.sk-lobby-couleur:focus-visible,
+.sk-lobby-couleur[aria-expanded='true'] {
+  transform: scale(1.15);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--sk-brass-hi), 0 0 0 3px rgba(16, 9, 3, 0.9);
 }
 
 .sk-couleur-palette {
@@ -6186,7 +6192,7 @@ button.sk-lobby-bot:focus-visible {
   top: 100%;
   left: 50%;
   z-index: 40;
-  transform: translate(-50%, -10px);
+  transform: translateX(-50%);
   padding: 8px 12px 12px;
   border-radius: 10px;
   background: linear-gradient(180deg, #2a1a0c, #170e06);
@@ -10000,6 +10006,12 @@ input.sk-jeton-code-input {
    même repère qu'au rôle juste en dessous, au médaillon du tapis, à la roue
    et au registre. Sur sa propre planche, on doit reconnaître sa couleur avant
    d'avoir lu son nom. */
+.sk-lobby-identite .sk-lobby-couleur {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 4px;
+}
+
 .sk-lobby-moi {
   grid-column: 2;
   min-width: 0;
