@@ -1203,6 +1203,32 @@ h3 {
   color: var(--sk-wine);
 }
 
+/* Les numérotées d'extension tiennent sur une ligne : trois vignettes en
+   éventail serré, puis une sous-ligne par carte. */
+.sk-regles-trio {
+  display: flex;
+  flex: none;
+}
+
+.sk-regles-trio .sk-regles-carte {
+  width: 28px;
+}
+
+.sk-regles-trio .sk-regles-carte + .sk-regles-carte {
+  margin-left: -16px;
+}
+
+.sk-regles-sous {
+  display: block;
+  margin-top: 2px;
+}
+
+.sk-regles-texte .sk-regles-sous b {
+  display: inline;
+  margin-right: 3px;
+  font-size: 0.7rem;
+}
+
 /* Depuis l'accueil, toutes les extensions sont montrées : la marque dit
    lesquelles ne sont pas du jeu de base. */
 .sk-regles-ext {

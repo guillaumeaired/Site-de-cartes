@@ -879,10 +879,32 @@ const REGLES_SPECIALES = [
   { carte: { kind: 'whale' }, nom: 'Baleine blanche', effet: 'les spéciales ne comptent plus : le plus haut chiffre gagne' },
 ];
 
+// Les numérotées sont la seule extension qui n'est pas UNE carte : un 7, un
+// 8 et un 0/14 dans chaque couleur, atout noir compris. Partagé par la
+// planche du salon et la fiche des règles.
+const EXTENSION_APERCU_NUMEROTEES = {
+  texte: "Ajoute un 7, un 8 et un 0/14 dans chacune des quatre couleurs, atout noir compris (12 cartes). Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5 — comme tout bonus, seulement si son annonce est respectée. Le 0/14 se déclare au moment de la pose : à 14 c'est une carte forte mais sans bonus de 14 ; à 0 c'est la plus basse du paquet — elle bat quand même les Fuites.",
+  cartes: [
+    { kind: 'number', suit: 'vert', value: 7, ext: true },
+    { kind: 'number', suit: 'jaune', value: 8, ext: true },
+    { kind: 'number', suit: 'noir', value: null, ext: true, wild14: true },
+  ],
+};
+
 const REGLES_EXT_CHIFFRES = [
-  { carte: { kind: 'number', suit: 'vert', value: 7, ext: true }, nom: '7', effet: '−5 à qui gagne le pli', ext: 'numerotees' },
-  { carte: { kind: 'number', suit: 'jaune', value: 8, ext: true }, nom: '8', effet: '+5 à qui gagne le pli', ext: 'numerotees' },
-  { carte: { kind: 'number', suit: 'violet', value: null, wild14: true, ext: true }, nom: '0/14', effet: 'vaut 0 ou 14, au choix · jamais de bonus', ext: 'numerotees' },
+  // Une seule ligne pour les douze cartes : un 7, un 8 et un 0/14 dans
+  // chacune des quatre couleurs. Trois lignes séparées laissaient croire
+  // qu'il n'y avait qu'un exemplaire de chaque.
+  {
+    cartes: EXTENSION_APERCU_NUMEROTEES.cartes,
+    texte: EXTENSION_APERCU_NUMEROTEES.texte,
+    nom: '7, 8 et 0/14',
+    effet: 'un de chaque dans les 4 couleurs, atout compris'
+      + '<span class="sk-regles-sous"><b>7</b> −5 à qui gagne le pli</span>'
+      + '<span class="sk-regles-sous"><b>8</b> +5 à qui gagne le pli</span>'
+      + '<span class="sk-regles-sous"><b>0/14</b> vaut 0 ou 14, au choix en le posant · sans bonus</span>',
+    ext: 'numerotees',
+  },
   { carte: { kind: 'wild15' }, nom: 'Joker', effet: 'vaut 15, couleur au choix', ext: 'joker' },
   { carte: { kind: 'stingray' }, nom: 'Raie Tachetée', effet: 'comme la Baleine, mais le plus bas gagne', ext: 'stingray' },
 ];
@@ -914,6 +936,12 @@ function reglesVignette(carte) {
   return `<i class="sk-regles-carte sk-card--art-${reglesArt(carte)}" aria-hidden="true"></i>`;
 }
 
+// Plusieurs cartes sur une ligne : un éventail serré qui tient à peine plus
+// large qu'une vignette.
+function reglesTrio(cartes) {
+  return `<span class="sk-regles-trio" aria-hidden="true">${cartes.map(reglesVignette).join('')}</span>`;
+}
+
 function reglesTete(name) {
   const cle = artFor({ kind: 'pirate', name });
   const [x, y] = REGLES_VISAGES[cle] || [0.5, 0.26];
@@ -925,8 +953,8 @@ function reglesTete(name) {
 // carte d'extension glissée sur une fiche du jeu de base (Mary Thorne parmi
 // les Pirates) le dit, depuis l'accueil où tout est montré. Sur une fiche
 // d'extension, la fiche entière le dit déjà.
-function reglesLigne(visuel, nom, effet, carte, marquer) {
-  const i = reglesDetails.push({ nom, carte }) - 1;
+function reglesLigne(visuel, nom, effet, carte, marquer, detail) {
+  const i = reglesDetails.push({ nom, carte, detail }) - 1;
   const marque = marquer && reglesExtensions === null ? '<span class="sk-regles-ext">ext.</span>' : '';
   return `<li><button class="sk-regles-ligne" type="button" data-detail="${i}">${visuel}`
     + `<span class="sk-regles-texte"><b>${nom}</b>${marque} ${effet}</span></button></li>`;
@@ -935,7 +963,9 @@ function reglesLigne(visuel, nom, effet, carte, marquer) {
 function reglesListe(lignes) {
   return `<ul class="sk-regles-liste">${lignes
     .filter((l) => reglesActif(l.ext))
-    .map((l) => reglesLigne(reglesVignette(l.carte), l.nom, l.effet, l.carte, false))
+    .map((l) => (l.cartes
+      ? reglesLigne(reglesTrio(l.cartes), l.nom, l.effet, null, false, { cartes: l.cartes, texte: l.texte })
+      : reglesLigne(reglesVignette(l.carte), l.nom, l.effet, l.carte, false)))
     .join('')}</ul>`;
 }
 
@@ -966,7 +996,7 @@ function reglesManche() {
         <tr><th>Annonce 1 ou +</th><td class="plus">+20 / pli</td><td class="moins">−10 / pli d'écart</td></tr>
       </tbody>
     </table>
-    ${reglesNotes("Bonus de capture : seulement si l'annonce est juste.")}`;
+    ${reglesNotes("Bonus supplémentaires seulement si l'annonce est respectée.")}`;
 }
 
 // L'échelle des numérotées, puis le cycle des trois personnages. Chaque
@@ -1137,8 +1167,8 @@ reglesPoints.addEventListener('click', (e) => {
 reglesFiche.addEventListener('click', (e) => {
   const ligne = e.target.closest('[data-detail]');
   if (!ligne) return;
-  const { nom, carte } = reglesDetails[Number(ligne.dataset.detail)];
-  ouvrirFiche(nom, { cartes: [carte], texte: cardPowerText(carte) || '' });
+  const { nom, carte, detail } = reglesDetails[Number(ligne.dataset.detail)];
+  ouvrirFiche(nom, detail || { cartes: [carte], texte: cardPowerText(carte) || '' });
 });
 rulesModal.addEventListener('click', (e) => {
   if (e.target === rulesModal) fermerRegles();
@@ -1909,14 +1939,7 @@ const EXTENSION_APERCU = {
   // ajoute trois par couleur. D'où un texte écrit à la main, et une fiche
   // qui montre les trois d'un coup, chacune dans une famille différente
   // pour dire qu'elles arrivent dans les quatre.
-  numerotees: {
-    texte: "Ajoute à chaque couleur un 7, un 8 et une carte 0/14. Le 8 rapporte +5 points à qui remporte le pli, le 7 lui en coûte 5, et le 0/14 se déclare au moment de la pose : 14 est une carte forte, 0 est la plus basse du paquet — elle bat quand même les Fuites.",
-    cartes: [
-      { kind: 'number', suit: 'vert', value: 7, ext: true },
-      { kind: 'number', suit: 'jaune', value: 8, ext: true },
-      { kind: 'number', suit: 'violet', value: null, ext: true, wild14: true },
-    ],
-  },
+  numerotees: EXTENSION_APERCU_NUMEROTEES,
   joker: { kind: 'wild15' },
   marythorne: { kind: 'pirate', name: 'Mary Thorne' },
   firstmate: { kind: 'firstmate' },
