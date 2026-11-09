@@ -23,7 +23,7 @@ const PROFIL_PIECES_COMMUNES = [
 // Les jetons personnels : gagnés un par un avec un code, dans le salon.
 const PROFIL_PIECES_PERSONNELLES = [
   ['pieuvre', 'Pieuvre'], ['pomme', 'Apple'], ['visa', 'Visa'],
-  ['taureau', 'Taureau'], ['viseur', 'Carbon Away'], ['harvard', 'Harvard'], ['surf', 'Surf'],
+  ['taureau', 'Jupiler'], ['viseur', 'Carbon Away'], ['harvard', 'Harvard'], ['surf', 'Surf'],
 ].map(([key, label]) => ({ key, label }));
 
 const PROFIL_PIECE_PAR_CLE = Object.fromEntries(

@@ -2289,7 +2289,7 @@ function renderPalette(players) {
 
 // LES PIÈCES LIBRES DU SALON, CHACUNE DANS SA COULEUR. Chaque pièce se
 // montre d'abord dans SA couleur par défaut (COULEUR_PAR_DEFAUT : le Crâne
-// rouge, la Pieuvre noire, le Taureau blanc…). Une couleur qu'un joueur porte
+// rouge, la Pieuvre noire, la Jupiler blanche…). Une couleur qu'un joueur porte
 // (moi compris) n'est jamais montrée sur une pièce libre : si quelqu'un la
 // prend, la pièce qui la montrait en tire une autre au hasard, et retrouve la
 // sienne dès qu'elle se libère. Deux pièces libres ne partagent une couleur
@@ -3692,7 +3692,7 @@ const PIECES = [
   // personnel » de qui les a gagnées, jamais dans la vitrine ni la suite.
   { key: 'pomme', label: 'Apple' },
   { key: 'visa', label: 'Visa' },
-  { key: 'taureau', label: 'Taureau' },
+  { key: 'taureau', label: 'Jupiler' },
   { key: 'viseur', label: 'Carbon Away' },
   { key: 'harvard', label: 'Harvard' },
   { key: 'surf', label: 'Surf' },
