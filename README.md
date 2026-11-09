@@ -2,7 +2,8 @@
 
 Un site de jeux de cartes à jouer en ligne entre amis. On crée un salon, on
 partage son code de quatre caractères, et tout le monde joue depuis son navigateur —
-rien à installer, pas de compte à créer.
+rien à installer. Le Skull King propose en plus des comptes (pseudo + code à
+quatre chiffres) et un classement Elo ; on peut toujours jouer en invité.
 
 Quatre jeux, quatre moteurs de règles distincts :
 
@@ -35,9 +36,11 @@ leur téléphone.
 npm test
 ```
 
-Six suites s'enchaînent, sans dépendance externe ni framework : une par moteur
-de règles (Rami, Ascenseur, Skull King, Le 24) plus une sur la couche salon du
-Skull King et une sur celle du 24. Chacune est un simple script Node qui
+Les suites s'enchaînent, sans dépendance externe ni framework : une par moteur
+de règles (Rami, Ascenseur, Skull King, Le 24), une sur la couche salon du
+Skull King et une sur celle du 24, une sur les bots, et une sur les comptes et
+l'Elo (`comptes-simulate.js`, qui monte les routes `/api/*` sur une base en
+mémoire). Chacune est un simple script Node qui
 construit des situations de jeu et vérifie le résultat. Elles tournent aussi en CI sur chaque push et chaque pull
 request, et le déploiement échoue si l'une d'elles casse.
 
@@ -88,12 +91,56 @@ Deux dossiers annexes, hors du site :
   partir des planches sources. Les sources brutes ne sont pas versionnées, elles
   sont trop lourdes et ne servent qu'à regénérer ces fichiers.
 
+## Comptes et Elo (Skull King)
+
+| Fichier | Rôle |
+|---|---|
+| `server/comptes.js` | Stockage (Postgres si `DATABASE_URL`, mémoire sinon), code haché (scrypt), session par cookie `HttpOnly`, routes `/api/me`, `/api/register`, `/api/login`, `/api/logout`, `/api/leaderboard`, et le middleware Socket.io qui dit aux salons qui est connecté |
+| `server/elo.js` | Le calcul de cote, pur : une partie à N joueurs classés se lit comme N(N-1)/2 duels sur le total final, K = 32 ramené à un duel |
+| `public/connexion.html` | Se connecter, créer son compte, ou entrer en invité |
+| `public/classement.html` | Le classement |
+| `public/compte.js` | Sur la page du jeu : qui est connecté, le bandeau en haut à droite, le pseudo imposé |
+
+Règles du classement : seule une partie menée à son terme compte (pas une
+partie arrêtée par l'hôte), et seulement s'il y a au moins deux comptes en
+jeu. Invités et bots jouent normalement mais ne sont pas classés.
+
+Quitter en pleine partie ne l'arrête plus pour les autres : un bot reprend le
+siège (mêmes cartes, même score) et le partant regarde la fin en spectateur,
+puis se rassied à la revanche. Il est compté dernier, au récap comme à l'Elo,
+quoi que marque le bot à sa place (`skullking-depart-simulate.js`). S'il ne
+reste plus aucun autre humain à table, la partie s'arrête comme avant. Une
+simple coupure réseau, elle, met toujours la partie en pause.
+Un invité ne peut pas prendre le pseudo d'un compte, un compte ne s'assied
+qu'une fois à une table, et son pseudo ne se change pas en salon.
+
+Le code à quatre chiffres ne tient que parce que les essais sont freinés :
+cinq codes faux ferment un pseudo un quart d'heure, et une adresse ne peut pas
+en tenter plus de trente par heure.
+
+En local, sans `DATABASE_URL`, les comptes vivent en mémoire et disparaissent
+au redémarrage du serveur.
+
 ## Déploiement
 
 Hébergé sur Render, configuré par `render.yaml` (versionné, pour que le réglage
-soit lisible ici plutôt que dans un tableau de bord). Chaque push sur `main`
-déclenche un déploiement, précédé de `npm ci && npm test` : si la suite de tests
-échoue, le déploiement ne part pas.
+soit lisible ici plutôt que dans un tableau de bord). Le service qui y est décrit
+ne sert **que le Skull King** : la variable `SITE=skullking` fait servir sa page
+à la racine du domaine et ne branche pas les trois autres jeux. Sans cette
+variable (`npm start` en local), c'est le site complet.
+
+Les comptes vivent dans une base Postgres gratuite chez Neon, dont l'adresse
+est donnée à Render dans la variable secrète `DATABASE_URL` (les tables se
+créent toutes seules au premier démarrage).
+
+Chaque push sur `main` déclenche un déploiement, précédé de
+`npm ci && npm test` : si la suite de tests échoue, le déploiement ne part pas.
+
+Pour lancer en local la version « Skull King seul » :
+
+```bash
+SITE=skullking npm start
+```
 
 Sur l'offre gratuite, le serveur s'endort après une période d'inactivité et met
 une vingtaine de secondes à se réveiller. Le premier joueur à arriver voit donc

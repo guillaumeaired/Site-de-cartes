@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skull King — Classement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;600;700&family=Bitter:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="skullking.css" />
+  <link rel="stylesheet" href="compte.css" />
+</head>
+<body>
+  <main class="app sk-app">
+    <section class="sk-porte sk-porte--classement">
+      <div class="sk-hero">
+        <img class="sk-hero-img" src="assets/skin/hero-taverne.webp" alt="" width="1701" height="924" aria-hidden="true" />
+      </div>
+      <a id="classement-retour" href="skullking.html" class="btn-link sk-hero-back">← Retour au jeu</a>
+      <h1 class="sk-home-title">
+        <img src="assets/skin/logo-skullking-h.webp" alt="Skull King" width="2057" height="748" />
+      </h1>
+
+      <div class="sk-porte-panneau">
+        <h2 class="sk-classement-titre">Classement Elo</h2>
+        <table class="sk-classement">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Pirate</th>
+              <th>Elo</th>
+              <th title="Parties classées">Parties</th>
+              <th title="Parties finies en tête de la table">Victoires</th>
+            </tr>
+          </thead>
+          <tbody id="classement-lignes"></tbody>
+        </table>
+        <p id="classement-vide" class="sk-classement-vide hidden">Personne n'est encore classé : il faut finir une partie à au moins deux joueurs connectés.</p>
+        <p class="sk-porte-aide" style="margin: 14px 0 0">Seules les parties menées jusqu'au bout entre au moins deux comptes sont classées. Tout le monde part de 1200.</p>
+      </div>
+    </section>
+  </main>
+  <script src="classement.js"></script>
+</body>
+</html>

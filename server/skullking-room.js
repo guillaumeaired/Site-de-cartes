@@ -34,6 +34,7 @@ const {
 const { likelyServerRestart } = require('./server-start');
 const { makeRoomCode, sanitizeNickname } = require('./commun');
 const { recordGameStarted } = require('./play-counts');
+const { computeEloChanges } = require('./elo');
 
 // Les deux paquets proposés dans le salon. Réglage purement visuel : il ne
 // touche ni au deck, ni aux règles, ni au score — seul l'habillage des
@@ -784,7 +785,7 @@ function seatSpectators(io, room) {
     // Déconnecté au moment du retour au salon : son siège serait vide, on ne
     // le garde pas.
     if (s.connected === false) return;
-    const player = newPlayer(s.id, s.nickname, s.token);
+    const player = newPlayer(s.id, s.nickname, s.token, s.account);
     room.players.push(player);
     giveFreePiece(room, player, s.piece);
     pushSystemChat(io, room, `${s.nickname} prend place à la table.`);
@@ -796,6 +797,36 @@ function seatSpectators(io, room) {
 let bots = null;
 function setBotAdapter(adapter) {
   bots = adapter;
+}
+
+// Comptes et Elo (server/comptes.js) : même injection que les bots. Sans eux
+// (tests, autres déploiements), tout le monde joue en invité et aucune partie
+// n'est classée.
+let comptes = null;
+function setComptesAdapter(adapter) {
+  comptes = adapter;
+}
+
+// Qui s'assied : un joueur connecté s'assied sous le pseudo de son compte,
+// quoi qu'ait envoyé le navigateur ; un invité sous le pseudo qu'il a tapé,
+// à condition que ce ne soit pas celui d'un compte — sinon n'importe qui
+// jouerait sous le nom du premier du classement.
+function identityFor(socket, rawNickname) {
+  const user = socket.data && socket.data.user;
+  if (user) return { nickname: user.pseudo, account: user };
+  const nickname = sanitizeNickname(rawNickname);
+  if (nickname && comptes && comptes.isReservedPseudo(nickname)) {
+    return { error: 'Ce pseudo appartient à un compte : connecte-toi, ou choisis-en un autre.' };
+  }
+  return { nickname, account: null };
+}
+
+// Un même compte ne s'assied qu'une fois à une table : deux onglets sous le
+// même nom compteraient double au classement.
+function accountAlreadyHere(room, account, token) {
+  if (!account) return false;
+  const here = [...room.players.filter((p) => !p.gone), ...spectatorsOf(room)];
+  return here.some((p) => p.userId === account.id && p.token !== token);
 }
 
 function broadcastLobby(io, room) {
@@ -816,6 +847,10 @@ function broadcastLobby(io, room) {
         nickname: pp.nickname,
         piece: pp.piece || null,
         isBot: Boolean(bots && bots.isBot(pp.id)),
+        // La cote de qui a un compte, « invité » pour les autres humains : le
+        // salon dit d'avance si la partie sera classée, et pour qui.
+        elo: pp.userId ? pp.elo : null,
+        isGuest: !pp.userId && !(bots && bots.isBot(pp.id)),
         // Le niveau du bot (1 à 3, voir briefs/bots-skullking.md) : la
         // marque « BOT » le porte, et l'hôte le change d'un clic.
         botLevel: bots && bots.isBot(pp.id) && bots.botLevel ? bots.botLevel(pp.id) : null,
@@ -1156,6 +1191,9 @@ function stateFor(room, p) {
   }
   if (room.phase === 'game-end') {
     base.finalRanking = room.finalRanking;
+    // Classée ou non : le récap le dit, sinon on chercherait sa nouvelle
+    // cote après une partie entre invités.
+    base.rated = Boolean(room.rated);
   }
   return base;
 }
@@ -1261,7 +1299,7 @@ function endRound(io, room) {
 
   room.roundIndex += 1;
   if (room.roundIndex >= room.roundSequence.length) {
-    finishGame(io, room);
+    finishGame(io, room, { complete: true });
     return;
   }
 
@@ -1507,6 +1545,8 @@ function playerRecap(p) {
     // La pièce sert à colorer la courbe des scores : même repère que sur le
     // tapis, on retrouve sa ligne sans lire la légende.
     piece: p.piece || null,
+    // A quitté en cours de route : un bot a fini la partie à sa place.
+    left: Boolean(p.leaver),
     total: p.totalScore,
     rounds: h.length,
     exact,
@@ -1520,14 +1560,89 @@ function playerRecap(p) {
   };
 }
 
-function finishGame(io, room) {
+function finishGame(io, room, { complete = false } = {}) {
   clearRoomTimers(room);
+  // Celui qui a quitté est compté dernier, quoi qu'ait marqué le bot qui a
+  // fini sa main : il ne remporte pas une partie qu'il a abandonnée.
   const ranking = [...room.players]
     .map(playerRecap)
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => Number(a.left) - Number(b.left) || b.total - a.total);
+  room.rated = complete ? rateGame(io, room, ranking) : false;
   room.finalRanking = ranking;
   room.phase = 'game-end';
   broadcastState(io, room);
+}
+
+// La partie classée : seulement une partie menée à son terme (ni arrêtée par
+// l'hôte, ni interrompue par un départ), et seulement entre comptes — il en
+// faut au moins deux à table. Invités et bots jouent, marquent leurs points,
+// mais ne comptent pas dans les duels. Le calcul est fait tout de suite, sur
+// les cotes connues à table, pour que le récap les affiche sans attendre la
+// base ; l'écriture part ensuite.
+function rateGame(io, room, ranking) {
+  if (!comptes || ESSAI) return false;
+  // Un siège compte pour le compte qui y est assis, ou pour celui qui l'a
+  // quitté en cours de route (un bot l'a fini) : ce dernier est classé
+  // derrière tout le monde, quel que soit le score de son siège.
+  const seen = new Set();
+  const rated = [];
+  room.players.forEach((p) => {
+    let entry = null;
+    if (p.leaver && p.leaver.userId) {
+      entry = { seat: p, userId: p.leaver.userId, elo: p.leaver.elo, score: -Infinity, left: true };
+    } else if (p.userId && !p.gone && !(bots && bots.isBot(p.id))) {
+      entry = { seat: p, userId: p.userId, elo: p.elo, score: p.totalScore, left: false };
+    }
+    if (!entry || seen.has(entry.userId)) return;
+    seen.add(entry.userId);
+    rated.push(entry);
+  });
+  if (rated.length < 2) return false;
+  const restes = room.players.filter((p) => !p.leaver);
+  const topScore = Math.max(...(restes.length ? restes : room.players).map((p) => p.totalScore));
+  const changes = computeEloChanges(rated.map((e) => ({ userId: e.userId, elo: e.elo, score: e.score })));
+  const byUser = new Map(changes.map((c) => [c.userId, c]));
+  // Les cotes connues ailleurs que sur le siège : la socket (apprise à la
+  // connexion) et, pour un partant, sa chaise de spectateur. On les tient à
+  // jour, sinon la revanche partirait de l'ancienne.
+  const majCote = (userId, elo) => {
+    const s = spectatorsOf(room).find((x) => x.userId === userId);
+    if (s && s.account) s.account.elo = elo;
+    const ids = [s && s.id, ...room.players.filter((p) => p.userId === userId).map((p) => p.id)];
+    ids.forEach((id) => {
+      const sock = id && io.sockets && io.sockets.sockets ? io.sockets.sockets.get(id) : null;
+      if (sock && sock.data.user) sock.data.user.elo = elo;
+    });
+  };
+  rated.forEach((e) => {
+    const c = byUser.get(e.userId);
+    const entry = ranking.find((r) => r.id === e.seat.id);
+    if (entry) entry.elo = { before: c.before, after: c.after, delta: c.delta };
+    if (e.left) e.seat.leaver.elo = c.after;
+    else e.seat.elo = c.after;
+    majCote(e.userId, c.after);
+  });
+  comptes
+    .applyGameResult({
+      rounds: room.roundSequence ? room.roundSequence.length : 0,
+      results: rated.map((e) => ({
+        userId: e.userId,
+        delta: byUser.get(e.userId).delta,
+        won: !e.left && e.score === topScore,
+      })),
+      summary: ranking.map((r) => ({ nickname: r.nickname, total: r.total, left: r.left || false, elo: r.elo || null })),
+    })
+    .then((after) => {
+      // La base fait foi : si une autre partie du même joueur s'est finie
+      // entre-temps, sa cote réelle n'est pas celle calculée ici.
+      rated.forEach((e) => {
+        if (!after || after[e.userId] == null) return;
+        if (!e.left) e.seat.elo = after[e.userId];
+        majCote(e.userId, after[e.userId]);
+      });
+    })
+    .catch((err) => console.error('[skullking] classement non enregistré', err));
+  return true;
 }
 
 function startGame(io, room) {
@@ -1589,6 +1704,11 @@ function kickFromLobby(io, room, id) {
     if (!room.kickedTokens) room.kickedTokens = new Set();
     room.kickedTokens.add(player.token);
   }
+  // Un compte débarqué ne revient pas non plus par un autre onglet.
+  if (player.userId) {
+    if (!room.kickedUserIds) room.kickedUserIds = new Set();
+    room.kickedUserIds.add(player.userId);
+  }
   io.to(id).emit('skullking-kicked');
   const sock = io.sockets && io.sockets.sockets ? io.sockets.sockets.get(id) : null;
   if (sock) sock.data.skullkingRoom = null;
@@ -1604,6 +1724,10 @@ function finalizeSkullKingDisconnect(io, room, id, reason) {
     removeFromLobby(io, room, id);
     return;
   }
+
+  // Un départ volontaire en pleine partie ne l'arrête plus pour les autres :
+  // un bot reprend le siège et la partie continue (voir remplacerParUnBot).
+  if (reason === 'left' && remplacerParUnBot(io, room, player)) return 'spectator';
 
   // Marqué parti AVANT toute émission : ni l'annonce de son départ ni le
   // classement qu'il déclenche ne doivent lui revenir (voir destinataires).
@@ -1644,7 +1768,67 @@ function handleExplicitLeave(io, socket) {
     removeSpectator(io, room, socket.id);
     return;
   }
-  finalizeSkullKingDisconnect(io, room, socket.id, 'left');
+  // Resté à la table comme spectateur (un bot a pris son siège) : il la
+  // regarde, l'écran le suit. Sinon il est vraiment sorti : on le lui dit,
+  // pour que l'écran revienne à l'accueil.
+  if (finalizeSkullKingDisconnect(io, room, socket.id, 'left') === 'spectator') {
+    socket.data.skullkingRoom = code;
+    return;
+  }
+  socket.emit('skullking-left');
+}
+
+const PHASES_EN_JEU = ['bidding', 'playing', 'power', 'round-end'];
+
+// Celui qui quitte en pleine partie laisse son siège à un bot : mêmes cartes
+// en main, même score, même place dans l'ordre du tour — la partie continue
+// pour les autres comme s'il était resté. Lui passe au bord de la table, en
+// spectateur : il voit la fin de la partie et se rassied à la revanche.
+// Au classement, il est compté dernier (voir rateGame), quoi que fasse le
+// bot de sa main : sinon on quitterait une partie mal engagée pour ne rien
+// perdre.
+//
+// Seulement s'il reste au moins un autre humain assis : une partie entre
+// bots, que plus personne ne joue, n'a pas de raison de continuer.
+function remplacerParUnBot(io, room, player) {
+  if (!bots || !bots.takeOverSeat) return false;
+  if (!PHASES_EN_JEU.includes(room.phase)) return false;
+  if (bots.isBot(player.id)) return false;
+  const autresHumains = humanPlayersLeft(room).filter((p) => p !== player);
+  if (autresHumains.length === 0) return false;
+
+  const oldId = player.id;
+  const botId = bots.takeOverSeat(io, room, registerSkullKingHandlers);
+  clearTimeout(player.disconnectTimer);
+  player.disconnectTimer = null;
+  // Le partant garde son compte et sa cote pour le classement de fin.
+  player.leaver = player.userId ? { userId: player.userId, elo: player.elo } : { userId: null };
+  const account = player.userId ? { id: player.userId, pseudo: player.nickname, elo: player.elo } : null;
+  const token = player.token;
+  // Le capitaine qui s'en va passe la barre à un humain : un bot ne lancerait
+  // jamais la manche suivante ni n'arrêterait la partie.
+  const etaitHote = room.hostId === oldId;
+  rekeyPlayerId(room, oldId, botId);
+  player.id = botId;
+  player.token = botId;
+  player.userId = null;
+  player.connected = true;
+  if (etaitHote) room.hostId = autresHumains[0].id;
+
+  spectatorsOf(room).push({
+    id: oldId,
+    nickname: player.nickname,
+    token,
+    account,
+    userId: account ? account.id : null,
+    piece: player.piece || null,
+    connected: true,
+    disconnectTimer: null,
+  });
+  pushSystemChat(io, room, `${player.nickname} a quitté la table : un bot finit la partie à sa place.`);
+  broadcastToRoom(io, room, 'skullking-player-replaced', { nickname: player.nickname });
+  broadcastState(io, room);
+  return true;
 }
 
 function handleDisconnecting(io, socket) {
@@ -1858,8 +2042,13 @@ function validerCiblePlanche(io, room, removesId) {
 function backToLobby(io, room) {
   room.phase = 'lobby';
   // Ceux qui ont quitté figuraient au classement final, ils n'ont rien à
-  // faire dans le salon de la revanche.
-  room.players = destinataires(room);
+  // faire dans le salon de la revanche. Les bots qui ont fini la partie à la
+  // place d'un partant non plus : le partant, lui, se rassied (il attendait
+  // au bord de la table, voir seatSpectators).
+  room.players.forEach((p) => {
+    if (p.leaver && bots) bots.removeBot(p.id);
+  });
+  room.players = destinataires(room).filter((p) => !p.leaver);
   room.players.forEach((p) => {
     p.hand = [];
     p.tricksWon = 0;
@@ -1877,12 +2066,16 @@ function backToLobby(io, room) {
   broadcastLobby(io, room);
 }
 
-function newPlayer(id, nickname, token) {
+function newPlayer(id, nickname, token, account = null) {
   return {
     id,
     nickname,
     piece: null,
     token,
+    // Le compte derrière le siège (null pour un invité ou un bot) : c'est lui
+    // que la fin de partie classe.
+    userId: account ? account.id : null,
+    elo: account ? account.elo : null,
     connected: true,
     disconnectTimer: null,
     hand: [],
@@ -1896,7 +2089,7 @@ function newPlayer(id, nickname, token) {
 
 // Rejoindre une partie déjà lancée : on la regarde depuis le bord de la
 // table, et on s'assoit au retour au salon.
-function joinAsSpectator(io, socket, room, nickname, payload) {
+function joinAsSpectator(io, socket, room, nickname, payload, account = null) {
   const token = payload && payload.token;
   // Le même appareil qui revient (page rouverte par le lien) : on reprend sa
   // place de spectateur plutôt que d'en ajouter une seconde.
@@ -1912,6 +2105,10 @@ function joinAsSpectator(io, socket, room, nickname, payload) {
       id: socket.id,
       nickname,
       token,
+      // Gardé pour le jour où il s'assied (voir seatSpectators) : sa place à
+      // table doit compter pour son compte.
+      account,
+      userId: account ? account.id : null,
       piece: (payload && payload.piece) || null,
       connected: true,
       disconnectTimer: null,
@@ -1939,7 +2136,12 @@ function removeSpectator(io, room, id) {
 
 function registerSkullKingHandlers(io, socket) {
   socket.on('skullking-create-room', (payload) => {
-    const nickname = sanitizeNickname(payload && payload.nickname);
+    const ident = identityFor(socket, payload && payload.nickname);
+    if (ident.error) {
+      sendError(socket, ident.error);
+      return;
+    }
+    const { nickname, account } = ident;
     if (!nickname) {
       sendError(socket, 'Choisis un pseudo avant de créer une partie.');
       return;
@@ -1960,22 +2162,7 @@ function registerSkullKingHandlers(io, socket) {
       // Le rythme d'origine, celui des constantes : un salon qu'on n'a pas
       // réglé se joue exactement comme avant l'existence de ces réglages.
       pace: Object.fromEntries(PACE_SETTINGS.map((r) => [r.key, r.default])),
-      players: [
-        {
-          id: socket.id,
-          nickname,
-          piece: null,
-          token: payload && payload.token,
-          connected: true,
-          disconnectTimer: null,
-          hand: [],
-          tricksWon: 0,
-          pendingBonus: 0,
-          rascalStake: 0,
-          totalScore: 0,
-          roundHistory: [],
-        },
-      ],
+      players: [newPlayer(socket.id, nickname, payload && payload.token, account)],
     };
     rooms.set(code, room);
     // Sa pièce est réservée avant même le premier dessin du salon (voir
@@ -2001,13 +2188,23 @@ function registerSkullKingHandlers(io, socket) {
 
   socket.on('skullking-join-room', (payload) => {
     const code = ((payload && payload.code) || '').toUpperCase();
-    const nickname = sanitizeNickname(payload && payload.nickname);
+    const ident = identityFor(socket, payload && payload.nickname);
+    const { nickname, account } = ident;
     const room = rooms.get(code);
     if (!room) {
       sendError(socket, "Cette partie n'existe pas (ou plus).");
       return;
     }
-    if (room.kickedTokens && payload && room.kickedTokens.has(payload.token)) {
+    if (ident.error) {
+      sendError(socket, ident.error);
+      return;
+    }
+    if (accountAlreadyHere(room, account, payload && payload.token)) {
+      sendError(socket, 'Ton compte est déjà à cette table, dans un autre onglet.');
+      return;
+    }
+    const kickedAccount = account && room.kickedUserIds && room.kickedUserIds.has(account.id);
+    if (kickedAccount || (room.kickedTokens && payload && room.kickedTokens.has(payload.token))) {
       sendError(socket, "L'hôte t'a retiré de cette partie.");
       return;
     }
@@ -2016,7 +2213,7 @@ function registerSkullKingHandlers(io, socket) {
         sendError(socket, 'Choisis un pseudo avant de rejoindre.');
         return;
       }
-      joinAsSpectator(io, socket, room, nickname, payload);
+      joinAsSpectator(io, socket, room, nickname, payload, account);
       return;
     }
     const maxPlayers = maxPlayersFor(extensionsOf(room));
@@ -2028,7 +2225,7 @@ function registerSkullKingHandlers(io, socket) {
       sendError(socket, 'Choisis un pseudo avant de rejoindre.');
       return;
     }
-    room.players.push(newPlayer(socket.id, nickname, payload && payload.token));
+    room.players.push(newPlayer(socket.id, nickname, payload && payload.token, account));
     // Même règle que pour l'hôte : la pièce est prise à l'instant où il
     // s'assied, donc jamais deux fois.
     giveFreePiece(room, room.players[room.players.length - 1], payload && payload.piece);
@@ -2170,8 +2367,18 @@ function registerSkullKingHandlers(io, socket) {
     if (!room || room.phase !== 'lobby') return;
     const player = findPlayer(room, socket.id);
     if (!player) return;
+    // Le pseudo d'un compte est celui du classement : il ne se change pas à
+    // table, sinon la cote suivrait un nom que personne ne reconnaît.
+    if (player.userId) {
+      sendError(socket, 'Ton pseudo est celui de ton compte, il ne se change pas ici.');
+      return;
+    }
     const nickname = sanitizeNickname(payload && payload.nickname);
     if (!nickname || nickname === player.nickname) return;
+    if (comptes && comptes.isReservedPseudo(nickname)) {
+      sendError(socket, 'Ce pseudo appartient à un compte : choisis-en un autre.');
+      return;
+    }
     const ancien = player.nickname;
     player.nickname = nickname;
     // Le changement s'annonce à l'équipage : sans cette ligne, les messages
@@ -2642,6 +2849,8 @@ module.exports = {
   // l'environnement du serveur, elle est donc invérifiable depuis un client.
   donneTruquee,
   setBotAdapter,
+  setComptesAdapter,
+  rateGame,
   getStats,
   // Le départ en pleine partie : exporté pour pouvoir vérifier que celui qui
   // part ne reçoit plus rien — un handler socket ne le laisse pas voir.

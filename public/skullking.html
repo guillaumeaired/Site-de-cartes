@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;600;700&family=Bitter:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="skullking.css" />
+  <link rel="stylesheet" href="compte.css" />
 </head>
 <body>
   <main class="app sk-app">
@@ -540,7 +541,7 @@
   <div id="sk-leave-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sk-leave-confirm-title">
     <div class="modal-content sk-leave-confirm-content">
       <h2 id="sk-leave-confirm-title">Quitter la partie ?</h2>
-      <p class="sk-leave-confirm-text">La partie s'arrêtera pour toute la table.</p>
+      <p class="sk-leave-confirm-text">Un bot finira la partie à ta place et tu seras compté dernier au classement. Tu pourras regarder la fin depuis le bord de la table.</p>
       <div class="sk-leave-confirm-actions">
         <button id="sk-btn-leave-cancel" class="btn btn-primary" type="button">Rester</button>
         <button id="sk-btn-leave-confirm" class="btn btn-rouge" type="button">Quitter</button>
@@ -723,6 +724,7 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="commun.js"></script>
+  <script src="compte.js"></script>
   <script src="skullking.js"></script>
 </body>
 </html>

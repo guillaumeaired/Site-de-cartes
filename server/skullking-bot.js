@@ -71,6 +71,18 @@ function addBot(io, room, registerHandlers, niveau) {
   return socket.id;
 }
 
+// Un bot sans siège à lui : il reprend celui d'un joueur qui a quitté en
+// pleine partie (voir remplacerParUnBot dans skullking-room.js). La salle
+// fait elle-même le transfert du siège ; ici on ne crée que le faux socket,
+// déjà rattaché à la salle puisqu'il n'y entre pas par la porte.
+function takeOverSeat(io, room, registerHandlers, niveau) {
+  const socket = makeBotSocket(io, registerHandlers);
+  botNiveaux.set(socket.id, niveauValide(niveau) || NIVEAU_PAR_DEFAUT);
+  botMemoires.set(socket.id, nouvelleMemoire());
+  socket.data.skullkingRoom = room.code;
+  return socket.id;
+}
+
 function botLevel(playerId) {
   return isBot(playerId) ? botNiveaux.get(playerId) || NIVEAU_PAR_DEFAUT : null;
 }
@@ -181,4 +193,4 @@ function forgetRoom(room) {
   }
 }
 
-module.exports = { makeBotSocket, addBot, removeBot, driveBots, isBot, forgetRoom, botLevel, setBotLevel, botCatalogue: catalogue, decide };
+module.exports = { makeBotSocket, addBot, takeOverSeat, removeBot, driveBots, isBot, forgetRoom, botLevel, setBotLevel, botCatalogue: catalogue, decide };

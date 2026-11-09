@@ -1,15 +1,31 @@
-# Config de service versionnee (Infrastructure as Code), verifiee contre le
-# dashboard reel via l'API Render (nom, region, plan) le 12 aout 2026 - reste
-# a activer "Sync" cote Render pour que ce fichier fasse foi. buildCommand
-# ajoute `npm test` par rapport au reglage actuel (`npm install` seul) : fait
-# echouer le build - donc le deploiement - si la suite de tests casse.
+# Le déploiement dédié au Skull King (Infrastructure as Code, lu par Render
+# quand on crée le service en « Blueprint » depuis ce dépôt).
+#
+# SITE=skullking : la racine du domaine sert directement le Skull King, les
+# trois autres jeux ne sont ni servis ni branchés (voir server/index.js).
+#
+# DATABASE_URL : l'adresse de la base Postgres Neon qui garde les comptes et
+# les cotes Elo. `sync: false` = Render la demande à la création, elle ne
+# figure jamais dans ce fichier (c'est un secret). Sans elle, le serveur
+# démarre quand même, mais comptes et cotes vivent en mémoire et sont perdus
+# à chaque redémarrage.
+#
+# buildCommand lance `npm test` : si la suite casse, rien n'est déployé. Les
+# tests n'utilisent jamais la base, même quand DATABASE_URL est posée.
 services:
   - type: web
-    name: guimams
+    name: skullking
     runtime: node
-    region: oregon
+    region: frankfurt
     plan: free
     buildCommand: npm ci && npm test
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeploy: true
+    envVars:
+      - key: SITE
+        value: skullking
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false

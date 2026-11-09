@@ -22,10 +22,23 @@ const { registerVingtquatreHandlers, getStats: getVingtquatreStats } = require('
 const {
   registerSkullKingHandlers,
   setBotAdapter: setSkullKingBotAdapter,
+  setComptesAdapter: setSkullKingComptesAdapter,
   getStats: getSkullKingStats,
 } = require('./skullking-room');
+const { createComptes } = require('./comptes');
 // Bots Skull King : branchés ici pour que le module de salle n'en dépende pas.
 setSkullKingBotAdapter(require('./skullking-bot'));
+
+// SITE=skullking : le déploiement dédié au Skull King. La racine sert
+// directement sa page, les trois autres jeux ne sont ni servis ni branchés.
+// Sans la variable, c'est le site complet, comme avant.
+const SITE = process.env.SITE === 'skullking' ? 'skullking' : null;
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+
+// Les comptes et l'Elo du Skull King (base Neon si DATABASE_URL est posé,
+// mémoire sinon).
+const comptes = createComptes({ site: SITE });
+setSkullKingComptesAdapter(comptes);
 
 const app = express();
 const httpServer = createServer(app);
@@ -42,7 +55,24 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Derrière le proxy de Render : sans ça, req.ip serait celle du proxy (le
+// frein des connexions bloquerait tout le monde d'un coup) et req.secure
+// resterait faux (le cookie de session partirait sans Secure).
+app.set('trust proxy', 1);
+
+if (SITE === 'skullking') {
+  const skullkingPage = path.join(PUBLIC_DIR, 'skullking.html');
+  app.get(['/', '/index.html'], (req, res) => res.sendFile(skullkingPage));
+  // Un vieux lien vers un autre jeu retombe sur l'accueil plutôt que sur une
+  // page dont les salons ne sont pas branchés ici.
+  app.get(['/rami.html', '/ascenseur.html', '/vingtquatre.html', '/apercu-table.html'], (req, res) =>
+    res.redirect('/'),
+  );
+}
+
+comptes.registerRoutes(app, express);
+
+app.use(express.static(PUBLIC_DIR, { index: SITE ? false : 'index.html' }));
 
 const PORT = process.env.PORT || 3000;
 
@@ -89,10 +119,13 @@ app.get('/play-counts', (req, res) => {
   res.json(getPlayCounts());
 });
 
+io.use(comptes.socketMiddleware);
+
 io.on('connection', (socket) => {
+  registerSkullKingHandlers(io, socket);
+  if (SITE === 'skullking') return;
   registerRamiHandlers(io, socket);
   registerAscenseurHandlers(io, socket);
-  registerSkullKingHandlers(io, socket);
   registerVingtquatreHandlers(io, socket);
 });
 
@@ -113,6 +146,17 @@ function crashSafely(kind, err) {
 process.on('uncaughtException', (err) => crashSafely('uncaughtException', err));
 process.on('unhandledRejection', (reason) => crashSafely('unhandledRejection', reason));
 
-httpServer.listen(PORT, () => {
-  console.log(`Serveur lancé : http://localhost:${PORT} (réseau local : http://${LAN_IP}:${PORT})`);
-});
+// La base est prête (tables créées) avant d'ouvrir la porte. Si elle est
+// injoignable au démarrage, on ne sert pas un site où personne ne pourrait
+// se connecter sans le savoir : on s'arrête, Render relancera.
+comptes
+  .init()
+  .then(() => {
+    if (comptes.store.kind === 'memory') {
+      console.warn('[comptes] Pas de DATABASE_URL : comptes et Elo en mémoire, perdus au redémarrage.');
+    }
+    httpServer.listen(PORT, () => {
+      console.log(`Serveur lancé${SITE ? ` (${SITE} seul)` : ''} : http://localhost:${PORT} (réseau local : http://${LAN_IP}:${PORT})`);
+    });
+  })
+  .catch((err) => crashSafely('comptes.init', err));

@@ -1464,12 +1464,17 @@ function goHome() {
   window.history.replaceState({}, '', url);
   joinModal.classList.add('hidden');
   inputNickname.value = '';
+  // Connecté, le champ reprend le pseudo du compte (voir compte.js).
+  if (typeof compteAppliquerPseudo === 'function') compteAppliquerPseudo();
   showScreen('home');
 }
 
-// Quitter en pleine partie passe par une confirmation : le départ d'un joueur
-// arrête la partie pour toute la table (finalizeSkullKingDisconnect côté
-// serveur). Le salon, l'écran de fin et les spectateurs restent à un clic.
+// Quitter en pleine partie passe par une confirmation : un bot reprend le
+// siège, on est compté dernier au classement, et on reste au bord de la
+// table en spectateur (remplacerParUnBot côté serveur). S'il ne restait aucun
+// autre humain, la partie s'arrête et le serveur répond `skullking-left` :
+// retour à l'accueil. Le salon, l'écran de fin et les spectateurs restent à
+// un clic.
 const leaveConfirmModal = document.getElementById('sk-leave-confirm-modal');
 const btnLeaveCancel = document.getElementById('sk-btn-leave-cancel');
 
@@ -1486,9 +1491,20 @@ document.getElementById('sk-btn-leave-game').addEventListener('click', () => {
   btnLeaveCancel.focus();
 });
 btnLeaveCancel.addEventListener('click', fermerConfirmationDepart);
+let departEnCours = false;
 document.getElementById('sk-btn-leave-confirm').addEventListener('click', () => {
   fermerConfirmationDepart();
+  departEnCours = true;
+  socket.emit('skullking-leave-room');
+});
+socket.on('skullking-left', () => {
+  if (!departEnCours) return;
+  departEnCours = false;
   goHome();
+});
+socket.on('skullking-player-replaced', ({ nickname }) => {
+  if (nickname === myNickname && departEnCours) return;
+  showToast(`${nickname} a quitté la partie — un bot finit à sa place.`);
 });
 leaveConfirmModal.addEventListener('click', (e) => {
   if (e.target === leaveConfirmModal) fermerConfirmationDepart();
@@ -1520,7 +1536,9 @@ btnCopy.addEventListener('click', async () => {
 // monde, à chaque mise à jour comme à la reconnexion.
 function afficherCodeDePartie(code) {
   if (!code) return;
-  shareLink.value = `${window.location.protocol}//${window.location.host}/skullking.html?room=${code}`;
+  // Le chemin de la page elle-même : « /skullking.html » sur le site complet,
+  // « / » sur le déploiement dédié au Skull King.
+  shareLink.value = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${code}`;
   shareCode.textContent = code;
   shareBlock.classList.remove('hidden');
 }
@@ -1623,6 +1641,11 @@ function renderMonIdentite(me) {
   // même rendu repasse ici à chaque diffusion du salon.
   lobbyMoi.style.color = couleurJoueur(me);
   lobbyMoi.title = 'Ton pseudo — « Modifier » le change pour la suite de la partie.';
+  // Le pseudo d'un compte est celui du classement : il ne se change pas à
+  // table (le serveur le refuse aussi).
+  const aUnCompte = me.elo != null;
+  btnRename.classList.toggle('hidden', aUnCompte);
+  if (aUnCompte) lobbyMoi.title = 'Le pseudo de ton compte.';
 }
 
 function renderPiecePicker(players) {
@@ -2238,6 +2261,12 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
     nom.textContent = p.nickname;
     nom.style.color = couleurJoueur(p);
     li.appendChild(nom);
+    // La cote de qui a un compte, « invité » pour les autres — dans la bulle
+    // du nom : la ligne n'a pas la place d'une marque de plus, le pseudo s'y
+    // tronquait déjà. Que la partie soit classée ou non se lit au-dessus du
+    // rôle (voir lobbyRange).
+    if (p.elo != null) nom.title = `${p.nickname} — ${p.elo} Elo`;
+    else if (p.isGuest) nom.title = `${p.nickname} — invité, ses parties ne comptent pas au classement`;
     if (p.id === hostId) li.classList.add('lobby-host');
     // Un bot le dit sur sa ligne, à droite, là où l'hôte porte sa barre de
     // capitaine : sans ça, « Anne Bonny » se lisait comme un matelot de plus
@@ -2305,7 +2334,18 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
     lobbyList.appendChild(li);
   });
   renderPiecePicker(players);
-  lobbyRange.textContent = `${minPlayers} à ${maxPlayers}`;
+  // Partie classée dès qu'au moins deux comptes sont assis (voir rateGame
+  // côté serveur). Dit seulement là où les comptes existent : un serveur
+  // sans comptes n'envoie pas de cote.
+  const comptesAssis = players.filter((p) => p.elo != null).length;
+  const avecComptes = players.some((p) => p.elo != null || p.isGuest);
+  lobbyRange.textContent =
+    `${minPlayers} à ${maxPlayers}` + (avecComptes ? (comptesAssis >= 2 ? ' · classée' : ' · non classée') : '');
+  lobbyRange.title = avecComptes
+    ? comptesAssis >= 2
+      ? 'Partie classée : la cote Elo des joueurs connectés bougera à la fin.'
+      : 'Partie non classée : il faut au moins deux joueurs connectés.'
+    : '';
   // La planche réserve d'avance la place de la table PLEINE, sur deux
   // colonnes : elle a donc la même hauteur qu'on soit un ou au complet, et
   // rien ne bouge sous elle quand quelqu'un arrive. Ce plafond-là suit le
@@ -6679,7 +6719,14 @@ function renderGameEnd(state) {
       const annonces = r.rounds ? `${r.exact} sur ${r.rounds}` : '—';
       const plis = r.tricks == null ? '—' : r.tricks;
       const moi = r.id === myId ? ' class="sk-end-row--me"' : '';
-      const nom = `<span class="sk-end-name">${medaillon(r)}${nomColore(r)}</span>`;
+      // Partie classée : la nouvelle cote suit le nom, avec ce qu'elle a
+      // gagné ou perdu. Les invités et les bots n'en ont pas.
+      const elo = r.elo
+        ? ` <span class="sk-end-elo ${r.elo.delta >= 0 ? 'sk-end-elo--up' : 'sk-end-elo--down'}" title="Cote Elo : ${r.elo.before} → ${r.elo.after}">${r.elo.delta >= 0 ? '+' : '−'}${Math.abs(r.elo.delta)}</span>`
+        : '';
+      // Parti en cours de route : le bot a fini sa main, le nom le dit.
+      const parti = r.left ? ' <span class="sk-end-parti" title="A quitté la partie, un bot a fini à sa place">(parti)</span>' : '';
+      const nom = `<span class="sk-end-name">${medaillon(r)}${nomColore(r)}${parti}${elo}</span>`;
       return `<tr${moi}><td>${rang}</td><td class="sk-end-name-cell">${nom}</td><td>${annonces}</td><td>${plis}</td><td><b>${r.total}</b></td></tr>`;
     })
     .join('');
@@ -6931,6 +6978,11 @@ function applyState(state) {
   // ramène à la même chaise (skullking-rejoin-room), et on y prend place au
   // retour au salon.
   setSpectating(Boolean(state.spectator));
+  // On vient de quitter et un bot a pris notre siège : on regarde la suite.
+  if (departEnCours && state.spectator) {
+    departEnCours = false;
+    showToast('Un bot a pris ta place. Tu regardes la fin de la partie, et tu te rassiéras à la revanche.');
+  }
   if (state.spectator && state.code) {
     saveActiveRoom(state.code, myNickname);
     afficherCodeDePartie(state.code);

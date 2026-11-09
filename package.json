@@ -5,7 +5,7 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "test": "node server/rami-simulate.js && node server/ascenseur-simulate.js && node server/skullking-simulate.js && node server/skullking-room-simulate.js && node server/skullking-bots-simulate.js && node server/vingtquatre-simulate.js && node server/vingtquatre-room-simulate.js"
+    "test": "node server/comptes-simulate.js && node server/rami-simulate.js && node server/ascenseur-simulate.js && node server/skullking-simulate.js && node server/skullking-room-simulate.js && node server/skullking-bots-simulate.js && node server/skullking-depart-simulate.js && node server/vingtquatre-simulate.js && node server/vingtquatre-room-simulate.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "express": "^5.2.1",
+    "pg": "^8.23.1",
     "socket.io": "^4.8.3"
   }
 }

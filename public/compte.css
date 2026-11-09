@@ -1,0 +1,283 @@
+/* Les comptes du Skull King : le bandeau d'identité de l'accueil, les
+   marques de cote au salon et au récap, et les deux pages qui leur sont
+   propres (connexion.html, classement.html). Chargé APRÈS skullking.css, dont
+   il reprend les couleurs (--sk-*), les polices et les boutons de laiton :
+   rien ici ne redessine ce qui existe déjà, ça ne fait qu'ajouter. */
+
+/* --- Le bandeau d'identité, en haut à droite de l'accueil --------------
+   Le pendant de « ← Tous les jeux » en haut à gauche : posé en fixe, il ne
+   pousse rien dans la colonne de l'accueil. */
+.sk-compte {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--sk-cream);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.sk-compte-nom {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-compte-elo {
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  color: var(--sk-brass-hi);
+  letter-spacing: 0.02em;
+}
+
+.sk-compte-lien {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sk-cream-2);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sk-compte-lien:hover,
+.sk-compte-lien:focus-visible {
+  color: var(--sk-cream);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sk-compte-lien--fort {
+  color: var(--sk-brass-hi);
+}
+
+/* Le pseudo d'un compte ne se tape pas : le champ se lit comme une
+   étiquette gravée plutôt que comme une case à remplir. */
+input.sk-pseudo-compte {
+  cursor: default;
+  color: var(--sk-brass-hi);
+  font-weight: 600;
+}
+
+/* --- Ce que la partie a fait à la cote, au récap ---------------------- */
+.sk-end-elo {
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.78em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sk-end-parti {
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.8em;
+  color: var(--sk-cream-3);
+}
+
+.sk-end-elo--up {
+  color: #8fc98a;
+}
+
+.sk-end-elo--down {
+  color: #e09a90;
+}
+
+/* =====================================================================
+   LES PAGES DE COMPTE — même taverne en fond que l'accueil, même logo, un
+   panneau de bois sombre pour les commandes.
+   ===================================================================== */
+.sk-porte {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 16px 28px;
+  overflow-y: auto;
+}
+
+.sk-porte .sk-home-title img {
+  max-width: min(460px, 70vw);
+}
+
+.sk-porte-panneau {
+  width: 100%;
+  max-width: 340px;
+  margin: auto auto 0;
+  padding: 18px 18px 14px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.05), rgba(0, 0, 0, 0.3)),
+    rgba(18, 11, 6, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(184, 137, 53, 0.3), 0 18px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.sk-porte-onglets {
+  display: flex;
+  margin: 0 0 16px;
+  border-bottom: 1px solid rgba(184, 137, 53, 0.3);
+}
+
+.sk-porte-onglets button {
+  flex: 1;
+  padding: 8px 4px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--sk-cream-3);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sk-porte-onglets button[aria-selected='true'] {
+  color: var(--sk-cream);
+  border-bottom-color: var(--sk-brass);
+}
+
+.sk-porte .nickname-field {
+  margin-bottom: 10px;
+}
+
+.sk-porte-code {
+  letter-spacing: 0.6em;
+  font-family: 'Bitter', Georgia, serif !important;
+  font-weight: 700;
+}
+
+.sk-porte-code::placeholder {
+  letter-spacing: normal;
+}
+
+.sk-porte-aide {
+  margin: -2px 0 14px;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--sk-cream-2);
+}
+
+.sk-porte .btn-create {
+  min-height: 54px;
+  font-size: 1.05rem;
+}
+
+.sk-porte .error {
+  margin: 8px 0 0;
+}
+
+.sk-porte .divider {
+  margin: 12px auto 14px;
+}
+
+.sk-porte-invite {
+  width: 100%;
+  max-width: 300px;
+}
+
+.sk-porte-pied {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.sk-porte-pied .btn-rules-link {
+  margin: 0;
+  text-decoration: none;
+}
+
+/* --- Le classement ---------------------------------------------------- */
+.sk-porte--classement .sk-porte-panneau {
+  max-width: 520px;
+  margin-top: 18px;
+  margin-bottom: auto;
+}
+
+.sk-classement-titre {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.sk-classement {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Bitter', Georgia, serif;
+  font-size: 0.86rem;
+  color: var(--sk-cream);
+}
+
+.sk-classement th {
+  padding: 0 6px 8px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sk-cream-3);
+  text-align: right;
+}
+
+.sk-classement td {
+  padding: 7px 6px;
+  border-top: 1px solid rgba(184, 137, 53, 0.16);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-classement th:nth-child(2),
+.sk-classement td:nth-child(2) {
+  text-align: left;
+  width: 100%;
+}
+
+.sk-classement td:first-child {
+  color: var(--sk-cream-3);
+}
+
+.sk-classement td:nth-child(3) {
+  font-weight: 700;
+  color: var(--sk-brass-hi);
+}
+
+.sk-classement tr.sk-classement-moi td {
+  background: rgba(184, 137, 53, 0.14);
+}
+
+.sk-classement-vide {
+  margin: 8px 0;
+  font-family: 'Spectral', Georgia, serif;
+  font-style: italic;
+  color: var(--sk-cream-2);
+}
+
+@media (max-width: 420px) {
+  .sk-compte {
+    gap: 10px;
+    font-size: 0.6rem;
+  }
+  .sk-classement th:nth-child(5),
+  .sk-classement td:nth-child(5) {
+    display: none;
+  }
+}

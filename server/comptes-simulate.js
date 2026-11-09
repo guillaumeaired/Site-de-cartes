@@ -1,0 +1,211 @@
+// Suite de tests des comptes et de l'Elo : le calcul de cote, le code à
+// quatre chiffres, le frein des essais, les routes /api/* (montées sur un vrai
+// serveur Express, base en mémoire) et le classement d'une fin de partie.
+
+const express = require('express');
+const { createServer } = require('http');
+const { computeEloChanges, ELO_INITIAL } = require('./elo');
+const { createComptes, createMemoryStore, LoginLimiter, hashPin, verifyPin, readCookie, pseudoKey } = require('./comptes');
+const { rateGame, setComptesAdapter } = require('./skullking-room');
+
+let ok = 0;
+let ko = 0;
+function check(label, cond) {
+  if (cond) ok += 1;
+  else {
+    ko += 1;
+    console.error('ÉCHEC :', label);
+  }
+}
+
+async function main() {
+  // --- Elo ---------------------------------------------------------------
+  {
+    const [a, b] = computeEloChanges([
+      { userId: 1, elo: 1200, score: 100 },
+      { userId: 2, elo: 1200, score: 50 },
+    ]);
+    check('duel à cotes égales : +16 / -16', a.delta === 16 && b.delta === -16);
+    check('le vainqueur monte', a.after === 1216 && b.after === 1184);
+  }
+  {
+    const [a, b] = computeEloChanges([
+      { userId: 1, elo: 1200, score: 80 },
+      { userId: 2, elo: 1200, score: 80 },
+    ]);
+    check('égalité à cotes égales : rien ne bouge', a.delta === 0 && b.delta === 0);
+  }
+  {
+    const [fort, faible] = computeEloChanges([
+      { userId: 1, elo: 1600, score: 100 },
+      { userId: 2, elo: 1200, score: 0 },
+    ]);
+    check('le favori qui gagne prend peu', fort.delta > 0 && fort.delta < 4);
+    check('somme nulle en duel', fort.delta + faible.delta === 0);
+  }
+  {
+    const changes = computeEloChanges([
+      { userId: 1, elo: 1200, score: 300 },
+      { userId: 2, elo: 1200, score: 200 },
+      { userId: 3, elo: 1200, score: 100 },
+      { userId: 4, elo: 1200, score: -50 },
+    ]);
+    check('à quatre : le premier ne prend pas plus qu’un duel gagné', changes[0].delta === 16);
+    check('à quatre : le dernier perd autant', changes[3].delta === -16);
+    check('à quatre : les places du milieu se répartissent', changes[1].delta > 0 && changes[2].delta < 0);
+  }
+  check('un joueur seul : rien', computeEloChanges([{ userId: 1, elo: 1200, score: 9 }])[0].delta === 0);
+
+  // --- Code et pseudo ------------------------------------------------------
+  {
+    const h = await hashPin('0420');
+    check('le code haché se vérifie', await verifyPin('0420', h));
+    check('un autre code est refusé', !(await verifyPin('0421', h)));
+    check('le hachage est salé', h !== (await hashPin('0420')));
+    check('pseudo : casse et espaces ignorés', pseudoKey('Barbe  Noire') === pseudoKey('barbe noire'));
+    check('cookie relu', readCookie('a=1; sk_session=xyz; b=2', 'sk_session') === 'xyz');
+  }
+
+  // --- Frein -------------------------------------------------------------
+  {
+    const lim = new LoginLimiter({ perPseudo: 3, perIp: 5 });
+    const t = 1_000_000;
+    lim.fail('Jack', '1.1.1.1', t);
+    lim.fail('jack', '1.1.1.1', t + 1);
+    check('deux échecs : encore permis', lim.blockedFor('Jack', '1.1.1.1', t + 2) === 0);
+    lim.fail('JACK', '1.1.1.1', t + 2);
+    check('trois échecs : pseudo fermé', lim.blockedFor('Jack', '2.2.2.2', t + 3) > 0);
+    check('un autre pseudo reste ouvert', lim.blockedFor('Anne', '2.2.2.2', t + 3) === 0);
+    check('rouvert après la fenêtre', lim.blockedFor('Jack', '2.2.2.2', t + 16 * 60_000) === 0);
+    lim.fail(null, '1.1.1.1', t + 4);
+    lim.fail(null, '1.1.1.1', t + 5);
+    check('cinq échecs d’une adresse : adresse fermée', lim.blockedFor('Anne', '1.1.1.1', t + 6) > 0);
+    check('sans pseudo, le frein par pseudo ne compte pas', lim.blockedFor(null, '3.3.3.3', t + 6) === 0);
+  }
+
+  // --- Routes HTTP ----------------------------------------------------------
+  const comptes = createComptes({ store: createMemoryStore(), site: 'skullking' });
+  await comptes.init();
+  const app = express();
+  comptes.registerRoutes(app, express);
+  const server = createServer(app);
+  await new Promise((r) => server.listen(0, r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, body, cookie) =>
+    fetch(base + path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body || {}),
+    });
+  const cookieOf = (res) => (res.headers.get('set-cookie') || '').split(';')[0];
+
+  try {
+    let res = await fetch(`${base}/api/me`);
+    let body = await res.json();
+    check('/api/me sans session : invité', body.user === null && body.site === 'skullking');
+
+    res = await post('/api/register', { pseudo: 'barbe noire', pin: '12a4' });
+    check('code non numérique refusé', res.status === 400);
+    res = await post('/api/register', { pseudo: 'x', pin: '1234' });
+    check('pseudo trop court refusé', res.status === 400);
+
+    res = await post('/api/register', { pseudo: 'barbe noire', pin: '1234' });
+    body = await res.json();
+    check('inscription', res.status === 201 && body.user.pseudo === 'Barbe noire' && body.user.elo === ELO_INITIAL);
+    const cookie = cookieOf(res);
+    check('cookie de session posé, HttpOnly', cookie.startsWith('sk_session=') && /HttpOnly/.test(res.headers.get('set-cookie')));
+    check('pseudo réservé aux invités', comptes.isReservedPseudo('BARBE NOIRE'));
+
+    res = await post('/api/register', { pseudo: 'Barbe Noire', pin: '9999' });
+    check('pseudo déjà pris (autre casse)', res.status === 409);
+
+    res = await fetch(`${base}/api/me`, { headers: { cookie } });
+    body = await res.json();
+    check('/api/me avec session', body.user && body.user.pseudo === 'Barbe noire');
+
+    res = await post('/api/login', { pseudo: 'barbe noire', pin: '0000' });
+    check('mauvais code', res.status === 401);
+    res = await post('/api/login', { pseudo: 'personne', pin: '0000' });
+    check('pseudo inconnu', res.status === 404);
+    res = await post('/api/login', { pseudo: 'Barbe Noire', pin: '1234' });
+    check('connexion', res.status === 200 && cookieOf(res).startsWith('sk_session='));
+
+    res = await post('/api/logout', {}, cookie);
+    res = await fetch(`${base}/api/me`, { headers: { cookie } });
+    body = await res.json();
+    check('déconnexion : la session ne vaut plus', body.user === null);
+
+    for (let i = 0; i < 5; i++) await post('/api/login', { pseudo: 'Barbe Noire', pin: '0000' });
+    res = await post('/api/login', { pseudo: 'Barbe Noire', pin: '1234' });
+    check('cinq codes faux : même le bon est refusé un moment', res.status === 429);
+
+    // Le middleware Socket.io lit le même cookie.
+    await post('/api/register', { pseudo: 'Anne', pin: '4321' }).then(async (r) => {
+      const fakeSocket = { handshake: { headers: { cookie: cookieOf(r) } }, data: {} };
+      await new Promise((done) => comptes.socketMiddleware(fakeSocket, done));
+      check('socket reconnue', fakeSocket.data.user && fakeSocket.data.user.pseudo === 'Anne');
+    });
+    const anonSocket = { handshake: { headers: {} }, data: {} };
+    await new Promise((done) => comptes.socketMiddleware(anonSocket, done));
+    check('socket sans cookie : invitée', !anonSocket.data.user);
+  } finally {
+    server.close();
+  }
+
+  // --- Classement d'une fin de partie --------------------------------------
+  {
+    const writes = [];
+    setComptesAdapter({
+      isReservedPseudo: () => false,
+      applyGameResult: async (game) => {
+        writes.push(game);
+        return {};
+      },
+    });
+    const io = { sockets: { sockets: new Map() } };
+    const room = {
+      roundSequence: [1, 2, 3],
+      players: [
+        { id: 's1', nickname: 'Anne', userId: 1, elo: 1200, totalScore: 120 },
+        { id: 's2', nickname: 'Jack', userId: 2, elo: 1200, totalScore: 40 },
+        { id: 's3', nickname: 'Invité', userId: null, elo: null, totalScore: 200 },
+      ],
+    };
+    const ranking = room.players.map((p) => ({ id: p.id, nickname: p.nickname, total: p.totalScore }));
+    check('deux comptes : partie classée', rateGame(io, room, ranking) === true);
+    const anne = ranking.find((r) => r.id === 's1');
+    const invite = ranking.find((r) => r.id === 's3');
+    check('le récap porte la cote', anne.elo && anne.elo.delta === 16 && anne.elo.after === 1216);
+    check('l’invité n’a pas de cote', !invite.elo);
+    check('la cote à table suit', room.players[0].elo === 1216);
+    await new Promise((r) => setImmediate(r));
+    check('écrit en base, sans l’invité', writes.length === 1 && writes[0].results.length === 2);
+    check('le vainqueur de la table est l’invité : aucun compte ne gagne', writes[0].results.every((r) => !r.won));
+
+    const seule = {
+      roundSequence: [1],
+      players: [
+        { id: 'a', userId: 1, elo: 1200, totalScore: 10 },
+        { id: 'b', userId: null, elo: null, totalScore: 0 },
+      ],
+    };
+    check('un seul compte : non classée', rateGame(io, seule, []) === false);
+    const parti = {
+      roundSequence: [1],
+      players: [
+        { id: 'a', userId: 1, elo: 1200, totalScore: 10 },
+        { id: 'b', userId: 2, elo: 1200, totalScore: 0, gone: true },
+      ],
+    };
+    check('un compte parti ne compte pas', rateGame(io, parti, []) === false);
+    setComptesAdapter(null);
+  }
+
+  console.log(`\ncomptes-simulate.js : ${ok}/${ok + ko} assertions passées.`);
+  if (ko) process.exit(1);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
