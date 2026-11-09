@@ -714,6 +714,13 @@ function showScreen(name) {
   for (const key of Object.keys(screens)) {
     screens[key].classList.toggle('hidden', key !== name);
   }
+  // La fenêtre du code n'a de sens qu'au salon : la partie qui démarre la
+  // referme. Lue dans le DOM : showScreen sert avant que le script ait
+  // déclaré ses constantes.
+  if (name !== 'waiting') {
+    const fenetre = document.getElementById('sk-code-fenetre');
+    if (fenetre) fenetre.classList.add('hidden');
+  }
   // Le champ de renommage se referme en quittant le salon : ouvert au moment
   // où l'hôte lance la partie, il aurait laissé l'enseigne masquée au salon
   // SUIVANT, sans plus rien pour la rouvrir.
@@ -1659,6 +1666,9 @@ const jetonCodeForm = document.getElementById('sk-jeton-code');
 const jetonCodeInput = document.getElementById('sk-jeton-code-input');
 const jetonCodeMsg = document.getElementById('sk-jeton-code-msg');
 const jetonCodeConnexion = document.getElementById('sk-jeton-code-connexion');
+const jetonDebloquer = document.getElementById('sk-jeton-debloquer');
+const codeFenetre = document.getElementById('sk-code-fenetre');
+const codeFermer = document.getElementById('sk-code-fermer');
 const jetonCodeCases = [...jetonCodeForm.querySelectorAll('.sk-pin-case')];
 let piecePrefApplied = false;
 // Le choix de pièce a deux pages : la vitrine des neuf, et la suite derrière
@@ -1785,8 +1795,7 @@ function boutonPiece(piece, takenBy) {
 }
 
 // LE JETON PERSONNEL : un cadre sous la discussion, pour les pièces qui
-// n'appartiennent qu'à un compte — gagnées par code, ou nominatives (voir
-// PIECES_NOMINATIVES). Tout le monde le voit : « Aucun » tant qu'on n'a rien
+// se gagnent par code (voir PIECES_A_CODE). Tout le monde le voit : « Aucun » tant qu'on n'a rien
 // gagné, et dessous les quatre cases où taper un code. Un invité voit le
 // cadre aussi, avec de quoi se connecter : sans compte, la pièce gagnée
 // n'aurait nulle part où rester.
@@ -1798,13 +1807,101 @@ function renderJetonPerso(takenBy) {
   miennes.forEach((piece) => jetonPersoGrid.appendChild(boutonPiece(piece, takenBy)));
   jetonPersoGrid.classList.toggle('hidden', miennes.length === 0);
   jetonPersoVide.classList.toggle('hidden', miennes.length > 0);
-  jetonCodeForm.classList.toggle('hidden', !myCanRedeem);
+  jetonDebloquer.classList.toggle('hidden', !myCanRedeem);
   jetonCodeConnexion.classList.toggle('hidden', myCanRedeem);
+  ajusterFilAuJeton();
+  // Le salon finit de se poser après ce premier dessin (historique du fil,
+  // boutons du bas, images) : on remesure un peu plus tard.
+  clearTimeout(ajusterFilAuJeton.minuteur);
+  ajusterFilAuJeton.minuteur = setTimeout(() => {
+    reajusterFilAuJeton();
+    ajusterFilAuJeton.minuteur = setTimeout(reajusterFilAuJeton, 900);
+  }, 250);
 }
 
+// Sur ordinateur, la grille du salon coupe tout ce qui dépasse sous elle
+// (clip-path, voir .sk-lobby-grid). Le fil de discussion a une hauteur fixe ;
+// quand le cadre du jeton, plus haut avec des pièces, pousse la colonne sous
+// la coupe, c'est le fil qui rend la place — jamais sous 40 px. Sur
+// téléphone, rien n'est coupé : le fil garde sa hauteur.
+function ajusterFilAuJeton() {
+  const fil = document.getElementById('sk-lobby-chat-log');
+  const grille = jetonPerso && jetonPerso.closest('.sk-lobby-grid');
+  if (!fil || !grille) return;
+  fil.style.height = '';
+  if (getComputedStyle(grille).clipPath === 'none') return;
+  const colonne = jetonPerso.parentElement;
+  // Mesuré dans la mise en page (offset*), pas à l'écran : à l'arrivée au
+  // salon les planches sont en pleine animation d'entrée, décalées par un
+  // transform, et getBoundingClientRect se tromperait de place.
+  const haut = colonne.offsetTop - (colonne.offsetParent === grille ? 0 : grille.offsetTop);
+  const deborde = haut + colonne.offsetHeight - grille.clientHeight;
+  if (deborde > 0) fil.style.height = `${Math.max(40, fil.offsetHeight - Math.ceil(deborde) - 4)}px`;
+}
+function reajusterFilAuJeton() {
+  if (jetonPerso && !jetonPerso.classList.contains('hidden')) ajusterFilAuJeton();
+}
+window.addEventListener('resize', reajusterFilAuJeton);
+// Les polices du salon arrivent parfois après lui et changent la hauteur
+// des titres : on remesure une fois qu'elles sont là.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(reajusterFilAuJeton);
+// La grille change encore de hauteur après l'arrivée au salon (images des
+// pièces, mise en page qui se pose) : on remesure à chaque changement.
+if (window.ResizeObserver && jetonPerso) {
+  const grilleSalon = jetonPerso.closest('.sk-lobby-grid');
+  if (grilleSalon) new ResizeObserver(reajusterFilAuJeton).observe(grilleSalon);
+}
+
+// --- La fenêtre du code -------------------------------------------------
+// « Débloquer » ouvre une fenêtre au-dessus du salon : le fond s'assombrit,
+// la carte monte en se dépliant et les quatre cases tombent l'une après
+// l'autre. Elle se referme à l'envers (croix, Échap, clic à côté), ou s'efface
+// d'elle-même quand le code est bon, pour laisser place au grattage.
+let codeFenetreFermeture = null;
+
+function ouvrirFenetreCode() {
+  clearTimeout(codeFenetreFermeture);
+  codeFenetre.classList.remove('hidden', 'sk-code-fenetre--sortie');
+  void codeFenetre.offsetWidth;
+  codeFenetre.classList.add('sk-code-fenetre--entree');
+  // L'entrée jouée, on retire sa classe : sinon les cases la rejoueraient à
+  // chaque fin de vérification (l'animation d'attente la remplace un temps).
+  codeFenetreFermeture = setTimeout(() => codeFenetre.classList.remove('sk-code-fenetre--entree'), 900);
+  finCodeJeton();
+  messageCodeJeton('');
+  jetonCodeInput.focus();
+}
+
+function fermerFenetreCode(immediat = false) {
+  if (codeFenetre.classList.contains('hidden')) return;
+  clearTimeout(codeFenetreFermeture);
+  const cacher = () => {
+    codeFenetre.classList.add('hidden');
+    codeFenetre.classList.remove('sk-code-fenetre--entree', 'sk-code-fenetre--sortie');
+  };
+  if (immediat) {
+    cacher();
+    return;
+  }
+  codeFenetre.classList.remove('sk-code-fenetre--entree');
+  codeFenetre.classList.add('sk-code-fenetre--sortie');
+  // La durée de l'animation de sortie (voir .sk-code-fenetre--sortie).
+  codeFenetreFermeture = setTimeout(cacher, 220);
+  jetonDebloquer.focus();
+}
+
+jetonDebloquer.addEventListener('click', ouvrirFenetreCode);
+codeFermer.addEventListener('click', () => fermerFenetreCode());
+codeFenetre.addEventListener('click', (e) => {
+  if (e.target === codeFenetre) fermerFenetreCode();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !codeFenetre.classList.contains('hidden')) fermerFenetreCode();
+});
+
 // --- Le code de pièce --------------------------------------------------
-// Quatre lettres dans quatre cases, comme le code de connexion : un seul vrai
-// champ, transparent, posé sur les cases. Majuscules ou minuscules, peu
+// Quatre lettres dans quatre cases (dans la fenêtre ci-dessus), comme le code
+// de connexion : un seul vrai champ, transparent, posé sur les cases. Majuscules ou minuscules, peu
 // importe — on montre des majuscules, le serveur compare sans la casse. Le
 // code part tout seul à la quatrième lettre.
 let jetonCodeEnCours = null;
@@ -1876,6 +1973,7 @@ socket.on('skullking-code-error', (message) => {
 socket.on('skullking-code-ok', ({ piece }) => {
   finCodeJeton();
   messageCodeJeton('');
+  fermerFenetreCode(true);
   // Le serveur la met déjà ; on la garde aussi pour la prochaine partie.
   try {
     localStorage.setItem(PIECE_PREF_KEY, piece);
@@ -2077,7 +2175,6 @@ document.addEventListener('keydown', (e) => {
 
 function renderPiecePicker(players) {
   const me = players.find((p) => p.id === myId);
-  myAccountPseudo = (me && me.accountPseudo) || null;
   const takenBy = new Map();
   players.forEach((p) => {
     if (p.piece) takenBy.set(p.piece, p);
@@ -3417,7 +3514,7 @@ const PIECES = [
   { key: 'viseur', label: 'Carbon Away', color: '#66dd99' },
   { key: 'harvard', label: 'Harvard', color: '#911b27' },
 ];
-const PIECES_A_CODE = ['pomme', 'visa', 'taureau', 'viseur', 'harvard'];
+const PIECES_A_CODE = ['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard'];
 
 // Les neuf premières se montrent d'emblée dans le salon ; les autres
 // attendent derrière une flèche que seul l'hôte voit. Même découpe que
@@ -3425,39 +3522,25 @@ const PIECES_A_CODE = ['pomme', 'visa', 'taureau', 'viseur', 'harvard'];
 // jamais au hasard.
 const PIECES_EN_VITRINE = 9;
 
-// Les pièces qui n'appartiennent qu'à un compte nommé — hôte ou pas, et
-// personne d'autre, pas même l'hôte. Même table que PIECES_NOMINATIVES côté
-// serveur, qui est seul juge ; celle-ci ne sert qu'à dessiner le choix.
-const PIECES_NOMINATIVES = { pieuvre: 'SkullyMaster' };
-let myAccountPseudo = null;
 // Les pièces gagnées par code, et si l'on peut en saisir un (il faut un
 // compte) : envoyés à chacun avec le salon (myPieces, canRedeem).
 let myCodePieces = [];
 let myCanRedeem = false;
 
-function memeCompte(a, b) {
-  const cle = (x) => String(x).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
-  return Boolean(a && b) && cle(a) === cle(b);
-}
-
 // Ce que je peux prendre : la vitrine, et la suite si j'ai ouvert le salon —
-// sauf les pièces nominatives, qui ne vont qu'à leur compte.
+// sauf les pièces à code, qui ne vont qu'aux comptes qui ont saisi le code.
 function pieceOuverte(key) {
   const rang = PIECES.findIndex((p) => p.key === key);
   if (rang === -1) return false;
   if (PIECES_A_CODE.includes(key)) return myCodePieces.includes(key);
-  const proprietaire = PIECES_NOMINATIVES[key];
-  if (proprietaire) return memeCompte(myAccountPseudo, proprietaire);
   return rang < PIECES_EN_VITRINE || myIsHost;
 }
 
-// La suite, derrière la flèche : les pièces de l'hôte. Les pièces
-// nominatives n'y sont plus — elles ont leur propre cadre, « Jeton
-// personnel », sous la discussion, et seul leur compte le voit.
-const PIECES_SUITE = PIECES.slice(PIECES_EN_VITRINE).filter(
-  (p) => !PIECES_NOMINATIVES[p.key] && !PIECES_A_CODE.includes(p.key),
-);
-const PIECES_PERSONNELLES = PIECES.filter((p) => PIECES_NOMINATIVES[p.key] || PIECES_A_CODE.includes(p.key));
+// La suite, derrière la flèche : les pièces de l'hôte. Les pièces à code n'y
+// sont pas — elles ont leur propre cadre, « Jeton personnel », sous la
+// discussion.
+const PIECES_SUITE = PIECES.slice(PIECES_EN_VITRINE).filter((p) => !PIECES_A_CODE.includes(p.key));
+const PIECES_PERSONNELLES = PIECES.filter((p) => PIECES_A_CODE.includes(p.key));
 
 function suiteAccessible() {
   return myIsHost;

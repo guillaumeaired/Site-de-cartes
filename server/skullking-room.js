@@ -35,7 +35,6 @@ const { likelyServerRestart } = require('./server-start');
 const { makeRoomCode, sanitizeNickname } = require('./commun');
 const { recordGameStarted } = require('./play-counts');
 const { computeEloChanges } = require('./elo');
-const { pseudoKey } = require('./comptes');
 const { PIECES_A_CODE } = require('./pieces-a-code');
 
 // Les deux paquets proposés dans le salon. Réglage purement visuel : il ne
@@ -506,13 +505,14 @@ function davyJonesSwallow(cards) {
 // celui qui a ouvert le salon. Le hasard ne les sort donc jamais : il donnerait
 // à un invité ce qu'il n'a pas le droit de prendre. La vitrine suffit à elle
 // seule à une table pleine (neuf joueurs au plus, voir maxPlayersFor).
-const PIECE_KEYS = [
+const PIECES_DE_BASE = [
   'crane', 'ancre', 'voilier', 'sabre', 'boussole',
   'coffre', 'barre', 'bouteille', 'crochet',
   'pieuvre', 'ivrogne', 'poison', 'canon',
-  // Les pièces à code (voir pieces-a-code.js) : à leur seul propriétaire.
-  ...PIECES_A_CODE,
 ];
+// Puis les pièces à code (voir pieces-a-code.js) qui n'y sont pas déjà — la
+// pieuvre garde son rang d'origine.
+const PIECE_KEYS = [...PIECES_DE_BASE, ...PIECES_A_CODE.filter((k) => !PIECES_DE_BASE.includes(k))];
 const PIECES_EN_VITRINE = 9;
 
 // Ce que le hasard peut encore donner : la vitrine seule.
@@ -525,24 +525,13 @@ function piecesTirables(room) {
 // salon, son successeur hérite du privilège ; la pièce de l'ancien part avec
 // lui, il n'y a donc rien à reprendre à personne.
 //
-// Exception : certaines pièces de la suite ont un propriétaire nommé. Elles
-// ne vont qu'à ce compte-là, qu'il soit hôte ou non, et à personne d'autre —
-// pas même à l'hôte. On juge sur le compte connecté (accountPseudo), jamais
-// sur le pseudo de table : un invité ne peut pas prendre le nom d'un compte
-// (voir identityFor), et un joueur renommé pour la table reste son compte.
-const PIECES_NOMINATIVES = { pieuvre: 'SkullyMaster' };
+// Exception : les pièces à code (voir pieces-a-code.js) ne vont qu'aux
+// comptes qui ont saisi leur code, qu'ils soient hôtes ou non.
 
 function pieceAutorisee(room, player, piece) {
   const rang = PIECE_KEYS.indexOf(piece);
   if (rang === -1) return false;
-  // Une pièce à code ne va qu'au compte qui a utilisé son code — l'hôte
-  // n'y a pas plus droit qu'un autre.
   if (PIECES_A_CODE.includes(piece)) return Boolean(player.ownedPieces && player.ownedPieces.includes(piece));
-  const proprietaire = PIECES_NOMINATIVES[piece];
-  if (proprietaire) {
-    return Boolean(player.userId && player.accountPseudo)
-      && pseudoKey(player.accountPseudo) === pseudoKey(proprietaire);
-  }
   return rang < PIECES_EN_VITRINE || player.id === room.hostId;
 }
 

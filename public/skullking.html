@@ -165,27 +165,21 @@
             <input id="sk-lobby-chat-input" type="text" maxlength="200" placeholder="Écrire à l'équipage…" />
             <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
           </form>
-          <!-- Le jeton personnel : les pièces qui n'appartiennent qu'à un
-               compte — gagnées par code (server/pieces-a-code.js) ou
-               nominatives (PIECES_NOMINATIVES). Tout le monde voit le cadre,
-               vide au départ ; le code s'écrit dans quatre cases, comme
-               celui de connexion (un seul vrai champ posé dessus). -->
+          <!-- Le jeton personnel : les pièces gagnées par code
+               (server/pieces-a-code.js). Tout le monde voit le cadre, vide
+               au départ. -->
           <section id="sk-jeton-perso" class="sk-jeton-perso hidden" aria-labelledby="sk-jeton-perso-titre">
             <p id="sk-jeton-perso-titre" class="invite-label sk-jeton-perso-titre">Jeton personnel</p>
-            <div id="sk-jeton-perso-grid" class="sk-jeton-perso-grid"></div>
-            <p id="sk-jeton-perso-vide" class="sk-jeton-perso-vide">Aucun</p>
-            <form id="sk-jeton-code" class="sk-jeton-code" autocomplete="off" novalidate>
-              <label for="sk-jeton-code-input" class="sk-pin-libelle">Un code ?</label>
-              <div class="sk-pin-cases sk-jeton-code-cases">
-                <input id="sk-jeton-code-input" class="sk-jeton-code-input" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
-                <span class="sk-pin-case" aria-hidden="true"></span>
-                <span class="sk-pin-case" aria-hidden="true"></span>
-                <span class="sk-pin-case" aria-hidden="true"></span>
-                <span class="sk-pin-case" aria-hidden="true"></span>
+            <!-- Les pièces à gauche, le bouton « Débloquer » à droite : il
+                 ouvre la fenêtre du code (#sk-code-fenetre, plus bas). -->
+            <div class="sk-jeton-perso-corps">
+              <div class="sk-jeton-perso-mes">
+                <div id="sk-jeton-perso-grid" class="sk-jeton-perso-grid"></div>
+                <p id="sk-jeton-perso-vide" class="sk-jeton-perso-vide">Aucun</p>
               </div>
-              <p id="sk-jeton-code-msg" class="sk-jeton-code-msg" role="status" aria-live="polite"></p>
-            </form>
-            <p id="sk-jeton-code-connexion" class="sk-jeton-code-msg hidden"><a href="connexion.html">Connecte-toi</a> pour utiliser un code.</p>
+              <button id="sk-jeton-debloquer" class="btn btn-small sk-jeton-debloquer hidden" type="button" aria-haspopup="dialog" aria-controls="sk-code-fenetre">Débloquer</button>
+              <p id="sk-jeton-code-connexion" class="sk-jeton-code-msg hidden"><a href="connexion.html">Connecte-toi</a> pour utiliser un code.</p>
+            </div>
           </section>
         </div>
       </div>
@@ -746,6 +740,27 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <!-- La fenêtre du code de pièce, ouverte par « Débloquer » dans le cadre
+       « Jeton personnel ». Le code s'écrit dans quatre cases, comme celui de
+       connexion : un seul vrai champ, transparent, posé dessus. -->
+  <div id="sk-code-fenetre" class="sk-code-fenetre hidden" role="dialog" aria-modal="true" aria-labelledby="sk-code-titre">
+    <div class="sk-code-carte">
+      <button id="sk-code-fermer" class="sk-code-fermer" type="button" aria-label="Fermer">×</button>
+      <p id="sk-code-titre" class="sk-code-titre">Débloquer un jeton</p>
+      <p class="sk-code-aide">Entre ton code de quatre lettres</p>
+      <form id="sk-jeton-code" class="sk-jeton-code" autocomplete="off" novalidate>
+        <label for="sk-jeton-code-input" class="visually-hidden">Code de quatre lettres</label>
+        <div class="sk-pin-cases sk-jeton-code-cases">
+          <input id="sk-jeton-code-input" class="sk-jeton-code-input" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+          <span class="sk-pin-case" aria-hidden="true"></span>
+          <span class="sk-pin-case" aria-hidden="true"></span>
+          <span class="sk-pin-case" aria-hidden="true"></span>
+          <span class="sk-pin-case" aria-hidden="true"></span>
+        </div>
+        <p id="sk-jeton-code-msg" class="sk-jeton-code-msg" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
   <!-- Le grattage d'une pièce gagnée par code (voir ouvrirGrattage dans
        skullking.js) : la pièce est dessous, une feuille d'or terni dessus,
        à gratter du doigt ou de la souris. -->

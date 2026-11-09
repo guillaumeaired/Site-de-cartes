@@ -1,7 +1,8 @@
 // Les pièces à code : des médaillons qu'aucun joueur n'a d'office. Chacune se
-// débloque avec un code de quatre lettres, VALABLE UNE SEULE FOIS : le premier
-// compte qui le saisit garde la pièce, le code est ensuite mort pour tout le
-// monde. Une pièce n'a donc jamais qu'un propriétaire.
+// débloque avec un code de quatre lettres, SANS LIMITE : chaque compte qui le
+// saisit gagne la pièce et la garde. Plusieurs comptes peuvent donc avoir la
+// même ; à une table, elle ne se porte qu'une fois (règle commune à toutes
+// les pièces).
 //
 // Les codes ne quittent jamais le serveur : le client n'envoie que ce qu'on a
 // tapé et ne reçoit que la pièce gagnée. Ce fichier ne doit donc pas partir
@@ -10,6 +11,7 @@
 // La casse ne compte pas : « RODI », « rodi » et « RoDi » sont le même code.
 
 const CODES = {
+  polz: 'pieuvre',
   rodi: 'pomme',
   sput: 'visa',
   belg: 'taureau',

@@ -201,7 +201,7 @@ async function main() {
     setComptesAdapter(null);
   }
 
-  // --- Pièces à code : une seule fois, sans égard à la casse -------------
+  // --- Pièces à code : sans limite, sans égard à la casse --------------
   {
     const store = createMemoryStore();
     const comptes = createComptes({ store });
@@ -210,11 +210,12 @@ async function main() {
     const r1 = await comptes.redeemCode(a.id, 'RoDi', '1.1.1.1');
     check('le code RODI, en casse mêlée, donne la pièce Apple', r1.piece === 'pomme');
     const r2 = await comptes.redeemCode(b.id, 'rodi', '2.2.2.2');
-    check("un code déjà utilisé est refusé à un autre compte", !r2.piece && /déjà/.test(r2.error));
+    check('le même code marche aussi pour un autre compte', r2.piece === 'pomme');
     const r3 = await comptes.redeemCode(a.id, 'RODI', '1.1.1.1');
-    check('et au même compte une seconde fois', !r3.piece);
-    check('la pièce reste au premier compte', JSON.stringify(await store.piecesOf(a.id)) === '["pomme"]');
-    check("l'autre n'a rien", (await store.piecesOf(b.id)).length === 0);
+    check('un compte qui a déjà la pièce le sait', !r3.piece && /déjà/.test(r3.error));
+    check('chacun garde sa pièce', JSON.stringify(await store.piecesOf(a.id)) === '["pomme"]'
+      && JSON.stringify(await store.piecesOf(b.id)) === '["pomme"]');
+    check('POLZ donne la pieuvre', (await comptes.redeemCode(a.id, 'PolZ', '1.1.1.1')).piece === 'pieuvre');
     check('un code inconnu est refusé', !(await comptes.redeemCode(b.id, 'zzzz', '2.2.2.2')).piece);
     check('trois lettres ne font pas un code', /quatre/.test((await comptes.redeemCode(b.id, 'abc', '2.2.2.2')).error));
     check('un invité ne peut pas utiliser de code', !(await comptes.redeemCode(null, 'sput', '3.3.3.3')).piece);
@@ -232,6 +233,7 @@ async function main() {
   {
     const { giveFreePiece, PIECE_KEYS } = require('./skullking-room');
     check('les pièces à code sont dans le lot', ['pomme', 'visa', 'taureau', 'viseur', 'harvard'].every((k) => PIECE_KEYS.includes(k)));
+    check('sans doublon (la pieuvre y était déjà)', new Set(PIECE_KEYS).size === PIECE_KEYS.length);
     const hote = { id: 'h', piece: null, userId: 1, accountPseudo: 'Hote', ownedPieces: [] };
     giveFreePiece({ hostId: 'h', players: [hote] }, hote, 'pomme');
     check("l'hôte n'a pas une pièce à code qu'il n'a pas gagnée", hote.piece !== 'pomme');
@@ -241,7 +243,7 @@ async function main() {
     for (let i = 0; i < 40; i++) {
       const x = { id: 'x' + i, piece: null };
       giveFreePiece({ hostId: 'h', players: [x] }, x);
-      if (['pomme', 'visa', 'taureau', 'viseur', 'harvard'].includes(x.piece)) {
+      if (['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard'].includes(x.piece)) {
         check('le hasard ne donne jamais une pièce à code', false);
         break;
       }

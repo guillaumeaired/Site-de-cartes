@@ -75,7 +75,7 @@ function createMemoryStore() {
   const byKey = new Map(); // pseudoKey -> id
   const sessions = new Map(); // tokenHash -> { userId, expiresAt }
   const games = [];
-  const codesUtilises = new Map(); // code -> { userId, piece }
+  const piecesGagnees = new Set(); // `${userId}:${piece}`
   let nextId = 1;
 
   return {
@@ -117,13 +117,14 @@ function createMemoryStore() {
     },
     // Les pièces gagnées par code (voir pieces-a-code.js).
     async piecesOf(userId) {
-      return [...codesUtilises.values()].filter((c) => c.userId === userId).map((c) => c.piece);
+      const prefixe = `${userId}:`;
+      return [...piecesGagnees].filter((k) => k.startsWith(prefixe)).map((k) => k.slice(prefixe.length));
     },
-    // Consomme le code pour ce compte. Renvoie true si c'est lui qui l'a
-    // pris, false si quelqu'un l'avait déjà utilisé.
-    async consumeCode(code, userId, piece) {
-      if (codesUtilises.has(code)) return false;
-      codesUtilises.set(code, { userId, piece });
+    // Donne la pièce au compte. Renvoie false s'il l'avait déjà.
+    async grantPiece(userId, piece) {
+      const cle = `${userId}:${piece}`;
+      if (piecesGagnees.has(cle)) return false;
+      piecesGagnees.add(cle);
       return true;
     },
     // results : [{ userId, delta, won }] - renvoie { userId: nouvelleCote }
@@ -190,11 +191,14 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
           user_id INTEGER NOT NULL REFERENCES sk_users(id) ON DELETE CASCADE,
           expires_at TIMESTAMPTZ NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS sk_piece_codes (
-          code TEXT PRIMARY KEY,
+        -- Les codes étaient d'abord à usage unique (une ligne par code) :
+        -- cette table est abandonnée, et les pièces repartent de zéro.
+        DROP TABLE IF EXISTS sk_piece_codes;
+        CREATE TABLE IF NOT EXISTS sk_user_pieces (
           user_id INTEGER NOT NULL REFERENCES sk_users(id) ON DELETE CASCADE,
           piece TEXT NOT NULL,
-          redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          gained_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (user_id, piece)
         );
         CREATE TABLE IF NOT EXISTS sk_games (
           id SERIAL PRIMARY KEY,
@@ -276,17 +280,15 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
     },
     async piecesOf(userId) {
       const { rows } = await pool.query(
-        'SELECT piece FROM sk_piece_codes WHERE user_id = $1 ORDER BY redeemed_at',
+        'SELECT piece FROM sk_user_pieces WHERE user_id = $1 ORDER BY gained_at',
         [userId],
       );
       return rows.map((r) => r.piece);
     },
-    // La clé primaire sur `code` fait l'arbitre : deux comptes qui tapent le
-    // même code au même instant, un seul insère, l'autre ne récupère rien.
-    async consumeCode(code, userId, piece) {
+    async grantPiece(userId, piece) {
       const { rows } = await pool.query(
-        'INSERT INTO sk_piece_codes (code, user_id, piece) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING RETURNING piece',
-        [code, userId, piece],
+        'INSERT INTO sk_user_pieces (user_id, piece) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING piece',
+        [userId, piece],
       );
       return rows.length === 1;
     },
@@ -381,7 +383,8 @@ function createComptes({
   store = createStore(),
   limiter = new LoginLimiter(),
   // Les codes de pièce n'ont que 26^4 possibilités : même frein que le code
-  // de connexion, compté par compte et par adresse.
+  // de connexion, compté par compte et par adresse (seuls les codes
+  // inexistants comptent).
   codeLimiter = new LoginLimiter({ perPseudo: 8, perIp: 30 }),
   site = null,
 } = {}) {
@@ -417,7 +420,7 @@ function createComptes({
   }
 
   // Un code de pièce tapé par un compte connecté. Renvoie { piece } quand le
-  // code est bon et encore libre, { error } sinon. Le code lui-même ne
+  // code est bon, { error } sinon. Le code lui-même ne
   // ressort jamais : seul le nom de la pièce gagnée.
   async function redeemCode(userId, brut, ip = 'inconnue') {
     if (!userId) return { error: 'Connecte-toi pour utiliser un code.' };
@@ -431,9 +434,8 @@ function createComptes({
       codeLimiter.fail(cle, ip);
       return { error: 'Ce code n’existe pas.' };
     }
-    if (!(await store.consumeCode(code, userId, piece))) {
-      codeLimiter.fail(cle, ip);
-      return { error: 'Ce code a déjà été utilisé.' };
+    if (!(await store.grantPiece(userId, piece))) {
+      return { error: 'Tu as déjà cette pièce.' };
     }
     codeLimiter.succeed(cle);
     return { piece };

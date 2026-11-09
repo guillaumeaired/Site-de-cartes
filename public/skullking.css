@@ -6174,8 +6174,31 @@ button.sk-lobby-bot:focus-visible {
 }
 
 .sk-jeton-perso-titre {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   text-align: center;
+}
+
+/* Une seule rangée : les pièces gagnées à gauche, le code à droite, séparés
+   d'un filet. Le cadre ne rallonge donc la colonne que d'une ligne de pièces
+   — empilés, ils la faisaient déborder sous la planche, où la grille du
+   salon les coupait. S'il y a trop de pièces, le code passe dessous. */
+.sk-jeton-perso-corps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+}
+
+.sk-jeton-perso-mes {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sk-jeton-perso .sk-piece-btn {
+  --sk-piece-cote: 40px;
 }
 
 .sk-jeton-perso-grid {
@@ -6187,7 +6210,6 @@ button.sk-lobby-bot:focus-visible {
 
 .sk-jeton-perso-grid.hidden,
 .sk-jeton-perso-vide.hidden,
-.sk-jeton-code.hidden,
 .sk-jeton-code-msg.hidden {
   display: none;
 }
@@ -6200,26 +6222,124 @@ button.sk-lobby-bot:focus-visible {
   color: var(--sk-cream-3);
 }
 
-/* Le code de pièce : les quatre cases du code de connexion (compte.css),
-   en plus petit, montrant des lettres et non des points. */
-.sk-jeton-code {
-  margin: 10px 0 0;
-  padding-top: 9px;
-  border-top: 1px solid rgba(184, 137, 53, 0.18);
+/* Le bouton « Débloquer », à droite des pièces, séparé d'elles par un filet. */
+.sk-jeton-debloquer {
+  flex: none;
+  margin-left: 2px;
 }
 
-.sk-jeton-code .sk-pin-libelle {
-  margin-bottom: 6px;
+/* LA FENÊTRE DU CODE, ouverte par « Débloquer ». Le salon s'assombrit, la
+   carte monte en se dépliant, puis les quatre cases tombent l'une après
+   l'autre. À la fermeture, tout repart à l'envers, plus vite. */
+.sk-code-fenetre {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(6, 3, 1, 0.72);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 
-.sk-jeton-code-cases {
-  gap: 7px;
+.sk-code-carte {
+  position: relative;
+  width: min(340px, 100%);
+  padding: 30px 24px 22px;
+  border-radius: 3px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(232, 206, 146, 0.12), transparent 60%),
+    linear-gradient(180deg, #3a2a1a, #24180e);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 137, 53, 0.45),
+    inset 0 0 0 5px rgba(20, 12, 6, 0.6),
+    inset 0 0 0 6px rgba(184, 137, 53, 0.25),
+    0 24px 60px rgba(0, 0, 0, 0.7);
+  transform-origin: 50% 60%;
 }
 
-.sk-jeton-code-cases .sk-pin-case {
-  width: 34px;
-  height: 38px;
+.sk-code-fermer {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--sk-cream-3);
+  cursor: pointer;
+}
+
+.sk-code-fermer:hover,
+.sk-code-fermer:focus-visible {
+  color: var(--sk-brass-hi);
+}
+
+.sk-code-titre {
+  margin: 0;
+  font-family: 'Cinzel', Georgia, serif;
   font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--sk-brass-hi);
+}
+
+.sk-code-aide {
+  margin: 6px 0 18px;
+  font-size: 0.9rem;
+  color: var(--sk-cream-2);
+}
+
+.sk-code-fenetre--entree {
+  animation: sk-code-fond-entree 0.25s ease both;
+}
+
+.sk-code-fenetre--entree .sk-code-carte {
+  animation: sk-code-carte-entree 0.42s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.sk-code-fenetre--entree .sk-pin-case {
+  animation: sk-code-case-entree 0.36s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.sk-code-fenetre--entree .sk-pin-case:nth-of-type(1) { animation-delay: 0.16s; }
+.sk-code-fenetre--entree .sk-pin-case:nth-of-type(2) { animation-delay: 0.22s; }
+.sk-code-fenetre--entree .sk-pin-case:nth-of-type(3) { animation-delay: 0.28s; }
+.sk-code-fenetre--entree .sk-pin-case:nth-of-type(4) { animation-delay: 0.34s; }
+
+.sk-code-fenetre--sortie {
+  animation: sk-code-fond-entree 0.22s ease reverse both;
+}
+
+.sk-code-fenetre--sortie .sk-code-carte {
+  animation: sk-code-carte-sortie 0.22s ease-in both;
+}
+
+@keyframes sk-code-fond-entree {
+  from { opacity: 0; }
+}
+
+@keyframes sk-code-carte-entree {
+  from { opacity: 0; transform: translateY(26px) scale(0.86) rotateX(18deg); }
+}
+
+@keyframes sk-code-carte-sortie {
+  to { opacity: 0; transform: translateY(14px) scale(0.92); }
+}
+
+@keyframes sk-code-case-entree {
+  from { opacity: 0; transform: translateY(-14px) scale(0.7); }
+}
+
+/* Les quatre cases du code de connexion (compte.css), montrant des lettres
+   et non des points. Le vrai champ est posé dessus, transparent. */
+.sk-jeton-code-cases .sk-pin-case {
   text-transform: uppercase;
 }
 
@@ -6257,11 +6377,18 @@ input.sk-jeton-code-input {
 }
 
 .sk-jeton-code-msg {
-  min-height: 1em;
-  margin: 6px 0 0;
+  min-height: 1.2em;
+  margin: 10px auto 0;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--sk-cream-2);
+}
+
+.sk-jeton-perso-corps > .sk-jeton-code-msg {
+  max-width: 150px;
+  min-height: 0;
+  margin: 0;
+  font-size: 0.78rem;
 }
 
 .sk-jeton-code-msg--erreur {
@@ -6270,6 +6397,14 @@ input.sk-jeton-code-input {
 
 .sk-jeton-code-msg a {
   color: var(--sk-brass-hi);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-code-fenetre--entree .sk-code-carte,
+  .sk-code-fenetre--entree .sk-pin-case,
+  .sk-code-fenetre--sortie .sk-code-carte {
+    animation: none;
+  }
 }
 
 /* LE GRATTAGE d'une pièce gagnée par code : le salon s'assombrit, des rayons
