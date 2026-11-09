@@ -5,8 +5,8 @@
 // que de couleurs possible, mais jamais deux joueurs de la même couleur à une
 // table.
 //
-// Douze couleurs, une table en compte neuf au plus (voir maxPlayersFor) : il
-// en reste toujours trois à choisir. Le dessin et le code hexadécimal vivent
+// Quatorze couleurs, une table en compte neuf au plus (voir maxPlayersFor) : il
+// en reste toujours cinq à choisir. Le dessin et le code hexadécimal vivent
 // côté client (COULEURS dans public/skullking.js et public/profil.js) ; les
 // images, dans public/assets/skin/pieces/<motif>-<couleur>.webp
 // (briefs/composer-pieces-couleur.py). Les trois listes doivent rester
@@ -15,6 +15,7 @@
 const COULEURS = [
   'rouge', 'orange', 'jaune', 'anis', 'vert', 'menthe',
   'turquoise', 'ciel', 'marine', 'violet', 'magenta', 'rose',
+  'blanc', 'noir',
 ];
 
 // La couleur d'un motif tant que son joueur n'en a pas choisi : la plus

@@ -6211,7 +6211,7 @@ button.sk-lobby-bot:focus-visible {
 
 .sk-couleur-grille {
   display: grid;
-  grid-template-columns: repeat(6, 26px);
+  grid-template-columns: repeat(7, 26px);
   gap: 9px;
 }
 

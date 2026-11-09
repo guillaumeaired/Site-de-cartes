@@ -2485,6 +2485,12 @@ function registerSkullKingHandlers(io, socket) {
     player.couleur = couleur;
     player.couleurChoisie = true;
     broadcastLobby(io, room);
+    // Un compte garde la couleur choisie à table : c'est elle qui habille sa
+    // pièce dans le menu du compte, au profil et au classement. Un échec
+    // d'écriture ne change rien à la table.
+    if (comptes && player.userId && comptes.choisirCouleur) {
+      comptes.choisirCouleur(player.userId, couleur).catch(() => {});
+    }
   });
 
   // Un code de pièce, tapé dans le cadre « Jeton personnel » du salon. Le

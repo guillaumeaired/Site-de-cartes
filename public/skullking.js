@@ -1704,6 +1704,12 @@ function couleurMemorisee() {
 let maCouleur = null;
 // La palette des couleurs, ouverte par un clic sur sa propre pièce.
 let paletteOuverte = false;
+// La couleur que je viens de demander à la palette : quand le serveur la
+// confirme, le menu du compte la reprend (voir annoncerCouleurAuCompte).
+let couleurDemandee = null;
+// Les joueurs de la table où je suis, salon ou partie : le profil, ouvert
+// par-dessus, en a besoin pour barrer leurs couleurs.
+let joueursALaTable = [];
 
 // --- Son pseudo, en enseigne de la planche, et le champ qui le change ------
 // Le pseudo se tape une fois sur l'écran d'accueil — ou pas du tout quand on
@@ -2212,7 +2218,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // --- La palette des couleurs --------------------------------------------
-// Douze couleurs (voir COULEURS) ; celles d'un autre joueur sont barrées,
+// Quatorze couleurs (voir COULEURS) ; celles d'un autre joueur sont barrées,
 // comme les pièces prises, avec son nom dans l'info-bulle. Elle se pose
 // PAR-DESSUS la planche au lieu de s'y ajouter : le salon ne bouge pas d'un
 // pixel quand on l'ouvre (voir ajusterHauteurSalon).
@@ -2265,7 +2271,10 @@ function renderPalette(players) {
       } catch (err) {
         /* navigation privée : le choix vaut pour cette partie, sans plus */
       }
-      if (!mine) socket.emit('skullking-set-couleur', { couleur: c.key });
+      if (!mine) {
+        couleurDemandee = c.key;
+        socket.emit('skullking-set-couleur', { couleur: c.key });
+      }
       paletteOuverte = false;
       renderPiecePicker(dernierEquipage);
     });
@@ -2273,6 +2282,40 @@ function renderPalette(players) {
   });
   paletteEl.appendChild(grille);
 }
+
+// La couleur choisie à table est aussi celle du compte (le serveur
+// l'enregistre, voir skullking-set-couleur) : la pièce du menu du compte, à
+// gauche du pseudo, se repeint aussitôt — compte.js écoute `profil:piece`.
+function annoncerCouleurAuCompte(couleur) {
+  if (typeof compte === 'undefined' || !compte.user || compte.user.couleur === couleur) return;
+  window.dispatchEvent(new CustomEvent('profil:piece', { detail: { piece: compte.user.piece || null, couleur } }));
+}
+
+// L'autre sens : une couleur choisie dans le profil, ouvert depuis le salon,
+// passe aussi à table. Le profil n'offre que des couleurs libres (voir
+// profilCouleursPrises) ; le serveur tranche de toute façon.
+window.addEventListener('profil:piece', (e) => {
+  const couleur = e.detail && e.detail.couleur;
+  if (!couleur || couleur === maCouleur || screens.waiting.classList.contains('hidden')) return;
+  try {
+    localStorage.setItem(COULEUR_PREF_KEY, couleur);
+  } catch (err) {
+    /* navigation privée */
+  }
+  socket.emit('skullking-set-couleur', { couleur });
+});
+
+// Les couleurs portées par les AUTRES joueurs de ma table, pour le profil :
+// on ne peut pas y prendre la couleur de quelqu'un avec qui l'on joue.
+// Hors table (accueil), rien n'est pris.
+window.profilCouleursPrises = () => {
+  const prises = new Map();
+  if (!screens.home.classList.contains('hidden')) return prises;
+  joueursALaTable.forEach((p) => {
+    if (p.id !== myId && p.couleur) prises.set(p.couleur, p.nickname);
+  });
+  return prises;
+};
 
 // Un clic ailleurs ou Échap referment la palette, comme tout ce qui s'ouvre.
 document.addEventListener('click', (e) => {
@@ -2292,8 +2335,13 @@ document.addEventListener('keydown', (e) => {
 
 function renderPiecePicker(players) {
   dernierEquipage = players;
+  joueursALaTable = players;
   const me = players.find((p) => p.id === myId);
   if (me) maCouleur = pieceFor(me).couleur;
+  if (couleurDemandee && maCouleur === couleurDemandee) {
+    couleurDemandee = null;
+    annoncerCouleurAuCompte(maCouleur);
+  }
   const takenBy = new Map();
   players.forEach((p) => {
     if (p.piece) takenBy.set(p.piece, p);
@@ -3665,7 +3713,7 @@ function suiteAccessible() {
 
 const PIECE_BY_KEY = Object.fromEntries(PIECES.map((p) => [p.key, p]));
 
-// LES COULEURS DE JOUEUR : douze, pour neuf places au plus — jamais deux
+// LES COULEURS DE JOUEUR : quatorze, pour neuf places au plus — jamais deux
 // joueurs de la même à une table (server/couleurs.js, qui fait foi et tient
 // la même liste). `hex` est l'émail tel qu'il sort de
 // briefs/composer-pieces-couleur.py : la roue, la courbe et la légende
@@ -3683,6 +3731,8 @@ const COULEURS = [
   { key: 'violet', label: 'Violet', hex: '#6d3fc4' },
   { key: 'magenta', label: 'Magenta', hex: '#c4207e' },
   { key: 'rose', label: 'Rose', hex: '#f4a8c8' },
+  { key: 'blanc', label: 'Blanc', hex: '#ece8de' },
+  { key: 'noir', label: 'Noir', hex: '#2c2c30' },
 ];
 const COULEUR_BY_KEY = Object.fromEntries(COULEURS.map((c) => [c.key, c]));
 
@@ -7733,6 +7783,7 @@ function applyState(state) {
   }
   myId = state.myId;
   myIsHost = state.isHost;
+  if (Array.isArray(state.players)) joueursALaTable = state.players;
   // Arrivé par le lien en pleine partie : on regarde depuis le bord de la
   // table. La salle est retenue comme celle d'un joueur — recharger la page
   // ramène à la même chaise (skullking-rejoin-room), et on y prend place au

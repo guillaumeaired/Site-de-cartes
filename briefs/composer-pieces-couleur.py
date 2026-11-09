@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prototype : un anneau unique recolorié en 12 couleurs, posé sur des centres existants.
+"""Prototype : un anneau unique recolorié en 14 couleurs, posé sur des centres existants.
 
 Entrées :
     briefs/planche-couleurs/anneau-regulier.png   (normaliser-anneau.py puis
@@ -8,7 +8,7 @@ Entrées :
                                                    pièces actuelles)
 
 Sorties :
-    briefs/planche-couleurs/prototype-anneau.png  (une pièce, les 12 couleurs)
+    briefs/planche-couleurs/prototype-anneau.png  (une pièce, les 14 couleurs)
     briefs/planche-couleurs/tous-les-motifs.png   (original | anneau, pour tous)
     public/assets/skin/pieces/<motif>-<couleur>.webp
                                                   (avec --ecrire : les pièces du
@@ -56,9 +56,10 @@ R_CLOU = 0.862          # le même que refaire-clous-anneau.py
 R_CLOU_PX = 33.5        # rayon d'un clou de medaillon-new, liseré sombre compris
 EMAIL_REF = 205.0       # luminance moyenne de l'émail neutre
 
-# Les douze couleurs : les teintes du cercle chromatique, plus claires et plus
-# sombres en alternance pour que deux voisines ne se confondent pas, même vues
-# en petit ou par quelqu'un qui distingue mal le rouge du vert.
+# Les quatorze couleurs : les teintes du cercle chromatique, plus claires et
+# plus sombres en alternance pour que deux voisines ne se confondent pas, même
+# vues en petit ou par quelqu'un qui distingue mal le rouge du vert ; puis le
+# blanc (un ivoire, pour garder le grain de l'émail) et le noir.
 COULEURS = [
     ('rouge',     '#c4161c'),
     ('orange',    '#f0701a'),
@@ -72,6 +73,8 @@ COULEURS = [
     ('violet',    '#6d3fc4'),
     ('magenta',   '#c4207e'),
     ('rose',      '#f4a8c8'),
+    ('blanc',     '#ece8de'),
+    ('noir',      '#2c2c30'),
 ]
 
 
@@ -225,22 +228,28 @@ PIECES_JEU = SKIN / 'pieces'
 
 
 def ecrire_jeu(rgb, alpha, masque):
-    """Écrit toutes les pièces du jeu : chaque motif dans chacune des 12 couleurs,
+    """Écrit toutes les pièces du jeu : chaque motif dans chacune des couleurs,
     public/assets/skin/pieces/<motif>-<couleur>.webp. C'est le joueur qui choisit
     la couleur ; le jeu n'a plus de couleur attachée à un motif."""
     import subprocess
     from concurrent.futures import ThreadPoolExecutor
 
     PIECES_JEU.mkdir(exist_ok=True)
+    # --seulement blanc,noir : n'écrit que ces couleurs-là (ajout d'une couleur
+    # sans réécrire toutes les autres).
+    seulement = None
+    if '--seulement' in sys.argv:
+        seulement = set(sys.argv[sys.argv.index('--seulement') + 1].split(','))
+    couleurs = [(n, h) for n, h in COULEURS if seulement is None or n in seulement]
     anneaux = {}
-    for nom, hexa in COULEURS:
+    for nom, hexa in couleurs:
         a = recolorier(rgb, masque, hexa)
         anneaux[nom] = Image.fromarray(np.dstack([a, alpha]).clip(0, 255).astype(np.uint8), 'RGBA')
 
     def un_motif(cle):
         centre, dessus = centre_de(cle), dessus_de(cle)
         ombre = ombre_portee(dessus) if dessus is not None else None
-        for nom, hexa in COULEURS:
+        for nom, hexa in couleurs:
             anneau = anneaux[nom]
             if ombre is not None:
                 a = np.asarray(anneau).astype(np.float32)
@@ -264,7 +273,7 @@ def ecrire_jeu(rgb, alpha, masque):
         for cle in pool.map(un_motif, cles):
             print('  ', cle)
     total = sum(f.stat().st_size for f in PIECES_JEU.glob('*.webp'))
-    print(f'{len(cles)} motifs x {len(COULEURS)} couleurs, {total / 1e6:.1f} Mo')
+    print(f'{len(cles)} motifs x {len(couleurs)} couleurs écrites, {total / 1e6:.1f} Mo en tout')
 
 
 def main():
@@ -289,13 +298,13 @@ def main():
     S, marge = 300, 14
     fond_bois = (214, 190, 150, 255)
 
-    # Planche 1 : une pièce, les douze couleurs, sur deux rangées de six.
+    # Planche 1 : une pièce, les quatorze couleurs, sur deux rangées de sept.
     crane = centre_de('crane')
     vignettes = [piece(rgb, alpha, masque, crane, h).resize((S, S), Image.LANCZOS)
                  for _, h in COULEURS]
-    fond = Image.new('RGBA', (6 * (S + marge) + marge, 2 * (S + marge) + marge), fond_bois)
+    fond = Image.new('RGBA', (7 * (S + marge) + marge, 2 * (S + marge) + marge), fond_bois)
     for i, im in enumerate(vignettes):
-        fond.alpha_composite(im, (marge + (i % 6) * (S + marge), marge + (i // 6) * (S + marge)))
+        fond.alpha_composite(im, (marge + (i % 7) * (S + marge), marge + (i // 7) * (S + marge)))
     fond.convert('RGB').save(SORTIE)
     print('écrit', SORTIE.relative_to(RACINE))
 
@@ -308,7 +317,7 @@ def main():
         x = marge + (i % 3) * (2 * S + 3 * marge)
         y = marge + (i // 3) * (S + marge)
         orig = Image.open(SOURCES / f'piece-{cle}.webp').convert('RGBA').resize((S, S), Image.LANCZOS)
-        neuf = jeton(rgb, alpha, masque, cle, COULEURS[i % 12][1]).resize((S, S), Image.LANCZOS)
+        neuf = jeton(rgb, alpha, masque, cle, COULEURS[i % len(COULEURS)][1]).resize((S, S), Image.LANCZOS)
         fond.alpha_composite(orig, (x, y))
         fond.alpha_composite(neuf, (x + S + 4, y))
     fond.convert('RGB').save(TOUS)

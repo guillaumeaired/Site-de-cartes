@@ -518,7 +518,7 @@ function createComptes({
     return { error: 'Tu n’as pas cette pièce.' };
   }
 
-  // La couleur de profil : une des douze (voir couleurs.js). null la rend à
+  // La couleur de profil : une des quatorze (voir couleurs.js). null la rend à
   // celle du motif.
   async function choisirCouleur(userId, couleur) {
     if (couleur !== null && !couleurValide(couleur)) return { error: 'Cette couleur n’existe pas.' };
@@ -674,6 +674,7 @@ function createComptes({
     redeemCode,
     profilDe,
     choisirPiece,
+    choisirCouleur,
     applyGameResult: (game) => store.applyGameResult(game),
   };
 }

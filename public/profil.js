@@ -30,13 +30,14 @@ const PROFIL_PIECE_PAR_CLE = Object.fromEntries(
   [...PROFIL_PIECES_COMMUNES, ...PROFIL_PIECES_PERSONNELLES].map((p) => [p.key, p]),
 );
 
-// Les douze couleurs d'émail : la pièce d'un compte est un motif dans l'une
+// Les quatorze couleurs d'émail : la pièce d'un compte est un motif dans l'une
 // d'elles, comme à table.
 const PROFIL_COULEURS = [
   ['rouge', 'Rouge', '#c4161c'], ['orange', 'Orange', '#f0701a'], ['jaune', 'Jaune', '#f4c81e'],
   ['anis', 'Anis', '#9ec21e'], ['vert', 'Vert', '#2f8a3a'], ['menthe', 'Menthe', '#62d6a6'],
   ['turquoise', 'Turquoise', '#0c9aa0'], ['ciel', 'Ciel', '#45b0ea'], ['marine', 'Marine', '#1f48a8'],
   ['violet', 'Violet', '#6d3fc4'], ['magenta', 'Magenta', '#c4207e'], ['rose', 'Rose', '#f4a8c8'],
+  ['blanc', 'Blanc', '#ece8de'], ['noir', 'Noir', '#2c2c30'],
 ].map(([key, label, hex]) => ({ key, label, hex }));
 const PROFIL_COULEUR_PAR_CLE = Object.fromEntries(PROFIL_COULEURS.map((c) => [c.key, c]));
 
@@ -260,16 +261,21 @@ function profilDessinerCollection() {
   const portee = profilPieceDe(d.user);
   const miennes = new Set(d.pieces || []);
 
-  // Les douze couleurs, celle du compte marquée.
+  // Les quatorze couleurs, celle du compte marquée. Ouvert depuis une table,
+  // celles des autres joueurs sont barrées, comme dans la palette du salon.
+  const prises = profilCouleursPrisesALaTable();
   const couleurs = fond.querySelector('[data-famille="couleurs"]');
   couleurs.textContent = '';
   PROFIL_COULEURS.forEach((c) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     const portee_ = c.key === portee.couleur;
-    btn.className = 'sk-profil-couleur' + (portee_ ? ' sk-profil-couleur--portee' : '');
+    const autre = portee_ ? null : prises.get(c.key);
+    btn.className =
+      'sk-profil-couleur' + (portee_ ? ' sk-profil-couleur--portee' : '') + (autre ? ' sk-profil-couleur--prise' : '');
     btn.style.setProperty('--sk-couleur', c.hex);
-    btn.title = portee_ ? `${c.label} — ta couleur` : c.label;
+    btn.disabled = Boolean(autre);
+    btn.title = autre ? `${c.label} — prise par ${autre}` : portee_ ? `${c.label} — ta couleur` : c.label;
     btn.setAttribute('aria-label', btn.title);
     btn.setAttribute('aria-pressed', String(portee_));
     btn.addEventListener('click', () => profilChoisirCouleur(c.key));
@@ -327,12 +333,25 @@ function profilChoisir(cle) {
     });
 }
 
+// Les couleurs des autres joueurs de la table, couleur => pseudo. C'est la
+// page du Skull King qui le sait (window.profilCouleursPrises) ; ailleurs,
+// au classement, aucune n'est prise.
+function profilCouleursPrisesALaTable() {
+  try {
+    if (typeof window.profilCouleursPrises === 'function') return window.profilCouleursPrises();
+  } catch (e) {
+    /* rien de pris */
+  }
+  return new Map();
+}
+
 // Choisir une couleur la porte aussitôt ; la collection reste ouverte, ses
 // motifs se repeignent dans la nouvelle couleur.
 function profilChoisirCouleur(cle) {
   const d = profilEtat.donnees;
   if (!d || profilEtat.envoi) return;
   if (profilPieceDe(d.user).couleur === cle) return;
+  if (profilCouleursPrisesALaTable().has(cle)) return;
   profilEtat.envoi = true;
   profilErreur('');
   fetch('/api/profil/couleur', {
