@@ -201,6 +201,53 @@ async function main() {
     setComptesAdapter(null);
   }
 
+  // --- Pièces à code : une seule fois, sans égard à la casse -------------
+  {
+    const store = createMemoryStore();
+    const comptes = createComptes({ store });
+    const a = await store.createUser('Alice', 'x');
+    const b = await store.createUser('Bob', 'x');
+    const r1 = await comptes.redeemCode(a.id, 'RoDi', '1.1.1.1');
+    check('le code RODI, en casse mêlée, donne la pièce Apple', r1.piece === 'pomme');
+    const r2 = await comptes.redeemCode(b.id, 'rodi', '2.2.2.2');
+    check("un code déjà utilisé est refusé à un autre compte", !r2.piece && /déjà/.test(r2.error));
+    const r3 = await comptes.redeemCode(a.id, 'RODI', '1.1.1.1');
+    check('et au même compte une seconde fois', !r3.piece);
+    check('la pièce reste au premier compte', JSON.stringify(await store.piecesOf(a.id)) === '["pomme"]');
+    check("l'autre n'a rien", (await store.piecesOf(b.id)).length === 0);
+    check('un code inconnu est refusé', !(await comptes.redeemCode(b.id, 'zzzz', '2.2.2.2')).piece);
+    check('trois lettres ne font pas un code', /quatre/.test((await comptes.redeemCode(b.id, 'abc', '2.2.2.2')).error));
+    check('un invité ne peut pas utiliser de code', !(await comptes.redeemCode(null, 'sput', '3.3.3.3')).piece);
+    const codes = { sput: 'visa', belg: 'taureau', remz: 'viseur', toto: 'harvard' };
+    for (const [code, piece] of Object.entries(codes)) {
+      check(`le code ${code} donne ${piece}`, (await comptes.redeemCode(b.id, code.toUpperCase(), '2.2.2.2')).piece === piece);
+    }
+    // Le frein : huit essais faux d'affilée ferment le compte un moment.
+    const c = await store.createUser('Chercheur', 'x');
+    for (let i = 0; i < 8; i++) await comptes.redeemCode(c.id, 'qqq' + 'abcdefgh'[i], '4.4.4.4');
+    check('les essais en série sont freinés', /Trop/.test((await comptes.redeemCode(c.id, 'qqqz', '4.4.4.4')).error));
+  }
+
+  // --- Pièces à code dans le salon --------------------------------------
+  {
+    const { giveFreePiece, PIECE_KEYS } = require('./skullking-room');
+    check('les pièces à code sont dans le lot', ['pomme', 'visa', 'taureau', 'viseur', 'harvard'].every((k) => PIECE_KEYS.includes(k)));
+    const hote = { id: 'h', piece: null, userId: 1, accountPseudo: 'Hote', ownedPieces: [] };
+    giveFreePiece({ hostId: 'h', players: [hote] }, hote, 'pomme');
+    check("l'hôte n'a pas une pièce à code qu'il n'a pas gagnée", hote.piece !== 'pomme');
+    const gagnant = { id: 'g', piece: null, userId: 2, accountPseudo: 'G', ownedPieces: ['pomme'] };
+    giveFreePiece({ hostId: 'h', players: [gagnant] }, gagnant, 'pomme');
+    check('son propriétaire la retrouve', gagnant.piece === 'pomme');
+    for (let i = 0; i < 40; i++) {
+      const x = { id: 'x' + i, piece: null };
+      giveFreePiece({ hostId: 'h', players: [x] }, x);
+      if (['pomme', 'visa', 'taureau', 'viseur', 'harvard'].includes(x.piece)) {
+        check('le hasard ne donne jamais une pièce à code', false);
+        break;
+      }
+    }
+  }
+
   console.log(`\ncomptes-simulate.js : ${ok}/${ok + ko} assertions passées.`);
   if (ko) process.exit(1);
 }

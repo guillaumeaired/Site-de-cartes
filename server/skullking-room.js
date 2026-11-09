@@ -36,6 +36,7 @@ const { makeRoomCode, sanitizeNickname } = require('./commun');
 const { recordGameStarted } = require('./play-counts');
 const { computeEloChanges } = require('./elo');
 const { pseudoKey } = require('./comptes');
+const { PIECES_A_CODE } = require('./pieces-a-code');
 
 // Les deux paquets proposés dans le salon. Réglage purement visuel : il ne
 // touche ni au deck, ni aux règles, ni au score — seul l'habillage des
@@ -509,6 +510,8 @@ const PIECE_KEYS = [
   'crane', 'ancre', 'voilier', 'sabre', 'boussole',
   'coffre', 'barre', 'bouteille', 'crochet',
   'pieuvre', 'ivrogne', 'poison', 'canon',
+  // Les pièces à code (voir pieces-a-code.js) : à leur seul propriétaire.
+  ...PIECES_A_CODE,
 ];
 const PIECES_EN_VITRINE = 9;
 
@@ -527,18 +530,18 @@ function piecesTirables(room) {
 // pas même à l'hôte. On juge sur le compte connecté (accountPseudo), jamais
 // sur le pseudo de table : un invité ne peut pas prendre le nom d'un compte
 // (voir identityFor), et un joueur renommé pour la table reste son compte.
-const PIECES_NOMINATIVES = { pieuvre: 'Skully master' };
+const PIECES_NOMINATIVES = { pieuvre: 'SkullyMaster' };
 
 function pieceAutorisee(room, player, piece) {
   const rang = PIECE_KEYS.indexOf(piece);
   if (rang === -1) return false;
+  // Une pièce à code ne va qu'au compte qui a utilisé son code — l'hôte
+  // n'y a pas plus droit qu'un autre.
+  if (PIECES_A_CODE.includes(piece)) return Boolean(player.ownedPieces && player.ownedPieces.includes(piece));
   const proprietaire = PIECES_NOMINATIVES[piece];
   if (proprietaire) {
-    // Espaces ignorées : « SkullyMaster » et « Skully master » sont le même
-    // propriétaire, seule la casse et les blancs les séparaient.
-    const cle = (x) => pseudoKey(x).replace(/ /g, '');
     return Boolean(player.userId && player.accountPseudo)
-      && cle(player.accountPseudo) === cle(proprietaire);
+      && pseudoKey(player.accountPseudo) === pseudoKey(proprietaire);
   }
   return rang < PIECES_EN_VITRINE || player.id === room.hostId;
 }
@@ -859,6 +862,10 @@ function broadcastLobby(io, room) {
       // sait pas quelle case est la sienne (myId n'arrive qu'avec l'état de
       // jeu, donc trop tard).
       myId: p.id,
+      // Le jeton personnel : les pièces que CE joueur a gagnées par code, et
+      // s'il peut en saisir un (il faut un compte pour garder la pièce).
+      myPieces: p.ownedPieces || [],
+      canRedeem: Boolean(comptes && p.userId),
       // isBot : l'hôte peut retirer un bot du salon, pas un joueur — le
       // client a donc besoin de savoir lesquels en sont.
       players: room.players.map((pp) => ({
@@ -2138,6 +2145,9 @@ function newPlayer(id, nickname, token, account = null) {
     // Le nom du compte, gardé à part du pseudo affiché : le joueur peut se
     // renommer pour la table sans que sa cote change de propriétaire.
     accountPseudo: account ? account.pseudo : null,
+    // Les pièces gagnées par code (voir pieces-a-code.js et
+    // skullking-redeem-code).
+    ownedPieces: account && Array.isArray(account.pieces) ? [...account.pieces] : [],
     connected: true,
     disconnectTimer: null,
     hand: [],
@@ -2413,6 +2423,52 @@ function registerSkullKingHandlers(io, socket) {
     }
     player.piece = piece;
     broadcastLobby(io, room);
+  });
+
+  // Un code de pièce, tapé dans le cadre « Jeton personnel » du salon. Le
+  // code est consommé côté comptes (une seule fois, tous joueurs confondus) ;
+  // la pièce gagnée est aussitôt mise, puisque personne d'autre ne peut la
+  // porter. Le client reçoit skullking-code-ok pour jouer son grattage.
+  socket.on('skullking-redeem-code', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+    if (!comptes || !player.userId) {
+      socket.emit('skullking-code-error', 'Connecte-toi pour utiliser un code.');
+      return;
+    }
+    if (player.redeeming) return;
+    player.redeeming = true;
+    const fwd = socket.handshake && socket.handshake.headers && socket.handshake.headers['x-forwarded-for'];
+    const ip = (fwd && String(fwd).split(',')[0].trim()) || (socket.handshake && socket.handshake.address) || 'inconnue';
+    comptes
+      .redeemCode(player.userId, payload && payload.code, ip)
+      .then((res) => {
+        if (res.error) {
+          socket.emit('skullking-code-error', res.error);
+          return;
+        }
+        if (!player.ownedPieces) player.ownedPieces = [];
+        if (!player.ownedPieces.includes(res.piece)) player.ownedPieces.push(res.piece);
+        const user = socket.data && socket.data.user;
+        if (user && user.id === player.userId) {
+          if (!user.pieces) user.pieces = [];
+          if (!user.pieces.includes(res.piece)) user.pieces.push(res.piece);
+        }
+        if (room.phase === 'lobby' && !room.players.some((p) => p !== player && p.piece === res.piece)) {
+          player.piece = res.piece;
+        }
+        socket.emit('skullking-code-ok', { piece: res.piece });
+        broadcastLobby(io, room);
+      })
+      .catch((err) => {
+        console.error('[skullking] code de pièce', err);
+        socket.emit('skullking-code-error', 'Le serveur n’a pas pu vérifier le code, réessaie dans un instant.');
+      })
+      .finally(() => {
+        player.redeeming = false;
+      });
   });
 
   // Se renommer depuis le salon. Même régime que la pièce : tant que la partie

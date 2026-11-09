@@ -1654,6 +1654,12 @@ const piecePicker = document.getElementById('sk-piece-picker');
 const pieceGrid = document.getElementById('sk-piece-grid');
 const jetonPerso = document.getElementById('sk-jeton-perso');
 const jetonPersoGrid = document.getElementById('sk-jeton-perso-grid');
+const jetonPersoVide = document.getElementById('sk-jeton-perso-vide');
+const jetonCodeForm = document.getElementById('sk-jeton-code');
+const jetonCodeInput = document.getElementById('sk-jeton-code-input');
+const jetonCodeMsg = document.getElementById('sk-jeton-code-msg');
+const jetonCodeConnexion = document.getElementById('sk-jeton-code-connexion');
+const jetonCodeCases = [...jetonCodeForm.querySelectorAll('.sk-pin-case')];
 let piecePrefApplied = false;
 // Le choix de pièce a deux pages : la vitrine des neuf, et la suite derrière
 // une flèche. null tant que le salon n'est pas dessiné — il s'ouvre alors
@@ -1779,15 +1785,295 @@ function boutonPiece(piece, takenBy) {
 }
 
 // LE JETON PERSONNEL : un cadre sous la discussion, pour les pièces qui
-// n'appartiennent qu'à un compte (voir PIECES_NOMINATIVES). Seul ce compte
-// le voit — pour les autres il n'y a rien à choisir, donc rien à montrer.
+// n'appartiennent qu'à un compte — gagnées par code, ou nominatives (voir
+// PIECES_NOMINATIVES). Tout le monde le voit : « Aucun » tant qu'on n'a rien
+// gagné, et dessous les quatre cases où taper un code. Un invité voit le
+// cadre aussi, avec de quoi se connecter : sans compte, la pièce gagnée
+// n'aurait nulle part où rester.
 function renderJetonPerso(takenBy) {
   if (!jetonPerso) return;
   const miennes = PIECES_PERSONNELLES.filter((p) => pieceOuverte(p.key));
-  jetonPerso.classList.toggle('hidden', miennes.length === 0);
+  jetonPerso.classList.remove('hidden');
   jetonPersoGrid.innerHTML = '';
   miennes.forEach((piece) => jetonPersoGrid.appendChild(boutonPiece(piece, takenBy)));
+  jetonPersoGrid.classList.toggle('hidden', miennes.length === 0);
+  jetonPersoVide.classList.toggle('hidden', miennes.length > 0);
+  jetonCodeForm.classList.toggle('hidden', !myCanRedeem);
+  jetonCodeConnexion.classList.toggle('hidden', myCanRedeem);
 }
+
+// --- Le code de pièce --------------------------------------------------
+// Quatre lettres dans quatre cases, comme le code de connexion : un seul vrai
+// champ, transparent, posé sur les cases. Majuscules ou minuscules, peu
+// importe — on montre des majuscules, le serveur compare sans la casse. Le
+// code part tout seul à la quatrième lettre.
+let jetonCodeEnCours = null;
+
+function dessinerCodeJeton() {
+  const v = jetonCodeInput.value;
+  jetonCodeCases.forEach((c, i) => {
+    c.textContent = v[i] || '';
+    c.classList.toggle('sk-pin-case--pleine', i < v.length);
+    c.classList.toggle('sk-pin-case--courante', i === Math.min(v.length, jetonCodeCases.length - 1));
+  });
+}
+
+function messageCodeJeton(texte, erreur = false) {
+  jetonCodeMsg.textContent = texte || '';
+  jetonCodeMsg.classList.toggle('sk-jeton-code-msg--erreur', erreur);
+}
+
+function finCodeJeton() {
+  clearTimeout(jetonCodeEnCours);
+  jetonCodeEnCours = null;
+  jetonCodeForm.classList.remove('sk-jeton-code--attente');
+  jetonCodeInput.readOnly = false;
+  jetonCodeInput.value = '';
+  dessinerCodeJeton();
+}
+
+function envoyerCodeJeton() {
+  const code = jetonCodeInput.value;
+  if (code.length !== 4 || jetonCodeEnCours) return;
+  jetonCodeInput.readOnly = true;
+  jetonCodeForm.classList.add('sk-jeton-code--attente');
+  messageCodeJeton('Vérification…');
+  socket.emit('skullking-redeem-code', { code });
+  // Sans réponse (connexion perdue), on rend la main plutôt que de rester
+  // bloqué sur « Vérification… ».
+  jetonCodeEnCours = setTimeout(() => {
+    finCodeJeton();
+    messageCodeJeton('Pas de réponse du serveur, réessaie.', true);
+  }, 10_000);
+}
+
+jetonCodeInput.addEventListener('input', () => {
+  const propre = jetonCodeInput.value.replace(/[^a-z]/gi, '').slice(0, 4).toUpperCase();
+  if (propre !== jetonCodeInput.value) jetonCodeInput.value = propre;
+  dessinerCodeJeton();
+  if (propre.length === 4) envoyerCodeJeton();
+  else if (!jetonCodeEnCours) messageCodeJeton('');
+});
+jetonCodeInput.addEventListener('focus', () => {
+  const fin = jetonCodeInput.value.length;
+  requestAnimationFrame(() => jetonCodeInput.setSelectionRange && jetonCodeInput.setSelectionRange(fin, fin));
+});
+jetonCodeForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  envoyerCodeJeton();
+});
+dessinerCodeJeton();
+
+socket.on('skullking-code-error', (message) => {
+  finCodeJeton();
+  messageCodeJeton(message, true);
+  // Les cases tremblent : le refus se voit même sans lire le message.
+  jetonCodeForm.classList.remove('sk-jeton-code--refus');
+  void jetonCodeForm.offsetWidth;
+  jetonCodeForm.classList.add('sk-jeton-code--refus');
+});
+
+socket.on('skullking-code-ok', ({ piece }) => {
+  finCodeJeton();
+  messageCodeJeton('');
+  // Le serveur la met déjà ; on la garde aussi pour la prochaine partie.
+  try {
+    localStorage.setItem(PIECE_PREF_KEY, piece);
+  } catch (e) {
+    /* navigation privée */
+  }
+  ouvrirGrattage(PIECE_BY_KEY[piece]);
+});
+
+// --- Le grattage ---------------------------------------------------------
+// La pièce gagnée arrive cachée sous une feuille d'or terni : elle tombe en
+// tournoyant, puis on gratte (doigt ou souris) jusqu'à ce que la moitié de la
+// feuille soit partie — le reste s'efface alors d'un coup et la pièce
+// s'illumine. Entrée ou Espace sur la feuille révèle tout, pour qui ne peut
+// pas gratter.
+const grattage = document.getElementById('sk-grattage');
+const grattageImg = document.getElementById('sk-grattage-img');
+const grattageCanvas = document.getElementById('sk-grattage-canvas');
+const grattageAide = document.getElementById('sk-grattage-aide');
+const grattageNom = document.getElementById('sk-grattage-nom');
+const grattageOk = document.getElementById('sk-grattage-ok');
+const SEUIL_REVELATION = 0.5;
+let grattageEtat = null;
+
+function ouvrirGrattage(piece) {
+  if (!piece) return;
+  grattageImg.src = `assets/skin/piece-${piece.key}.webp`;
+  grattageNom.textContent = '';
+  grattageOk.classList.add('sk-cache');
+  grattageAide.classList.remove('sk-cache');
+  grattage.classList.remove('hidden', 'sk-grattage--revele');
+  grattageEtat = { piece, ctx: null, w: 0, h: 0, dernier: null, traits: 0, fini: false };
+  // Relancer l'animation d'entrée même si on enchaîne deux codes.
+  grattage.classList.remove('sk-grattage--entree');
+  void grattage.offsetWidth;
+  grattage.classList.add('sk-grattage--entree');
+  // Tout de suite, pas à la prochaine image : la pièce est déjà sous la
+  // feuille, elle ne doit pas se montrer une seule image à découvert.
+  preparerFeuille();
+}
+
+function preparerFeuille() {
+  // La taille de mise en page, pas getBoundingClientRect : la pièce est en
+  // pleine chute (réduite, tournée) au moment où l'on prépare la feuille.
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = grattageCanvas.offsetWidth;
+  const h = grattageCanvas.offsetHeight;
+  grattageCanvas.width = Math.round(w * dpr);
+  grattageCanvas.height = Math.round(h * dpr);
+  const ctx = grattageCanvas.getContext('2d', { willReadFrequently: true });
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  grattageCanvas.classList.remove('sk-grattage-canvas--parti');
+
+  // La feuille : un or terni brossé, plus clair au centre.
+  const fond = ctx.createLinearGradient(0, 0, w, h);
+  fond.addColorStop(0, '#d8cba6');
+  fond.addColorStop(0.3, '#a8925f');
+  fond.addColorStop(0.5, '#efe2bb');
+  fond.addColorStop(0.72, '#9a8455');
+  fond.addColorStop(1, '#c9b685');
+  ctx.fillStyle = fond;
+  ctx.fillRect(0, 0, w, h);
+  // Le grain, pour qu'on sente une matière et pas un aplat.
+  for (let i = 0; i < 1800; i++) {
+    const clair = Math.random() < 0.5;
+    ctx.fillStyle = clair ? 'rgba(255, 248, 225, 0.16)' : 'rgba(60, 42, 14, 0.14)';
+    ctx.fillRect(Math.random() * w, Math.random() * h, 1.6, 1.6);
+  }
+  // Un cerclage gravé et un point d'interrogation en creux.
+  const cx = w / 2;
+  const cy = h / 2;
+  ctx.lineWidth = Math.max(2, w * 0.012);
+  ctx.strokeStyle = 'rgba(70, 50, 18, 0.35)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, w * 0.4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255, 246, 220, 0.35)';
+  ctx.beginPath();
+  ctx.arc(cx + 1, cy + 1.5, w * 0.4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.font = `700 ${Math.round(w * 0.36)}px Cinzel, Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255, 246, 220, 0.4)';
+  ctx.fillText('?', cx + 2, cy + 3);
+  ctx.fillStyle = 'rgba(70, 50, 18, 0.45)';
+  ctx.fillText('?', cx, cy);
+
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(26, w * 0.13);
+  Object.assign(grattageEtat, { ctx, w, h });
+}
+
+// Si la pièce change de taille (fenêtre tournée, redimensionnée) avant le
+// premier coup d'ongle, on refait la feuille à la bonne taille ; après, on la
+// laisse telle quelle plutôt que d'effacer ce qui a été gratté.
+if (window.ResizeObserver) {
+  new ResizeObserver(() => {
+    if (!grattageEtat || grattageEtat.fini || grattageEtat.traits > 0 || grattageEtat.dernier) return;
+    if (grattageCanvas.offsetWidth && grattageCanvas.offsetWidth !== grattageEtat.w) preparerFeuille();
+  }).observe(grattageCanvas);
+}
+
+// Le point sous le doigt, ramené à la taille de mise en page de la feuille
+// (la pièce peut encore être agrandie ou réduite par une animation).
+function pointFeuille(e) {
+  const rect = grattageCanvas.getBoundingClientRect();
+  const kx = rect.width ? grattageCanvas.offsetWidth / rect.width : 1;
+  const ky = rect.height ? grattageCanvas.offsetHeight / rect.height : 1;
+  return { x: (e.clientX - rect.left) * kx, y: (e.clientY - rect.top) * ky };
+}
+
+function gratter(depuis, vers) {
+  const { ctx } = grattageEtat;
+  ctx.beginPath();
+  ctx.moveTo(depuis.x, depuis.y);
+  ctx.lineTo(vers.x + 0.01, vers.y);
+  ctx.stroke();
+}
+
+// La part de la feuille déjà grattée, mesurée sur le disque seulement (les
+// coins hors de la pièce ne comptent pas), un pixel sur six.
+function partGrattee() {
+  const { ctx } = grattageEtat;
+  const W = grattageCanvas.width;
+  const H = grattageCanvas.height;
+  const data = ctx.getImageData(0, 0, W, H).data;
+  const r2 = (Math.min(W, H) / 2) ** 2;
+  let total = 0;
+  let parti = 0;
+  for (let y = 0; y < H; y += 6) {
+    for (let x = 0; x < W; x += 6) {
+      if ((x - W / 2) ** 2 + (y - H / 2) ** 2 > r2) continue;
+      total++;
+      if (data[(y * W + x) * 4 + 3] < 40) parti++;
+    }
+  }
+  return total ? parti / total : 0;
+}
+
+function revelerPiece() {
+  if (!grattageEtat || grattageEtat.fini) return;
+  grattageEtat.fini = true;
+  grattageCanvas.classList.add('sk-grattage-canvas--parti');
+  grattage.classList.add('sk-grattage--revele');
+  grattageAide.classList.add('sk-cache');
+  grattageNom.textContent = `Pièce ${grattageEtat.piece.label} débloquée !`;
+  grattageOk.classList.remove('sk-cache');
+  setTimeout(() => grattageOk.focus(), 400);
+}
+
+function fermerGrattage() {
+  grattage.classList.add('hidden');
+  grattage.classList.remove('sk-grattage--entree', 'sk-grattage--revele');
+  grattageEtat = null;
+}
+
+grattageCanvas.addEventListener('pointerdown', (e) => {
+  if (!grattageEtat || grattageEtat.fini) return;
+  e.preventDefault();
+  try {
+    grattageCanvas.setPointerCapture(e.pointerId);
+  } catch (err) {
+    /* pointeur déjà relâché : le trait se fera sans capture */
+  }
+  if (!grattageEtat.ctx || (grattageCanvas.offsetWidth !== grattageEtat.w && grattageEtat.traits === 0)) preparerFeuille();
+  const p = pointFeuille(e);
+  grattageEtat.dernier = p;
+  grattageEtat.traits++;
+  gratter(p, p);
+});
+grattageCanvas.addEventListener('pointermove', (e) => {
+  if (!grattageEtat || grattageEtat.fini || !grattageEtat.dernier) return;
+  const p = pointFeuille(e);
+  gratter(grattageEtat.dernier, p);
+  grattageEtat.dernier = p;
+  if (++grattageEtat.traits % 8 === 0 && partGrattee() >= SEUIL_REVELATION) revelerPiece();
+});
+const finTrait = () => {
+  if (!grattageEtat || grattageEtat.fini) return;
+  grattageEtat.dernier = null;
+  if (grattageEtat.ctx && partGrattee() >= SEUIL_REVELATION) revelerPiece();
+};
+grattageCanvas.addEventListener('pointerup', finTrait);
+grattageCanvas.addEventListener('pointercancel', finTrait);
+grattageCanvas.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    revelerPiece();
+  }
+});
+grattageOk.addEventListener('click', fermerGrattage);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && grattageEtat && grattageEtat.fini) fermerGrattage();
+});
 
 function renderPiecePicker(players) {
   const me = players.find((p) => p.id === myId);
@@ -2341,8 +2627,10 @@ function renderPacePicker(pace, reglages, presets, presetActif, isHost) {
   }
 }
 
-socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id }) => {
+socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost, canStart, minPlayers, maxPlayers, extensions, extensionModules, deckSize, deckStyle: deck, totalRounds, minRounds, maxRounds, pace, paceSettings, pacePresets, pacePreset, chat, myId: id, myPieces, canRedeem }) => {
   if (id) myId = id;
+  myCodePieces = Array.isArray(myPieces) ? myPieces : [];
+  myCanRedeem = Boolean(canRedeem);
   setSpectating(false);
   // Avant tout le reste : le pseudo a pu changer depuis ce salon (voir
   // « Modifier »), et c'est celui du serveur qui part dans la session de
@@ -3119,7 +3407,17 @@ const PIECES = [
   { key: 'ivrogne', label: 'Ivrogne', color: '#cc4733' },
   { key: 'poison', label: 'Poison', color: '#7a8006' },
   { key: 'canon', label: 'Canon', color: '#746755' },
+  // Les pièces à code : personne ne les a d'office, chacune se gagne avec un
+  // code de quatre lettres valable une seule fois (server/pieces-a-code.js,
+  // qui est seul à connaître les codes). Elles vivent dans le cadre « Jeton
+  // personnel » de qui les a gagnées, jamais dans la vitrine ni la suite.
+  { key: 'pomme', label: 'Apple', color: '#4db9e5' },
+  { key: 'visa', label: 'Visa', color: '#fca3af' },
+  { key: 'taureau', label: 'Taureau', color: '#f0e3cf' },
+  { key: 'viseur', label: 'Carbon Away', color: '#66dd99' },
+  { key: 'harvard', label: 'Harvard', color: '#911b27' },
 ];
+const PIECES_A_CODE = ['pomme', 'visa', 'taureau', 'viseur', 'harvard'];
 
 // Les neuf premières se montrent d'emblée dans le salon ; les autres
 // attendent derrière une flèche que seul l'hôte voit. Même découpe que
@@ -3130,11 +3428,15 @@ const PIECES_EN_VITRINE = 9;
 // Les pièces qui n'appartiennent qu'à un compte nommé — hôte ou pas, et
 // personne d'autre, pas même l'hôte. Même table que PIECES_NOMINATIVES côté
 // serveur, qui est seul juge ; celle-ci ne sert qu'à dessiner le choix.
-const PIECES_NOMINATIVES = { pieuvre: 'Skully master' };
+const PIECES_NOMINATIVES = { pieuvre: 'SkullyMaster' };
 let myAccountPseudo = null;
+// Les pièces gagnées par code, et si l'on peut en saisir un (il faut un
+// compte) : envoyés à chacun avec le salon (myPieces, canRedeem).
+let myCodePieces = [];
+let myCanRedeem = false;
 
 function memeCompte(a, b) {
-  const cle = (x) => String(x).normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+  const cle = (x) => String(x).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
   return Boolean(a && b) && cle(a) === cle(b);
 }
 
@@ -3143,6 +3445,7 @@ function memeCompte(a, b) {
 function pieceOuverte(key) {
   const rang = PIECES.findIndex((p) => p.key === key);
   if (rang === -1) return false;
+  if (PIECES_A_CODE.includes(key)) return myCodePieces.includes(key);
   const proprietaire = PIECES_NOMINATIVES[key];
   if (proprietaire) return memeCompte(myAccountPseudo, proprietaire);
   return rang < PIECES_EN_VITRINE || myIsHost;
@@ -3151,8 +3454,10 @@ function pieceOuverte(key) {
 // La suite, derrière la flèche : les pièces de l'hôte. Les pièces
 // nominatives n'y sont plus — elles ont leur propre cadre, « Jeton
 // personnel », sous la discussion, et seul leur compte le voit.
-const PIECES_SUITE = PIECES.slice(PIECES_EN_VITRINE).filter((p) => !PIECES_NOMINATIVES[p.key]);
-const PIECES_PERSONNELLES = PIECES.filter((p) => PIECES_NOMINATIVES[p.key]);
+const PIECES_SUITE = PIECES.slice(PIECES_EN_VITRINE).filter(
+  (p) => !PIECES_NOMINATIVES[p.key] && !PIECES_A_CODE.includes(p.key),
+);
+const PIECES_PERSONNELLES = PIECES.filter((p) => PIECES_NOMINATIVES[p.key] || PIECES_A_CODE.includes(p.key));
 
 function suiteAccessible() {
   return myIsHost;

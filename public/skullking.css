@@ -6180,8 +6180,269 @@ button.sk-lobby-bot:focus-visible {
 
 .sk-jeton-perso-grid {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: var(--sk-piece-ecart, 8px);
+}
+
+.sk-jeton-perso-grid.hidden,
+.sk-jeton-perso-vide.hidden,
+.sk-jeton-code.hidden,
+.sk-jeton-code-msg.hidden {
+  display: none;
+}
+
+.sk-jeton-perso-vide {
+  margin: 0;
+  text-align: center;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--sk-cream-3);
+}
+
+/* Le code de pièce : les quatre cases du code de connexion (compte.css),
+   en plus petit, montrant des lettres et non des points. */
+.sk-jeton-code {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid rgba(184, 137, 53, 0.18);
+}
+
+.sk-jeton-code .sk-pin-libelle {
+  margin-bottom: 6px;
+}
+
+.sk-jeton-code-cases {
+  gap: 7px;
+}
+
+.sk-jeton-code-cases .sk-pin-case {
+  width: 34px;
+  height: 38px;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+}
+
+input.sk-jeton-code-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: text;
+}
+
+.sk-jeton-code--attente .sk-pin-case {
+  animation: sk-code-attente 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes sk-code-attente {
+  to { box-shadow: inset 0 0 0 1px var(--sk-brass-hi), inset 0 2px 5px rgba(0, 0, 0, 0.6); }
+}
+
+.sk-jeton-code--refus .sk-jeton-code-cases {
+  animation: sk-code-refus 0.4s ease;
+}
+
+@keyframes sk-code-refus {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+
+.sk-jeton-code-msg {
+  min-height: 1em;
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--sk-cream-2);
+}
+
+.sk-jeton-code-msg--erreur {
+  color: #e8846e;
+}
+
+.sk-jeton-code-msg a {
+  color: var(--sk-brass-hi);
+}
+
+/* LE GRATTAGE d'une pièce gagnée par code : le salon s'assombrit, des rayons
+   d'or tournent derrière, la pièce tombe en tournoyant sous sa feuille. */
+.sk-grattage {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, rgba(40, 26, 10, 0.86), rgba(6, 3, 1, 0.94));
+}
+
+.sk-grattage.hidden {
+  display: none;
+}
+
+.sk-grattage-rayons {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 130vmin;
+  height: 130vmin;
+  margin: -65vmin 0 0 -65vmin;
+  background: repeating-conic-gradient(rgba(232, 206, 146, 0.13) 0deg 7deg, transparent 7deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0, transparent 55%);
+  mask-image: radial-gradient(circle, #000 0, transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sk-grattage--entree .sk-grattage-rayons {
+  animation: sk-rayons-entree 0.8s ease forwards, sk-rayons-tour 24s linear infinite;
+}
+
+@keyframes sk-rayons-entree {
+  to { opacity: 1; }
+}
+
+@keyframes sk-rayons-tour {
+  to { transform: rotate(360deg); }
+}
+
+.sk-grattage-boite {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  text-align: center;
+}
+
+.sk-grattage--entree .sk-grattage-boite {
+  animation: sk-boite-entree 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes sk-boite-entree {
+  from { transform: scale(0.7); opacity: 0; }
+}
+
+.sk-grattage-titre {
+  margin: 0;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: linear-gradient(100deg, #b88935 20%, #fff2c8 45%, #b88935 70%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sk-titre-reflet 2.4s linear infinite;
+}
+
+@keyframes sk-titre-reflet {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+
+.sk-grattage-aide {
+  margin: 6px 0 16px;
+  font-size: 0.95rem;
+  color: var(--sk-cream-2);
+}
+
+.sk-grattage .sk-cache {
+  visibility: hidden;
+}
+
+.sk-grattage-piece {
+  position: relative;
+  width: min(260px, 62vw, 52vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(184, 137, 53, 0.5);
+}
+
+.sk-grattage--entree .sk-grattage-piece {
+  animation: sk-piece-chute 1.1s cubic-bezier(0.25, 0.9, 0.3, 1.15) 0.15s both;
+}
+
+@keyframes sk-piece-chute {
+  0% { transform: translateY(-60vh) rotate(-540deg) scale(0.4); }
+  70% { transform: translateY(0) rotate(12deg) scale(1.04); }
+  85% { transform: rotate(-5deg) scale(0.99); }
+  100% { transform: none; }
+}
+
+.sk-grattage-img,
+.sk-grattage-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sk-grattage-img {
+  object-fit: contain;
+}
+
+.sk-grattage-canvas {
+  cursor: grab;
+  touch-action: none;
+  transition: opacity 0.6s ease;
+}
+
+.sk-grattage-canvas:active {
+  cursor: grabbing;
+}
+
+.sk-grattage-canvas:focus-visible {
+  outline: 2px solid var(--sk-brass-hi);
+  outline-offset: -4px;
+}
+
+.sk-grattage-canvas--parti {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sk-grattage--revele .sk-grattage-piece {
+  animation: sk-piece-eclat 1.6s ease-out both;
+}
+
+@keyframes sk-piece-eclat {
+  0% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(184, 137, 53, 0.5); transform: scale(1); }
+  25% { box-shadow: 0 0 60px 18px rgba(255, 224, 150, 0.75), 0 0 0 3px rgba(255, 230, 170, 0.9); transform: scale(1.08); }
+  100% { box-shadow: 0 0 34px 6px rgba(232, 206, 146, 0.4), 0 0 0 3px rgba(184, 137, 53, 0.5); transform: scale(1); }
+}
+
+.sk-grattage-nom {
+  min-height: 1.4em;
+  margin: 18px 0 12px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--sk-brass-hi);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-grattage--entree .sk-grattage-piece,
+  .sk-grattage--entree .sk-grattage-boite,
+  .sk-grattage--revele .sk-grattage-piece,
+  .sk-grattage-titre {
+    animation: none;
+  }
+  .sk-grattage--entree .sk-grattage-rayons {
+    animation: sk-rayons-entree 0.3s ease forwards;
+  }
 }
 
 /* Pastille de rappel à côté du pseudo dans la liste du salon. */

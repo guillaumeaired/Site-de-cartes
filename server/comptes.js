@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const { promisify } = require('util');
 const { sanitizeNickname } = require('./commun');
 const { ELO_INITIAL } = require('./elo');
+const { normaliserCode, pieceDuCode } = require('./pieces-a-code');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -74,6 +75,7 @@ function createMemoryStore() {
   const byKey = new Map(); // pseudoKey -> id
   const sessions = new Map(); // tokenHash -> { userId, expiresAt }
   const games = [];
+  const codesUtilises = new Map(); // code -> { userId, piece }
   let nextId = 1;
 
   return {
@@ -112,6 +114,17 @@ function createMemoryStore() {
     },
     async deleteSession(hash) {
       sessions.delete(hash);
+    },
+    // Les pièces gagnées par code (voir pieces-a-code.js).
+    async piecesOf(userId) {
+      return [...codesUtilises.values()].filter((c) => c.userId === userId).map((c) => c.piece);
+    },
+    // Consomme le code pour ce compte. Renvoie true si c'est lui qui l'a
+    // pris, false si quelqu'un l'avait déjà utilisé.
+    async consumeCode(code, userId, piece) {
+      if (codesUtilises.has(code)) return false;
+      codesUtilises.set(code, { userId, piece });
+      return true;
     },
     // results : [{ userId, delta, won }] - renvoie { userId: nouvelleCote }
     async applyGameResult({ rounds, results, summary }) {
@@ -176,6 +189,12 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
           token_hash TEXT PRIMARY KEY,
           user_id INTEGER NOT NULL REFERENCES sk_users(id) ON DELETE CASCADE,
           expires_at TIMESTAMPTZ NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS sk_piece_codes (
+          code TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES sk_users(id) ON DELETE CASCADE,
+          piece TEXT NOT NULL,
+          redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
         CREATE TABLE IF NOT EXISTS sk_games (
           id SERIAL PRIMARY KEY,
@@ -254,6 +273,22 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
       } finally {
         client.release();
       }
+    },
+    async piecesOf(userId) {
+      const { rows } = await pool.query(
+        'SELECT piece FROM sk_piece_codes WHERE user_id = $1 ORDER BY redeemed_at',
+        [userId],
+      );
+      return rows.map((r) => r.piece);
+    },
+    // La clé primaire sur `code` fait l'arbitre : deux comptes qui tapent le
+    // même code au même instant, un seul insère, l'autre ne récupère rien.
+    async consumeCode(code, userId, piece) {
+      const { rows } = await pool.query(
+        'INSERT INTO sk_piece_codes (code, user_id, piece) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING RETURNING piece',
+        [code, userId, piece],
+      );
+      return rows.length === 1;
     },
     async leaderboard(limit) {
       const { rows } = await pool.query(
@@ -342,7 +377,14 @@ function sessionCookie(token, secure, maxAgeSeconds) {
 
 // --- Le service : routes HTTP, middleware Socket.io, pseudos réservés -------
 
-function createComptes({ store = createStore(), limiter = new LoginLimiter(), site = null } = {}) {
+function createComptes({
+  store = createStore(),
+  limiter = new LoginLimiter(),
+  // Les codes de pièce n'ont que 26^4 possibilités : même frein que le code
+  // de connexion, compté par compte et par adresse.
+  codeLimiter = new LoginLimiter({ perPseudo: 8, perIp: 30 }),
+  site = null,
+} = {}) {
   // Les pseudos qui ont un compte, gardés en mémoire : un invité ne doit pas
   // pouvoir s'asseoir sous le nom d'un joueur classé, et cette vérification
   // se fait dans les gestionnaires de salon, qui sont synchrones.
@@ -372,6 +414,29 @@ function createComptes({ store = createStore(), limiter = new LoginLimiter(), si
     const token = readCookie(header, SESSION_COOKIE);
     if (!token) return null;
     return store.findSessionUser(tokenHash(token));
+  }
+
+  // Un code de pièce tapé par un compte connecté. Renvoie { piece } quand le
+  // code est bon et encore libre, { error } sinon. Le code lui-même ne
+  // ressort jamais : seul le nom de la pièce gagnée.
+  async function redeemCode(userId, brut, ip = 'inconnue') {
+    if (!userId) return { error: 'Connecte-toi pour utiliser un code.' };
+    const cle = `compte:${userId}`;
+    const wait = codeLimiter.blockedFor(cle, ip);
+    if (wait) return { error: `Trop d’essais. Réessaie dans ${wait} min.` };
+    const code = normaliserCode(brut);
+    if (!code) return { error: 'Le code fait quatre lettres.' };
+    const piece = pieceDuCode(code);
+    if (!piece) {
+      codeLimiter.fail(cle, ip);
+      return { error: 'Ce code n’existe pas.' };
+    }
+    if (!(await store.consumeCode(code, userId, piece))) {
+      codeLimiter.fail(cle, ip);
+      return { error: 'Ce code a déjà été utilisé.' };
+    }
+    codeLimiter.succeed(cle);
+    return { piece };
   }
 
   function registerRoutes(app, express) {
@@ -464,8 +529,10 @@ function createComptes({ store = createStore(), limiter = new LoginLimiter(), si
   // tout.
   function socketMiddleware(socket, next) {
     userFromCookieHeader(socket.handshake.headers.cookie)
-      .then((user) => {
-        if (user) socket.data.user = { id: user.id, pseudo: user.pseudo, elo: user.elo };
+      .then(async (user) => {
+        if (!user) return;
+        socket.data.user = { id: user.id, pseudo: user.pseudo, elo: user.elo, pieces: [] };
+        socket.data.user.pieces = await store.piecesOf(user.id);
       })
       .catch((err) => console.error('[comptes] session illisible', err.message))
       .finally(() => next());
@@ -477,6 +544,7 @@ function createComptes({ store = createStore(), limiter = new LoginLimiter(), si
     isReservedPseudo,
     registerRoutes,
     socketMiddleware,
+    redeemCode,
     applyGameResult: (game) => store.applyGameResult(game),
   };
 }

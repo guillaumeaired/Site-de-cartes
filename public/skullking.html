@@ -166,10 +166,26 @@
             <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
           </form>
           <!-- Le jeton personnel : les pièces qui n'appartiennent qu'à un
-               compte (voir PIECES_NOMINATIVES). Seul ce compte voit le cadre. -->
+               compte — gagnées par code (server/pieces-a-code.js) ou
+               nominatives (PIECES_NOMINATIVES). Tout le monde voit le cadre,
+               vide au départ ; le code s'écrit dans quatre cases, comme
+               celui de connexion (un seul vrai champ posé dessus). -->
           <section id="sk-jeton-perso" class="sk-jeton-perso hidden" aria-labelledby="sk-jeton-perso-titre">
             <p id="sk-jeton-perso-titre" class="invite-label sk-jeton-perso-titre">Jeton personnel</p>
             <div id="sk-jeton-perso-grid" class="sk-jeton-perso-grid"></div>
+            <p id="sk-jeton-perso-vide" class="sk-jeton-perso-vide">Aucun</p>
+            <form id="sk-jeton-code" class="sk-jeton-code" autocomplete="off" novalidate>
+              <label for="sk-jeton-code-input" class="sk-pin-libelle">Un code ?</label>
+              <div class="sk-pin-cases sk-jeton-code-cases">
+                <input id="sk-jeton-code-input" class="sk-jeton-code-input" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+                <span class="sk-pin-case" aria-hidden="true"></span>
+                <span class="sk-pin-case" aria-hidden="true"></span>
+                <span class="sk-pin-case" aria-hidden="true"></span>
+                <span class="sk-pin-case" aria-hidden="true"></span>
+              </div>
+              <p id="sk-jeton-code-msg" class="sk-jeton-code-msg" role="status" aria-live="polite"></p>
+            </form>
+            <p id="sk-jeton-code-connexion" class="sk-jeton-code-msg hidden"><a href="connexion.html">Connecte-toi</a> pour utiliser un code.</p>
           </section>
         </div>
       </div>
@@ -730,8 +746,25 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <!-- Le grattage d'une pièce gagnée par code (voir ouvrirGrattage dans
+       skullking.js) : la pièce est dessous, une feuille d'or terni dessus,
+       à gratter du doigt ou de la souris. -->
+  <div id="sk-grattage" class="sk-grattage hidden" role="dialog" aria-modal="true" aria-labelledby="sk-grattage-titre">
+    <div class="sk-grattage-rayons" aria-hidden="true"></div>
+    <div class="sk-grattage-boite">
+      <p id="sk-grattage-titre" class="sk-grattage-titre">Code accepté !</p>
+      <p id="sk-grattage-aide" class="sk-grattage-aide">Gratte pour révéler ta pièce</p>
+      <div class="sk-grattage-piece">
+        <img id="sk-grattage-img" class="sk-grattage-img" alt="" />
+        <canvas id="sk-grattage-canvas" class="sk-grattage-canvas" tabindex="0" aria-label="Surface à gratter : Entrée pour tout révéler"></canvas>
+      </div>
+      <p id="sk-grattage-nom" class="sk-grattage-nom" aria-live="polite"></p>
+      <button id="sk-grattage-ok" class="btn sk-grattage-ok sk-cache" type="button">À l'abordage !</button>
+    </div>
+
   <script src="commun.js"></script>
   <script src="compte.js"></script>
   <script src="skullking.js"></script>
+  </div>
 </body>
 </html>
