@@ -4,29 +4,20 @@
    il reprend les couleurs (--sk-*), les polices et les boutons de laiton :
    rien ici ne redessine ce qui existe déjà, ça ne fait qu'ajouter. */
 
-/* --- Le bandeau d'identité, en haut à droite -------------------------
+/* --- Le menu du compte, en haut à droite -----------------------------
    Le pendant de « ← Tous les jeux » en haut à gauche : posé en fixe, il ne
    pousse rien dans la colonne de l'accueil. Une plaque de bois cerclée de
-   laiton : le pseudo, la cote en gros chiffres, puis le bouton du
-   classement. Il suit l'accueil, le salon et le récap de fin ; pendant la
+   laiton (pièce, pseudo, cote en gros chiffres) et dessous, déroulés
+   d'office, Profil, Classement et Déconnexion — un clic sur la plaque les
+   replie. Il suit
+   l'accueil, le salon, le récap de fin et le classement ; pendant la
    partie, la table a besoin de tout l'écran. */
 .sk-compte {
   position: fixed;
   top: 10px;
   right: 14px;
   z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   max-width: calc(100vw - 28px);
-  padding: 5px 6px 5px 12px;
-  border-radius: 3px;
-  background:
-    linear-gradient(180deg, rgba(255, 236, 196, 0.07), rgba(0, 0, 0, 0.3)),
-    rgba(20, 12, 6, 0.88);
-  box-shadow:
-    inset 0 0 0 1px rgba(214, 170, 82, 0.55),
-    0 6px 18px rgba(0, 0, 0, 0.55);
   font-family: 'Cinzel', Georgia, serif;
   font-size: 0.7rem;
   font-weight: 600;
@@ -39,19 +30,65 @@ body:has(#sk-screen-game:not(.hidden)) .sk-compte {
   display: none;
 }
 
-/* Hors de l'accueil (salon, récap), on est à table : se déconnecter n'y a
-   pas de sens, et la plaque se fait plus courte. Sur un écran bas (téléphone
-   en paysage), le pseudo s'efface aussi — la plaque mordait sur le logo. */
-body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-lien {
-  display: none;
+.sk-compte-plaque {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 100%;
+  margin-left: auto;
+  padding: 5px 10px 5px 10px;
+  border: 0;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.07), rgba(0, 0, 0, 0.3)),
+    rgba(20, 12, 6, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(214, 170, 82, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.55);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-shadow: inherit;
+  cursor: pointer;
 }
 
+.sk-compte-plaque:hover,
+.sk-compte-plaque:focus-visible,
+.sk-compte--ouvert .sk-compte-plaque {
+  background:
+    linear-gradient(180deg, rgba(255, 236, 196, 0.12), rgba(0, 0, 0, 0.25)),
+    rgba(30, 19, 9, 0.92);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 192, 108, 0.8),
+    0 6px 18px rgba(0, 0, 0, 0.55);
+  outline: none;
+}
+
+.sk-compte--ouvert .sk-compte-plaque {
+  border-radius: 3px 3px 0 0;
+}
+
+.sk-compte-chevron {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3px 1px 0 1px;
+  border-right: 1.5px solid var(--sk-brass-hi);
+  border-bottom: 1.5px solid var(--sk-brass-hi);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.sk-compte--ouvert .sk-compte-chevron {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+/* Au salon, sur un écran bas (téléphone en paysage), le pseudo s'efface :
+   la plaque mordait sur le logo. */
 @media (max-height: 520px) {
   body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-nom {
     display: none;
-  }
-  body:has(#sk-screen-home.hidden) .sk-compte {
-    padding-left: 6px;
   }
 }
 
@@ -91,11 +128,100 @@ body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-lien {
   color: var(--sk-brass);
 }
 
-/* Le bouton du classement, en laiton : on doit le trouver sans le
-   chercher. */
+/* Le menu, déroulé d'office : collé sous la plaque, aussi large qu'elle
+   au moins. */
+.sk-compte-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 3px;
+  border-radius: 0 0 3px 3px;
+  background: rgba(16, 10, 5, 0.97);
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 192, 108, 0.8),
+    0 14px 28px rgba(0, 0, 0, 0.6);
+  animation: sk-compte-menu-entree 0.14s ease-out;
+}
+
+.sk-compte-menu[hidden] {
+  display: none;
+}
+
+@keyframes sk-compte-menu-entree {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-compte-menu {
+    animation: none;
+  }
+}
+
+/* Des lignes serrées : déroulé d'office, le menu doit s'arrêter au-dessus
+   du cadre « Code de la partie » du salon (à 124 px du haut). */
+.sk-compte-item {
+  display: block;
+  width: 100%;
+  padding: 5px 12px 4px;
+  line-height: 1.2;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: var(--sk-cream);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-shadow: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sk-compte-item + .sk-compte-item {
+  border-top: 1px solid rgba(184, 137, 53, 0.18);
+}
+
+.sk-compte-item:hover,
+.sk-compte-item:focus-visible {
+  background: linear-gradient(180deg, #e2bd6a, #b48530 55%, #8a6220);
+  color: #2a1906;
+  outline: none;
+}
+
+.sk-compte-item:hover + .sk-compte-item,
+.sk-compte-item:focus-visible + .sk-compte-item {
+  border-top-color: transparent;
+}
+
+.sk-compte-item--courant {
+  color: var(--sk-brass-hi);
+  cursor: default;
+}
+
+.sk-compte-item--courant::after {
+  content: ' ·';
+}
+
+.sk-compte-item--courant:hover,
+.sk-compte-item--courant:focus-visible {
+  background: rgba(184, 137, 53, 0.14);
+  color: var(--sk-brass-hi);
+}
+
+/* Les boutons de laiton (encore utilisés par le profil). */
 .sk-compte-classement {
   flex-shrink: 0;
   padding: 6px 11px 5px;
+  border: 0;
   border-radius: 2px;
   background: linear-gradient(180deg, #e2bd6a, #b48530 55%, #8a6220);
   box-shadow:
@@ -117,31 +243,6 @@ body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-lien {
 .sk-compte-classement:hover,
 .sk-compte-classement:focus-visible {
   background: linear-gradient(180deg, #f0d083, #c4963b 55%, #9a6e25);
-}
-
-.sk-compte-lien {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--sk-cream-2);
-  font: inherit;
-  font-size: 0.6rem;
-  letter-spacing: inherit;
-  text-transform: uppercase;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.sk-compte-lien:hover,
-.sk-compte-lien:focus-visible {
-  color: var(--sk-cream);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.sk-compte-lien--fort {
-  color: var(--sk-brass-hi);
 }
 
 /* Le pseudo d'un compte ne se tape pas : le champ se lit comme une
@@ -403,13 +504,11 @@ input.sk-pseudo-compte {
 
 @media (max-width: 420px) {
   .sk-compte {
-    gap: 7px;
-    padding-left: 9px;
     font-size: 0.6rem;
   }
-  .sk-compte-classement {
-    padding: 5px 8px 4px;
-    font-size: 0.58rem;
+  .sk-compte-plaque {
+    gap: 7px;
+    padding-left: 8px;
   }
   .sk-classement th:nth-child(5),
   .sk-classement td:nth-child(5) {
@@ -520,21 +619,12 @@ input.sk-pseudo-compte {
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
 }
 
-/* Dans le bandeau : à l'accueil seulement, comme le bouton du profil — au
-   salon et au récap, la plaque garde sa largeur d'avant. */
+/* La pièce du profil, dans la plaque du menu : partout où il paraît,
+   salon et récap compris. */
 .sk-compte .sk-compte-piece {
   width: 24px;
   height: 24px;
-  margin-right: -4px;
-}
-
-body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-piece,
-body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-profil {
-  display: none;
-}
-
-button.sk-compte-classement {
-  border: 0;
+  margin: -2px -3px -2px -2px;
 }
 
 .sk-profil-fond {
@@ -615,36 +705,66 @@ button.sk-compte-classement {
   color: var(--sk-brass);
 }
 
+/* La tête du profil, centrée : la pièce au-dessus du pseudo, le bouton
+   « Changer de pièce » à côté d'elle (la pièce reste dans l'axe). */
 .sk-profil-tete {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(184, 137, 53, 0.25);
+  text-align: center;
+  padding: 4px 0 6px;
+}
+
+.sk-profil-tete[hidden] {
+  display: none;
+}
+
+.sk-profil-piece-ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 12px;
+}
+
+.sk-profil-portrait {
+  grid-column: 2;
+  line-height: 0;
+}
+
+.sk-profil-changer {
+  grid-column: 3;
+  justify-self: start;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.sk-profil-changer:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .sk-profil-medaillon--grand {
-  width: 76px;
-  height: 76px;
-}
-
-.sk-profil-ident {
-  min-width: 0;
+  width: 96px;
+  height: 96px;
 }
 
 .sk-profil-pseudo {
-  margin: 0 0 6px;
+  max-width: 100%;
+  margin: 0 0 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 1.15rem;
+  font-size: 1.3rem;
 }
 
 .sk-profil-cote {
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   padding: 2px 9px 3px;
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.35);
@@ -672,6 +792,31 @@ button.sk-compte-classement {
   font-family: 'Spectral', Georgia, serif;
   font-size: 0.86rem;
   color: var(--sk-cream-2);
+}
+
+.sk-profil .sk-profil-erreur {
+  text-align: center;
+}
+
+/* La collection, par-dessus le profil : son voile ne fait qu'assombrir un
+   peu plus, le profil reste deviné dessous. */
+.sk-collection-fond {
+  z-index: 61;
+  background: rgba(4, 8, 10, 0.45);
+}
+
+.sk-collection {
+  max-width: 460px;
+}
+
+.sk-collection .sk-profil-erreur {
+  text-align: left;
+}
+
+.sk-collection-titre {
+  margin: 0 0 4px;
+  padding-right: 32px;
+  font-size: 1.05rem;
 }
 
 .sk-profil-titre {
@@ -1134,6 +1279,11 @@ button.sk-profil-case:focus-visible {
   font-family: 'Bitter', Georgia, serif;
   font-size: 0.74rem;
   color: var(--sk-cream-2);
+}
+
+/* Le profil seul est court : un cadre plus étroit que la collection. */
+.sk-profil:not(.sk-collection) {
+  max-width: 360px;
 }
 
 /* LA COULEUR DE SA PIÈCE, dans la Collection : douze pastilles d'émail sur

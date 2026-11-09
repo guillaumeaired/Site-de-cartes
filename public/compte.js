@@ -8,10 +8,13 @@
 //     de connexion — elle revient ici ensuite, lien d'invitation compris ;
 //   - connecté, le pseudo est celui du compte : les champs le portent déjà
 //     et ne se modifient pas (le serveur l'impose de toute façon) ;
-//   - un bandeau en haut à droite dit qui l'on est, avec sa cote, le lien
-//     du classement et de quoi se connecter ou se déconnecter. Il reste à
-//     l'accueil, au salon et au récap de fin (la feuille de style le retire
-//     pendant la partie, où la table prend tout l'écran).
+//   - un menu en haut à droite dit qui l'on est, avec sa cote, et déroule
+//     Profil, Classement et Déconnexion. Il reste à l'accueil, au salon, au
+//     récap de fin et sur la page du classement (la feuille de style le
+//     retire pendant la partie, où la table prend tout l'écran).
+//
+// classement.html le charge aussi : là, ni renvoi vers la connexion ni
+// changement de titre — seulement le menu.
 
 const COMPTE_INVITE_KEY = 'skullking:invite';
 
@@ -49,6 +52,62 @@ function compteLienConnexion() {
   return `connexion.html?next=${encodeURIComponent(next)}`;
 }
 
+// Le menu du compte, en haut à droite : une plaque (pièce, pseudo, cote)
+// et dessous, les uns sous les autres et déroulés d'office, Profil,
+// Classement et Déconnexion. Un clic sur la plaque les replie (ou les
+// redéroule) ; le navigateur s'en souvient. Il suit l'accueil, le salon, le
+// récap de fin et la page du classement ; pendant la partie, la table a
+// besoin de tout l'écran.
+const COMPTE_MENU_PLIE_KEY = 'skullking:menuPlie';
+
+function compteMenuPlie() {
+  try {
+    return localStorage.getItem(COMPTE_MENU_PLIE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+// À table (salon, récap), quitter la page ferait quitter la partie.
+function compteEstATable() {
+  const home = document.getElementById('sk-screen-home');
+  return Boolean(home && home.classList.contains('hidden'));
+}
+
+function compteDeroulerMenu(ouvert) {
+  const bandeau = document.getElementById('sk-compte');
+  if (!bandeau) return;
+  bandeau.classList.toggle('sk-compte--ouvert', ouvert);
+  bandeau.querySelector('.sk-compte-plaque').setAttribute('aria-expanded', String(ouvert));
+  bandeau.querySelector('.sk-compte-menu').hidden = !ouvert;
+}
+
+function compteItem(texte, { href, onClick, courant } = {}) {
+  const el = document.createElement(href ? 'a' : 'button');
+  el.className = 'sk-compte-item';
+  el.textContent = texte;
+  if (href) el.href = href;
+  else el.type = 'button';
+  if (courant) {
+    el.setAttribute('aria-current', 'page');
+    el.classList.add('sk-compte-item--courant');
+  }
+  if (onClick) el.addEventListener('click', onClick);
+  return el;
+}
+
+function compteDeconnecter() {
+  if (compteEstATable() && !window.confirm('Te déconnecter te fera quitter la table. Continuer ?')) return;
+  fetch('/api/logout', { method: 'POST' })
+    .catch(() => {})
+    .finally(() => {
+      try {
+        localStorage.removeItem(COMPTE_INVITE_KEY);
+      } catch {}
+      window.location.href = compteLienConnexion();
+    });
+}
+
 function compteBandeau() {
   let bandeau = document.getElementById('sk-compte');
   if (!bandeau) {
@@ -56,81 +115,91 @@ function compteBandeau() {
     bandeau.id = 'sk-compte';
     bandeau.className = 'sk-compte';
     bandeau.setAttribute('aria-label', 'Ton compte');
-    // Sur le corps de la page et pas dans l'accueil : le bandeau suit
+    // Sur le corps de la page et pas dans l'accueil : le menu suit
     // l'accueil, le salon et le récap de fin.
     document.body.appendChild(bandeau);
   }
   bandeau.textContent = '';
 
-  // La pièce du profil, devant le pseudo (voir profil.js) — à l'accueil
-  // seulement : au salon, c'est la pièce de table qui compte.
+  // La plaque : ce qu'on voit tout le temps, et ce qui replie le menu.
+  const plaque = document.createElement('button');
+  plaque.type = 'button';
+  plaque.className = 'sk-compte-plaque';
+  plaque.setAttribute('aria-expanded', 'true');
+  plaque.setAttribute('aria-controls', 'sk-compte-menu');
+
   if (compte.user && typeof profilPieceDe === 'function') {
-    bandeau.appendChild(profilMedaillon(profilPieceDe(compte.user), 'sk-compte-piece'));
+    plaque.appendChild(profilMedaillon(profilPieceDe(compte.user), 'sk-compte-piece'));
   }
 
   const nom = document.createElement('span');
   nom.className = 'sk-compte-nom';
   nom.textContent = compte.user ? compte.user.pseudo : 'Invité';
-  bandeau.appendChild(nom);
+  plaque.appendChild(nom);
 
   // La cote, en plaque de laiton : c'est le chiffre qu'on vient voir.
   if (compte.user) {
     const elo = document.createElement('span');
     elo.className = 'sk-compte-elo';
     elo.innerHTML = `<b>${Number(compte.user.elo)}</b><small>Elo</small>`;
-    elo.title = `${compte.user.gamesPlayed} partie(s) classée(s), ${compte.user.wins} victoire(s)`;
-    bandeau.appendChild(elo);
+    plaque.appendChild(elo);
   }
 
-  // Le profil s'ouvre en cadre par-dessus l'accueil : rien ne quitte la page.
-  if (compte.user && typeof profilOuvrir === 'function') {
-    const profil = document.createElement('button');
-    profil.type = 'button';
-    profil.className = 'sk-compte-classement sk-compte-profil';
-    profil.textContent = 'Profil';
-    profil.addEventListener('click', profilOuvrir);
-    bandeau.appendChild(profil);
-  }
+  const chevron = document.createElement('span');
+  chevron.className = 'sk-compte-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  plaque.appendChild(chevron);
 
-  // Un vrai bouton de laiton, pas un lien de texte. Hors de l'accueil (salon,
-  // récap), il ouvre un autre onglet : quitter la page ferait quitter la
-  // table.
-  const classement = document.createElement('a');
-  classement.href = 'classement.html';
-  classement.className = 'sk-compte-classement';
-  classement.textContent = 'Classement';
-  classement.addEventListener('click', (e) => {
-    const home = document.getElementById('sk-screen-home');
-    if (home && home.classList.contains('hidden')) {
-      e.preventDefault();
-      window.open(classement.href, '_blank', 'noopener');
-    }
+  plaque.title = 'Replier ou déplier le menu';
+  plaque.addEventListener('click', () => {
+    const ouvrir = !bandeau.classList.contains('sk-compte--ouvert');
+    compteDeroulerMenu(ouvrir);
+    try {
+      localStorage.setItem(COMPTE_MENU_PLIE_KEY, ouvrir ? '0' : '1');
+    } catch {}
   });
-  bandeau.appendChild(classement);
+  bandeau.appendChild(plaque);
+
+  const menu = document.createElement('div');
+  menu.id = 'sk-compte-menu';
+  menu.className = 'sk-compte-menu';
+
+  if (compte.user && typeof profilOuvrir === 'function') {
+    menu.appendChild(
+      compteItem('Profil', {
+        onClick: () => {
+          plaque.focus();
+          profilOuvrir();
+        },
+      }),
+    );
+  }
+
+  // Le classement : à table, il s'ouvre dans un autre onglet.
+  const surClassement = /classement\.html$/.test(window.location.pathname);
+  menu.appendChild(
+    compteItem('Classement', {
+      href: 'classement.html',
+      courant: surClassement,
+      onClick: (e) => {
+        if (surClassement) {
+          e.preventDefault();
+        } else if (compteEstATable()) {
+          e.preventDefault();
+          window.open('classement.html', '_blank', 'noopener');
+        }
+      },
+    }),
+  );
 
   if (compte.user) {
-    const sortir = document.createElement('button');
-    sortir.type = 'button';
-    sortir.className = 'sk-compte-lien';
-    sortir.textContent = 'Déconnexion';
-    sortir.addEventListener('click', () => {
-      fetch('/api/logout', { method: 'POST' })
-        .catch(() => {})
-        .finally(() => {
-          try {
-            localStorage.removeItem(COMPTE_INVITE_KEY);
-          } catch {}
-          window.location.href = compteLienConnexion();
-        });
-    });
-    bandeau.appendChild(sortir);
+    menu.appendChild(compteItem('Déconnexion', { onClick: compteDeconnecter }));
   } else {
-    const entrer = document.createElement('a');
-    entrer.href = compteLienConnexion();
-    entrer.className = 'sk-compte-lien sk-compte-lien--fort';
-    entrer.textContent = 'Se connecter';
-    bandeau.appendChild(entrer);
+    menu.appendChild(compteItem('Se connecter', { href: compteLienConnexion() }));
   }
+
+  bandeau.appendChild(menu);
+  compteDeroulerMenu(!compteMenuPlie());
 }
 
 // La pièce du profil a changé : le médaillon du bandeau la reprend.
@@ -157,7 +226,8 @@ fetch('/api/me', { credentials: 'same-origin' })
     compte.pret = true;
 
     // Déploiement dédié : pas d'autre jeu vers lequel revenir.
-    if (site === 'skullking') {
+    const pageDuJeu = Boolean(document.getElementById('sk-screen-home'));
+    if (site === 'skullking' && pageDuJeu) {
       document.title = 'Skull King';
       const retour = document.querySelector('.sk-hero-back');
       if (retour) retour.remove();
@@ -169,7 +239,7 @@ fetch('/api/me', { credentials: 'same-origin' })
     try {
       partieEnCours = Boolean(sessionStorage.getItem('skullking:activeRoom'));
     } catch {}
-    if (!compte.user && !compteEstInvite() && !partieEnCours) {
+    if (pageDuJeu && !compte.user && !compteEstInvite() && !partieEnCours) {
       window.location.replace(compteLienConnexion());
       return;
     }

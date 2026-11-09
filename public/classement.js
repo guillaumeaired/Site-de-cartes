@@ -13,7 +13,6 @@
 const lignes = document.getElementById('classement-lignes');
 const vide = document.getElementById('classement-vide');
 const retour = document.getElementById('classement-retour');
-const boutonProfil = document.getElementById('classement-profil');
 
 // --- Les « ? » des titres ---------------------------------------------
 // Un clic ouvre la bulle, un autre la referme ; Échap ou un clic ailleurs
@@ -305,8 +304,6 @@ Promise.all([
     if (!me.user) return;
     connecte = true;
     dessinerProfil(PROFIL_VIDE);
-    boutonProfil.classList.remove('hidden');
-    boutonProfil.addEventListener('click', profilOuvrir);
     profilCharger()
       .then((profil) => profil && dessinerProfil(profil))
       .catch(() => {});

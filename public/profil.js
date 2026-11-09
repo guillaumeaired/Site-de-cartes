@@ -1,8 +1,9 @@
-// Le profil d'un compte du Skull King : un cadre posé par-dessus la page (le
-// bouton « Profil » du bandeau, ou celui du classement), qui montre le pseudo,
-// la cote, et la collection des pièces pour choisir celle qui représente le
-// joueur — au classement, et chez ceux dont il est la némésis ou le
-// sous-fifre.
+// Le profil d'un compte du Skull King : un cadre posé par-dessus la page
+// (« Profil » dans le menu du compte), tout simple — la pièce qui représente
+// le joueur au-dessus de son pseudo, sa cote, son bilan. « Changer de pièce »
+// ouvre par-dessus un second cadre, la Collection (jetons communs, jetons
+// personnels), où l'on choisit celle qui le représente — au classement, et
+// chez ceux dont il est la némésis ou le sous-fifre.
 //
 // Chargé par skullking.html et classement.html, sans rien imposer à l'un ni
 // à l'autre : il n'expose que des fonctions préfixées `profil`, et prévient la
@@ -84,21 +85,34 @@ function profilMedaillon(piece, classe = '') {
 
 const profilEtat = {
   fond: null,
+  collection: null,
   donnees: null,
   envoi: false,
   retourFocus: null,
 };
 
+function profilCollectionOuverte() {
+  return Boolean(profilEtat.collection && !profilEtat.collection.classList.contains('hidden'));
+}
+
 function profilFermer() {
   const fond = profilEtat.fond;
   if (!fond || fond.classList.contains('hidden')) return;
+  profilFermerCollection(false);
   fond.classList.add('hidden');
   document.removeEventListener('keydown', profilClavier);
-  if (profilEtat.retourFocus && profilEtat.retourFocus.focus) profilEtat.retourFocus.focus();
+  // Le bouton d'origine a pu être redessiné (le menu reprend la pièce
+  // choisie) : on revient alors sur la plaque du menu.
+  let retour = profilEtat.retourFocus;
+  if (!retour || !retour.isConnected) retour = document.querySelector('#sk-compte .sk-compte-plaque');
+  if (retour && retour.focus) retour.focus();
 }
 
+// Échap referme d'abord la collection, puis le profil.
 function profilClavier(e) {
-  if (e.key === 'Escape') profilFermer();
+  if (e.key !== 'Escape') return;
+  if (profilCollectionOuverte()) profilFermerCollection(true);
+  else profilFermer();
 }
 
 function profilCadre() {
@@ -109,40 +123,84 @@ function profilCadre() {
     <section class="sk-profil" role="dialog" aria-modal="true" aria-labelledby="sk-profil-pseudo">
       <button type="button" class="sk-profil-fermer" aria-label="Fermer le profil">×</button>
       <p class="sk-profil-surtitre">Profil</p>
-      <header class="sk-profil-tete">
-        <span class="sk-profil-portrait"></span>
-        <div class="sk-profil-ident">
-          <h2 id="sk-profil-pseudo" class="sk-profil-pseudo"></h2>
-          <p class="sk-profil-cote"><b></b><small>Elo</small></p>
-          <p class="sk-profil-bilan"></p>
+      <header class="sk-profil-tete" hidden>
+        <div class="sk-profil-piece-ligne">
+          <span class="sk-profil-portrait"></span>
+          <button type="button" class="sk-compte-classement sk-profil-changer">Changer de pièce</button>
         </div>
+        <h2 id="sk-profil-pseudo" class="sk-profil-pseudo"></h2>
+        <p class="sk-profil-cote"><b></b><small>Elo</small></p>
+        <p class="sk-profil-bilan"></p>
       </header>
-      <h3 class="sk-profil-titre">Ta pièce</h3>
-      <p class="sk-profil-aide">Elle te représente au classement, et chez ceux dont tu es la némésis ou le sous-fifre.</p>
-      <div class="sk-profil-collection">
-        <h4 class="sk-profil-famille">Couleur</h4>
-        <div class="sk-profil-couleurs" data-famille="couleurs"></div>
-        <h4 class="sk-profil-famille">Jetons communs <small data-compte="communs"></small></h4>
-        <div class="sk-profil-grille" data-famille="communs"></div>
-        <h4 class="sk-profil-famille">Jetons personnels <small data-compte="personnels"></small></h4>
-        <div class="sk-profil-grille" data-famille="personnels"></div>
-        <p class="sk-profil-aide sk-profil-aide--pied">Les jetons personnels se débloquent avec un code, dans le salon.</p>
-      </div>
       <p class="sk-profil-erreur hidden" role="alert"></p>
     </section>`;
   fond.addEventListener('click', (e) => {
     if (e.target === fond) profilFermer();
   });
   fond.querySelector('.sk-profil-fermer').addEventListener('click', profilFermer);
+  fond.querySelector('.sk-profil-changer').addEventListener('click', profilOuvrirCollection);
   document.body.appendChild(fond);
   profilEtat.fond = fond;
   return fond;
 }
 
+// La collection : un second cadre, posé par-dessus le profil.
+function profilCadreCollection() {
+  if (profilEtat.collection) return profilEtat.collection;
+  const fond = document.createElement('div');
+  fond.className = 'sk-profil-fond sk-collection-fond hidden';
+  fond.innerHTML = `
+    <section class="sk-profil sk-collection" role="dialog" aria-modal="true" aria-labelledby="sk-collection-titre">
+      <button type="button" class="sk-profil-fermer" aria-label="Fermer la collection">×</button>
+      <h2 id="sk-collection-titre" class="sk-collection-titre">Collection</h2>
+      <p class="sk-profil-aide">Ta pièce te représente au classement, et chez ceux dont tu es la némésis ou le sous-fifre.</p>
+      <h4 class="sk-profil-famille">Couleur</h4>
+      <div class="sk-profil-couleurs" data-famille="couleurs"></div>
+      <h4 class="sk-profil-famille">Jetons communs <small data-compte="communs"></small></h4>
+      <div class="sk-profil-grille" data-famille="communs"></div>
+      <h4 class="sk-profil-famille">Jetons personnels <small data-compte="personnels"></small></h4>
+      <div class="sk-profil-grille" data-famille="personnels"></div>
+      <p class="sk-profil-aide sk-profil-aide--pied">Les jetons personnels se débloquent avec un code, dans le salon.</p>
+      <p class="sk-profil-erreur hidden" role="alert"></p>
+    </section>`;
+  fond.addEventListener('click', (e) => {
+    if (e.target === fond) profilFermerCollection(true);
+  });
+  fond.querySelector('.sk-profil-fermer').addEventListener('click', () => profilFermerCollection(true));
+  document.body.appendChild(fond);
+  profilEtat.collection = fond;
+  return fond;
+}
+
+function profilOuvrirCollection() {
+  if (!profilEtat.donnees) return;
+  const fond = profilCadreCollection();
+  profilErreur('');
+  profilDessinerCollection();
+  fond.classList.remove('hidden');
+  const focus = fond.querySelector('.sk-profil-case--portee') || fond.querySelector('.sk-profil-fermer');
+  focus.focus();
+}
+
+function profilFermerCollection(rendreFocus) {
+  if (!profilCollectionOuverte()) return;
+  profilEtat.collection.classList.add('hidden');
+  if (rendreFocus) profilEtat.fond.querySelector('.sk-profil-changer').focus();
+}
+
+// L'erreur s'affiche dans le cadre du dessus.
 function profilErreur(texte) {
-  const p = profilEtat.fond.querySelector('.sk-profil-erreur');
-  p.textContent = texte || '';
-  p.classList.toggle('hidden', !texte);
+  [profilEtat.fond, profilEtat.collection].forEach((cadre) => {
+    if (!cadre) return;
+    const p = cadre.querySelector('.sk-profil-erreur');
+    p.textContent = '';
+    p.classList.add('hidden');
+  });
+  if (!texte) return;
+  const cadre = profilCollectionOuverte() ? profilEtat.collection : profilEtat.fond;
+  const p = cadre.querySelector('.sk-profil-erreur');
+  p.textContent = texte;
+  p.classList.remove('hidden');
 }
 
 function profilCase(piece, { possedee, portee }) {
@@ -175,6 +233,9 @@ function profilCase(piece, { possedee, portee }) {
 function profilDessiner() {
   const fond = profilCadre();
   const d = profilEtat.donnees;
+  // Tant que le profil n'est pas chargé, la tête reste vide plutôt que
+  // de montrer un « Elo » sans chiffre.
+  fond.querySelector('.sk-profil-tete').hidden = !d;
   if (!d) return;
   const u = d.user;
   const portee = profilPieceDe(u);
@@ -189,7 +250,14 @@ function profilDessiner() {
   fond.querySelector('.sk-profil-bilan').textContent =
     `${parties} partie${parties > 1 ? 's' : ''} classée${parties > 1 ? 's' : ''} · ` +
     `${victoires} victoire${victoires > 1 ? 's' : ''}`;
+  if (profilCollectionOuverte()) profilDessinerCollection();
+}
 
+function profilDessinerCollection() {
+  const fond = profilCadreCollection();
+  const d = profilEtat.donnees;
+  if (!d) return;
+  const portee = profilPieceDe(d.user);
   const miennes = new Set(d.pieces || []);
 
   // Les douze couleurs, celle du compte marquée.
@@ -228,9 +296,15 @@ function profilDessiner() {
     `${gagnes.length} / ${PROFIL_PIECES_PERSONNELLES.length}`;
 }
 
+// Choisir une pièce la porte aussitôt, referme la collection et la montre
+// dans le profil, au-dessus du pseudo.
 function profilChoisir(cle) {
   const d = profilEtat.donnees;
-  if (!d || profilEtat.envoi || d.user.piece === cle) return;
+  if (!d || profilEtat.envoi) return;
+  if (d.user.piece === cle || profilPieceDe(d.user).key === cle) {
+    profilFermerCollection(true);
+    return;
+  }
   profilEtat.envoi = true;
   profilErreur('');
   fetch('/api/profil/piece', {
@@ -243,9 +317,8 @@ function profilChoisir(cle) {
     .then(({ ok, corps }) => {
       if (!ok) throw new Error(corps.error || 'La pièce n’a pas pu être changée.');
       d.user.piece = corps.piece;
+      profilFermerCollection(true);
       profilDessiner();
-      const focus = profilEtat.fond.querySelector('.sk-profil-case--portee');
-      if (focus) focus.focus();
       window.dispatchEvent(new CustomEvent('profil:piece', { detail: { piece: corps.piece, couleur: d.user.couleur || null } }));
     })
     .catch((err) => profilErreur(err.message || 'La pièce n’a pas pu être changée.'))
@@ -298,7 +371,7 @@ function profilOuvrir() {
   fond.classList.remove('hidden');
   document.addEventListener('keydown', profilClavier);
   fond.querySelector('.sk-profil-fermer').focus();
-  if (profilEtat.donnees) profilDessiner();
+  profilDessiner();
   profilCharger()
     .then((d) => {
       if (!d) return profilErreur('Connecte-toi pour voir ton profil.');
