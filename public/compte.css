@@ -879,32 +879,7 @@ button.sk-profil-case:focus-visible {
   max-width: 0;
 }
 
-/* --- Un cadre vide : ce qu'il montrera, puis où l'on en est ---------- */
-.sk-cadre-explication {
-  text-align: left;
-}
-
-.sk-cadre-explication p {
-  margin: 0;
-  font-family: 'Spectral', Georgia, serif;
-  line-height: 1.4;
-}
-
-.sk-cadre-explication-quoi {
-  font-size: 0.86rem;
-  color: var(--sk-cream-2);
-}
-
-.sk-cadre-explication-etat {
-  margin-top: 8px !important;
-  padding-top: 8px;
-  border-top: 1px solid rgba(184, 137, 53, 0.18);
-  font-style: italic;
-  font-size: 0.8rem;
-  color: var(--sk-cream-3);
-}
-
-/* Un cadre de rivaux encore vide : où l'on en est. */
+/* Un cadre encore vide (rivaux, courbe) : où l'on en est. */
 .sk-rival-etat {
   font-family: 'Spectral', Georgia, serif;
   font-style: italic;
@@ -996,7 +971,11 @@ button.sk-profil-case:focus-visible {
 
 /* --- La courbe ----------------------------------------------------- */
 .sk-cadre-courbe .sk-classement-titre {
-  margin-bottom: 10px;
+  margin: 0;
+}
+
+.sk-rival-etat {
+  margin: 0;
 }
 
 .sk-courbe {

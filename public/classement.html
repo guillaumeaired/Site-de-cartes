@@ -70,7 +70,11 @@
         </div>
 
         <aside id="cadre-courbe" class="sk-porte-panneau sk-cadre-courbe" aria-labelledby="courbe-titre">
-          <h2 id="courbe-titre" class="sk-classement-titre">Ta cote</h2>
+          <div class="sk-titre-aide">
+            <h2 id="courbe-titre" class="sk-classement-titre">Ta cote</h2>
+            <button type="button" class="sk-aide" aria-expanded="false" aria-controls="aide-courbe" aria-label="Que montre ce cadre ?">?</button>
+            <p id="aide-courbe" class="sk-aide-bulle" hidden>L’évolution de ta cote Elo, partie classée après partie classée : ton plus haut, ton plus bas, et au survol ce que chaque partie t’a fait gagner ou perdre.</p>
+          </div>
           <div id="courbe" class="sk-courbe"></div>
           <p id="courbe-bilan" class="sk-courbe-bilan"></p>
         </aside>

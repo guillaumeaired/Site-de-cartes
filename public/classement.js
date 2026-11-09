@@ -7,18 +7,13 @@
 // qu'il a le plus battus) ; à droite la courbe de sa cote, partie après
 // partie. Tout vient de /api/profil (voir server/profil.js). Les cadres sont
 // là pour tout le monde : tant qu'ils n'ont rien à montrer (invité, ou pas
-// encore de partie classée), ils disent où l'on en est. Ce que sont la
-// némésis, les sous-fifres et le calcul de la cote se lit dans les « ? » à
-// côté des titres.
+// encore de partie classée), ils disent où l'on en est. Ce que montre chaque
+// cadre, et le calcul de la cote, se lit dans les « ? » à côté des titres.
 
 const lignes = document.getElementById('classement-lignes');
 const vide = document.getElementById('classement-vide');
 const retour = document.getElementById('classement-retour');
 const boutonProfil = document.getElementById('classement-profil');
-
-// Ce que dit la courbe tant qu'elle est vide.
-const EXPLICATION_COURBE = 'Ici se tracera l’évolution de ta cote Elo, partie classée après partie classée : '
-  + 'ton plus haut, ton plus bas, et au survol ce que chaque partie t’a fait gagner ou perdre.';
 
 // --- Les « ? » des titres ---------------------------------------------
 // Un clic ouvre la bulle, un autre la referme ; Échap ou un clic ailleurs
@@ -114,9 +109,12 @@ function dessinerCourbe(courbe) {
   zone.textContent = '';
 
   if (courbe.length < 2) {
-    zone.appendChild(explication(EXPLICATION_COURBE, connecte
+    const etat = document.createElement('p');
+    etat.className = 'sk-rival-etat';
+    etat.textContent = connecte
       ? 'Ta courbe démarrera à ta première partie classée.'
-      : 'Connecte-toi pour suivre la tienne.'));
+      : 'Connecte-toi pour suivre la tienne.';
+    zone.appendChild(etat);
     bilan.textContent = '';
     return;
   }
@@ -248,20 +246,6 @@ function bilanContre(a, premier) {
   return parts.filter(Boolean).join(' · ');
 }
 
-// Un cadre vide : ce qu'il montrera, puis où l'on en est.
-function explication(texte, etat, balise = 'div') {
-  const bloc = document.createElement(balise);
-  bloc.className = 'sk-cadre-explication';
-  const quoi = document.createElement('p');
-  quoi.className = 'sk-cadre-explication-quoi';
-  quoi.textContent = texte;
-  const ou = document.createElement('p');
-  ou.className = 'sk-cadre-explication-etat';
-  ou.textContent = etat;
-  bloc.append(quoi, ou);
-  return bloc;
-}
-
 function dessinerRivaux(liste, ul, premier, etat) {
   ul.textContent = '';
   if (!liste.length) {
@@ -292,7 +276,7 @@ function dessinerRivaux(liste, ul, premier, etat) {
 let connecte = false;
 
 // Sans profil (invité, ou serveur qui n'a pas répondu), les cadres restent
-// à leurs explications.
+// à « pas encore ».
 const PROFIL_VIDE = { courbe: [], nemesis: [], sousFifres: [] };
 
 function dessinerProfil(profil) {
