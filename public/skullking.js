@@ -3463,56 +3463,56 @@ function bidStateSuffix(state, p) {
 // le script, c'est désaccorder les deux.
 const PIECES = [
   {
-    key: 'crane', label: 'Crâne', color: '#890e05',
+    key: 'crane', label: 'Crâne', color: '#a10505',
     svg: '<circle cx="12" cy="9.5" r="6.6"/><circle cx="9.6" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><circle cx="14.4" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M8.2 15.6h7.6v3a1.6 1.6 0 0 1-1.6 1.6H9.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M10.7 15.8v4.3M13.3 15.8v4.3"/>',
   },
   {
-    key: 'ancre', label: 'Ancre', color: '#1c3044',
+    key: 'ancre', label: 'Ancre', color: '#164382',
     svg: '<circle cx="12" cy="4.4" r="2.3"/><path d="M12 6.7V21"/><path d="M8 10h8"/><path d="M4.8 14.3c0 3.7 3.2 6.7 7.2 6.7s7.2-3 7.2-6.7"/>',
   },
   {
-    key: 'voilier', label: 'Voilier', color: '#2b4807',
+    key: 'voilier', label: 'Voilier', color: '#2c5d0d',
     svg: '<path d="M12 2.8v12.6"/><path d="M13.3 4.6l5 10.8h-5z" fill="currentColor" stroke="none"/><path d="M10.7 6.8 6.2 15.4h4.5z"/><path d="M3.4 17.2h17.2l-2.7 3.9H6.1z"/>',
   },
   {
-    key: 'sabre', label: 'Sabre', color: '#5d1740',
+    key: 'sabre', label: 'Sabre', color: '#72205f',
     svg: '<path d="M20.2 3.8 9.7 14.3"/><path d="M6.9 12.9l4.2 4.2"/><path d="M8.3 15.7 4.9 19.1"/><circle cx="3.9" cy="20.1" r="1.5"/>',
   },
   {
-    key: 'boussole', label: 'Boussole', color: '#ab6006',
+    key: 'boussole', label: 'Boussole', color: '#d2820b',
     svg: '<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-2 4.8-4.8 2 2-4.8z" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'coffre', label: 'Coffre', color: '#115746',
+    key: 'coffre', label: 'Coffre', color: '#067478',
     svg: '<path d="M3.6 10.6h16.8V19a1.6 1.6 0 0 1-1.6 1.6H5.2A1.6 1.6 0 0 1 3.6 19z"/><path d="M3.6 10.6A8.6 8.6 0 0 1 12 5.6a8.6 8.6 0 0 1 8.4 5"/><path d="M3.6 13.8h16.8"/><rect x="10.6" y="12.1" width="2.8" height="4" rx="0.7" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'barre', label: 'Barre', color: '#b33706',
+    key: 'barre', label: 'Barre', color: '#d64506',
     svg: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>',
   },
   {
-    key: 'bouteille', label: 'Bouteille', color: '#141902',
+    key: 'bouteille', label: 'Bouteille', color: '#192506',
     svg: '<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>',
   },
   {
-    key: 'crochet', label: 'Crochet', color: '#900d2f',
+    key: 'crochet', label: 'Crochet', color: '#b00749',
     svg: '<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>',
   },
   // Derrière la flèche du choix de pièce (voir PIECES_EN_VITRINE). Plus de
   // `svg` : elles sont nées médaillons peints, sans silhouette d'avant.
-  { key: 'pieuvre', label: 'Pieuvre', color: '#302e28' },
-  { key: 'ivrogne', label: 'Ivrogne', color: '#cc4733' },
-  { key: 'poison', label: 'Poison', color: '#7a8006' },
-  { key: 'canon', label: 'Canon', color: '#746755' },
+  { key: 'pieuvre', label: 'Pieuvre', color: '#5f574d' },
+  { key: 'ivrogne', label: 'Ivrogne', color: '#e95242' },
+  { key: 'poison', label: 'Poison', color: '#99a90d' },
+  { key: 'canon', label: 'Canon', color: '#837a6a' },
   // Les pièces à code : personne ne les a d'office, chacune se gagne avec un
   // code de quatre lettres valable une seule fois (server/pieces-a-code.js,
   // qui est seul à connaître les codes). Elles vivent dans le cadre « Jeton
   // personnel » de qui les a gagnées, jamais dans la vitrine ni la suite.
-  { key: 'pomme', label: 'Apple', color: '#4db9e5' },
-  { key: 'visa', label: 'Visa', color: '#fca3af' },
-  { key: 'taureau', label: 'Taureau', color: '#f0e3cf' },
-  { key: 'viseur', label: 'Carbon Away', color: '#66dd99' },
-  { key: 'harvard', label: 'Harvard', color: '#911b27' },
+  { key: 'pomme', label: 'Apple', color: '#4fbae5' },
+  { key: 'visa', label: 'Visa', color: '#faa4af' },
+  { key: 'taureau', label: 'Taureau', color: '#f1e4cf' },
+  { key: 'viseur', label: 'Carbon Away', color: '#67de99' },
+  { key: 'harvard', label: 'Harvard', color: '#931c27' },
 ];
 const PIECES_A_CODE = ['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard'];
 
@@ -3562,7 +3562,7 @@ function pieceFor(player) {
 
 // L'émail des médaillons est peint sombre — c'est ce qui lui donne son
 // épaisseur sur le bois clair du plateau. Sur le fond noir du récap de fin,
-// ces mêmes couleurs disparaissent : #1c3044 sur #000, on ne voit plus la
+// ces mêmes couleurs disparaissent : #192506 sur #000, on ne voit plus la
 // ligne. On garde donc la TEINTE de la pièce (c'est elle qui identifie le
 // joueur) et on remonte seulement sa clarté au-dessus d'un plancher lisible.
 // La saturation est encadrée des deux côtés : un plancher, sinon le cerclage
