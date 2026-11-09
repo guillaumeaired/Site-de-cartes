@@ -724,8 +724,22 @@ PACE_PRESETS.forEach((preset) => {
   const hote = { id: 'p-hote', nickname: "L'hôte", piece: null };
   const invite = { id: 'p-invite', nickname: "L'invité", piece: null };
   const salleHote = { hostId: hote.id, players: [hote, invite] };
-  giveFreePiece(salleHote, hote, 'pieuvre');
-  check("l'hôte retrouve à la porte sa pièce de la suite", hote.piece, 'pieuvre');
+  giveFreePiece(salleHote, hote, 'ivrogne');
+  check("l'hôte retrouve à la porte sa pièce de la suite", hote.piece, 'ivrogne');
+
+  // La pieuvre n'est qu'au compte Skully master : ni à l'hôte, ni à un
+  // invité qui porterait ce pseudo, ni à un autre compte.
+  const hotePieuvre = { id: 'p-hp', nickname: "L'hôte", piece: null, userId: 7, accountPseudo: 'Barbe' };
+  giveFreePiece({ hostId: hotePieuvre.id, players: [hotePieuvre] }, hotePieuvre, 'pieuvre');
+  check("l'hôte n'a pas la pieuvre", hotePieuvre.piece !== 'pieuvre' && PIECE_KEYS.indexOf(hotePieuvre.piece) < 9, true);
+
+  const fauxSkully = { id: 'p-faux', nickname: 'Skully master', piece: null, userId: null, accountPseudo: null };
+  giveFreePiece({ hostId: fauxSkully.id, players: [fauxSkully] }, fauxSkully, 'pieuvre');
+  check("un invité nommé Skully master n'a pas la pieuvre", fauxSkully.piece !== 'pieuvre', true);
+
+  const skully = { id: 'p-skully', nickname: 'Capitaine', piece: null, userId: 42, accountPseudo: 'Skully Master' };
+  giveFreePiece({ hostId: 'quelqu-un', players: [skully] }, skully, 'pieuvre');
+  check('le compte Skully master a la pieuvre, même sans être hôte', skully.piece, 'pieuvre');
   giveFreePiece(salleHote, invite, 'canon');
   check(
     "un invité qui l'avait gardée d'un salon où il était hôte repart avec une pièce de la vitrine",

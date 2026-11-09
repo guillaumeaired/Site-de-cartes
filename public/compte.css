@@ -114,10 +114,6 @@ body:has(#sk-screen-home.hidden) .sk-compte .sk-compte-lien {
   cursor: pointer;
 }
 
-.sk-compte-classement::before {
-  content: '\2655\00a0';
-}
-
 .sk-compte-classement:hover,
 .sk-compte-classement:focus-visible {
   background: linear-gradient(180deg, #f0d083, #c4963b 55%, #9a6e25);

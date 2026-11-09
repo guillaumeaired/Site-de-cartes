@@ -1548,6 +1548,7 @@ function goHome() {
 // un clic.
 const leaveConfirmModal = document.getElementById('sk-leave-confirm-modal');
 const btnLeaveCancel = document.getElementById('sk-btn-leave-cancel');
+const leaveConfirmText = leaveConfirmModal.querySelector('.sk-leave-confirm-text');
 
 function fermerConfirmationDepart() {
   leaveConfirmModal.classList.add('hidden');
@@ -1558,9 +1559,32 @@ document.getElementById('sk-btn-leave-game').addEventListener('click', () => {
     goHome();
     return;
   }
+  leaveConfirmText.textContent = texteConfirmationDepart(latestState);
   leaveConfirmModal.classList.remove('hidden');
   btnLeaveCancel.focus();
 });
+
+// Ce que le départ coûte, dit avant le clic. Partie classée (au moins deux
+// comptes à table, dont le mien) : je finis dernier, donc je perds chacun de
+// mes duels — la perte se calcule d'avance avec la même formule que le
+// serveur (server/elo.js, K = 32 ramené à un duel).
+function pertePourDepart(moi, autres) {
+  const attendu = (ra, rb) => 1 / (1 + 10 ** ((rb - ra) / 400));
+  const somme = autres.reduce((s, q) => s - attendu(moi.elo, q.elo), 0);
+  return Math.round((32 / autres.length) * somme);
+}
+
+function texteConfirmationDepart(state) {
+  const debut = 'Un bot finira la partie à ta place, mais c’est toi qui seras classé dernier.';
+  const fin = ' Tu pourras regarder la fin depuis le bord de la table.';
+  const joueurs = (state && state.players) || [];
+  const moi = joueurs.find((p) => p.id === myId);
+  const autres = joueurs.filter((p) => p !== moi && p.elo != null);
+  if (!moi || moi.elo == null) return `${debut} Tu joues en invité : ta sortie ne touche aucune cote.${fin}`;
+  if (!autres.length) return `${debut} Personne d’autre n’a de compte à cette table : la partie n’est pas classée, ta cote ne bouge pas.${fin}`;
+  const perte = Math.abs(pertePourDepart(moi, autres));
+  return `${debut} La partie est classée : ta cote Elo baissera d’environ ${perte} point${perte > 1 ? 's' : ''} (${moi.elo} → ${moi.elo - perte}).${fin}`;
+}
 btnLeaveCancel.addEventListener('click', fermerConfirmationDepart);
 let departEnCours = false;
 document.getElementById('sk-btn-leave-confirm').addEventListener('click', () => {
@@ -1628,6 +1652,8 @@ socket.on('skullking-room-created', ({ code }) => {
 const PIECE_PREF_KEY = 'guimams-sk-piece';
 const piecePicker = document.getElementById('sk-piece-picker');
 const pieceGrid = document.getElementById('sk-piece-grid');
+const jetonPerso = document.getElementById('sk-jeton-perso');
+const jetonPersoGrid = document.getElementById('sk-jeton-perso-grid');
 let piecePrefApplied = false;
 // Le choix de pièce a deux pages : la vitrine des neuf, et la suite derrière
 // une flèche. null tant que le salon n'est pas dessiné — il s'ouvre alors
@@ -1712,15 +1738,60 @@ function renderMonIdentite(me) {
   // même rendu repasse ici à chaque diffusion du salon.
   lobbyMoi.style.color = couleurJoueur(me);
   lobbyMoi.title = 'Ton pseudo — « Modifier » le change pour la suite de la partie.';
-  // Le pseudo d'un compte est celui du classement : il ne se change pas à
-  // table (le serveur le refuse aussi).
-  const aUnCompte = me.elo != null;
-  btnRename.classList.toggle('hidden', aUnCompte);
-  if (aUnCompte) lobbyMoi.title = 'Le pseudo de ton compte.';
+  // Un compte peut aussi se renommer pour la table : la cote reste celle du
+  // compte, et le classement garde le pseudo du compte.
+  if (me.accountPseudo) {
+    lobbyMoi.title = me.accountPseudo === me.nickname
+      ? 'Le pseudo de ton compte — « Modifier » en prend un autre pour cette table, ta cote reste la tienne.'
+      : `Ton pseudo pour cette table — ta cote et le classement restent ceux du compte ${me.accountPseudo}.`;
+  }
+}
+
+// Le nom du compte derrière un pseudo de table, quand ils diffèrent : on
+// sait toujours à qui revient la cote affichée.
+function libelleCompte(p) {
+  return p.accountPseudo && p.accountPseudo !== p.nickname ? ` (compte ${p.accountPseudo})` : '';
+}
+
+// Un médaillon du choix de pièce : libre, à moi, ou pris par un autre.
+function boutonPiece(piece, takenBy) {
+  const owner = takenBy.get(piece.key);
+  const mine = owner && owner.id === myId;
+  const fermee = Boolean(owner) && !mine;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sk-piece-btn' + (mine ? ' sk-piece-btn--mine' : '') + (fermee ? ' sk-piece-btn--taken' : '');
+  btn.style.setProperty('--sk-av-color', piece.color);
+  btn.disabled = fermee;
+  btn.title = fermee ? `${piece.label} — pris par ${owner.nickname}` : piece.label;
+  btn.setAttribute('aria-label', btn.title);
+  btn.innerHTML = pieceSVG(piece);
+  btn.addEventListener('click', () => {
+    if (btn.disabled || mine) return;
+    try {
+      localStorage.setItem(PIECE_PREF_KEY, piece.key);
+    } catch (e) {
+      /* navigation privée : le choix vaut pour cette partie, sans plus */
+    }
+    socket.emit('skullking-set-piece', { piece: piece.key });
+  });
+  return btn;
+}
+
+// LE JETON PERSONNEL : un cadre sous la discussion, pour les pièces qui
+// n'appartiennent qu'à un compte (voir PIECES_NOMINATIVES). Seul ce compte
+// le voit — pour les autres il n'y a rien à choisir, donc rien à montrer.
+function renderJetonPerso(takenBy) {
+  if (!jetonPerso) return;
+  const miennes = PIECES_PERSONNELLES.filter((p) => pieceOuverte(p.key));
+  jetonPerso.classList.toggle('hidden', miennes.length === 0);
+  jetonPersoGrid.innerHTML = '';
+  miennes.forEach((piece) => jetonPersoGrid.appendChild(boutonPiece(piece, takenBy)));
 }
 
 function renderPiecePicker(players) {
   const me = players.find((p) => p.id === myId);
+  myAccountPseudo = (me && me.accountPseudo) || null;
   const takenBy = new Map();
   players.forEach((p) => {
     if (p.piece) takenBy.set(p.piece, p);
@@ -1741,42 +1812,23 @@ function renderPiecePicker(players) {
   }
 
   if (pieceSuiteOuverte === null && me && me.piece) {
-    pieceSuiteOuverte = PIECES.findIndex((p) => p.key === me.piece) >= PIECES_EN_VITRINE;
+    pieceSuiteOuverte = PIECES_SUITE.some((p) => p.key === me.piece);
   }
   // La suite est réservée à l'hôte : les autres n'ont ni la page ni la flèche.
-  const suite = myIsHost && Boolean(pieceSuiteOuverte);
-  const page = suite ? PIECES.slice(PIECES_EN_VITRINE) : PIECES.slice(0, PIECES_EN_VITRINE);
+  const suite = suiteAccessible() && Boolean(pieceSuiteOuverte);
+  const page = suite ? PIECES_SUITE : PIECES.slice(0, PIECES_EN_VITRINE);
 
   piecePicker.classList.remove('hidden');
   pieceGrid.classList.toggle('sk-piece-grid--suite', suite);
   pieceGrid.innerHTML = '';
-  page.forEach((piece) => {
-    const owner = takenBy.get(piece.key);
-    const mine = owner && owner.id === myId;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'sk-piece-btn' + (mine ? ' sk-piece-btn--mine' : '') + (owner && !mine ? ' sk-piece-btn--taken' : '');
-    btn.style.setProperty('--sk-av-color', piece.color);
-    btn.disabled = Boolean(owner) && !mine;
-    btn.title = owner && !mine ? `${piece.label} — pris par ${owner.nickname}` : piece.label;
-    btn.setAttribute('aria-label', btn.title);
-    btn.innerHTML = pieceSVG(piece);
-    btn.addEventListener('click', () => {
-      if (btn.disabled || mine) return;
-      try {
-        localStorage.setItem(PIECE_PREF_KEY, piece.key);
-      } catch (e) {
-        /* navigation privée : le choix vaut pour cette partie, sans plus */
-      }
-      socket.emit('skullking-set-piece', { piece: piece.key });
-    });
-    pieceGrid.appendChild(btn);
-  });
+  page.forEach((piece) => pieceGrid.appendChild(boutonPiece(piece, takenBy)));
+
+  renderJetonPerso(takenBy);
 
   // La flèche loge dans la demi-case que le quinconce laisse libre : à droite
   // sous la vitrine, à gauche sous la suite. La grille garde ses deux rangées
   // d'une page à l'autre, et rien ne bouge sous elle.
-  if (!myIsHost) return;
+  if (!suiteAccessible()) return;
   const fleche = document.createElement('button');
   fleche.type = 'button';
   fleche.className = 'sk-piece-fleche';
@@ -2330,11 +2382,11 @@ socket.on('skullking-lobby-update', ({ code, players, botLevels, hostId, isHost,
     // nom. Que la partie soit classée ou non se lit au-dessus du rôle (voir
     // lobbyRange).
     if (p.elo != null) {
-      nom.title = `${p.nickname} — ${p.elo} Elo`;
+      nom.title = `${p.nickname}${libelleCompte(p)} — ${p.elo} Elo`;
       const cote = document.createElement('span');
       cote.className = 'sk-lobby-elo';
       cote.textContent = p.elo;
-      cote.title = `Cote Elo de ${p.nickname}`;
+      cote.title = `Cote Elo de ${p.nickname}${libelleCompte(p)}`;
       li.appendChild(cote);
     } else if (p.isGuest) nom.title = `${p.nickname} — invité, ses parties ne comptent pas au classement`;
     if (p.id === hostId) li.classList.add('lobby-host');
@@ -3075,10 +3127,35 @@ const PIECES = [
 // jamais au hasard.
 const PIECES_EN_VITRINE = 9;
 
-// Ce que je peux prendre : la vitrine, et la suite si j'ai ouvert le salon.
+// Les pièces qui n'appartiennent qu'à un compte nommé — hôte ou pas, et
+// personne d'autre, pas même l'hôte. Même table que PIECES_NOMINATIVES côté
+// serveur, qui est seul juge ; celle-ci ne sert qu'à dessiner le choix.
+const PIECES_NOMINATIVES = { pieuvre: 'Skully master' };
+let myAccountPseudo = null;
+
+function memeCompte(a, b) {
+  const cle = (x) => String(x).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  return Boolean(a && b) && cle(a) === cle(b);
+}
+
+// Ce que je peux prendre : la vitrine, et la suite si j'ai ouvert le salon —
+// sauf les pièces nominatives, qui ne vont qu'à leur compte.
 function pieceOuverte(key) {
   const rang = PIECES.findIndex((p) => p.key === key);
-  return rang !== -1 && (rang < PIECES_EN_VITRINE || myIsHost);
+  if (rang === -1) return false;
+  const proprietaire = PIECES_NOMINATIVES[key];
+  if (proprietaire) return memeCompte(myAccountPseudo, proprietaire);
+  return rang < PIECES_EN_VITRINE || myIsHost;
+}
+
+// La suite, derrière la flèche : les pièces de l'hôte. Les pièces
+// nominatives n'y sont plus — elles ont leur propre cadre, « Jeton
+// personnel », sous la discussion, et seul leur compte le voit.
+const PIECES_SUITE = PIECES.slice(PIECES_EN_VITRINE).filter((p) => !PIECES_NOMINATIVES[p.key]);
+const PIECES_PERSONNELLES = PIECES.filter((p) => PIECES_NOMINATIVES[p.key]);
+
+function suiteAccessible() {
+  return myIsHost;
 }
 
 const PIECE_BY_KEY = Object.fromEntries(PIECES.map((p) => [p.key, p]));
@@ -5325,7 +5402,7 @@ function celluleCote(p) {
   cote.className = 'sk-grand-elo';
   if (p && p.elo != null) {
     cote.textContent = p.elo;
-    cote.title = `Cote Elo de ${p.nickname}`;
+    cote.title = `Cote Elo de ${p.nickname}${libelleCompte(p)}`;
   } else {
     cote.classList.add('sk-grand-elo--sans');
     cote.textContent = p && p.isBot ? 'bot' : 'invité';
@@ -6812,9 +6889,9 @@ function celluleCoteFin(r) {
   if (r.elo) {
     const sens = r.elo.delta >= 0 ? 'sk-end-elo--up' : 'sk-end-elo--down';
     const ecart = `${r.elo.delta >= 0 ? '+' : '−'}${Math.abs(r.elo.delta)}`;
-    return `<span class="sk-end-cote-val" title="Cote Elo : ${r.elo.before} → ${r.elo.after}">${r.elo.after}</span><span class="sk-end-elo ${sens}">${ecart}</span>`;
+    return `<span class="sk-end-cote-val" title="Cote Elo${escapeHTML(libelleCompte(r))} : ${r.elo.before} → ${r.elo.after}">${r.elo.after}</span><span class="sk-end-elo ${sens}">${ecart}</span>`;
   }
-  if (r.cote != null) return `<span class="sk-end-cote-val" title="Partie non classée : cote inchangée">${r.cote}</span>`;
+  if (r.cote != null) return `<span class="sk-end-cote-val" title="Partie non classée : cote inchangée${escapeHTML(libelleCompte(r))}">${r.cote}</span>`;
   return `<span class="sk-end-cote-sans" title="Pas de compte : ne compte pas au classement">${r.isBot ? 'bot' : 'invité'}</span>`;
 }
 

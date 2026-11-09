@@ -6054,8 +6054,10 @@ button.sk-lobby-bot:focus-visible {
    vitrine laisse l'auto-placement faire, ici il partirait de la gauche. */
 .sk-piece-grid--suite > :nth-child(1) { grid-area: 1 / 4 / auto / span 2; }
 .sk-piece-grid--suite > :nth-child(2) { grid-area: 1 / 6 / auto / span 2; }
-.sk-piece-grid--suite > :nth-child(3) { grid-area: 2 / 4 / auto / span 2; }
-.sk-piece-grid--suite > :nth-child(4) { grid-area: 2 / 6 / auto / span 2; }
+/* Depuis que la pieuvre a son propre cadre (voir .sk-jeton-perso), la suite
+   n'en compte plus que trois : la troisième se centre sous les deux autres. */
+.sk-piece-grid--suite > :nth-child(3):not(.sk-piece-fleche) { grid-area: 2 / 5 / auto / span 2; }
+.sk-piece-grid--suite > :nth-child(4):not(.sk-piece-fleche) { grid-area: 2 / 6 / auto / span 2; }
 
 /* La flèche tient dans la demi-case que le quinconce laisse vide en bout de
    seconde rangée : à droite sous la vitrine (elle mène à la suite), à gauche
@@ -6153,6 +6155,33 @@ button.sk-lobby-bot:focus-visible {
   border-radius: 2px;
   background: #fff5e6;
   transform: rotate(-45deg);
+}
+
+/* LE JETON PERSONNEL, sous la discussion : un creux dans la planche, du
+   même dessin que le fil juste au-dessus, avec la pièce au milieu. */
+.sk-jeton-perso {
+  margin-top: 12px;
+  padding: 8px 9px 12px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(10, 6, 3, 0.5), rgba(26, 18, 11, 0.38));
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 137, 53, 0.22),
+    inset 0 3px 7px rgba(0, 0, 0, 0.5);
+}
+
+.sk-jeton-perso.hidden {
+  display: none;
+}
+
+.sk-jeton-perso-titre {
+  margin: 0 0 10px;
+  text-align: center;
+}
+
+.sk-jeton-perso-grid {
+  display: flex;
+  justify-content: center;
+  gap: var(--sk-piece-ecart, 8px);
 }
 
 /* Pastille de rappel à côté du pseudo dans la liste du salon. */

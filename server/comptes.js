@@ -351,8 +351,12 @@ function createComptes({ store = createStore(), limiter = new LoginLimiter(), si
     for (const key of await store.allPseudoKeys()) reserved.add(key);
   }
 
-  function isReservedPseudo(nickname) {
-    return reserved.has(pseudoKey(nickname));
+  // `ownPseudo` : le pseudo du compte qui demande — reprendre son propre
+  // nom n'est pas l'usurper.
+  function isReservedPseudo(nickname, ownPseudo = null) {
+    const key = pseudoKey(nickname);
+    if (ownPseudo != null && key === pseudoKey(ownPseudo)) return false;
+    return reserved.has(key);
   }
 
   async function openSession(res, req, user) {

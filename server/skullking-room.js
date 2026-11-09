@@ -35,6 +35,7 @@ const { likelyServerRestart } = require('./server-start');
 const { makeRoomCode, sanitizeNickname } = require('./commun');
 const { recordGameStarted } = require('./play-counts');
 const { computeEloChanges } = require('./elo');
+const { pseudoKey } = require('./comptes');
 
 // Les deux paquets proposés dans le salon. Réglage purement visuel : il ne
 // touche ni au deck, ni aux règles, ni au score — seul l'habillage des
@@ -520,9 +521,23 @@ function piecesTirables(room) {
 // Une pièce du lot, et de la vitrine sauf pour l'hôte. Si l'hôte quitte le
 // salon, son successeur hérite du privilège ; la pièce de l'ancien part avec
 // lui, il n'y a donc rien à reprendre à personne.
+//
+// Exception : certaines pièces de la suite ont un propriétaire nommé. Elles
+// ne vont qu'à ce compte-là, qu'il soit hôte ou non, et à personne d'autre —
+// pas même à l'hôte. On juge sur le compte connecté (accountPseudo), jamais
+// sur le pseudo de table : un invité ne peut pas prendre le nom d'un compte
+// (voir identityFor), et un joueur renommé pour la table reste son compte.
+const PIECES_NOMINATIVES = { pieuvre: 'Skully master' };
+
 function pieceAutorisee(room, player, piece) {
   const rang = PIECE_KEYS.indexOf(piece);
-  return rang !== -1 && (rang < PIECES_EN_VITRINE || player.id === room.hostId);
+  if (rang === -1) return false;
+  const proprietaire = PIECES_NOMINATIVES[piece];
+  if (proprietaire) {
+    return Boolean(player.userId && player.accountPseudo)
+      && pseudoKey(player.accountPseudo) === pseudoKey(proprietaire);
+  }
+  return rang < PIECES_EN_VITRINE || player.id === room.hostId;
 }
 
 // Filet de sécurité au lancement : si une pièce manque encore (partie reprise
@@ -808,7 +823,8 @@ function setComptesAdapter(adapter) {
 }
 
 // Qui s'assied : un joueur connecté s'assied sous le pseudo de son compte,
-// quoi qu'ait envoyé le navigateur ; un invité sous le pseudo qu'il a tapé,
+// quoi qu'ait envoyé le navigateur (il peut ensuite en prendre un autre pour
+// la table, voir skullking-set-nickname) ; un invité sous le pseudo qu'il a tapé,
 // à condition que ce ne soit pas celui d'un compte — sinon n'importe qui
 // jouerait sous le nom du premier du classement.
 function identityFor(socket, rawNickname) {
@@ -850,6 +866,7 @@ function broadcastLobby(io, room) {
         // La cote de qui a un compte, « invité » pour les autres humains : le
         // salon dit d'avance si la partie sera classée, et pour qui.
         elo: pp.userId ? pp.elo : null,
+        accountPseudo: pp.userId ? pp.accountPseudo : null,
         isGuest: !pp.userId && !(bots && bots.isBot(pp.id)),
         // Le niveau du bot (1 à 3, voir briefs/bots-skullking.md) : la
         // marque « BOT » le porte, et l'hôte le change d'un clic.
@@ -1528,9 +1545,19 @@ function clearRoomTimers(room) {
 // cote de celui qui est parti — c'est lui que la partie classe, pas le bot.
 function coteDuSiege(p) {
   const isBot = Boolean(bots && bots.isBot(p.id));
-  if (p.leaver) return { elo: p.leaver.userId ? p.leaver.elo : null, isGuest: !p.leaver.userId, isBot: false };
-  if (p.userId) return { elo: p.elo, isGuest: false, isBot };
-  return { elo: null, isGuest: !isBot, isBot };
+  // accountPseudo : le nom du compte derrière le siège. Il diffère du pseudo
+  // affiché quand le joueur s'est choisi un autre nom pour la table — la
+  // cote, elle, reste celle du compte.
+  if (p.leaver) {
+    return {
+      elo: p.leaver.userId ? p.leaver.elo : null,
+      accountPseudo: p.leaver.userId ? p.leaver.pseudo || null : null,
+      isGuest: !p.leaver.userId,
+      isBot: false,
+    };
+  }
+  if (p.userId) return { elo: p.elo, accountPseudo: p.accountPseudo || null, isGuest: false, isBot };
+  return { elo: null, accountPseudo: null, isGuest: !isBot, isBot };
 }
 
 function playerRecap(p) {
@@ -1564,6 +1591,7 @@ function playerRecap(p) {
     // l'avant, l'après et l'écart, quand la partie est classée) : le récap
     // donne ainsi la cote de chaque compte, classée ou non.
     cote: coteDuSiege(p).elo,
+    accountPseudo: coteDuSiege(p).accountPseudo,
     isBot: coteDuSiege(p).isBot,
     total: p.totalScore,
     rounds: h.length,
@@ -1648,7 +1676,15 @@ function rateGame(io, room, ranking) {
         delta: byUser.get(e.userId).delta,
         won: !e.left && e.score === topScore,
       })),
-      summary: ranking.map((r) => ({ nickname: r.nickname, total: r.total, left: r.left || false, elo: r.elo || null })),
+      // Le pseudo de table ET celui du compte : un nom de table ne dit pas,
+      // relu des mois plus tard, à quel compte la partie a compté.
+      summary: ranking.map((r) => ({
+        nickname: r.nickname,
+        account: r.accountPseudo || null,
+        total: r.total,
+        left: r.left || false,
+        elo: r.elo || null,
+      })),
     })
     .then((after) => {
       // La base fait foi : si une autre partie du même joueur s'est finie
@@ -1820,8 +1856,10 @@ function remplacerParUnBot(io, room, player) {
   clearTimeout(player.disconnectTimer);
   player.disconnectTimer = null;
   // Le partant garde son compte et sa cote pour le classement de fin.
-  player.leaver = player.userId ? { userId: player.userId, elo: player.elo } : { userId: null };
-  const account = player.userId ? { id: player.userId, pseudo: player.nickname, elo: player.elo } : null;
+  player.leaver = player.userId
+    ? { userId: player.userId, elo: player.elo, pseudo: player.accountPseudo }
+    : { userId: null };
+  const account = player.userId ? { id: player.userId, pseudo: player.accountPseudo, elo: player.elo } : null;
   const token = player.token;
   // Le capitaine qui s'en va passe la barre à un humain : un bot ne lancerait
   // jamais la manche suivante ni n'arrêterait la partie.
@@ -2094,6 +2132,9 @@ function newPlayer(id, nickname, token, account = null) {
     // que la fin de partie classe.
     userId: account ? account.id : null,
     elo: account ? account.elo : null,
+    // Le nom du compte, gardé à part du pseudo affiché : le joueur peut se
+    // renommer pour la table sans que sa cote change de propriétaire.
+    accountPseudo: account ? account.pseudo : null,
     connected: true,
     disconnectTimer: null,
     hand: [],
@@ -2385,15 +2426,13 @@ function registerSkullKingHandlers(io, socket) {
     if (!room || room.phase !== 'lobby') return;
     const player = findPlayer(room, socket.id);
     if (!player) return;
-    // Le pseudo d'un compte est celui du classement : il ne se change pas à
-    // table, sinon la cote suivrait un nom que personne ne reconnaît.
-    if (player.userId) {
-      sendError(socket, 'Ton pseudo est celui de ton compte, il ne se change pas ici.');
-      return;
-    }
+    // Un compte peut se choisir un autre nom pour la table : la cote reste
+    // attachée à son compte (player.userId), pas au nom affiché, et le
+    // classement garde le pseudo du compte. Il peut toujours reprendre le
+    // sien — c'est le seul nom réservé qu'on lui laisse.
     const nickname = sanitizeNickname(payload && payload.nickname);
     if (!nickname || nickname === player.nickname) return;
-    if (comptes && comptes.isReservedPseudo(nickname)) {
+    if (comptes && comptes.isReservedPseudo(nickname, player.userId ? player.accountPseudo : null)) {
       sendError(socket, 'Ce pseudo appartient à un compte : choisis-en un autre.');
       return;
     }

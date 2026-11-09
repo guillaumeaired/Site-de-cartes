@@ -165,6 +165,12 @@
             <input id="sk-lobby-chat-input" type="text" maxlength="200" placeholder="Écrire à l'équipage…" />
             <button type="submit" class="sk-chat-send" aria-label="Envoyer">➤</button>
           </form>
+          <!-- Le jeton personnel : les pièces qui n'appartiennent qu'à un
+               compte (voir PIECES_NOMINATIVES). Seul ce compte voit le cadre. -->
+          <section id="sk-jeton-perso" class="sk-jeton-perso hidden" aria-labelledby="sk-jeton-perso-titre">
+            <p id="sk-jeton-perso-titre" class="invite-label sk-jeton-perso-titre">Jeton personnel</p>
+            <div id="sk-jeton-perso-grid" class="sk-jeton-perso-grid"></div>
+          </section>
         </div>
       </div>
 
