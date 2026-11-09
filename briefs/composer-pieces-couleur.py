@@ -10,14 +10,14 @@ Entrées :
 Sorties :
     briefs/planche-couleurs/prototype-anneau.png  (une pièce, les 12 couleurs)
     briefs/planche-couleurs/tous-les-motifs.png   (original | anneau, pour tous)
-    public/assets/skin/piece-*.webp               (avec --ecrire : les pièces du
-                                                   jeu, chacune dans COULEUR_DU_JEU)
+    public/assets/skin/pieces/<motif>-<couleur>.webp
+                                                  (avec --ecrire : les pièces du
+                                                   jeu, chaque motif dans chaque couleur)
 
 Usage :
     python3 briefs/normaliser-anneau.py
     python3 briefs/refaire-clous-anneau.py
     python3 briefs/composer-pieces-couleur.py --ecrire
-    python3 briefs/couleur-cerclage.py --ecrire    # recale `color` dans le JS
 
 Recolorer l'émail : il est gris neutre (saturation ~0,05), donc sa luminance
 porte tout le relief — grain, paillettes, ombres des clous. On garde cette
@@ -220,36 +220,51 @@ def jeton(rgb, alpha, masque, cle, couleur):
     return piece(rgb, alpha, masque, centre_de(cle), couleur, dessus_de(cle))
 
 
-# La couleur de chaque pièce du jeu, en attendant que le joueur choisisse la
-# sienne : celle que l'œil voyait sur l'émail de son médaillon d'origine
-# (« vue » dans briefs/planche-couleurs/couleurs-pieces.md ; pour les pièces à
-# code, la couleur relevée, leur émail clair et uni étant déjà fidèle). Chaque
-# pièce garde ainsi son identité et deux joueurs ne se retrouvent pas de la
-# même couleur à une table.
-COULEUR_DU_JEU = {
-    'crane': '#9f0505', 'ivrogne': '#e85142', 'barre': '#d54406',
-    'boussole': '#d1810a', 'crochet': '#ae0649', 'sabre': '#711f5e',
-    'ancre': '#154282', 'coffre': '#057378', 'voilier': '#2b5c0d',
-    'bouteille': '#1a2507', 'poison': '#97a80c', 'pieuvre': '#5d564e',
-    'canon': '#82796a',
-    'pomme': '#4db9e5', 'visa': '#fca3af', 'taureau': '#f0e3cf',
-    'viseur': '#66dd99', 'harvard': '#911b27',
-}
 LARGEUR = 398           # l'échelle de la famille dans le jeu
+PIECES_JEU = SKIN / 'pieces'
 
 
 def ecrire_jeu(rgb, alpha, masque):
-    """Remplace chaque public/assets/skin/piece-*.webp par sa version sur l'anneau."""
+    """Écrit toutes les pièces du jeu : chaque motif dans chacune des 12 couleurs,
+    public/assets/skin/pieces/<motif>-<couleur>.webp. C'est le joueur qui choisit
+    la couleur ; le jeu n'a plus de couleur attachée à un motif."""
     import subprocess
-    for cle, couleur in sorted(COULEUR_DU_JEU.items()):
-        im = jeton(rgb, alpha, masque, cle, couleur).resize((LARGEUR, LARGEUR), Image.LANCZOS)
-        dest = SKIN / f'piece-{cle}.webp'
-        tmp = dest.with_suffix('.tmp.png')
-        im.save(tmp)
-        subprocess.run(['cwebp', '-quiet', '-q', '90', '-alpha_q', '100', str(tmp), '-o', str(dest)],
-                       check=True)
-        tmp.unlink()
-        print(f'  {dest.name:24} {couleur}  {dest.stat().st_size / 1024:.0f} Ko')
+    from concurrent.futures import ThreadPoolExecutor
+
+    PIECES_JEU.mkdir(exist_ok=True)
+    anneaux = {}
+    for nom, hexa in COULEURS:
+        a = recolorier(rgb, masque, hexa)
+        anneaux[nom] = Image.fromarray(np.dstack([a, alpha]).clip(0, 255).astype(np.uint8), 'RGBA')
+
+    def un_motif(cle):
+        centre, dessus = centre_de(cle), dessus_de(cle)
+        ombre = ombre_portee(dessus) if dessus is not None else None
+        for nom, hexa in COULEURS:
+            anneau = anneaux[nom]
+            if ombre is not None:
+                a = np.asarray(anneau).astype(np.float32)
+                a[..., :3] *= ombre[..., None]
+                anneau = Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGBA')
+            im = centre.copy()
+            im.alpha_composite(anneau)
+            if dessus is not None:
+                im.alpha_composite(dessus)
+            im = im.resize((LARGEUR, LARGEUR), Image.LANCZOS)
+            dest = PIECES_JEU / f'{cle}-{nom}.webp'
+            tmp = dest.with_suffix('.tmp.png')
+            im.save(tmp)
+            subprocess.run(['cwebp', '-quiet', '-q', '90', '-alpha_q', '100', str(tmp), '-o', str(dest)],
+                           check=True)
+            tmp.unlink()
+        return cle
+
+    cles = sorted(f.stem[len('piece-'):] for f in SOURCES.glob('piece-*.webp'))
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for cle in pool.map(un_motif, cles):
+            print('  ', cle)
+    total = sum(f.stat().st_size for f in PIECES_JEU.glob('*.webp'))
+    print(f'{len(cles)} motifs x {len(COULEURS)} couleurs, {total / 1e6:.1f} Mo')
 
 
 def main():

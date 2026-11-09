@@ -20,6 +20,7 @@ const { sanitizeNickname } = require('./commun');
 const { ELO_INITIAL } = require('./elo');
 const { normaliserCode, pieceDuCode } = require('./pieces-a-code');
 const { PIECES_COMMUNES, PIECES_A_CODE } = require('./pieces');
+const { couleurValide } = require('./couleurs');
 const { profilDepuisParties } = require('./profil');
 
 const scrypt = promisify(crypto.scrypt);
@@ -67,7 +68,7 @@ function tokenHash(token) {
 
 function publicUser(u) {
   if (!u) return null;
-  return { id: u.id, pseudo: u.pseudo, elo: u.elo, gamesPlayed: u.gamesPlayed, wins: u.wins, piece: u.piece || null };
+  return { id: u.id, pseudo: u.pseudo, elo: u.elo, gamesPlayed: u.gamesPlayed, wins: u.wins, piece: u.piece || null, couleur: u.couleur || null };
 }
 
 // --- Stockage en mémoire --------------------------------------------------
@@ -86,7 +87,7 @@ function createMemoryStore() {
     async createUser(pseudo, pinHash) {
       const key = pseudoKey(pseudo);
       if (byKey.has(key)) return null;
-      const user = { id: nextId++, pseudo, pinHash, elo: ELO_INITIAL, gamesPlayed: 0, wins: 0, piece: null };
+      const user = { id: nextId++, pseudo, pinHash, elo: ELO_INITIAL, gamesPlayed: 0, wins: 0, piece: null, couleur: null };
       users.set(user.id, user);
       byKey.set(key, user.id);
       return { ...user };
@@ -104,11 +105,15 @@ function createMemoryStore() {
     },
     // Ce que le profil lit des autres comptes : leur nom et leur pièce.
     async allUsers() {
-      return [...users.values()].map((u) => ({ id: u.id, pseudo: u.pseudo, piece: u.piece || null }));
+      return [...users.values()].map((u) => ({ id: u.id, pseudo: u.pseudo, piece: u.piece || null, couleur: u.couleur || null }));
     },
     async setUserPiece(id, piece) {
       const u = users.get(id);
       if (u) u.piece = piece;
+    },
+    async setUserCouleur(id, couleur) {
+      const u = users.get(id);
+      if (u) u.couleur = couleur;
     },
     // Les parties classées, dans l'ordre où elles ont été jouées.
     async allGames() {
@@ -185,6 +190,7 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
       gamesPlayed: r.games_played,
       wins: r.wins,
       piece: r.piece || null,
+      couleur: r.couleur || null,
     };
 
   return {
@@ -225,6 +231,8 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
       // La pièce de profil, venue après les comptes : ajoutée aux tables
       // existantes sans rien toucher d'autre.
       await pool.query('ALTER TABLE sk_users ADD COLUMN IF NOT EXISTS piece TEXT');
+      // Puis sa couleur (voir couleurs.js), venue après la pièce.
+      await pool.query('ALTER TABLE sk_users ADD COLUMN IF NOT EXISTS couleur TEXT');
       await pool.query('DELETE FROM sk_sessions WHERE expires_at < now()');
     },
     async createUser(pseudo, pinHash) {
@@ -253,11 +261,14 @@ function createPgStore(connectionString, PoolImpl = require('pg').Pool) {
       return rows.map((r) => r.pseudo_key);
     },
     async allUsers() {
-      const { rows } = await pool.query('SELECT id, pseudo, piece FROM sk_users');
-      return rows.map((r) => ({ id: r.id, pseudo: r.pseudo, piece: r.piece || null }));
+      const { rows } = await pool.query('SELECT id, pseudo, piece, couleur FROM sk_users');
+      return rows.map((r) => ({ id: r.id, pseudo: r.pseudo, piece: r.piece || null, couleur: r.couleur || null }));
     },
     async setUserPiece(id, piece) {
       await pool.query('UPDATE sk_users SET piece = $2 WHERE id = $1', [id, piece]);
+    },
+    async setUserCouleur(id, couleur) {
+      await pool.query('UPDATE sk_users SET couleur = $2 WHERE id = $1', [id, couleur]);
     },
     // Toute l'histoire, relue à chaque profil : quelques milliers de parties
     // entre amis tiennent sans peine. Si ça grossit, filtrer en SQL sur
@@ -507,6 +518,14 @@ function createComptes({
     return { error: 'Tu n’as pas cette pièce.' };
   }
 
+  // La couleur de profil : une des douze (voir couleurs.js). null la rend à
+  // celle du motif.
+  async function choisirCouleur(userId, couleur) {
+    if (couleur !== null && !couleurValide(couleur)) return { error: 'Cette couleur n’existe pas.' };
+    await store.setUserCouleur(userId, couleur);
+    return { couleur };
+  }
+
   function registerRoutes(app, express) {
     const json = express.json({ limit: '2kb' });
     const wrap = (fn) => (req, res) =>
@@ -604,6 +623,21 @@ function createComptes({
         if (piece === undefined) return res.status(400).json({ error: 'Choisis une pièce.' });
         const r = await choisirPiece(user.id, piece);
         if (r.error) return res.status(403).json(r);
+        res.json(r);
+      }),
+    );
+
+    app.post(
+      '/api/profil/couleur',
+      json,
+      wrap(async (req, res) => {
+        const user = await userFromCookieHeader(req.headers.cookie);
+        if (!user) return res.status(401).json({ error: 'Connecte-toi pour choisir ta couleur.' });
+        const brut = req.body ? req.body.couleur : undefined;
+        const couleur = brut === null ? null : typeof brut === 'string' ? brut : undefined;
+        if (couleur === undefined) return res.status(400).json({ error: 'Choisis une couleur.' });
+        const r = await choisirCouleur(user.id, couleur);
+        if (r.error) return res.status(400).json(r);
         res.json(r);
       }),
     );

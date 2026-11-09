@@ -507,6 +507,7 @@ function davyJonesSwallow(cards) {
 // seule à une table pleine (neuf joueurs au plus, voir maxPlayersFor).
 // Les listes elles-mêmes vivent dans pieces.js, que le profil partage.
 const { PIECE_KEYS } = require('./pieces');
+const { COULEURS, couleurValide, couleurParDefaut } = require('./couleurs');
 const PIECES_EN_VITRINE = 9;
 
 // Ce que le hasard peut encore donner : la vitrine seule.
@@ -535,10 +536,44 @@ function pieceAutorisee(room, player, piece) {
 // partie donnerait toujours le crâne au même distrait.
 function assignMissingPieces(room) {
   for (const p of room.players) {
-    if (p.piece) continue;
-    const libres = piecesTirables(room);
-    p.piece = libres[Math.floor(Math.random() * libres.length)] || null;
+    if (!p.piece) {
+      const libres = piecesTirables(room);
+      p.piece = libres[Math.floor(Math.random() * libres.length)] || null;
+    }
+    donnerCouleur(room, p);
   }
+}
+
+// LA COULEUR, c'est ce qui distingue les joueurs à table (voir couleurs.js) :
+// elle peint la roue, la courbe, la légende. Deux joueurs ne l'ont donc
+// jamais en même temps — le motif, lui, n'est qu'une affaire de goût.
+function couleursPrises(room, sauf) {
+  return new Set(room.players.filter((p) => p !== sauf && p.couleur).map((p) => p.couleur));
+}
+
+function couleurLibre(room, player, couleur) {
+  return couleurValide(couleur) && !couleursPrises(room, player).has(couleur);
+}
+
+// Une couleur à qui n'en a pas : celle qu'il préfère si elle est libre (le
+// choix gardé par son appareil), sinon celle de son motif, sinon une libre au
+// hasard. `couleurChoisie` retient qu'il l'a voulue : tant qu'il n'a rien
+// choisi, sa couleur suit son motif (voir skullking-set-piece).
+function donnerCouleur(room, player, preferee) {
+  if (!player || player.couleur) return;
+  if (couleurLibre(room, player, preferee)) {
+    player.couleur = preferee;
+    player.couleurChoisie = true;
+    return;
+  }
+  const defaut = couleurParDefaut(player.piece);
+  if (couleurLibre(room, player, defaut)) {
+    player.couleur = defaut;
+    return;
+  }
+  const prises = couleursPrises(room, player);
+  const libres = COULEURS.filter((c) => !prises.has(c));
+  player.couleur = libres[Math.floor(Math.random() * libres.length)] || null;
 }
 
 // PERSONNE NE S'ASSIED SANS PIÈCE. Le salon montre déjà une pièce à chaque
@@ -553,15 +588,21 @@ function assignMissingPieces(room) {
 // partie : on la lui rend si elle est encore libre, sinon le hasard tranche.
 // C'est le même souhait qu'exauçait le client une fois le salon dessiné —
 // exaucé à la porte, il ne peut plus lui passer sous le nez entre-temps.
-function giveFreePiece(room, player, preferee) {
-  if (!player || player.piece) return;
-  const prise = room.players.some((p) => p.piece === preferee);
-  if (!prise && pieceAutorisee(room, player, preferee)) {
-    player.piece = preferee;
-    return;
+//
+// La couleur suit la même porte : `couleurPreferee` est celle que l'appareil
+// a gardée, rendue si elle est libre (voir donnerCouleur).
+function giveFreePiece(room, player, preferee, couleurPreferee) {
+  if (!player) return;
+  if (!player.piece) {
+    const prise = room.players.some((p) => p.piece === preferee);
+    if (!prise && pieceAutorisee(room, player, preferee)) {
+      player.piece = preferee;
+    } else {
+      const libres = piecesTirables(room);
+      player.piece = libres[Math.floor(Math.random() * libres.length)] || null;
+    }
   }
-  const libres = piecesTirables(room);
-  player.piece = libres[Math.floor(Math.random() * libres.length)] || null;
+  donnerCouleur(room, player, couleurPreferee);
 }
 
 // Le seul chemin d'ajout d'un bot : le bouton de l'hôte et le mode essai
@@ -791,7 +832,7 @@ function seatSpectators(io, room) {
     if (s.connected === false) return;
     const player = newPlayer(s.id, s.nickname, s.token, s.account);
     room.players.push(player);
-    giveFreePiece(room, player, s.piece);
+    giveFreePiece(room, player, s.piece, s.couleur);
     pushSystemChat(io, room, `${s.nickname} prend place à la table.`);
   });
 }
@@ -855,6 +896,7 @@ function broadcastLobby(io, room) {
         id: pp.id,
         nickname: pp.nickname,
         piece: pp.piece || null,
+        couleur: pp.couleur || null,
         isBot: Boolean(bots && bots.isBot(pp.id)),
         // La cote de qui a un compte, « invité » pour les autres humains : le
         // salon dit d'avance si la partie sera classée, et pour qui.
@@ -869,6 +911,7 @@ function broadcastLobby(io, room) {
       // lesquels existent et comment ils s'appellent.
       botLevels: bots && bots.botCatalogue ? bots.botCatalogue() : [],
       pieceKeys: PIECE_KEYS,
+      couleurs: COULEURS,
       chat: room.chat || [],
       hostId: room.hostId,
       isHost: p.id === room.hostId,
@@ -1060,6 +1103,7 @@ function stateFor(room, p) {
       id: pp.id,
       nickname: pp.nickname,
       piece: pp.piece || null,
+      couleur: pp.couleur || null,
       connected: pp.connected !== false,
       // La cote du compte assis (ou de celui qui a quitté le siège, qu'un bot
       // finit pour lui) : le registre agrandi l'affiche à côté du score.
@@ -1578,6 +1622,8 @@ function playerRecap(p) {
     // La pièce sert à colorer la courbe des scores : même repère que sur le
     // tapis, on retrouve sa ligne sans lire la légende.
     piece: p.piece || null,
+    // …et c'est la COULEUR qui la peint : celle du joueur, pas celle du motif.
+    couleur: p.couleur || null,
     // A quitté en cours de route : un bot a fini la partie à sa place.
     left: Boolean(p.leaver),
     // La cote AVANT le calcul de fin (rateGame y ajoute ensuite `elo`, avec
@@ -1874,6 +1920,7 @@ function remplacerParUnBot(io, room, player) {
     account,
     userId: account ? account.id : null,
     piece: player.piece || null,
+    couleur: player.couleur || null,
     connected: true,
     disconnectTimer: null,
   });
@@ -2123,6 +2170,9 @@ function newPlayer(id, nickname, token, account = null) {
     id,
     nickname,
     piece: null,
+    // La couleur du joueur à table (voir donnerCouleur), et s'il l'a choisie.
+    couleur: null,
+    couleurChoisie: false,
     token,
     // Le compte derrière le siège (null pour un invité ou un bot) : c'est lui
     // que la fin de partie classe.
@@ -2168,6 +2218,7 @@ function joinAsSpectator(io, socket, room, nickname, payload, account = null) {
       account,
       userId: account ? account.id : null,
       piece: (payload && payload.piece) || null,
+      couleur: (payload && payload.couleur) || null,
       connected: true,
       disconnectTimer: null,
     });
@@ -2226,7 +2277,7 @@ function registerSkullKingHandlers(io, socket) {
     // Sa pièce est réservée avant même le premier dessin du salon (voir
     // giveFreePiece) : l'hôte en a une, elle est à lui, et le suivant ne peut
     // plus la prendre.
-    giveFreePiece(room, room.players[0], payload && payload.piece);
+    giveFreePiece(room, room.players[0], payload && payload.piece, payload && payload.couleur);
     socket.data.skullkingRoom = code;
     socket.emit('skullking-room-created', { code });
     // L'hôte ouvre le fil : sans cette ligne, celui qui arrive en second lit
@@ -2286,7 +2337,7 @@ function registerSkullKingHandlers(io, socket) {
     room.players.push(newPlayer(socket.id, nickname, payload && payload.token, account));
     // Même règle que pour l'hôte : la pièce est prise à l'instant où il
     // s'assied, donc jamais deux fois.
-    giveFreePiece(room, room.players[room.players.length - 1], payload && payload.piece);
+    giveFreePiece(room, room.players[room.players.length - 1], payload && payload.piece, payload && payload.couleur);
     socket.data.skullkingRoom = code;
     // Après le push : broadcastToRoom parcourt room.players, et l'arrivant
     // doit lire sa propre arrivée comme les autres.
@@ -2408,6 +2459,31 @@ function registerSkullKingHandlers(io, socket) {
       return;
     }
     player.piece = piece;
+    // Tant qu'il n'a pas choisi de couleur, elle suit son motif : prendre
+    // l'Ancre l'habille de marine, comme avant que les couleurs se choisissent.
+    if (!player.couleurChoisie) {
+      const defaut = couleurParDefaut(piece);
+      if (couleurLibre(room, player, defaut)) player.couleur = defaut;
+    }
+    broadcastLobby(io, room);
+  });
+
+  // Choix de sa couleur dans le salon : une couleur n'est portée que par un
+  // joueur à la fois, puisque c'est elle qui le désigne sur la roue et la
+  // courbe. Refusé une fois la partie lancée, comme le motif.
+  socket.on('skullking-set-couleur', (payload) => {
+    const room = rooms.get(socket.data.skullkingRoom);
+    if (!room || room.phase !== 'lobby') return;
+    const player = findPlayer(room, socket.id);
+    if (!player) return;
+    const couleur = payload && payload.couleur;
+    if (!couleurValide(couleur)) return;
+    if (!couleurLibre(room, player, couleur)) {
+      sendError(socket, 'Cette couleur est déjà prise par un autre joueur.');
+      return;
+    }
+    player.couleur = couleur;
+    player.couleurChoisie = true;
     broadcastLobby(io, room);
   });
 
@@ -2444,6 +2520,9 @@ function registerSkullKingHandlers(io, socket) {
         }
         if (room.phase === 'lobby' && !room.players.some((p) => p !== player && p.piece === res.piece)) {
           player.piece = res.piece;
+          if (!player.couleurChoisie && couleurLibre(room, player, couleurParDefaut(res.piece))) {
+            player.couleur = couleurParDefaut(res.piece);
+          }
         }
         socket.emit('skullking-code-ok', { piece: res.piece });
         broadcastLobby(io, room);
@@ -2977,6 +3056,7 @@ module.exports = {
   // vérifier ici.
   giveFreePiece,
   PIECE_KEYS,
+  COULEURS,
   // Le rythme : exporté pour pouvoir éprouver la garde de lecture (un salon
   // sans réglage, un réglage inconnu, une valeur hors liste) sans avoir à
   // monter un vrai salon.

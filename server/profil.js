@@ -46,7 +46,7 @@ function enTete(liste, cle, max) {
 
 // games : [{ playedAt, results: [{ userId?, account?, nickname, total, left, elo }] }]
 //         dans l'ordre où elles ont été jouées
-// users : [{ id, pseudo, piece }]
+// users : [{ id, pseudo, piece, couleur }]
 // cle   : la clé d'unicité d'un pseudo (pseudoKey de comptes.js, passée ici
 //         pour ne pas lier les deux fichiers dans les deux sens)
 function profilDepuisParties(userId, games, users, cle) {
@@ -81,7 +81,7 @@ function profilDepuisParties(userId, games, users, cle) {
     .filter(([id]) => userParId.has(id))
     .map(([id, d]) => {
       const u = userParId.get(id);
-      return { id, pseudo: u.pseudo, piece: u.piece || null, ...d };
+      return { id, pseudo: u.pseudo, piece: u.piece || null, couleur: u.couleur || null, ...d };
     })
     .sort((a, b) => a.pseudo.localeCompare(b.pseudo, 'fr'));
 

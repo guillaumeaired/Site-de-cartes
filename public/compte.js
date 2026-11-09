@@ -137,6 +137,7 @@ function compteBandeau() {
 window.addEventListener('profil:piece', (e) => {
   if (!compte.user) return;
   compte.user.piece = e.detail.piece;
+  if ('couleur' in e.detail) compte.user.couleur = e.detail.couleur;
   compteBandeau();
 });
 

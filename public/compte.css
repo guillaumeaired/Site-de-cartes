@@ -1135,3 +1135,47 @@ button.sk-profil-case:focus-visible {
   font-size: 0.74rem;
   color: var(--sk-cream-2);
 }
+
+/* LA COULEUR DE SA PIÈCE, dans la Collection : douze pastilles d'émail sur
+   une rangée, celle du compte cerclée de laiton clair. Les motifs dessous se
+   montrent dans cette couleur (voir profilHabiller). */
+.sk-profil-couleurs {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  justify-items: center;
+  margin-bottom: 4px;
+}
+
+.sk-profil-couleur {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.35), transparent 55%), var(--sk-couleur);
+  box-shadow: 0 0 0 2px #7a5a20, 0 0 0 3px rgba(16, 9, 3, 0.9), inset 0 -2px 4px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.sk-profil-couleur:hover,
+.sk-profil-couleur:focus-visible {
+  transform: scale(1.15);
+  outline: none;
+}
+
+.sk-profil-couleur--portee {
+  box-shadow:
+    0 0 0 2px #e8ce92,
+    0 0 0 4px rgba(16, 9, 3, 0.9),
+    0 0 12px rgba(232, 206, 146, 0.7),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 520px) {
+  .sk-profil-couleurs {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 10px;
+  }
+}

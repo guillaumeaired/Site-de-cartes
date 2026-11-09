@@ -807,7 +807,7 @@ btnCreate.addEventListener('click', () => {
   myNickname = nickname;
   setCreateBusy(true, 'Création…');
   suivreSalonChat(null);
-  socket.emit('skullking-create-room', { nickname, token: getPlayerToken(), piece: pieceMemorisee() });
+  socket.emit('skullking-create-room', { nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
 });
 
 formJoin.addEventListener('submit', (e) => {
@@ -831,7 +831,7 @@ formJoin.addEventListener('submit', (e) => {
     socket.emit('skullking-rejoin-room', { code, token: getPlayerToken() });
     return;
   }
-  socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken(), piece: pieceMemorisee() });
+  socket.emit('skullking-join-room', { code, nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
 });
 
 // --- Les règles -------------------------------------------------------
@@ -1689,6 +1689,22 @@ function pieceMemorisee() {
   }
 }
 
+// La couleur, gardée et renvoyée à la porte de la même façon que la pièce :
+// le serveur la rend si personne à la table ne l'a déjà.
+const COULEUR_PREF_KEY = 'guimams-sk-couleur';
+function couleurMemorisee() {
+  try {
+    return localStorage.getItem(COULEUR_PREF_KEY) || null;
+  } catch (e) {
+    return null;
+  }
+}
+// Ma couleur à cette table, telle que le serveur l'a donnée : les pièces du
+// choix se montrent dans cette couleur, puisque c'est ainsi qu'on les portera.
+let maCouleur = null;
+// La palette des couleurs, ouverte par un clic sur sa propre pièce.
+let paletteOuverte = false;
+
 // --- Son pseudo, en enseigne de la planche, et le champ qui le change ------
 // Le pseudo se tape une fois sur l'écran d'accueil — ou pas du tout quand on
 // arrive par un lien d'invitation, où il est demandé dans une fenêtre qu'on
@@ -1770,7 +1786,10 @@ function libelleCompte(p) {
 }
 
 // Un médaillon du choix de pièce : libre, à moi, ou pris par un autre.
-function boutonPiece(piece, takenBy) {
+// Les motifs se montrent dans MA couleur (voir maCouleur) : on voit d'avance
+// la pièce qu'on portera. Un clic sur la sienne ouvre la palette.
+function boutonPiece(motif, takenBy) {
+  const piece = habiller(motif, maCouleur);
   const owner = takenBy.get(piece.key);
   const mine = owner && owner.id === myId;
   const fermee = Boolean(owner) && !mine;
@@ -1779,11 +1798,29 @@ function boutonPiece(piece, takenBy) {
   btn.className = 'sk-piece-btn' + (mine ? ' sk-piece-btn--mine' : '') + (fermee ? ' sk-piece-btn--taken' : '');
   btn.style.setProperty('--sk-av-color', piece.color);
   btn.disabled = fermee;
-  btn.title = fermee ? `${piece.label} — pris par ${owner.nickname}` : piece.label;
+  btn.title = fermee
+    ? `${piece.label} — pris par ${owner.nickname}`
+    : mine
+      ? `${piece.label}, ta pièce — clique pour changer de couleur`
+      : piece.label;
   btn.setAttribute('aria-label', btn.title);
   btn.innerHTML = pieceSVG(piece);
-  btn.addEventListener('click', () => {
-    if (btn.disabled || mine) return;
+  if (mine) {
+    // La pastille arc-en-ciel dit qu'un clic ici change la couleur.
+    const pastille = document.createElement('span');
+    pastille.className = 'sk-piece-pinceau';
+    pastille.setAttribute('aria-hidden', 'true');
+    btn.appendChild(pastille);
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', String(paletteOuverte));
+  }
+  btn.addEventListener('click', (e) => {
+    if (mine) {
+      e.stopPropagation();
+      ouvrirPalette(!paletteOuverte);
+      return;
+    }
+    if (btn.disabled) return;
     try {
       localStorage.setItem(PIECE_PREF_KEY, piece.key);
     } catch (e) {
@@ -1980,7 +2017,8 @@ socket.on('skullking-code-ok', ({ piece }) => {
   } catch (e) {
     /* navigation privée */
   }
-  ouvrirGrattage(PIECE_BY_KEY[piece]);
+  // Révélée dans MA couleur : c'est ainsi que la table la verra.
+  if (PIECE_BY_KEY[piece]) ouvrirGrattage(habiller(PIECE_BY_KEY[piece], maCouleur));
 });
 
 // --- Le grattage ---------------------------------------------------------
@@ -2000,7 +2038,7 @@ let grattageEtat = null;
 
 function ouvrirGrattage(piece) {
   if (!piece) return;
-  grattageImg.src = `assets/skin/piece-${piece.key}.webp`;
+  grattageImg.src = piece.src;
   grattageNom.textContent = '';
   grattageOk.classList.add('sk-cache');
   grattageAide.classList.remove('sk-cache');
@@ -2173,12 +2211,94 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && grattageEtat && grattageEtat.fini) fermerGrattage();
 });
 
+// --- La palette des couleurs --------------------------------------------
+// Douze couleurs (voir COULEURS) ; celles d'un autre joueur sont barrées,
+// comme les pièces prises, avec son nom dans l'info-bulle. Elle se pose
+// PAR-DESSUS la planche au lieu de s'y ajouter : le salon ne bouge pas d'un
+// pixel quand on l'ouvre (voir ajusterHauteurSalon).
+const paletteEl = document.createElement('div');
+paletteEl.className = 'sk-couleur-palette hidden';
+paletteEl.setAttribute('role', 'group');
+paletteEl.setAttribute('aria-label', 'Ta couleur');
+piecePicker.appendChild(paletteEl);
+let dernierEquipage = [];
+
+function ouvrirPalette(ouverte) {
+  paletteOuverte = ouverte;
+  renderPiecePicker(dernierEquipage);
+  if (ouverte) {
+    const courante = paletteEl.querySelector('.sk-couleur-btn--mine') || paletteEl.querySelector('.sk-couleur-btn:not(:disabled)');
+    if (courante) courante.focus();
+  }
+}
+
+function renderPalette(players) {
+  paletteEl.classList.toggle('hidden', !paletteOuverte);
+  paletteEl.innerHTML = '';
+  if (!paletteOuverte) return;
+  const prisePar = new Map();
+  players.forEach((p) => {
+    if (p.id !== myId && p.couleur) prisePar.set(p.couleur, p);
+  });
+  const titre = document.createElement('p');
+  titre.className = 'sk-couleur-titre';
+  titre.textContent = 'Ta couleur';
+  paletteEl.appendChild(titre);
+  const grille = document.createElement('div');
+  grille.className = 'sk-couleur-grille';
+  COULEURS.forEach((c) => {
+    const autre = prisePar.get(c.key);
+    const mine = c.key === maCouleur;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sk-couleur-btn' + (mine ? ' sk-couleur-btn--mine' : '') + (autre ? ' sk-couleur-btn--taken' : '');
+    btn.style.setProperty('--sk-couleur', c.hex);
+    btn.disabled = Boolean(autre);
+    btn.title = autre ? `${c.label} — prise par ${autre.nickname}` : mine ? `${c.label} — ta couleur` : c.label;
+    btn.setAttribute('aria-label', btn.title);
+    btn.setAttribute('aria-pressed', String(mine));
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (btn.disabled) return;
+      try {
+        localStorage.setItem(COULEUR_PREF_KEY, c.key);
+      } catch (err) {
+        /* navigation privée : le choix vaut pour cette partie, sans plus */
+      }
+      if (!mine) socket.emit('skullking-set-couleur', { couleur: c.key });
+      paletteOuverte = false;
+      renderPiecePicker(dernierEquipage);
+    });
+    grille.appendChild(btn);
+  });
+  paletteEl.appendChild(grille);
+}
+
+// Un clic ailleurs ou Échap referment la palette, comme tout ce qui s'ouvre.
+document.addEventListener('click', (e) => {
+  if (paletteOuverte && !paletteEl.contains(e.target)) {
+    paletteOuverte = false;
+    renderPiecePicker(dernierEquipage);
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && paletteOuverte) {
+    paletteOuverte = false;
+    renderPiecePicker(dernierEquipage);
+    const mienne = pieceGrid.querySelector('.sk-piece-btn--mine');
+    if (mienne) mienne.focus();
+  }
+});
+
 function renderPiecePicker(players) {
+  dernierEquipage = players;
   const me = players.find((p) => p.id === myId);
+  if (me) maCouleur = pieceFor(me).couleur;
   const takenBy = new Map();
   players.forEach((p) => {
     if (p.piece) takenBy.set(p.piece, p);
   });
+  renderPalette(players);
 
   // Une seule fois par salon : si la pièce gardée sur cet appareil est
   // encore libre, on la reprend sans rien demander. Le serveur l'a
@@ -3034,7 +3154,7 @@ btnJoinModal.addEventListener('click', () => {
   btnJoinModal.disabled = true;
   myNickname = nickname;
   suivreSalonChat(roomFromUrl.toUpperCase());
-  socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken(), piece: pieceMemorisee() });
+  socket.emit('skullking-join-room', { code: roomFromUrl.toUpperCase(), nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
 });
 
 // --- Partie en cours ---
@@ -3454,65 +3574,62 @@ function bidStateSuffix(state, p) {
 // Tracé commun : boîte 24x24, trait de 2, bouts arrondis, couleur héritée -
 // une seule silhouette lisible à 30px comme à 60px.
 //
-// `color` n'est PAS une teinte choisie à la main : c'est la couleur du
-// cerclage émaillé du médaillon peint, relevée sur le .webp lui-même
-// (briefs/couleur-cerclage.py, médiane de la couronne r=0.78..0.94). C'est ce
-// qui fait qu'un joueur porte la même couleur partout — son secteur de roue,
-// sa ligne de score, sa pastille de légende — et que cette couleur est
-// exactement celle de la pièce qu'il a prise. Toucher au .webp sans relancer
-// le script, c'est désaccorder les deux.
+// Une pièce, c'est un MOTIF (ci-dessous) dans une COULEUR d'émail (COULEURS,
+// plus bas) : le joueur choisit les deux. Les motifs n'ont donc plus de
+// couleur à eux — c'est celle du JOUEUR qui peint son secteur de roue, sa
+// ligne de score, sa pastille de légende, et le cerclage de sa pièce.
 const PIECES = [
   {
-    key: 'crane', label: 'Crâne', color: '#a10505',
+    key: 'crane', label: 'Crâne',
     svg: '<circle cx="12" cy="9.5" r="6.6"/><circle cx="9.6" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><circle cx="14.4" cy="9.2" r="1.7" fill="currentColor" stroke="none"/><path d="M8.2 15.6h7.6v3a1.6 1.6 0 0 1-1.6 1.6H9.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M10.7 15.8v4.3M13.3 15.8v4.3"/>',
   },
   {
-    key: 'ancre', label: 'Ancre', color: '#164382',
+    key: 'ancre', label: 'Ancre',
     svg: '<circle cx="12" cy="4.4" r="2.3"/><path d="M12 6.7V21"/><path d="M8 10h8"/><path d="M4.8 14.3c0 3.7 3.2 6.7 7.2 6.7s7.2-3 7.2-6.7"/>',
   },
   {
-    key: 'voilier', label: 'Voilier', color: '#2c5d0d',
+    key: 'voilier', label: 'Voilier',
     svg: '<path d="M12 2.8v12.6"/><path d="M13.3 4.6l5 10.8h-5z" fill="currentColor" stroke="none"/><path d="M10.7 6.8 6.2 15.4h4.5z"/><path d="M3.4 17.2h17.2l-2.7 3.9H6.1z"/>',
   },
   {
-    key: 'sabre', label: 'Sabre', color: '#72205f',
+    key: 'sabre', label: 'Sabre',
     svg: '<path d="M20.2 3.8 9.7 14.3"/><path d="M6.9 12.9l4.2 4.2"/><path d="M8.3 15.7 4.9 19.1"/><circle cx="3.9" cy="20.1" r="1.5"/>',
   },
   {
-    key: 'boussole', label: 'Boussole', color: '#d2820b',
+    key: 'boussole', label: 'Boussole',
     svg: '<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-2 4.8-4.8 2 2-4.8z" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'coffre', label: 'Coffre', color: '#067478',
+    key: 'coffre', label: 'Coffre',
     svg: '<path d="M3.6 10.6h16.8V19a1.6 1.6 0 0 1-1.6 1.6H5.2A1.6 1.6 0 0 1 3.6 19z"/><path d="M3.6 10.6A8.6 8.6 0 0 1 12 5.6a8.6 8.6 0 0 1 8.4 5"/><path d="M3.6 13.8h16.8"/><rect x="10.6" y="12.1" width="2.8" height="4" rx="0.7" fill="currentColor" stroke="none"/>',
   },
   {
-    key: 'barre', label: 'Barre', color: '#d64506',
+    key: 'barre', label: 'Barre',
     svg: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.4v6.2M12 15.4v6.2M2.4 12h6.2M15.4 12h6.2M5.2 5.2l4.4 4.4M14.4 14.4l4.4 4.4M18.8 5.2l-4.4 4.4M9.6 14.4l-4.4 4.4"/>',
   },
   {
-    key: 'bouteille', label: 'Bouteille', color: '#192506',
+    key: 'bouteille', label: 'Bouteille',
     svg: '<path d="M10.1 3h3.8v3.4c0 1 .4 1.6 1 2.3.9 1 1.5 2.1 1.5 3.5V19a2 2 0 0 1-2 2H9.6a2 2 0 0 1-2-2v-6.8c0-1.4.6-2.5 1.5-3.5.6-.7 1-1.3 1-2.3z"/><path d="M7.6 14.2h8.8"/>',
   },
   {
-    key: 'crochet', label: 'Crochet', color: '#b00749',
+    key: 'crochet', label: 'Crochet',
     svg: '<path d="M9.4 3.4h5.2"/><path d="M12 3.4v6.4"/><path d="M12 9.8a5 5 0 0 1 5 5v1.1a4 4 0 0 1-8 0"/>',
   },
   // Derrière la flèche du choix de pièce (voir PIECES_EN_VITRINE). Plus de
   // `svg` : elles sont nées médaillons peints, sans silhouette d'avant.
-  { key: 'pieuvre', label: 'Pieuvre', color: '#5f574d' },
-  { key: 'ivrogne', label: 'Ivrogne', color: '#e95242' },
-  { key: 'poison', label: 'Poison', color: '#99a90d' },
-  { key: 'canon', label: 'Canon', color: '#837a6a' },
+  { key: 'pieuvre', label: 'Pieuvre' },
+  { key: 'ivrogne', label: 'Ivrogne' },
+  { key: 'poison', label: 'Poison' },
+  { key: 'canon', label: 'Canon' },
   // Les pièces à code : personne ne les a d'office, chacune se gagne avec un
   // code de quatre lettres valable une seule fois (server/pieces-a-code.js,
   // qui est seul à connaître les codes). Elles vivent dans le cadre « Jeton
   // personnel » de qui les a gagnées, jamais dans la vitrine ni la suite.
-  { key: 'pomme', label: 'Apple', color: '#4fbae5' },
-  { key: 'visa', label: 'Visa', color: '#faa4af' },
-  { key: 'taureau', label: 'Taureau', color: '#f1e4cf' },
-  { key: 'viseur', label: 'Carbon Away', color: '#67de99' },
-  { key: 'harvard', label: 'Harvard', color: '#931c27' },
+  { key: 'pomme', label: 'Apple' },
+  { key: 'visa', label: 'Visa' },
+  { key: 'taureau', label: 'Taureau' },
+  { key: 'viseur', label: 'Carbon Away' },
+  { key: 'harvard', label: 'Harvard' },
 ];
 const PIECES_A_CODE = ['pieuvre', 'pomme', 'visa', 'taureau', 'viseur', 'harvard'];
 
@@ -3548,16 +3665,62 @@ function suiteAccessible() {
 
 const PIECE_BY_KEY = Object.fromEntries(PIECES.map((p) => [p.key, p]));
 
-// Repli quand un joueur n'a rien choisi (partie en cours lancée avant cette
-// fonctionnalité, ou bot) : une pièce tirée du pseudo, donc stable et
-// différente d'un joueur à l'autre sans qu'on ait à trancher côté serveur.
+// LES COULEURS DE JOUEUR : douze, pour neuf places au plus — jamais deux
+// joueurs de la même à une table (server/couleurs.js, qui fait foi et tient
+// la même liste). `hex` est l'émail tel qu'il sort de
+// briefs/composer-pieces-couleur.py : la roue, la courbe et la légende
+// peignent donc exactement la couleur du cerclage de la pièce.
+const COULEURS = [
+  { key: 'rouge', label: 'Rouge', hex: '#c4161c' },
+  { key: 'orange', label: 'Orange', hex: '#f0701a' },
+  { key: 'jaune', label: 'Jaune', hex: '#f4c81e' },
+  { key: 'anis', label: 'Anis', hex: '#9ec21e' },
+  { key: 'vert', label: 'Vert', hex: '#2f8a3a' },
+  { key: 'menthe', label: 'Menthe', hex: '#62d6a6' },
+  { key: 'turquoise', label: 'Turquoise', hex: '#0c9aa0' },
+  { key: 'ciel', label: 'Ciel', hex: '#45b0ea' },
+  { key: 'marine', label: 'Marine', hex: '#1f48a8' },
+  { key: 'violet', label: 'Violet', hex: '#6d3fc4' },
+  { key: 'magenta', label: 'Magenta', hex: '#c4207e' },
+  { key: 'rose', label: 'Rose', hex: '#f4a8c8' },
+];
+const COULEUR_BY_KEY = Object.fromEntries(COULEURS.map((c) => [c.key, c]));
+
+// La couleur d'un motif tant que son joueur n'en a pas (même table que
+// COULEUR_PAR_DEFAUT dans server/couleurs.js).
+const COULEUR_PAR_DEFAUT = {
+  crane: 'rouge', ancre: 'marine', voilier: 'vert', sabre: 'violet',
+  boussole: 'jaune', coffre: 'turquoise', barre: 'orange', bouteille: 'anis',
+  crochet: 'magenta',
+  pieuvre: 'ciel', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
+  pomme: 'ciel', visa: 'rose', taureau: 'rose', viseur: 'menthe', harvard: 'rouge',
+};
+
+// Un motif habillé d'une couleur : ce que la table montre d'un joueur.
+// `color` est l'émail (roue, courbe, légende), `src` l'image de la pièce.
+function habiller(motif, couleurKey) {
+  const couleur = COULEUR_BY_KEY[couleurKey] || COULEUR_BY_KEY[COULEUR_PAR_DEFAUT[motif.key]] || COULEURS[0];
+  return {
+    ...motif,
+    couleur: couleur.key,
+    color: couleur.hex,
+    src: `assets/skin/pieces/${motif.key}-${couleur.key}.webp`,
+  };
+}
+
+// La pièce d'un joueur : son motif dans SA couleur. Repli quand il n'a rien
+// choisi (partie lancée avant cette fonctionnalité, ou bot) : un motif tiré
+// du pseudo, donc stable et différent d'un joueur à l'autre sans qu'on ait à
+// trancher côté serveur, dans la couleur de ce motif.
 function pieceFor(player) {
-  const chosen = player && player.piece && PIECE_BY_KEY[player.piece];
-  if (chosen) return chosen;
-  const nickname = (player && player.nickname) || '';
-  let hash = 0;
-  for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
-  return PIECES[hash % PIECES_EN_VITRINE];
+  let motif = player && player.piece && PIECE_BY_KEY[player.piece];
+  if (!motif) {
+    const nickname = (player && player.nickname) || '';
+    let hash = 0;
+    for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
+    motif = PIECES[hash % PIECES_EN_VITRINE];
+  }
+  return habiller(motif, player && player.couleur);
 }
 
 // L'émail des médaillons est peint sombre — c'est ce qui lui donne son
@@ -3618,8 +3781,9 @@ const ROSE_DES_VENTS =
   '<path d="M12 12 17.6 6.4 16.2 11.1ZM12 12 6.4 17.6 7.8 12.9ZM12 12 17.6 17.6 12.9 16.2ZM12 12 6.4 6.4 11.1 7.8Z" opacity=".55"/>' +
   '</svg>';
 
+// `piece` est toujours habillée (voir habiller) : c'est son image en couleur.
 function pieceSVG(piece) {
-  return `<img class="sk-piece-img" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
+  return `<img class="sk-piece-img" src="${piece.src}" alt="" aria-hidden="true" />`;
 }
 
 function renderSeats(state) {
@@ -4797,9 +4961,9 @@ function renderBidChoices(state) {
 // C'est le jeton qu'on reconnaît d'un coup d'œil sur le tapis, bien avant
 // de lire le nom.
 function joueurBandeau(p) {
-  const piece = PIECE_BY_KEY[p.piece] || pieceFor(p);
+  const piece = pieceFor(p);
   return '<span class="sk-ti-joueur">' +
-    `<img class="sk-ti-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />` +
+    `<img class="sk-ti-piece" src="${piece.src}" alt="" aria-hidden="true" />` +
     `<b class="sk-ti-nom">${escapeHTML(p.nickname)}</b></span>`;
 }
 
@@ -6589,10 +6753,10 @@ function showBidReveal(state) {
     // siège, sur la roue et au bout de sa courbe du récap. C'est lui qui
     // rattache l'annonce à quelqu'un, le pseudo en dessous ne fait que le
     // nommer.
-    const piece = PIECE_BY_KEY[p.piece] || pieceFor(p);
+    const piece = pieceFor(p);
     const jeton = document.createElement('img');
     jeton.className = 'sk-bid-piece';
-    jeton.src = `assets/skin/piece-${piece.key}.webp`;
+    jeton.src = piece.src;
     jeton.alt = '';
     jeton.setAttribute('aria-hidden', 'true');
 
@@ -6911,7 +7075,7 @@ const endFactsEl = document.getElementById('sk-end-facts');
 // calcule : la roue, la courbe, le salon et le récap doivent tous tomber sur
 // la même teinte, sinon le repère ne vaut plus rien.
 function couleurJoueur(p) {
-  return surFondSombre((PIECE_BY_KEY[p && p.piece] || pieceFor(p)).color);
+  return surFondSombre((pieceFor(p)).color);
 }
 
 // Le pseudo porté à la couleur de sa pièce : c'est le même repère que le
@@ -6921,8 +7085,8 @@ function nomColore(p) {
 }
 
 function medaillon(p) {
-  const piece = PIECE_BY_KEY[p && p.piece] || pieceFor(p);
-  return `<img class="sk-nom-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
+  const piece = pieceFor(p);
+  return `<img class="sk-nom-piece" src="${piece.src}" alt="" aria-hidden="true" />`;
 }
 
 // Les faits marquants ne sont plus des phrases toutes faites : chacun est
@@ -7156,7 +7320,7 @@ function courbeSVG(series, grand, hauteur) {
   // médaillon d'un autre (SVG n'a pas de z-index, seul l'ordre compte).
   const bouts = [];
   series.forEach((r) => {
-    const piece = PIECE_BY_KEY[r.piece] || pieceFor(r);
+    const piece = pieceFor(r);
     const couleur = couleurJoueur(r);
     const pts = r.curve.map((c, i) => `${x(i)},${y(c.total)}`).join(' ');
     const moi = r.id === myId ? ' sk-curve-line--me' : '';
@@ -7179,7 +7343,7 @@ function courbeSVG(series, grand, hauteur) {
     // c'est le même repère que sur le tapis et dans le registre.
     const d = r.id === myId ? dBase + 4 : dBase;
     bouts.push({
-      cle: piece.key, d, moi: !!moi, fin: finDe(r),
+      cle: piece.key, src: piece.src, d, moi: !!moi, fin: finDe(r),
       cx: x(r.curve.length - 1),
       cy: y(dernier.total),
       titre: `${escapeHTML(r.nickname)} — ${dernier.total}`,
@@ -7227,7 +7391,7 @@ function courbeSVG(series, grand, hauteur) {
 
   svg += bouts
     .map((b) =>
-      `<image href="assets/skin/piece-${b.cle}.webp" x="${(b.cx - b.d / 2).toFixed(1)}" y="${(b.cy - b.d / 2).toFixed(1)}"` +
+      `<image href="${b.src}" x="${(b.cx - b.d / 2).toFixed(1)}" y="${(b.cy - b.d / 2).toFixed(1)}"` +
       ` width="${b.d}" height="${b.d}" class="sk-curve-piece${b.moi ? ' sk-curve-piece--me' : ''}">` +
       `<title>${b.titre}</title></image>`
     )
@@ -7291,9 +7455,9 @@ function renderGameEnd(state) {
   // Et sa pièce est posée au-dessus du nom, en grand : c'est son médaillon
   // qu'on a suivi toute la partie — sur la roue, au tapis, au bout de sa
   // courbe. Le verdict le rend une dernière fois, à la taille d'un trophée.
-  const piece = PIECE_BY_KEY[winner.piece] || pieceFor(winner);
+  const piece = pieceFor(winner);
   const trophee =
-    `<img class="sk-end-winner-piece" src="assets/skin/piece-${piece.key}.webp" alt="" aria-hidden="true" />`;
+    `<img class="sk-end-winner-piece" src="${piece.src}" alt="" aria-hidden="true" />`;
   // Le vainqueur est nommé, même quand c'est soi : « Tu remportes la partie »
   // se lit vite, mais c'est la seule ligne de l'écran qui grave un nom, et
   // c'est celle-là qu'on garde en capture. Le pseudo y a sa place.
@@ -7652,7 +7816,7 @@ socket.on('skullking-rejoin-failed', (payload) => {
   rejoinFallback = null;
   if (fallback && fallback !== 'link') {
     myNickname = fallback.nickname;
-    socket.emit('skullking-join-room', { code: fallback.code, nickname: fallback.nickname, token: getPlayerToken(), piece: pieceMemorisee() });
+    socket.emit('skullking-join-room', { code: fallback.code, nickname: fallback.nickname, token: getPlayerToken(), piece: pieceMemorisee(), couleur: couleurMemorisee() });
     return;
   }
   if (fallback === 'link') {

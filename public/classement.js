@@ -321,5 +321,6 @@ window.addEventListener('profil:piece', (e) => {
   const ligne = joueurs.find((p) => p.id === moi);
   if (!ligne) return;
   ligne.piece = e.detail.piece;
+  if ('couleur' in e.detail) ligne.couleur = e.detail.couleur;
   dessinerClassement();
 });

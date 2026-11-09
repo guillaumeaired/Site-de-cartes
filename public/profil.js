@@ -6,10 +6,12 @@
 //
 // Chargé par skullking.html et classement.html, sans rien imposer à l'un ni
 // à l'autre : il n'expose que des fonctions préfixées `profil`, et prévient la
-// page quand la pièce change (événement `profil:piece` sur window).
+// page quand la pièce ou sa couleur change (événement `profil:piece` sur
+// window, avec { piece, couleur }).
 //
 // PROFIL_PIECES suit PIECES de skullking.js (même ordre, mêmes noms) et
-// server/pieces.js (mêmes clés) : les trois listes doivent rester alignées.
+// server/pieces.js (mêmes clés) ; PROFIL_COULEURS suit COULEURS de
+// skullking.js et server/couleurs.js. Les listes doivent rester alignées.
 
 const PROFIL_PIECES_COMMUNES = [
   ['crane', 'Crâne'], ['ancre', 'Ancre'], ['voilier', 'Voilier'], ['sabre', 'Sabre'],
@@ -27,22 +29,52 @@ const PROFIL_PIECE_PAR_CLE = Object.fromEntries(
   [...PROFIL_PIECES_COMMUNES, ...PROFIL_PIECES_PERSONNELLES].map((p) => [p.key, p]),
 );
 
-// La pièce d'un compte qui n'en a pas choisi : tirée de son pseudo, donc
-// stable, parmi les neuf premières — le même repli qu'à table (pieceFor).
+// Les douze couleurs d'émail : la pièce d'un compte est un motif dans l'une
+// d'elles, comme à table.
+const PROFIL_COULEURS = [
+  ['rouge', 'Rouge', '#c4161c'], ['orange', 'Orange', '#f0701a'], ['jaune', 'Jaune', '#f4c81e'],
+  ['anis', 'Anis', '#9ec21e'], ['vert', 'Vert', '#2f8a3a'], ['menthe', 'Menthe', '#62d6a6'],
+  ['turquoise', 'Turquoise', '#0c9aa0'], ['ciel', 'Ciel', '#45b0ea'], ['marine', 'Marine', '#1f48a8'],
+  ['violet', 'Violet', '#6d3fc4'], ['magenta', 'Magenta', '#c4207e'], ['rose', 'Rose', '#f4a8c8'],
+].map(([key, label, hex]) => ({ key, label, hex }));
+const PROFIL_COULEUR_PAR_CLE = Object.fromEntries(PROFIL_COULEURS.map((c) => [c.key, c]));
+
+// La couleur d'un motif tant que le compte n'en a pas choisi (même table que
+// server/couleurs.js).
+const PROFIL_COULEUR_PAR_DEFAUT = {
+  crane: 'rouge', ancre: 'marine', voilier: 'vert', sabre: 'violet',
+  boussole: 'jaune', coffre: 'turquoise', barre: 'orange', bouteille: 'anis',
+  crochet: 'magenta',
+  pieuvre: 'ciel', ivrogne: 'rouge', poison: 'anis', canon: 'turquoise',
+  pomme: 'ciel', visa: 'rose', taureau: 'rose', viseur: 'menthe', harvard: 'rouge',
+};
+
+// Un motif dans une couleur : l'image de la pièce et l'émail qui la peint.
+function profilHabiller(motif, couleurCle) {
+  const couleur =
+    PROFIL_COULEUR_PAR_CLE[couleurCle] || PROFIL_COULEUR_PAR_CLE[PROFIL_COULEUR_PAR_DEFAUT[motif.key]] || PROFIL_COULEURS[0];
+  return { ...motif, couleur: couleur.key, hex: couleur.hex, src: `assets/skin/pieces/${motif.key}-${couleur.key}.webp` };
+}
+
+// La pièce d'un compte : son motif dans sa couleur. Qui n'a pas choisi de
+// motif en a un tiré de son pseudo, donc stable, parmi les neuf premières —
+// le même repli qu'à table (pieceFor).
 function profilPieceDe(user) {
-  const choisie = user && user.piece && PROFIL_PIECE_PAR_CLE[user.piece];
-  if (choisie) return choisie;
-  const pseudo = (user && user.pseudo) || '';
-  let hash = 0;
-  for (let i = 0; i < pseudo.length; i++) hash = (hash * 31 + pseudo.charCodeAt(i)) >>> 0;
-  return PROFIL_PIECES_COMMUNES[hash % 9];
+  let motif = user && user.piece && PROFIL_PIECE_PAR_CLE[user.piece];
+  if (!motif) {
+    const pseudo = (user && user.pseudo) || '';
+    let hash = 0;
+    for (let i = 0; i < pseudo.length; i++) hash = (hash * 31 + pseudo.charCodeAt(i)) >>> 0;
+    motif = PROFIL_PIECES_COMMUNES[hash % 9];
+  }
+  return profilHabiller(motif, user && user.couleur);
 }
 
 function profilMedaillon(piece, classe = '') {
   const span = document.createElement('span');
   span.className = `sk-profil-medaillon ${classe}`.trim();
   const img = document.createElement('img');
-  img.src = `assets/skin/piece-${piece.key}.webp`;
+  img.src = piece.src || profilHabiller(piece).src;
   img.alt = '';
   img.setAttribute('aria-hidden', 'true');
   span.appendChild(img);
@@ -88,6 +120,8 @@ function profilCadre() {
       <h3 class="sk-profil-titre">Ta pièce</h3>
       <p class="sk-profil-aide">Elle te représente au classement, et chez ceux dont tu es la némésis ou le sous-fifre.</p>
       <div class="sk-profil-collection">
+        <h4 class="sk-profil-famille">Couleur</h4>
+        <div class="sk-profil-couleurs" data-famille="couleurs"></div>
         <h4 class="sk-profil-famille">Jetons communs <small data-compte="communs"></small></h4>
         <div class="sk-profil-grille" data-famille="communs"></div>
         <h4 class="sk-profil-famille">Jetons personnels <small data-compte="personnels"></small></h4>
@@ -123,6 +157,9 @@ function profilCase(piece, { possedee, portee }) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'sk-profil-case' + (portee ? ' sk-profil-case--portee' : '');
+  // Chaque motif se montre dans la couleur du compte : on voit la pièce
+  // qu'on portera.
+  piece = profilHabiller(piece, profilEtat.donnees && profilPieceDe(profilEtat.donnees.user).couleur);
   btn.title = portee ? `${piece.label} — ta pièce` : piece.label;
   btn.setAttribute('aria-label', btn.title);
   btn.setAttribute('aria-pressed', String(portee));
@@ -154,6 +191,23 @@ function profilDessiner() {
     `${victoires} victoire${victoires > 1 ? 's' : ''}`;
 
   const miennes = new Set(d.pieces || []);
+
+  // Les douze couleurs, celle du compte marquée.
+  const couleurs = fond.querySelector('[data-famille="couleurs"]');
+  couleurs.textContent = '';
+  PROFIL_COULEURS.forEach((c) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    const portee_ = c.key === portee.couleur;
+    btn.className = 'sk-profil-couleur' + (portee_ ? ' sk-profil-couleur--portee' : '');
+    btn.style.setProperty('--sk-couleur', c.hex);
+    btn.title = portee_ ? `${c.label} — ta couleur` : c.label;
+    btn.setAttribute('aria-label', btn.title);
+    btn.setAttribute('aria-pressed', String(portee_));
+    btn.addEventListener('click', () => profilChoisirCouleur(c.key));
+    couleurs.appendChild(btn);
+  });
+
   const communs = fond.querySelector('[data-famille="communs"]');
   communs.textContent = '';
   PROFIL_PIECES_COMMUNES.forEach((p) =>
@@ -192,9 +246,36 @@ function profilChoisir(cle) {
       profilDessiner();
       const focus = profilEtat.fond.querySelector('.sk-profil-case--portee');
       if (focus) focus.focus();
-      window.dispatchEvent(new CustomEvent('profil:piece', { detail: { piece: corps.piece } }));
+      window.dispatchEvent(new CustomEvent('profil:piece', { detail: { piece: corps.piece, couleur: d.user.couleur || null } }));
     })
     .catch((err) => profilErreur(err.message || 'La pièce n’a pas pu être changée.'))
+    .finally(() => {
+      profilEtat.envoi = false;
+    });
+}
+
+// Choisir une couleur la porte aussitôt ; la collection reste ouverte, ses
+// motifs se repeignent dans la nouvelle couleur.
+function profilChoisirCouleur(cle) {
+  const d = profilEtat.donnees;
+  if (!d || profilEtat.envoi) return;
+  if (profilPieceDe(d.user).couleur === cle) return;
+  profilEtat.envoi = true;
+  profilErreur('');
+  fetch('/api/profil/couleur', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ couleur: cle }),
+  })
+    .then((r) => r.json().then((corps) => ({ ok: r.ok, corps })))
+    .then(({ ok, corps }) => {
+      if (!ok) throw new Error(corps.error || 'La couleur n’a pas pu être changée.');
+      d.user.couleur = corps.couleur;
+      profilDessiner();
+      window.dispatchEvent(new CustomEvent('profil:piece', { detail: { piece: d.user.piece || null, couleur: corps.couleur } }));
+    })
+    .catch((err) => profilErreur(err.message || 'La couleur n’a pas pu être changée.'))
     .finally(() => {
       profilEtat.envoi = false;
     });
